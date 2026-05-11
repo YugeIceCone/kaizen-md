@@ -119,7 +119,7 @@ ${BOLD:-}Install complete.${RESET:-}
 
 Next steps:
   1. /kaizen:status     — confirm everything green
-  2. /kaizen:help       — full command reference
+  2. /kaizen:menu       — full command reference
   3. (optional) /kaizen:disable-dupes  — hide loose duplicate skills
 
 Test the gate:

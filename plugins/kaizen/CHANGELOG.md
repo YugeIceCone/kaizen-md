@@ -3,6 +3,13 @@
 All notable changes to the `kaizen` plugin documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [SemVer](https://semver.org/).
 
+## [1.1.4] — 2026-05-11
+
+### Fixed
+
+- **`/kaizen:help` → `/kaizen:menu`** — eats own dogfood for gotcha #4 (built-in shadowing). The `help` command name shadowed Claude Code's `/help` built-in. Renamed to `menu`.
+- **plugin-pitfalls lint script** scoped to `.sh`/`.py`/`hooks/` files for gotcha #6 (was matching documentation prose mentioning `readlink -f` in README/CHANGELOG/SKILL.md). Also fixed exit-code logic (was printing "BUG #6 ... All checks passed" simultaneously).
+
 ## [1.1.3] — 2026-05-11
 
 ### Added

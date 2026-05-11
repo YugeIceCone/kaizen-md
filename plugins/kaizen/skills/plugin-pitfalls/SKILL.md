@@ -425,9 +425,12 @@ for f in plugins/*/commands/*.md; do
     done
 done
 
-# 6. cross-platform: no GNU-only utilities
-grep -rEn 'readlink -f|find .* -printf' plugins/ 2>/dev/null && {
-    echo "BUG #6: GNU-only utilities found"; exit 1; }
+# 6. cross-platform: no GNU-only utilities (in scripts only, not docs)
+if grep -rEn 'readlink -f|find .* -printf' plugins/*/skills/*/scripts/ plugins/*/hooks/ 2>/dev/null \\
+   | grep -v 'replaces GNU\\|portable real-path' \\
+   | grep -q .; then
+    echo "BUG #6: GNU-only utilities found in scripts"; exit 1
+fi
 
 echo "All gotcha-lint checks passed."
 ```

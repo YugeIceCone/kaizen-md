@@ -1,5 +1,5 @@
 ---
-name: help
+name: menu
 description: List all /kaizen:* slash commands with brief descriptions + suggested first-time onboarding flow. Run this any time to recall what's available.
 ---
 
@@ -20,7 +20,7 @@ description: List all /kaizen:* slash commands with brief descriptions + suggest
 | `/kaizen:disable-dupes` | Reversibly disable loose-side duplicate skills (rename SKILL.md ↔ SKILL.md.disabled) |
 | `/kaizen:test` | Run the full pipeline test (TAP-style, 29+ checks, ~1s, low token cost) |
 | `/kaizen:flow` | Run the pocketflow Node+Flow demo against the current backlog (offline, no LLM) |
-| `/kaizen:help` | This reference |
+| `/kaizen:menu` | This reference |
 
 ## MCP server
 
