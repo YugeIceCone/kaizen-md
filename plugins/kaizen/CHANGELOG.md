@@ -3,6 +3,65 @@
 All notable changes to the `kaizen` plugin documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [SemVer](https://semver.org/).
 
+## [1.10.0] — 2026-05-12
+
+### Added — `kaizen-observe` (unified 6-layer observability)
+
+`scripts/observe.py` + `bin/kaizen-observe` + `/kaizen:observe`. Implements the synthesis described in the user's prior 6-layer enumeration: a single tool that reads across CC transcript / kaizen trace / domain logs / per-repo state / plugin state, with schema-driven validation (uses v1.9.0 `schemas.py`) and the canonical drill-down recipe automated.
+
+The 6 layers covered:
+
+- **L1** live UI / stderr (ephemeral, skipped)
+- **L2** CC transcript JSONL at `~/.claude/projects/<slug>/<sid>.jsonl`
+- **L3** kaizen trace at `~/.claude/.kaizen-trace/events.jsonl` (+ rotated `.gz`)
+- **L4** domain logs: daemon log, llm-proxy log, inbox JSONs, /tmp/kaizen-compile.log
+- **L5** per-repo state: `.workflow/`, `.kaizen/cache/`, `.kaizen.toml`
+- **L6** plugin + global: `installed_plugins.json`, `settings.json`, backups, brain Notes
+
+**Subcommands**:
+
+- `layers` — JSON summary of all 6 (default if no arg). Shows sizes, counts, last activity per layer.
+- `query --sid SID --src S --evt E --since 1h [--json]` — unified L3-indexed query.
+- `stats --since 1h [--sid SID]` — counts + p50/p95/max latency. Flags schema-invalid records.
+- `drill <sid>` — automated drill-down recipe → Markdown report walking all 6 layers, with recommended next-step list at the end.
+- `snapshot [--name NAME]` — content-hashed capture of all layer summaries. Stored at `~/.claude/.kaizen-observe/snapshots/`. Deterministic: byte-identical state produces byte-identical snapshot bytes.
+- `compare <a> <b>` — diff two snapshots; reports which layers changed.
+- `snapshots` — list saved snapshots.
+
+**Schema-driven**: L3 trace events validated via `schemas.TraceEvent` from v1.9.0. Invalid records (bad `src` enum, missing `evt`, negative `ms`) are flagged with `_validation_errors` field and counted in `stats.invalid`. Other layers fall through as raw JSON; the dataclass scaffold is in place for future adoption (`InboxMessage`, `DaemonState`).
+
+**Dynamic vs deterministic**: `query`/`stats`/`tail` are real-time reads (dynamic). `snapshot`/`compare` are content-hashed captures (deterministic). Use deterministic mode for reproducible point-in-time analysis ("was this layer state different before X happened?") and regression detection.
+
+**Drill-down recipe** (automated):
+
+1. L3 trace stats (the fast index)
+2. L3 event sample for the sid
+3. L2 transcript path + size hint
+4. L4 domain logs if errors / pending inbox / proxy events detected
+5. L5 per-repo state from cwd
+6. L6 plugin/global counts
+
+The report ends with a "Recommended next steps" list pointing at the next tool to invoke given what was found.
+
+### Composition with prior versions
+
+- v1.6.x trace events → v1.10.0 L3 reader
+- v1.9.0 schemas dataclasses → v1.10.0 validation layer
+- v1.4.x inbox → v1.10.0 L4 reader
+- v1.5.x daemon → v1.10.0 L4 reader
+- v1.7.x browser MCP events flow through hooks → already in L3
+- v1.8.0 `kaizen:agent-brief` listed the 6 layers; v1.10.0 makes them queryable
+
+No new instrumentation — `observe` is a pure reader. Adopt-as-needed.
+
+### Bumps minor (1.9.0 → 1.10.0)
+
+New script + bin wrapper + slash command. Additive surface. No breaking changes.
+
+### Bugfix
+
+`l5_summary` previously crashed on completed workflow state (`current` index beyond `stages` length). Bounds-checked: reports `"(complete or out-of-range)"` instead.
+
 ## [1.9.0] — 2026-05-12
 
 Three changes from the SDD/SSOT research doc landing together: an inbox drain timing fix (the "already-addressed echo" bug surfaced by the user), OPP-A (`.kaizen.toml` SSOT via `config.py`), and OPP-B (dataclass schemas in `scripts/schemas.py`).
