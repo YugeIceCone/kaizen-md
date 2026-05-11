@@ -3,6 +3,68 @@
 All notable changes to the `kaizen` plugin documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [SemVer](https://semver.org/).
 
+## [1.7.0] — 2026-05-12
+
+### Added — Playwright-backed browser MCP server
+
+Claude now has a real browser to drive. `scripts/browser_mcp.py` is a FastMCP server wrapping Playwright (sync_api). Registered in `.mcp.json` as `kaizen-browser`; spawned on-demand by Claude Code when the first `mcp__kaizen-browser__*` tool is invoked.
+
+**14 tools** — primitives, not AI-planned actions (Claude does the planning natively):
+
+| Tool | Purpose |
+|---|---|
+| `open_browser(headless, viewport_*)` | launch Chromium + create page |
+| `close_browser` | tear down |
+| `navigate(url, wait_until)` | go to URL |
+| `current_url` | where am I |
+| `click(selector, timeout_ms)` | CSS / `text=…` / `role=…` / any Playwright locator |
+| `type_text(selector, text, timeout_ms)` | fill input/textarea (clears first) |
+| `press_key(key)` | Enter / Tab / Escape / Arrow… |
+| `wait_for(selector, state, timeout_ms)` | attached / visible / detached / hidden |
+| `get_text(selector="body")` | inner_text |
+| `get_html(selector="html")` | outerHTML |
+| `screenshot(path, full_page)` | PNG → CC Read tool renders inline |
+| `list_links` | all `<a href>` (text + URL, cap 50) |
+| `list_inputs` | all form fields (name+type+value, cap 30) |
+| `evaluate(js_expression)` | run arbitrary JS in page (power-tool) |
+
+**bin/kaizen-browser** — install / check / status / path / fg subcommands. Auto-symlinked into `~/.local/bin/` by `/kaizen:install` (v1.4.2 zero-config).
+
+**commands/browser.md** — `/kaizen:browser` slash command wrapping the wrapper.
+
+### Why these primitives, not AI-planned actions
+
+`browser-use`, `Stagehand`, and similar add a second LLM that plans selectors and intents. Powerful but adds latency, cost, and a model to maintain. `kaizen-browser` exposes primitives only — Claude does the planning natively from CSS/DOM knowledge. Fewer moving parts, full visibility through CC's tool boundary, fits the kaizen "minimum-correct + maximum-trace" style.
+
+### Composition
+
+- **Trace**: every browser tool call fires `PreToolUse-*` / `PostToolUse-*` hooks → `kaizen-trace --src hook tool=mcp__kaizen-browser__*` for replay + latency.
+- **LLM proxy**: with `ANTHROPIC_BASE_URL=http://127.0.0.1:8765`, Claude's *selector planning* also traces as `src=llm`. End-to-end browser-workflow observability.
+- **Inbox**: messages typed during a multi-step browser workflow surface on the next tool boundary.
+
+### Install
+
+`pip install --user mcp playwright` + `python -m playwright install chromium` (~150 MB one-time). Or run:
+
+```
+/kaizen:browser install
+/reload-plugins
+/kaizen:browser status
+```
+
+Then in any CC conversation:
+
+```
+"Open browser to news.ycombinator.com, list the top 10 story titles"
+→ Claude calls: open_browser, navigate, get_text or list_links, returns
+```
+
+State persists across tool calls within a CC session (cookies, scroll, page). Server dies at CC exit; `close_browser` is optional.
+
+### Soft dependency
+
+The MCP server's import fails fast with a clear stderr message + exit 1 if `mcp` or `playwright` aren't installed. The wrapper's `check` subcommand verifies both Python modules AND that Chromium can launch — catches the common "pip-installed but `playwright install chromium` skipped" gotcha.
+
 ## [1.6.3] — 2026-05-12
 
 ### Added — full 8+1 coding-skills suggestion engine in pre-commit gate

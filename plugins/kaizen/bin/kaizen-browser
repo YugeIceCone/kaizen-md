@@ -1,0 +1,122 @@
+#!/usr/bin/env bash
+# kaizen-browser — manage the uv-driven Playwright MCP browser server.
+#
+# The MCP server lives at scripts/browser_mcp.py, declared in
+# .mcp.json with `command: "uv"`. uv resolves the PEP 723 inline
+# script-metadata block at the top of that file to auto-install
+# mcp + playwright into a cached venv on first run.
+#
+# Subcommands:
+#   install     pip-install via uv, then download Chromium binary
+#   check       verify uv + deps + Chromium present
+#   status      print MCP server registration state
+#   path        print MCP server script path
+#   fg          launch via uv in foreground (debugging — CC normally
+#               spawns it on-demand from .mcp.json)
+
+set -uo pipefail
+
+SCRIPT=$(python3 -c "import os, sys; print(os.path.realpath(sys.argv[1]))" "${BASH_SOURCE[0]}")
+PLUGIN_ROOT=$(cd "$(dirname "$SCRIPT")/.." && pwd)
+SERVER="$PLUGIN_ROOT/skills/kaizen/scripts/browser_mcp.py"
+
+CMD="${1:-check}"
+shift || true
+
+_need_uv() {
+    if ! command -v uv >/dev/null 2>&1; then
+        echo "  ✗ uv not found on PATH" >&2
+        echo "" >&2
+        echo "  Install uv:" >&2
+        echo "    curl -LsSf https://astral.sh/uv/install.sh | sh" >&2
+        echo "    # (or: brew install uv  /  pipx install uv  /  pip install --user uv)" >&2
+        exit 1
+    fi
+}
+
+case "$CMD" in
+    install)
+        _need_uv
+        echo "  → warming uv cache for browser_mcp.py deps (mcp, playwright)"
+        # First run installs deps into uv's script-cache
+        uv run --with mcp --with playwright python -c "import mcp, playwright; print('ok')" "$@" \
+            || { echo "  ✗ uv dep install failed" >&2; exit 1; }
+        echo ""
+        echo "  → installing Chromium binary via Playwright"
+        uv run --with playwright python -m playwright install chromium "$@" \
+            || { echo "  ✗ chromium install failed" >&2; exit 1; }
+        echo ""
+        echo "  ✓ install complete"
+        echo ""
+        echo "  Next:"
+        echo "    /reload-plugins              # so Claude Code picks up the new MCP server"
+        echo "    /kaizen:browser status       # verify wiring"
+        ;;
+
+    check)
+        ok=1
+        if command -v uv >/dev/null 2>&1; then
+            v=$(uv --version 2>&1 | head -1)
+            echo "  ✓ uv: $v"
+        else
+            echo "  ✗ uv: not on PATH" >&2
+            ok=0
+        fi
+        if [ "$ok" = "1" ]; then
+            if uv run --with mcp --with playwright python -c "import mcp, playwright" >/dev/null 2>&1; then
+                echo "  ✓ python deps: mcp + playwright resolvable via uv"
+            else
+                echo "  ✗ python deps: uv can't resolve mcp/playwright (run: kaizen-browser install)" >&2
+                ok=0
+            fi
+            if uv run --with playwright python -c "from playwright.sync_api import sync_playwright; p = sync_playwright().start(); b = p.chromium.launch(headless=True); b.close(); p.stop()" >/dev/null 2>&1; then
+                echo "  ✓ chromium binary present"
+            else
+                echo "  ✗ chromium binary missing (run: kaizen-browser install)" >&2
+                ok=0
+            fi
+        fi
+        [ "$ok" = "1" ] && echo "" && echo "  All checks passed — /reload-plugins to expose mcp__kaizen-browser__* tools."
+        [ "$ok" = "1" ] || exit 1
+        ;;
+
+    status)
+        echo "MCP server registration (.mcp.json):"
+        python3 -c "
+import json, sys
+d = json.load(open('$PLUGIN_ROOT/.mcp.json'))
+srv = d.get('mcpServers', {}).get('kaizen-browser')
+if not srv:
+    print('  ✗ kaizen-browser not registered')
+    sys.exit(1)
+print(f'  ✓ command: {srv[\"command\"]}')
+print(f'  ✓ args:    {srv[\"args\"]}')"
+        echo ""
+        echo "Server script: $SERVER"
+        if [ -x "$SERVER" ]; then
+            echo "  ✓ exists, executable"
+        else
+            echo "  ✗ script missing or not executable" >&2
+        fi
+        echo ""
+        if command -v uv >/dev/null 2>&1; then
+            echo "  ✓ uv on PATH ($(uv --version 2>&1 | head -1))"
+        else
+            echo "  ✗ uv NOT on PATH — MCP server will fail to launch" >&2
+        fi
+        ;;
+
+    path)
+        echo "$SERVER"
+        ;;
+
+    fg)
+        _need_uv
+        exec uv run --script "$SERVER" "$@"
+        ;;
+
+    *)
+        echo "usage: kaizen-browser [install|check|status|path|fg]"
+        exit 1
+        ;;
+esac

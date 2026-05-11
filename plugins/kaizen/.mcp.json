@@ -3,6 +3,14 @@
     "kaizen-backlog": {
       "command": "python3",
       "args": ["${CLAUDE_PLUGIN_ROOT}/skills/kaizen/scripts/mcp_server.py"]
+    },
+    "kaizen-browser": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--script",
+        "${CLAUDE_PLUGIN_ROOT}/skills/kaizen/scripts/browser_mcp.py"
+      ]
     }
   }
 }
