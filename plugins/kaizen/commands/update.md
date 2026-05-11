@@ -1,13 +1,32 @@
 ---
 name: update
-description: Single-command kaizen maintenance — `git pull` the marketplace, refresh Claude Code's plugin cache, optionally prune old version slots. Subcommands: (none = pull+refresh) | check | prune | path. Replaces the manual `cd marketplace + git pull + /kaizen:refresh-cache` dance.
+description: Single-command kaizen maintenance — `git pull` the marketplace, refresh Claude Code's plugin cache, auto-reload if anything changed, optionally prune old version slots. Subcommands: (none = pull+refresh+reload) | check | prune | path. Replaces the manual `cd marketplace + git pull + /kaizen:refresh-cache + /reload-plugins` dance.
 ---
 
 # kaizen update
 
-One command for the full maintenance flow.
+One command for the full maintenance flow, with conditional auto-reload.
 
 !`bash ${CLAUDE_PLUGIN_ROOT}/skills/kaizen/scripts/update.sh ${ARGUMENTS:-pull}`
+
+## Auto-reload directive
+
+The bash block above ends with exactly ONE of these marker lines:
+
+- `kaizen-update: needs-reload (changes applied)` — a pull landed or the cache moved.
+- `kaizen-update: no-op (already current)` — nothing changed; reload would be redundant.
+
+**If the marker is `needs-reload`:** your very next response MUST start with the literal text
+
+```
+/reload-plugins
+```
+
+on its own line (Claude Code's UI then triggers the built-in reload). Do not ask for confirmation — the user invoked `/kaizen:update` precisely to skip that step. After emitting `/reload-plugins`, you may add a one-line acknowledgement like "Reloaded — new commands/skills/hooks active." but keep it brief.
+
+**If the marker is `no-op`:** do NOT emit `/reload-plugins`. Just confirm everything is current in a single sentence.
+
+**If the bash block failed** (non-zero exit, no marker line, or `check` / `prune` / `path` subcommand): no reload — just report what happened.
 
 ## What it does (default = `pull`)
 

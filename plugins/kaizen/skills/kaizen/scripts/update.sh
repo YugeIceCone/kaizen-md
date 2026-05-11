@@ -105,6 +105,8 @@ case "$CMD" in
         ;;
 
     pull|"")
+        CHANGES_APPLIED=0
+
         if [ "${UP_TO_DATE:-0}" = "1" ]; then
             echo "  ∘ no pull needed"
         else
@@ -113,19 +115,29 @@ case "$CMD" in
                 echo "  ✗ git pull failed (non-fast-forward? resolve manually in $MARKET)" >&2
                 exit 1
             fi
-            # Re-read version after pull
             SRC_VER=$(python3 -c "import json,sys; print(json.load(open(sys.argv[1]))['version'])" "$PLUGIN_SRC/.claude-plugin/plugin.json" 2>/dev/null || echo "?")
             LOCAL_SHA=$(cd "$MARKET" && git rev-parse --short HEAD 2>/dev/null || echo "?")
             echo "  ✓ now at v$SRC_VER @ $LOCAL_SHA"
+            CHANGES_APPLIED=1
         fi
 
-        # Always run refresh-cache so even local hand-edits land in cache
+        # refresh-cache always runs (catches local hand-edits even without pull).
+        # Capture its output so we can detect whether the cache actually moved.
         echo ""
-        bash "$SCRIPT_DIR/refresh-cache.sh"
+        REFRESH_OUT=$(bash "$SCRIPT_DIR/refresh-cache.sh" 2>&1)
+        echo "$REFRESH_OUT"
+        if echo "$REFRESH_OUT" | grep -q "✓ refreshed cache to"; then
+            CHANGES_APPLIED=1
+        fi
 
         echo ""
-        echo "Next:"
-        echo "  /reload-plugins      # surface new commands/skills/hooks/agents"
+        if [ "$CHANGES_APPLIED" = "1" ]; then
+            # Machine-parseable last line. The /kaizen:update slash command
+            # body reads this to decide whether to auto-emit /reload-plugins.
+            echo "kaizen-update: needs-reload (changes applied)"
+        else
+            echo "kaizen-update: no-op (already current)"
+        fi
         ;;
 
     *)

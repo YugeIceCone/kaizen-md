@@ -3,6 +3,42 @@
 All notable changes to the `kaizen` plugin documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [SemVer](https://semver.org/).
 
+## [1.4.4] — 2026-05-11
+
+### Added — conditional auto-reload on `/kaizen:update`
+
+`/kaizen:update` now triggers `/reload-plugins` automatically when (and only when) something actually changed. Closes the last manual step in the maintenance flow.
+
+**How it works**
+
+`scripts/update.sh` now ends with one of two machine-parseable marker lines:
+
+- `kaizen-update: needs-reload (changes applied)` — a pull landed OR the cache moved.
+- `kaizen-update: no-op (already current)` — nothing changed.
+
+`commands/update.md` reads the marker after the bash block and instructs Claude to emit the literal text `/reload-plugins` only on `needs-reload`. Claude Code's UI then triggers the built-in reload. No reload spam on idempotent re-runs.
+
+**Why this isn't a hook**
+
+`/reload-plugins` is a Claude Code built-in slash command, not a shell command. Hooks can't trigger it directly (no `triggerSlashCommand` field in hook output JSON), and bash scripts have no access to the harness. The slash-command-MD-instructs-Claude-to-emit-slash-text pattern is the cleanest workable path — and it costs nothing to fall back to: if Claude doesn't emit the slash, the user can still type `/reload-plugins` themselves.
+
+**Shell behaviour unchanged**
+
+`kaizen update` from a regular shell prints the same marker lines (informational only — no reload-plugins concept outside Claude Code). Use the marker as an exit signal in scripts: `kaizen update | tail -1 | grep -q needs-reload && echo "would reload"`.
+
+**Maintenance loop is now one step**
+
+Before v1.4.4:
+```
+/kaizen:update
+/reload-plugins      # manual
+```
+
+After v1.4.4:
+```
+/kaizen:update       # auto-reloads if anything changed
+```
+
 ## [1.4.3] — 2026-05-11
 
 ### Added — single-command maintenance flow
