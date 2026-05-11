@@ -3,6 +3,23 @@
 All notable changes to the `kaizen` plugin documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [SemVer](https://semver.org/).
 
+## [1.7.1] — 2026-05-12
+
+### Fixed — browser_mcp.py: switched sync_playwright → async_playwright
+
+v1.7.0 used `playwright.sync_api.sync_playwright` inside FastMCP's tools. FastMCP runs in an asyncio event loop, and Playwright explicitly rejects its sync API in that context:
+
+```
+Error executing tool open_browser: It looks like you are using Playwright
+Sync API inside the asyncio loop. Please use the Async API instead.
+```
+
+Discovered on first real `open_browser(headless=True)` invocation. Symptom: every tool fails immediately with the above error.
+
+**Fix**: rewrote `browser_mcp.py` to use `playwright.async_api.async_playwright`. All 14 `@mcp.tool()` functions are now `async def`, and every Playwright call is awaited. Tool signatures, return values, and module-global state shape unchanged — fully backward-compatible from the caller's view.
+
+Lifecycle detail: `_pw_cm = async_playwright()` is the async context manager; we `__aenter__` it on `open_browser` and `__aexit__` on `close_browser`. Stored at module scope so calls span tool boundaries within one MCP server lifetime.
+
 ## [1.7.0] — 2026-05-12
 
 ### Added — Playwright-backed browser MCP server

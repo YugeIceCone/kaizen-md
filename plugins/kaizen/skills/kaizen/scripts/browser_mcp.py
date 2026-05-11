@@ -80,7 +80,7 @@ import sys
 
 try:
     from mcp.server.fastmcp import FastMCP
-    from playwright.sync_api import sync_playwright, Browser, Page, Playwright
+    from playwright.async_api import async_playwright, Browser, Page, Playwright
 except ImportError as e:  # pragma: no cover
     sys.stderr.write(
         f"kaizen-browser-mcp: missing dependency: {e}\n"
@@ -98,7 +98,9 @@ except ImportError as e:  # pragma: no cover
 
 mcp = FastMCP("kaizen-browser")
 
-# Module-global state — single browser per server lifetime
+# Module-global state — single browser per server lifetime.
+# FastMCP runs in an asyncio event loop; we use async_playwright accordingly.
+_pw_cm = None  # the context manager (so we can __aexit__ on close)
 _pw: Playwright | None = None
 _browser: Browser | None = None
 _page: Page | None = None
@@ -116,39 +118,41 @@ def _ensure_page() -> Page:
 
 
 @mcp.tool()
-def open_browser(headless: bool = False, viewport_width: int = 1280, viewport_height: int = 800) -> str:
+async def open_browser(headless: bool = False, viewport_width: int = 1280, viewport_height: int = 800) -> str:
     """Launch Chromium and open a fresh page.
 
     headless=False shows the browser window (helpful for development /
     debugging); headless=True runs invisible (best for CI / batch work).
     Idempotent: calling again returns "already open" without relaunching.
     """
-    global _pw, _browser, _page
+    global _pw_cm, _pw, _browser, _page
     if _page is not None:
         return f"already open at {_page.url}"
-    _pw = sync_playwright().start()
-    _browser = _pw.chromium.launch(headless=headless)
-    ctx = _browser.new_context(viewport={"width": viewport_width, "height": viewport_height})
-    _page = ctx.new_page()
+    _pw_cm = async_playwright()
+    _pw = await _pw_cm.__aenter__()
+    _browser = await _pw.chromium.launch(headless=headless)
+    ctx = await _browser.new_context(viewport={"width": viewport_width, "height": viewport_height})
+    _page = await ctx.new_page()
     return f"opened (headless={headless}, viewport={viewport_width}x{viewport_height})"
 
 
 @mcp.tool()
-def close_browser() -> str:
+async def close_browser() -> str:
     """Tear down browser + Playwright. Safe to call when already closed."""
-    global _pw, _browser, _page
+    global _pw_cm, _pw, _browser, _page
     if _browser is not None:
         try:
-            _browser.close()
+            await _browser.close()
         except Exception:
             pass
         _browser = None
-    if _pw is not None:
+    if _pw_cm is not None:
         try:
-            _pw.stop()
+            await _pw_cm.__aexit__(None, None, None)
         except Exception:
             pass
-        _pw = None
+        _pw_cm = None
+    _pw = None
     _page = None
     return "closed"
 
@@ -157,15 +161,15 @@ def close_browser() -> str:
 
 
 @mcp.tool()
-def navigate(url: str, wait_until: str = "load") -> str:
+async def navigate(url: str, wait_until: str = "load") -> str:
     """Navigate to URL. wait_until: load | domcontentloaded | networkidle | commit."""
     page = _ensure_page()
-    page.goto(url, wait_until=wait_until)  # type: ignore[arg-type]
+    await page.goto(url, wait_until=wait_until)  # type: ignore[arg-type]
     return f"navigated to {page.url}"
 
 
 @mcp.tool()
-def current_url() -> str:
+async def current_url() -> str:
     return _ensure_page().url
 
 
@@ -173,33 +177,33 @@ def current_url() -> str:
 
 
 @mcp.tool()
-def click(selector: str, timeout_ms: int = 10000) -> str:
+async def click(selector: str, timeout_ms: int = 10000) -> str:
     """Click an element. Selector: CSS, `text=...`, `role=...`, or any Playwright locator syntax."""
     page = _ensure_page()
-    page.locator(selector).click(timeout=timeout_ms)
+    await page.locator(selector).click(timeout=timeout_ms)
     return f"clicked {selector!r}"
 
 
 @mcp.tool()
-def type_text(selector: str, text: str, timeout_ms: int = 10000) -> str:
+async def type_text(selector: str, text: str, timeout_ms: int = 10000) -> str:
     """Fill an input/textarea with the given text (clears existing value first)."""
     page = _ensure_page()
-    page.locator(selector).fill(text, timeout=timeout_ms)
+    await page.locator(selector).fill(text, timeout=timeout_ms)
     return f"typed {len(text)} chars into {selector!r}"
 
 
 @mcp.tool()
-def press_key(key: str) -> str:
+async def press_key(key: str) -> str:
     """Press a keyboard key. Common: Enter, Tab, Escape, ArrowDown, ArrowUp, Backspace."""
-    _ensure_page().keyboard.press(key)
+    await _ensure_page().keyboard.press(key)
     return f"pressed {key}"
 
 
 @mcp.tool()
-def wait_for(selector: str, timeout_ms: int = 10000, state: str = "visible") -> str:
+async def wait_for(selector: str, timeout_ms: int = 10000, state: str = "visible") -> str:
     """Wait for selector. state: attached | detached | visible | hidden."""
     page = _ensure_page()
-    page.locator(selector).wait_for(state=state, timeout=timeout_ms)  # type: ignore[arg-type]
+    await page.locator(selector).wait_for(state=state, timeout=timeout_ms)  # type: ignore[arg-type]
     return f"saw {selector!r} ({state})"
 
 
@@ -207,29 +211,29 @@ def wait_for(selector: str, timeout_ms: int = 10000, state: str = "visible") -> 
 
 
 @mcp.tool()
-def get_text(selector: str = "body") -> str:
+async def get_text(selector: str = "body") -> str:
     """inner_text of the selector (default: whole page body)."""
-    return _ensure_page().locator(selector).inner_text()
+    return await _ensure_page().locator(selector).inner_text()
 
 
 @mcp.tool()
-def get_html(selector: str = "html") -> str:
+async def get_html(selector: str = "html") -> str:
     """outerHTML of the selector (default: whole document)."""
-    return _ensure_page().locator(selector).evaluate("e => e.outerHTML")
+    return await _ensure_page().locator(selector).evaluate("e => e.outerHTML")
 
 
 @mcp.tool()
-def screenshot(path: str = "/tmp/kaizen-browser.png", full_page: bool = False) -> str:
+async def screenshot(path: str = "/tmp/kaizen-browser.png", full_page: bool = False) -> str:
     """Save PNG screenshot. Read with the Read tool to view as image in CC."""
-    _ensure_page().screenshot(path=path, full_page=full_page)
+    await _ensure_page().screenshot(path=path, full_page=full_page)
     return path
 
 
 @mcp.tool()
-def list_links() -> list[dict]:
+async def list_links() -> list[dict]:
     """All anchor hrefs visible in the document."""
     page = _ensure_page()
-    return page.evaluate(
+    return await page.evaluate(
         "() => Array.from(document.querySelectorAll('a[href]'))"
         "  .map(a => ({text: a.innerText.trim().slice(0, 80), href: a.href}))"
         "  .filter(l => l.text)"
@@ -238,10 +242,10 @@ def list_links() -> list[dict]:
 
 
 @mcp.tool()
-def list_inputs() -> list[dict]:
+async def list_inputs() -> list[dict]:
     """All form inputs (input/select/textarea) with name+type+current-value."""
     page = _ensure_page()
-    return page.evaluate(
+    return await page.evaluate(
         "() => Array.from(document.querySelectorAll('input, select, textarea'))"
         "  .map(e => ({"
         "    tag: e.tagName.toLowerCase(),"
@@ -259,13 +263,13 @@ def list_inputs() -> list[dict]:
 
 
 @mcp.tool()
-def evaluate(js_expression: str) -> str:
+async def evaluate(js_expression: str) -> str:
     """Run an arbitrary JS expression in the page; return JSON-serializable result as string.
 
     Use sparingly — prefer the typed tools above. Useful for: scrollTo,
     custom DOM queries, accessing page state not covered elsewhere.
     """
-    result = _ensure_page().evaluate(js_expression)
+    result = await _ensure_page().evaluate(js_expression)
     return repr(result)
 
 
