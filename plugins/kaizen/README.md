@@ -2,7 +2,7 @@
 
 [![test](https://github.com/YugeIceCone/kaizen-md/actions/workflows/test.yml/badge.svg)](https://github.com/YugeIceCone/kaizen-md/actions/workflows/test.yml)
 [![license: MIT](https://img.shields.io/badge/license-MIT-blue)](./LICENSE)
-[![version](https://img.shields.io/badge/version-1.1.2-green)](./CHANGELOG.md)
+[![version](https://img.shields.io/badge/version-1.1.3-green)](./CHANGELOG.md)
 
 **Consistent git commit discipline as a Claude Code plugin.** Pre-commit gate (10 checks) + JSON-sourced micro-work backlog + 32 bundled skills + 6 lifecycle hooks + MCP server. Self-contained: no external plugin dependencies.
 

@@ -3,6 +3,26 @@
 All notable changes to the `kaizen` plugin documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [SemVer](https://semver.org/).
 
+## [1.1.3] — 2026-05-11
+
+### Added
+
+- **`plugin-pitfalls` skill** (34th bundled) — catalogues 10 real failure modes encountered during the v1.0 → v1.1.2 release cycle. Each entry has symptom (what the user sees), cause (why the system rejects it), fix (the concrete repair), and prevention (the lint check that would have caught it).
+
+The 10 gotchas:
+1. `hooks.json` must be wrapped in top-level `{"hooks": {...}}` record
+2. Slash commands evaluate ALL fenced bash blocks, not just the matching one
+3. `/plugin update` no-ops without a `version:` bump in plugin.json
+4. Plugin `name: doctor` (etc.) shadows Claude Code built-ins
+5. SSH key vs `gh` CLI auth mismatch causes "Repository not found"
+6. `readlink -f` and `find -printf` are GNU-only — break on macOS BSD
+7. `set -uo pipefail` aborts on unbound vars in fallback branches
+8. Python heredoc inside bash needs `<<'PY'` (quoted EOF) for escapes
+9. Skill name collisions: loose `~/.claude/skills/X` + bundled `<plugin>/skills/X` both appear
+10. `gh repo create --remote=origin` fails when origin already exists
+
+Includes a pre-publish lint script covering all 10. Triggers on symptom phrases ("Hook load failed", "Repository not found", "expected record received undefined", etc.) so the skill activates when a gotcha symptom appears in a session.
+
 ## [1.1.2] — 2026-05-11
 
 ### Fixed
