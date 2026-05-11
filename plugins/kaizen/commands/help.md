@@ -11,7 +11,7 @@ description: List all /kaizen:* slash commands with brief descriptions + suggest
 |---|---|
 | `/kaizen:install` | Activate the pre-commit gate in this repo (local-only, idempotent) |
 | `/kaizen:uninstall` | Reverse install (dry-run default; preserves backlog + backups) |
-| `/kaizen:doctor` | Health diagnostic — broken symlinks, schema mismatch, missing scripts |
+| `/kaizen:health` | Health diagnostic — broken symlinks, schema mismatch, missing scripts |
 | `/kaizen:status` | At-a-glance: config, hook, backlog, active routine, backups |
 | `/kaizen:gate` | Dry-run the pre-commit gate against staged changes |
 | `/kaizen:backlog` | List / add / start / tick / park / decision / render / verify backlog items |
@@ -40,7 +40,7 @@ After that, commit normally — the pre-commit gate fires automatically.
 
 | When | Command |
 |---|---|
-| After plugin update | `/kaizen:doctor` to surface any breakage |
+| After plugin update | `/kaizen:health` to surface any breakage |
 | Before risky operation | `/kaizen:backup create --label <what>` |
 | When sizing a new task | `/kaizen:backlog add` with probe + verify hooks |
 | End of week | `/kaizen:backup prune --keep 10` |

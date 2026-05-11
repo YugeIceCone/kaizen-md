@@ -1,5 +1,5 @@
 ---
-name: doctor
+name: health
 description: Diagnostic health check for the kaizen plugin's install in this repo. Reports broken symlinks, missing scripts, schema mismatch, hook misconfiguration, stale backlog drift, missing pre-deletion belief. Read-only; exits 1 on any error, 0 otherwise.
 ---
 

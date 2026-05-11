@@ -130,7 +130,7 @@ Backlog quick reference:
   /kaizen:backlog add --title "..." --probe "..." --verify "..."
 
 Diagnostic:
-  /kaizen:doctor
+  /kaizen:health
 
 Uninstall (per-repo only; keeps backlog + backups):
   /kaizen:uninstall
