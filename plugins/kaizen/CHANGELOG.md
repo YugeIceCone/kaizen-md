@@ -3,6 +3,19 @@
 All notable changes to the `kaizen` plugin documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [SemVer](https://semver.org/).
 
+## [1.1.2] — 2026-05-11
+
+### Fixed
+
+- **Slash commands no longer run unintended subcommands.** The "argument router" pattern (6 commands had it: `backlog`, `backup`, `migrate`, `disable-dupes`, `publish`, `uninstall`) had multiple ``!`...`...`bash` blocks per command markdown, intending only one to fire based on `$ARGUMENTS`. But Claude Code evaluates ALL fenced bash blocks in command markdown — so `/publish` (no args) ran `publish.sh reset` and errored, `/backup` ran `backup.sh restore` without an id, etc.
+
+  Fix: each command now has exactly ONE bash invocation that dispatches via `$ARGUMENTS` directly to the underlying script's subcommand router. Scripts handle empty-args defaults internally (status / list / scan).
+
+### Verified
+
+- `grep -cE '!\`(bash|python|node)' commands/*.md` → all 13 commands have exactly 1 dispatch.
+- /kaizen:test → 30/30 still pass.
+
 ## [1.1.1] — 2026-05-11
 
 ### Fixed

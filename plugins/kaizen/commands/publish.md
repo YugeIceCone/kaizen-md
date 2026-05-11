@@ -7,27 +7,17 @@ description: Publish this plugin/marketplace to GitHub. Subcommands cover the fu
 
 GitHub publishing helper. Wraps `gh` + `git` for the standard flow + the failure modes.
 
-## Argument router
+!`bash ${CLAUDE_PLUGIN_ROOT}/skills/kaizen/scripts/publish.sh ${ARGUMENTS:-status}`
 
-Parse `$ARGUMENTS`:
+## Subcommands
 
-- **No args** or `status` → repo + branch + auth + origin + version overview:
-  !`bash ${CLAUDE_PLUGIN_ROOT}/skills/kaizen/scripts/publish.sh status`
-- `init` → run `gh auth setup-git` + sanity-check origin (idempotent):
-  !`bash ${CLAUDE_PLUGIN_ROOT}/skills/kaizen/scripts/publish.sh init`
-- `create [owner/name]` → create the remote repo + add origin + push initial state (owner/name resolved from plugin.json if omitted):
-  !`bash ${CLAUDE_PLUGIN_ROOT}/skills/kaizen/scripts/publish.sh create $ARGUMENTS`
-- `push [--force]` → push current branch to origin (or `--force` for clean-history overwrite):
-  !`bash ${CLAUDE_PLUGIN_ROOT}/skills/kaizen/scripts/publish.sh push $ARGUMENTS`
-- `release [--version V]` → tag + push tag + create GitHub release (version + notes auto-read from plugin.json + CHANGELOG.md):
-  !`bash ${CLAUDE_PLUGIN_ROOT}/skills/kaizen/scripts/publish.sh release $ARGUMENTS`
-- `diagnose` → SSH-T + gh auth + remotes + credential helper + ~/.ssh/config + known_hosts; everything you need when things break:
-  !`bash ${CLAUDE_PLUGIN_ROOT}/skills/kaizen/scripts/publish.sh diagnose`
-- `reset` → DESTRUCTIVE: nuke `.git/`, single-commit reinit (preserves origin URL). Requires `--yes`:
-  !`bash ${CLAUDE_PLUGIN_ROOT}/skills/kaizen/scripts/publish.sh reset $ARGUMENTS`
-
-For full help:
-!`bash ${CLAUDE_PLUGIN_ROOT}/skills/kaizen/scripts/publish.sh --help`
+- (no args) or `status` → repo + branch + auth + origin + version + remote sync overview
+- `diagnose` → SSH-T + gh auth + remotes + credential helper + ssh config + known_hosts
+- `init` → `gh auth setup-git` + remote sanity check (idempotent)
+- `create [owner/name]` → `gh repo create --source=. --remote=origin --push` (auto-reads owner/name from plugin.json)
+- `push [--force]` → push current branch to origin (`--force` for clean-history overwrite)
+- `release [--version V]` → tag + push tag + GitHub release (version + notes auto-read from plugin.json + CHANGELOG.md)
+- `reset --yes` → DESTRUCTIVE: nuke `.git/`, single-commit reinit (preserves origin URL; requires `--yes`)
 
 ## Typical flows
 
@@ -38,12 +28,10 @@ For full help:
 /kaizen:publish create      # creates github.com/<owner>/<name>, pushes initial commit
 ```
 
-After this, CI fires automatically via `.github/workflows/test.yml`.
-
 ### Subsequent updates
 
 ```
-git commit -m "feat(scope): change description"
+git commit -m "feat(scope): change"
 /kaizen:publish push
 ```
 
@@ -52,43 +40,22 @@ git commit -m "feat(scope): change description"
 ```
 # 1. Bump version in plugin.json
 # 2. Add [<new-version>] section to CHANGELOG.md
-# 3. Commit + push (normal flow)
+# 3. Commit + push
 # 4. Then:
-/kaizen:publish release   # auto-reads version, tags, creates GH release with CHANGELOG notes
+/kaizen:publish release
 ```
 
-### Fresh-history reset (rare)
-
-When WIP commits / mass-renames / experiments should not land upstream:
+### Fresh-history reset (rare, requires --yes)
 
 ```
-/kaizen:publish reset --yes        # nuke .git, single 'initial release' commit
-/kaizen:publish push --force        # overwrite remote
+/kaizen:publish reset --yes
+/kaizen:publish push --force
 ```
-
-## What this skill bundles
-
-Loading `/kaizen:publish` activates the `publishing` skill, which documents:
-
-- The standard `gh repo create` sequence
-- 5 common failure modes (SSH user mismatch, stale origin, ssh-askpass missing, host-key verification, HTTPS no-credentials)
-- Rename-in-place vs. delete-recreate trade-offs
-- Pre-publish checklist
-- CI verification
-
-See `skills/publishing/SKILL.md` for full content.
 
 ## Requirements
 
-- `gh` CLI authenticated (`gh auth status` shows your account)
+- `gh` CLI authenticated (`gh auth status`)
 - `git` configured with `user.email` + `user.name`
-- `python3` (already required by the plugin)
+- `python3`
 
-If `gh` is missing: https://cli.github.com (one-line install on most systems).
-
-## Safety
-
-- `reset` requires explicit `--yes` flag. Otherwise it prints the destructive plan and exits 2.
-- `push --force` is opt-in. Default `push` is non-forced.
-- `init` is idempotent — safe to re-run.
-- All subcommands except `reset` are non-destructive on the local working tree.
+If `gh` is missing: https://cli.github.com

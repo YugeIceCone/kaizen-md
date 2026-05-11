@@ -1,6 +1,6 @@
 {
   "name": "kaizen",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "description": "Consistent git commit discipline — pre-commit gate, micro-work backlog (JSON-sourced), sizing by trace+sem+grep. Self-contained: bundles 32 skills (tdd + 9 coding-skills + onion-ddd-workflow + 14 superpowers + workflow-routing + 5 remember/Second Brain) plus all supporting scripts/refs/assets. No external plugin dependencies.",
   "author": {
     "name": "YugeIceCone",
