@@ -44,13 +44,8 @@ fi
 BACKLOG_PART=""
 REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || echo "")
 if [ -n "$REPO_ROOT" ]; then
-    # Resolve backlog path from .kaizen.toml, fall back to .workflow/backlog.json
-    BACKLOG_REL=""
-    if [ -f "$REPO_ROOT/.kaizen.toml" ]; then
-        BACKLOG_REL=$(grep -E '^backlog_path' "$REPO_ROOT/.kaizen.toml" 2>/dev/null \
-            | head -1 \
-            | sed -E 's/^[^=]*=[[:space:]]*"?([^"]*)"?.*$/\1/')
-    fi
+    # Resolve backlog path via config.py (SSOT for .kaizen.toml parsing).
+    BACKLOG_REL=$(cd "$REPO_ROOT" && python3 "$SCRIPT_DIR/config.py" backlog_path --default ".workflow/backlog.md" 2>/dev/null)
     BACKLOG_REL="${BACKLOG_REL:-.workflow/backlog.md}"
     BACKLOG_JSON_PATH="${REPO_ROOT}/${BACKLOG_REL%.md}.json"
 

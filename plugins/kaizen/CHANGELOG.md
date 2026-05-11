@@ -3,6 +3,77 @@
 All notable changes to the `kaizen` plugin documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [SemVer](https://semver.org/).
 
+## [1.9.0] — 2026-05-12
+
+Three changes from the SDD/SSOT research doc landing together: an inbox drain timing fix (the "already-addressed echo" bug surfaced by the user), OPP-A (`.kaizen.toml` SSOT via `config.py`), and OPP-B (dataclass schemas in `scripts/schemas.py`).
+
+### Fixed — inbox drain replays the turn-starting prompt back to Claude
+
+The v1.4.0 inbox + drain hooks captured the user's current prompt via UserPromptSubmit, then on the very next PostToolUse the drain surfaced it as a "while you were busy" message. Claude saw what looked like a new message and replied "Already addressed — that's the X I just did," producing a visible feedback loop the user found annoying and wrong.
+
+**Root cause**: drain treated ALL pending messages identically. The turn-starter (the prompt that initiated the current assistant turn) is conceptually different from mid-turn interrupts — only the latter should surface as "while you were busy".
+
+**Fix**: sentinel file `~/.claude/kaizen-inbox/.current-turn` holds the turn-starter's filename + timestamp.
+
+- `UserPromptSubmit` hook calls `inbox.py set-turn-starter <path>` — writes sentinel ONLY IF absent (mid-turn prompts don't overwrite).
+- `inbox.py drain` reads the sentinel and skips the file it references. All other pending messages surface normally.
+- `Stop` hook calls `inbox.py clear-turn-starter` — removes the sentinel AND marks the starter as `drained: true` with `drain_reason: "turn-starter-completed"`. Next turn's starter then becomes the new sentinel.
+
+Smoke-tested across a 4-step turn lifecycle (P1 starter → mid-turn P2 → P3 next-turn-starter). Mid-turn interrupts still surface; turn-starters never do.
+
+### Added — `scripts/config.py` as `.kaizen.toml` SSOT (OPP-A)
+
+Stdlib-only TOML parser shared by all kaizen scripts. Three call sites (`statusline.sh`, `install.sh`, eventually `pre-commit.sh`) previously re-implemented `grep -E '^key' | sed -E 's/^[^=]*=[[:space:]]*"?([^"]*)"?.*$/\1/'` — a typo would silently corrupt one consumer while leaving others working.
+
+**API**:
+
+```python
+from config import load_config, get
+cfg = load_config()                  # auto-finds repo root
+val = get("backlog_path", default=".workflow/backlog.md")
+```
+
+**CLI for bash**:
+
+```bash
+python3 config.py                          # all key=value
+python3 config.py backlog_path             # one key
+python3 config.py X --default "fallback"   # with default
+python3 config.py --json                   # full as JSON
+python3 config.py --path                   # location of .kaizen.toml
+```
+
+**Consumers migrated**: `statusline.sh` and `install.sh` replaced their 4-line `grep+sed` blocks with a single `python3 config.py backlog_path --default ...` call.
+
+**Deferred**: `pre-commit.sh` keeps its internal `toml_get()` helper for now — it's already factored within the script and lifts ~7 keys. A future micro will delegate it to `config.py` for full unification.
+
+### Added — `scripts/schemas.py` with dataclass SSOTs (OPP-B)
+
+Four kaizen JSON shapes had lived only in comments + scattered field accesses. Now declared once:
+
+- `TraceEvent` — `~/.claude/.kaizen-trace/events.jsonl` records (with `validate()` checking valid `src` enum + `ms >= 0`).
+- `InboxMessage` — `~/.claude/kaizen-inbox/<ts>-<n>.json` files (added `drain_reason` field).
+- `DaemonState` — `~/.claude/.kaizen-daemon/state.json`.
+- `BacklogItem`, `BacklogDecision`, `BacklogStore` — `<repo>/.workflow/backlog.json` envelope (available for future `backlog.py` migration; not yet adopted by the writer).
+
+**Compat policy**:
+
+- `from_dict()` IGNORES unknown fields (forward-compat: newer writers can add fields older readers don't know).
+- Missing fields fall back to dataclass defaults (backward-compat: older writers' files load under newer readers).
+- Adopt one writer at a time; on-disk shape stays compatible throughout.
+
+**Tests**: `tests/test_schemas.py` — 15 tests covering round-trips, validation errors, forward/backward-compat. All green.
+
+**Self-test**: `python3 schemas.py` runs an executable contract — exits 0 with "all schema round-trips pass" if the module is internally consistent.
+
+### Not yet adopted by writers
+
+This release ships the schema DECLARATIONS. Writers (`trace.py`, `inbox.py`, `daemon.py`, `backlog.py`) still construct dicts directly. A follow-up micro will migrate each writer one at a time — each migration is a behavior-preserving refactor (caller view + on-disk shape unchanged) but lets a future change harden a single field's type / validation in one place.
+
+### Bumps minor (1.8.0 → 1.9.0)
+
+Two new modules + one bug fix. No breaking changes — every existing call site still works without using the new APIs.
+
 ## [1.8.0] — 2026-05-12
 
 ### Added — `kaizen:agent-brief` (machine-readable capability map)

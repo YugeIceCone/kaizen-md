@@ -94,6 +94,83 @@ def capture(prompt: str, session_id: str = "") -> Path:
     return path
 
 
+_SENTINEL_NAME = ".current-turn"
+
+
+def _sentinel_path() -> Path:
+    return inbox_dir() / _SENTINEL_NAME
+
+
+def _turn_starter_file() -> str:
+    """Return the absolute path string of the current turn's starter message,
+    or "" if no sentinel exists. The sentinel is set by UserPromptSubmit hook
+    on the first prompt of a turn and cleared by the Stop hook at turn end.
+    Drain skips this file so the agent's own in-flight prompt doesn't
+    re-surface as a 'while you were busy' message."""
+    p = _sentinel_path()
+    if not p.exists():
+        return ""
+    try:
+        data = json.loads(p.read_text())
+        return data.get("path", "")
+    except (OSError, json.JSONDecodeError):
+        return ""
+
+
+def set_turn_starter(captured_path: str) -> bool:
+    """Write the sentinel ONLY if absent. Returns True if newly set,
+    False if a sentinel already exists (this is a mid-turn message).
+    Called by the UserPromptSubmit hook right after capture."""
+    sentinel = _sentinel_path()
+    if sentinel.exists():
+        return False
+    try:
+        sentinel.write_text(json.dumps({
+            "path": captured_path,
+            "ts": _ts_iso(),
+        }, indent=2))
+        return True
+    except OSError:
+        return False
+
+
+def clear_turn_starter() -> bool:
+    """Remove the sentinel AND mark the starter message as drained.
+    Called by the Stop hook at turn end. Both steps matter: clearing
+    only the sentinel would leave the starter as a pending message
+    that next-turn's drain would surface as 'while you were busy' —
+    wrong, since it was the *previous* turn's starter, not a
+    mid-busy interrupt."""
+    sentinel = _sentinel_path()
+    if not sentinel.exists():
+        return False
+    starter_path = ""
+    try:
+        data = json.loads(sentinel.read_text())
+        starter_path = data.get("path", "")
+    except (OSError, json.JSONDecodeError):
+        pass
+
+    # Mark starter as drained (it was processed during the turn)
+    if starter_path:
+        p = Path(starter_path)
+        if p.exists():
+            try:
+                m = json.loads(p.read_text())
+                m["drained"] = True
+                m["drained_at"] = _ts_iso()
+                m["drain_reason"] = "turn-starter-completed"
+                p.write_text(json.dumps(m, indent=2))
+            except (OSError, json.JSONDecodeError):
+                pass
+
+    try:
+        sentinel.unlink()
+        return True
+    except OSError:
+        return False
+
+
 def list_messages(pending_only: bool = True) -> list[dict]:
     d = inbox_dir()
     if not d.exists():
@@ -115,9 +192,15 @@ def drain() -> str:
     pending = list_messages(pending_only=True)
     if not pending:
         return ""
+    starter = _turn_starter_file()
     lines = ["USER MESSAGE(S) RECEIVED WHILE BUSY:"]
     now_iso = _ts_iso()
     for m in pending:
+        if starter and m.get("_path") == starter:
+            # Skip the prompt that started THIS turn — the agent is
+            # already processing it; surfacing it would create the
+            # "I already addressed this" echo bug.
+            continue
         prompt = (m.get("prompt") or "").strip()
         if not prompt:
             continue
@@ -202,6 +285,11 @@ def main() -> None:
     sub.add_parser("peek", help="print pending without marking")
     sub.add_parser("clear", help="remove ALL entries")
     sub.add_parser("stats", help="print counts")
+    ts = sub.add_parser("set-turn-starter",
+                         help="write sentinel only if absent (UserPromptSubmit hook)")
+    ts.add_argument("path", help="absolute path of the captured message")
+    sub.add_parser("clear-turn-starter",
+                   help="remove sentinel (Stop hook)")
 
     args = p.parse_args()
 
@@ -238,6 +326,14 @@ def main() -> None:
 
     elif args.cmd == "stats":
         print(json.dumps(stats(), indent=2))
+
+    elif args.cmd == "set-turn-starter":
+        ok = set_turn_starter(args.path)
+        print("set" if ok else "already-set")
+
+    elif args.cmd == "clear-turn-starter":
+        ok = clear_turn_starter()
+        print("cleared" if ok else "absent")
 
 
 if __name__ == "__main__":

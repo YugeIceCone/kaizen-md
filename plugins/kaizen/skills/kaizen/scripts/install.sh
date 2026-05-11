@@ -103,12 +103,10 @@ fi
 echo ""
 
 # Seed backlog.json + backlog.md if absent.
-# Resolve backlog_path from the (now-guaranteed-existing) config file
-# rather than the DEFAULT_BACKLOG var, which is only set on the
-# "config didn't exist" branch above.
-BACKLOG_REL=$(grep -E '^backlog_path' "$CONFIG_PATH" 2>/dev/null \
-    | head -1 \
-    | sed -E 's/^[^=]*=[[:space:]]*"?([^"]*)"?.*$/\1/')
+# Resolve backlog_path via config.py (SSOT for .kaizen.toml parsing —
+# replaces the per-script grep+sed pattern that lived in install/statusline/
+# pre-commit pre-v1.8.x).
+BACKLOG_REL=$(cd "$REPO_ROOT" && python3 "$SKILL_DIR/scripts/config.py" backlog_path --default "${DEFAULT_BACKLOG:-backlog.md}" 2>/dev/null)
 BACKLOG_REL="${BACKLOG_REL:-${DEFAULT_BACKLOG:-backlog.md}}"
 BACKLOG_MD="$REPO_ROOT/$BACKLOG_REL"
 BACKLOG_JSON="${BACKLOG_MD%.md}.json"
