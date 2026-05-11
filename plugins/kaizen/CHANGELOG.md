@@ -3,6 +3,41 @@
 All notable changes to the `kaizen` plugin documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [SemVer](https://semver.org/).
 
+## [1.8.0] — 2026-05-12
+
+### Added — `kaizen:agent-brief` (machine-readable capability map)
+
+New skill at `skills/agent-brief/SKILL.md`. Dense, AI-facing orientation document for fresh agents / subagents entering a kaizen-installed repo or session. Replaces the human-oriented `/kaizen:menu` flow for LLM consumers.
+
+**What's in it** (no prose — operational, table-driven):
+
+| Section | Content |
+|---|---|
+| Detection | bash one-liners to check if kaizen is active in current repo + session |
+| 8 capability layers | gate (12 checks), backlog, agents (3), trace, LLM proxy, daemon/watcher, browser MCP, bin wrappers — each with exact paths + invocations |
+| Failure modes | 6 symptoms × cause × recovery — `Unknown command`, cache stale, gate fail, pre-deletion block, inbox pending, browser sync-API error |
+| Common tasks | 11 frequent agent tasks → exact CLI / slash / MCP invocation |
+| State data streams | 13 file locations (CC transcript, trace, inbox, daemon, proxy, cache, compile log, backlog, workflow state, architecture log, snapshot, backups, brain rules) |
+| Deeper skill pointers | 9 trigger → `kaizen:<sub>` skill mappings (`onion-ddd-workflow`, `tdd`, principle skills, `behaviour-config`, `publishing`, `writing-skills`, `writing-plans`, `plugin-pitfalls`) |
+| Iron Laws | 6 non-negotiable rules every agent action must respect |
+
+### Triggers
+
+The skill's `description:` lists ~12 phrases that fire it, including:
+
+- "tell me about kaizen" / "what does kaizen do"
+- "orient me in this repo" / "kaizen overview"
+- "fresh session in kaizen repo" / "subagent kaizen handoff"
+- "kaizen capabilities" / "what's installed here"
+
+The agent reads the body end-to-end (per the global skill-reading rule) BEFORE touching any `/kaizen:*` command, ensuring it understands the surface area + Iron Laws without re-deriving from individual command help.
+
+### Why
+
+Every prior session that entered a kaizen-installed repo had to either (a) probe with `/kaizen:menu`, `/kaizen:status`, etc. — token-expensive — or (b) operate blind and trip the gate. `agent-brief` collapses that orientation to a single skill load.
+
+Bumps minor (1.7.1 → 1.8.0). No code surface changes; pure new skill.
+
 ## [1.7.1] — 2026-05-12
 
 ### Fixed — browser_mcp.py: switched sync_playwright → async_playwright
