@@ -396,6 +396,60 @@ In any "first publish" script: idempotently remove `origin` before `gh repo crea
 
 ---
 
+## 11. Plugin `permissions` block schema is sparsely documented
+
+**Discovered:** v1.3.0, while pre-authorising kaizen-owned scripts to suppress permission prompts on routine gate runs.
+
+**Reproduce:** add a top-level `permissions: {allow: [...]}` field to `plugin.json`. Claude Code accepts it, BUT:
+
+1. Documentation about valid pattern syntax is thin. `Bash(<exact-cmd>)`, `Bash(<cmd>:*)`, `Read(<glob>)`, `Write(<glob>)` work — but the precise grammar (regex? glob? exact?) isn't authoritative.
+2. `${CLAUDE_PLUGIN_ROOT}` substitution inside patterns is plausible but unverified — write the block as if it works, then watch which tool calls still prompt.
+3. `deny` exists symmetrically with `allow` but firing order / precedence is undocumented.
+
+**Defence:** write the `allow` list conservatively (specific scripts, not wildcards on the whole filesystem), test by running the plugin's own slash commands to see what does/doesn't prompt, and document your assumptions in CHANGELOG. The first plugin to encounter this gotcha is YOU.
+
+## 12. Agent `isolation` is per-invocation, not per-definition
+
+**Discovered:** v1.3.0, while shipping the 3 kaizen agents (reviewer, backlog-curator, debt-auditor) that should always run in worktree-isolated contexts.
+
+**The trap:** intuition says agent definitions in `agents/<name>.md` declare their own isolation level via frontmatter:
+
+```yaml
+---
+name: kaizen-reviewer
+isolation: worktree   # ← this DOES NOT exist
+---
+```
+
+**Reality:** Isolation is set by the **caller** passing `isolation: "worktree"` to the `Agent` tool. The agent definition can't enforce its own sandboxing.
+
+**Defence:**
+- Document the isolation contract in the agent's body (`## Invocation contract` section).
+- For programmatic dispatch (hooks, slash commands), build a wrapper that always passes the right isolation. Don't trust ad-hoc Agent() calls to remember.
+- Hard rule for read-only agents: `tools` allowlist excludes Edit/Write so even without isolation, the agent can't mutate.
+
+## 13. Statusline scripts have a <50 ms render budget
+
+**Discovered:** v1.3.0, while wiring `scripts/statusline.sh`.
+
+**The trap:** Claude Code re-runs the configured `statusLine.command` for **every status refresh** (per prompt, per tool call, sometimes more). A 200 ms statusline = 200 ms of perceptible lag on every interaction.
+
+**Forbidden in statusline scripts:**
+
+- Network I/O (no `curl`, no `gh api`)
+- LLM calls (no MCP server invocation, no `claude` CLI re-entry)
+- Slow git commands (`git log`, `git status` walks the index; `git rev-parse --show-toplevel` is fine — it just reads `.git/`)
+- Process spawning beyond bare minimum (every fork costs ms)
+
+**Allowed:**
+
+- File reads (small JSON / TOML / symlink stat)
+- `git rev-parse --show-toplevel` (~1 ms)
+- `python3 -c '<short>'` for JSON parsing (~30 ms on cold start, less on warm)
+- stdin parsing (Claude Code passes its event JSON on stdin — `cat` it once)
+
+**Defence:** time your script with `time bash scripts/statusline.sh < /dev/null` — should be <100 ms cold, <30 ms warm. If slower, profile and inline.
+
 ## Pre-publish lint checklist
 
 Compact, runnable pre-publish check covering all gotchas above:

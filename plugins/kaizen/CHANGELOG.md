@@ -3,6 +3,50 @@
 All notable changes to the `kaizen` plugin documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [SemVer](https://semver.org/).
 
+## [1.3.0] — 2026-05-11
+
+### Added — agent fleet + intelligent infrastructure
+
+Six features compose as v1.3.0:
+
+**1. Agent fleet** (`agents/`, auto-discovered)
+
+- **`kaizen-reviewer`** — audits staged diff vs the 10 gate rules + brain-sourced severity overrides; returns `{verdict: green|yellow|red, checks, diff_sha1, rationale}`.
+- **`kaizen-backlog-curator`** — mines session JSONL for backlog candidates with probe + verify fields; dedups against existing backlog + brain Notes; never writes itself.
+- **`kaizen-debt-auditor`** — scans codebase against onion-DDD + 8 coding-skills + depth invariants; ranks findings by `severity × ease`.
+
+All three declare worktree-isolation contract in their bodies (caller passes `isolation: "worktree"`).
+
+**2. Plugin permissions** (`plugin.json.permissions.allow`)
+
+Pre-authorizes all `${CLAUDE_PLUGIN_ROOT}` scripts (Python/bash/node), reads of `.kaizen/**` / `.workflow/**` / `.kaizen.toml`, writes of `.kaizen/cache/**`. Brain reads (`~/.claude/brain/**`) still prompt — intentional.
+
+**3. Statusline + context-window awareness**
+
+- `scripts/statusline.sh` — one-line bar: `🟢 95k/200k (47%) │ ⚪ 5 next up │ 🟢 gate`. Renders <50 ms.
+- `scripts/context.py` — resolve tokens from `CLAUDE_CONTEXT_TOKENS` env / stdin JSON; zones green/yellow/red/unknown.
+- Gate **Check #12** — advisory red-zone warn; never blocks.
+
+**4. Hash-keyed cache**
+
+- `scripts/cache.py` — per-repo JSON cache at `<repo>/.kaizen/cache/` (gitignored). SHA1 keys, no TTL.
+- Gate **Check #1 wired** — compile barrier caches green verdicts keyed by `(cmd, sha1(staged-diff))`. Failed runs NOT cached.
+- Agents document cache keys in their invocation contracts.
+
+**5. New slash commands**
+
+- `/kaizen:cache`, `/kaizen:context`, `/kaizen:statusline`
+
+### Tests
+
+- `tests/test_cache.py` (8 tests), `tests/test_context.py` (13 tests), `tests/test_agents_schema.py` (5 tests). 34/34 new tests pass; full suite green.
+
+### Plugin-pitfalls (#11–#13)
+
+- **#11** plugin `permissions` block schema is sparsely documented — pattern grammar, `${CLAUDE_PLUGIN_ROOT}` substitution, `deny` precedence all need empirical verification.
+- **#12** agent `isolation` is per-invocation, not per-definition — declare the contract in the agent body; callers must pass `isolation: "worktree"`.
+- **#13** statusline scripts have <50 ms render budget — no network / LLM / slow git; only file reads + stdin parse.
+
 ## [1.2.0] — 2026-05-11
 
 ### Added — brain-sourced rules + behaviour config
