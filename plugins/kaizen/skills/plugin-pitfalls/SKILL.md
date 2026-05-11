@@ -450,6 +450,70 @@ isolation: worktree   # ← this DOES NOT exist
 
 **Defence:** time your script with `time bash scripts/statusline.sh < /dev/null` — should be <100 ms cold, <30 ms warm. If slower, profile and inline.
 
+## 14. `additionalContext` requires `hookSpecificOutput` envelope (with matching `hookEventName`)
+
+**Discovered:** v1.4.0, while wiring the non-blocking inbox hook (UserPromptSubmit captures, PostToolUse drains pending messages into Claude's context as `additionalContext`).
+
+**The trap:** A hook script naturally wants to just print the context string:
+
+```bash
+# WRONG — this string is shown in the user transcript but Claude
+# doesn't get it injected as additional context.
+echo "USER MESSAGE WHILE BUSY: ..."
+```
+
+Or to wrap it loosely:
+
+```bash
+# ALSO WRONG — missing the hookSpecificOutput envelope.
+echo '{"additionalContext": "..."}'
+```
+
+**Correct shape:** the hook stdout must be a single JSON object with `hookSpecificOutput` containing both `hookEventName` (matching the firing event verbatim) AND `additionalContext`:
+
+```bash
+python3 -c "
+import json
+print(json.dumps({
+    'hookSpecificOutput': {
+        'hookEventName': 'PostToolUse',
+        'additionalContext': 'USER MESSAGE(S) RECEIVED WHILE BUSY: ...',
+    },
+}))
+"
+```
+
+**Three subtleties:**
+
+1. **`hookEventName` mismatch silently fails.** If the firing hook is `PostToolUse` but the envelope says `hookEventName: "Drain"`, the injection is ignored. The string must be the exact CC event name.
+2. **Only some events honour `additionalContext`.** Per Claude Code docs: `SessionStart`, `UserPromptSubmit`, `PostToolUse`. On other events (`Stop`, `Notification`, `SubagentStop`) the field is ignored — use `systemMessage` instead.
+3. **Shell-quoting hazards** in the context payload: if the message contains apostrophes, newlines, or `$()` substitutions, shell-build the JSON via env-var passthrough (`MESSAGE="$content" python3 -c "import json,os; print(json.dumps({...: os.environ['MESSAGE']}))"`), never via inline string interpolation.
+
+**Multiple hooks per matcher vs multiple matchers** — also confusing, also v1.4.0 territory:
+
+```jsonc
+"UserPromptSubmit": [
+  {
+    "matcher": "*",
+    "hooks": [
+      { "type": "command", "command": "..." },
+      { "type": "command", "command": "..." }   // ← both run for "*"
+    ]
+  }
+]
+```
+
+vs
+
+```jsonc
+"UserPromptSubmit": [
+  { "matcher": "*", "hooks": [{ "..." }] },
+  { "matcher": "*", "hooks": [{ "..." }] }      // ← also both run for "*"
+]
+```
+
+Functionally equivalent for the same matcher pattern. Pick one and stay consistent within a file. kaizen v1.4.0 uses **inline addition** when the matcher is "*" already (UserPromptSubmit), and **new matcher entry** when the existing block is scoped to a specific tool (e.g. existing Bash matcher + new "*" matcher for drain — they're different scopes).
+
 ## Pre-publish lint checklist
 
 Compact, runnable pre-publish check covering all gotchas above:

@@ -3,6 +3,69 @@
 All notable changes to the `kaizen` plugin documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [SemVer](https://semver.org/).
 
+## [1.4.0] — 2026-05-11
+
+### Added — docs generator, async demo, non-blocking inbox
+
+Four features compose as v1.4.0:
+
+**1. Generic workspace docs generator** (`scripts/docs_gen.py` + `/kaizen:docs`)
+
+Ports shodan's `cargo xtask docs --json` to a language-agnostic Python tool.
+Detects packages by manifest marker:
+
+| Marker | Language |
+|---|---|
+| `Cargo.toml` | rust |
+| `package.json` | js |
+| `go.mod` | go |
+| `pyproject.toml` | python |
+
+Per package emits `<name>.md` + `<name>.json` (schema `kaizen.docs` v1) with: name, path, language, version (workspace-inherited coerced to `"workspace"`), LOC src/test split, files src/test split, deps + dev_deps, public_api counts (fn/struct/trait/enum/class/...) + up to 30 sample names. Skips `target/`, `node_modules/`, `vendor/`, etc. Stdlib-only (`tomllib` on 3.11+, regex fallback for older Python). Tested on shodan: 24 crates scanned, 4632 LOC in `shodan-core`, 164 pub fns, 50 structs, 27 traits, 34 enums.
+
+CLI: `detect | scan | one`.
+
+**2. Async Node+Flow demo** (`scripts/flow_demo.py` rewrite)
+
+Replaces the sync backlog-summary toy with a real async pipeline:
+
+```
+ReadBacklog → DetectPackages → GenerateDocs → WriteReport
+                               (fan-out via       (terminal)
+                                asyncio.gather)
+```
+
+Highlights:
+- Vendored `AsyncNode` + `AsyncFlow` (~40 LOC) — zero runtime deps, shape mirrors PocketFlow exactly. `pip install pocketflow` is a one-line swap.
+- Three-phase nodes: `prep_async` → `exec_async` → `post_async`.
+- `GenerateDocs` fans out N packages → N concurrent tasks via `asyncio.gather`, with `asyncio.to_thread` pushing blocking file I/O off the event loop.
+- Per-node timing in `store['_timing']` for the JSON summary.
+
+Real-world: 24 packages scanned on shodan in 1.36s wall-clock (1.3s spent concurrently in `GenerateDocs`).
+
+**3. Non-blocking message inbox** (`scripts/inbox.py` + 2 hooks + `/kaizen:inbox`)
+
+Closes the "Claude is busy" gap. When the harness is mid-tool-call and the user types a follow-up, that message normally only reaches Claude when the WHOLE current tool sequence finishes. The inbox surfaces pending user input on the very next tool boundary instead.
+
+- **UserPromptSubmit hook** (`hooks/userprompt-inbox.sh`) captures every prompt to `~/.claude/kaizen-inbox/<ts>.json`. Non-blocking — exits 0 silently regardless of capture outcome.
+- **PostToolUse hook** (`hooks/posttooluse-drain-inbox.sh`, matcher `"*"`) drains pending messages, wraps in:
+  ```json
+  {"hookSpecificOutput":
+    {"hookEventName": "PostToolUse",
+     "additionalContext": "USER MESSAGE(S) RECEIVED WHILE BUSY: ..."}}
+  ```
+- **`inbox.py`** CLI: `capture | list | peek | drain | clear | stats`. Drained messages stay on disk as audit trail (cleared via `/kaizen:inbox clear`).
+
+Discipline: at-most-once per submit. Drained messages flip `drained: true` + `drained_at: <iso>` so no message re-surfaces. If python3 is missing or the hook errors, your prompt still reaches Claude through the harness's normal path.
+
+**4. Tests + plugin-pitfalls #14**
+
+- `tests/test_docs_gen.py` (12 tests) — language detection, version coerce, LOC + test-file detection, parsers (Rust/JS/Go), public API regex, end-to-end scan.
+- `tests/test_inbox.py` (10 tests) — capture, collision-resistant filenames, list filtering, drain + peek semantics, clear, stats.
+- **plugin-pitfalls #14**: `additionalContext` requires `hookSpecificOutput` envelope with `hookEventName` matching the firing event. Bare strings don't inject. Multiple matcher entries vs additional hooks within a single matcher behave subtly differently.
+
+22 new tests; full suite 70/70.
+
 ## [1.3.0] — 2026-05-11
 
 ### Added — agent fleet + intelligent infrastructure

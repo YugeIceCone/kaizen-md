@@ -103,8 +103,11 @@ LANG_EXTS: dict[str, list[str]] = {
 
 def is_test_file(path: Path, language: str) -> bool:
     name = path.name
+    parts = path.parts
     if language == "rust":
-        return "test" in path.parts or name.endswith("_test.rs")
+        # Rust convention: tests/ at crate root holds integration tests;
+        # in-module #[cfg(test)] is conventionally not a separate file.
+        return "tests" in parts or "test" in parts or name.endswith("_test.rs")
     if language == "js":
         return ".test." in name or ".spec." in name or "__tests__" in path.parts
     if language == "go":
