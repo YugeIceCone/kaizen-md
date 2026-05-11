@@ -121,6 +121,36 @@ if [ ! -f "$BACKLOG_JSON" ]; then
     fi
 fi
 
+# bin/ symlinks → ~/.local/bin/ (zero-config shell access). Skip with KAIZEN_NO_BIN=1.
+USER_BIN="$HOME/.local/bin"
+PLUGIN_BIN="$(cd "$SKILL_DIR/../.." && pwd)/bin"
+if [ "${KAIZEN_NO_BIN:-0}" = "0" ] && [ -d "$PLUGIN_BIN" ]; then
+    if [ ! -d "$USER_BIN" ]; then
+        mkdir -p "$USER_BIN" 2>/dev/null || true
+    fi
+    if [ -d "$USER_BIN" ] && [ -w "$USER_BIN" ]; then
+        BIN_COUNT=0
+        for src in "$PLUGIN_BIN"/kaizen "$PLUGIN_BIN"/kaizen-*; do
+            [ -f "$src" ] || continue
+            target="$USER_BIN/$(basename "$src")"
+            # Don't clobber a non-symlink the user may have created themselves
+            if [ -e "$target" ] && [ ! -L "$target" ]; then
+                echo "  ! $target exists and is not a symlink — skipping"
+                continue
+            fi
+            ln -sf "$src" "$target"
+            BIN_COUNT=$((BIN_COUNT + 1))
+        done
+        if [ "$BIN_COUNT" -gt 0 ]; then
+            echo "  ✓ symlinked $BIN_COUNT kaizen-* into $USER_BIN/"
+            case ":$PATH:" in
+                *":$USER_BIN:"*) ;;
+                *) echo "  ! $USER_BIN is NOT on \$PATH — add to your shell rc: export PATH=\"\$HOME/.local/bin:\$PATH\"" ;;
+            esac
+        fi
+    fi
+fi
+
 cat <<EOF
 ${BOLD:-}Install complete.${RESET:-}
 

@@ -1,0 +1,65 @@
+#!/usr/bin/env bash
+# kaizen — multiplexer for the bundled CLIs.
+#
+# Symlinked to ~/.local/bin/kaizen by /kaizen:install (zero-config).
+# Subcommand routes to ${BIN_DIR}/kaizen-<subcmd>.
+#
+# Usage:
+#   kaizen flow [workspace]    → async Node+Flow demo
+#   kaizen docs scan           → workspace docs generator
+#   kaizen backlog list        → backlog CLI
+#   kaizen cache stats         → cache state
+#   kaizen context show        → context-window state
+#   kaizen inbox stats         → message inbox
+#   kaizen rules list          → brain-sourced behaviour rules
+#   kaizen env path            → location of kaizen-env.sh
+#
+# Without args: prints subcommand list + plugin version.
+
+set -uo pipefail
+
+_resolve() {
+    if command -v realpath >/dev/null 2>&1; then
+        realpath "$1"
+    else
+        python3 -c "import os, sys; print(os.path.realpath(sys.argv[1]))" "$1"
+    fi
+}
+
+SCRIPT_PATH=$(_resolve "${BASH_SOURCE[0]:-$0}")
+BIN_DIR=$(dirname "$SCRIPT_PATH")
+PLUGIN_ROOT=$(cd "$BIN_DIR/.." && pwd)
+
+if [ $# -eq 0 ]; then
+    VER="?"
+    if [ -f "$PLUGIN_ROOT/.claude-plugin/plugin.json" ]; then
+        VER=$(python3 -c "import json, sys; print(json.load(open(sys.argv[1])).get('version', '?'))" "$PLUGIN_ROOT/.claude-plugin/plugin.json" 2>/dev/null || echo "?")
+    fi
+    echo "kaizen v${VER}"
+    echo ""
+    echo "usage: kaizen <subcommand> [args]"
+    echo ""
+    echo "Subcommands:"
+    for f in "$BIN_DIR"/kaizen-*; do
+        [ -f "$f" ] || continue
+        name=${f##*/kaizen-}
+        # Pull first non-comment, non-shebang line as a description hint
+        desc=$(awk '/^#/ && !/^#!/ {sub(/^# */, ""); print; exit}' "$f")
+        printf "  %-12s %s\n" "$name" "$desc"
+    done
+    echo ""
+    echo "Plugin root: $PLUGIN_ROOT"
+    exit 0
+fi
+
+SUBCMD="$1"
+shift
+
+WRAPPER="$BIN_DIR/kaizen-$SUBCMD"
+if [ -x "$WRAPPER" ]; then
+    exec "$WRAPPER" "$@"
+fi
+
+echo "kaizen: unknown subcommand '$SUBCMD'" >&2
+echo "Run 'kaizen' (no args) to see available subcommands." >&2
+exit 1

@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+# Generate per-package documentation for a workspace.
+set -uo pipefail
+SCRIPT=$(python3 -c "import os, sys; print(os.path.realpath(sys.argv[1]))" "${BASH_SOURCE[0]}")
+PLUGIN_ROOT=$(cd "$(dirname "$SCRIPT")/.." && pwd)
+exec python3 "$PLUGIN_ROOT/skills/kaizen/scripts/docs_gen.py" "$@"

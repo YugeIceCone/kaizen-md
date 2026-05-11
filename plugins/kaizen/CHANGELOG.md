@@ -3,6 +3,31 @@
 All notable changes to the `kaizen` plugin documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [SemVer](https://semver.org/).
 
+## [1.4.2] — 2026-05-11
+
+### Added — zero-config shell access + cache refresh
+
+**`bin/` directory** — 8 thin shell wrappers exec'd from `~/.local/bin/`:
+
+- `kaizen` (multiplexer: `kaizen flow .`, `kaizen docs scan`, etc.)
+- `kaizen-flow`, `kaizen-docs`, `kaizen-backlog`, `kaizen-cache`, `kaizen-context`, `kaizen-inbox`, `kaizen-rules`
+
+Each wrapper is ~5 LOC, self-locating via `python3 os.path.realpath` so symlinked installs resolve back to the real plugin root. No `source kaizen-env.sh` needed.
+
+**`scripts/install.sh` auto-symlinks `bin/*` → `~/.local/bin/`** during `/kaizen:install`. Idempotent. Skips files that already exist and aren't symlinks (no clobber). Opt-out: `KAIZEN_NO_BIN=1`. Warns if `~/.local/bin` isn't on `$PATH`.
+
+**`/kaizen:refresh-cache`** — forces Claude Code's plugin cache to match the local-marketplace source. Solves the gap where `/plugin update kaizen@kaizen-md` doesn't reliably refresh local-marketplace plugins on version bump (`/reload-plugins` then serves stale content). Reads version from source `plugin.json`, rsyncs (or `cp -a` fallback) over the version-named cache slot.
+
+Subcommands: (none = refresh) / `--dry-run` / `--force`.
+
+### Zero-config wins
+
+| Before | After |
+|---|---|
+| `python3 ${CLAUDE_PLUGIN_ROOT}/skills/kaizen/scripts/flow_demo.py .` (failed outside CC) | `kaizen flow .` |
+| `source <path>/kaizen-env.sh && kaizen-flow .` | `kaizen-flow .` (after `/kaizen:install`) |
+| `/plugin update + /reload-plugins` + hope cache refreshed | `/kaizen:refresh-cache + /reload-plugins` deterministic |
+
 ## [1.4.1] — 2026-05-11
 
 ### Added — shell env for interactive use
