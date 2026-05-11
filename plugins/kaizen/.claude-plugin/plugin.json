@@ -25,5 +25,22 @@
     "yagni",
     "dry",
     "solid"
-  ]
+  ],
+  "permissions": {
+    "allow": [
+      "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/kaizen/scripts/backlog.py:*)",
+      "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/kaizen/scripts/rules.py:*)",
+      "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/kaizen/scripts/cache.py:*)",
+      "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/kaizen/scripts/mcp_server.py:*)",
+      "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/kaizen/scripts/flow_demo.py:*)",
+      "Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/kaizen/scripts/*.sh:*)",
+      "Bash(bash ${CLAUDE_PLUGIN_ROOT}/hooks/*.sh:*)",
+      "Bash(node ${CLAUDE_PLUGIN_ROOT}/scripts/*.js:*)",
+      "Read(${CLAUDE_PLUGIN_ROOT}/**)",
+      "Read(.kaizen/**)",
+      "Read(.workflow/**)",
+      "Read(.kaizen.toml)",
+      "Write(.kaizen/cache/**)"
+    ]
+  }
 }

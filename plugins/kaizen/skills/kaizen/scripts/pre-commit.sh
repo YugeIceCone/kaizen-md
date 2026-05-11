@@ -135,10 +135,30 @@ if echo "$DIFF_CONTENT" | grep -E "^\+impl[[:space:]]+([[:alnum:]_:<>'/, ]+[[:sp
     DIFF_IS_STRUCTURAL=1
 fi
 
-# ─── Check 1: Compile barrier ────────────────────────────────────────
+# ─── Check 1: Compile barrier (cached by staged-content sha) ─────────
 if [ -n "$COMPILE_CHECK_CMD" ]; then
-    if eval "$COMPILE_CHECK_CMD" >/tmp/kaizen-compile.log 2>&1; then
+    # Cache key = compile cmd + sha of staged content. Same staged
+    # blob set + same cmd → re-use last green verdict. Failed runs
+    # are NOT cached (stale failure is worse than re-running).
+    STAGED_SHA=$(git diff --cached 2>/dev/null | python3 -c "import sys,hashlib; print(hashlib.sha1(sys.stdin.buffer.read()).hexdigest()[:16])" 2>/dev/null || echo "no-stage")
+    CACHE_PY="$_SCRIPT_REAL_DIR/cache.py"
+    CACHE_KEY=""
+    if [ -x "$CACHE_PY" ]; then
+        CACHE_KEY=$(python3 "$CACHE_PY" key "compile-barrier" "$COMPILE_CHECK_CMD" "$STAGED_SHA" 2>/dev/null || echo "")
+    fi
+    CACHED_PASS=0
+    if [ -n "$CACHE_KEY" ]; then
+        if python3 "$CACHE_PY" get "$CACHE_KEY" 2>/dev/null | grep -q '"status": "pass"'; then
+            CACHED_PASS=1
+        fi
+    fi
+    if [ "$CACHED_PASS" = "1" ]; then
+        pass "compile barrier (cached): $COMPILE_CHECK_CMD"
+    elif eval "$COMPILE_CHECK_CMD" >/tmp/kaizen-compile.log 2>&1; then
         pass "compile barrier: $COMPILE_CHECK_CMD"
+        if [ -n "$CACHE_KEY" ]; then
+            python3 "$CACHE_PY" put "$CACHE_KEY" '{"status":"pass","cmd":"'"$(echo "$COMPILE_CHECK_CMD" | sed 's/"/\\"/g')"'"}' 2>/dev/null || true
+        fi
     else
         hard_fail "compile barrier failed: $COMPILE_CHECK_CMD"
         echo "${DIM}        → /tmp/kaizen-compile.log (last lines):${RESET}" >&2
