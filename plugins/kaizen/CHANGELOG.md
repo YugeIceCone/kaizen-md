@@ -3,6 +3,18 @@
 All notable changes to the `kaizen` plugin documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [SemVer](https://semver.org/).
 
+## [1.1.5] — 2026-05-11
+
+### Fixed
+
+- **Documentation drifts in `skills/kaizen/SKILL.md`** (surfaced by re-reading the loaded skill in-session):
+  - Bundled-skill count: 32 → **34** (now reflects `publishing` + `plugin-pitfalls` added in 1.1.0/1.1.3).
+  - Gate header: "8-item" → **"10-check"** pre-commit gate.
+  - PART 3 table extended with the 2 newer checks:
+    - Check #9 — committed-secret detection (regex for AWS / GitHub / OpenAI / Slack / Google API keys + JWTs + private keys; bypass `KAIZEN_ALLOW_SECRET=1`).
+    - Check #10 — backlog `.md` drift vs `.json` (runs `backlog.py verify`).
+  - `.kaizen.toml` example `backlog_path` lowercased to `.workflow/backlog.md` (matches the install-default + the `state.json` / `snapshot.md` / `progress.md` lowercase convention).
+
 ## [1.1.4] — 2026-05-11
 
 ### Fixed

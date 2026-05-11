@@ -22,9 +22,9 @@ only hold together. Skipping any one section turns the workflow into
 selective enforcement — exactly the inconsistency this skill exists
 to eliminate.
 
-## Bundled skills (session + project agnostic — 32 total)
+## Bundled skills (session + project agnostic — 34 total)
 
-This plugin **bundles every skill the gate routes to or coexists with** so it works without dependencies on other plugins. Once installed, all 32 are auto-discovered under the `kaizen:` namespace.
+This plugin **bundles every skill the gate routes to or coexists with** so it works without dependencies on other plugins. Once installed, all 34 are auto-discovered under the `kaizen:` namespace.
 
 ### TDD + coding principles (11)
 
@@ -310,7 +310,7 @@ When NOT to use BACKLOG.md — use a plan file instead when:
 - Risk register / rollback ordering needed
 - Cross-context migration
 
-# PART 3 — The 8-item pre-commit gate
+# PART 3 — The 10-check pre-commit gate
 
 These are the rules the pre-commit hook enforces. Each maps to a check function in `scripts/pre-commit.sh`. The hook BLOCKS on hard-fail, WARNS on soft-fail.
 
@@ -324,6 +324,8 @@ These are the rules the pre-commit hook enforces. Each maps to a check function 
 | 6 | **No sha / date / LOC count in CLAUDE.md** | HARD | Staged CLAUDE.md diff contains a commit-sha pattern (`[0-9a-f]{7,40}`), an ISO date inside a rule sentence, or "X passed / Y LOC" snapshots → BLOCK. CLAUDE.md is the rulebook, not a changelog. |
 | 7 | **New code → paired test exists** | SOFT (WARN) | New non-test source file added AND no corresponding test file / `#[cfg(test)] mod tests` / equivalent → WARN. Override via `KAIZEN_SKIP_TDD_CHECK=1`. |
 | 8 | **Project-specific verify** | HARD or SOFT (project choice) | Runs `verify_cmd` from `.kaizen.toml` if present. E.g. for shodan: `shodan-todo verify` to catch TODO.md drift. |
+| 9 | **Committed-secret detection** | HARD | High-confidence regex scan over staged diff for AWS keys (`(AKIA\|ASIA)…`), GitHub tokens (`gh[oprsu]_…`), OpenAI `sk-…`, Slack `xox[abprs]-…`, Google API keys (`AIza…`), JWTs, and `-----BEGIN…PRIVATE KEY-----` blocks. Bypass for fixtures: `KAIZEN_ALLOW_SECRET=1`. |
+| 10 | **Backlog `.md` drift vs `.json`** | HARD | Runs `backlog.py verify` to ensure `<workflow_dir>/backlog.md` matches `<workflow_dir>/backlog.json`. Catches hand-edits of the generated `.md` view. Fix: `python3 backlog.py render`. |
 
 ## Structural change classifier
 
@@ -369,7 +371,7 @@ Uninstall: `git config --unset core.hooksPath` (and delete `.kaizen/`).
 [project]
 compile_check_cmd = "cargo check --workspace"
 architecture_log = ".workflow/progress.md"
-backlog_path = ".workflow/BACKLOG.md"   # or "BACKLOG.md" at repo root
+backlog_path = ".workflow/backlog.md"   # or "BACKLOG.md" at repo root
 plan_dir = "plans"
 canonical_source_dirs = []  # e.g. ["port/shodan3"] for convergence-check
 verify_cmd = ""              # e.g. "shodan-todo verify"
