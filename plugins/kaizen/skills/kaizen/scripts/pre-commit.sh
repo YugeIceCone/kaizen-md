@@ -455,6 +455,23 @@ if [ -n "$LARGE_FILE_DIFF" ]; then
     echo "$LARGE_FILE_DIFF" | while read l; do suggest "  $l"; done
 fi
 
+# ─── Check 12: Context-window awareness (advisory) ───────────────────
+# Only fires when CLAUDE_CONTEXT_TOKENS env is set by the harness.
+# Without it, context state is unknown and the check is a no-op.
+if [ -x "$_SCRIPT_REAL_DIR/context.py" ]; then
+    CTX_ZONE=$(python3 "$_SCRIPT_REAL_DIR/context.py" zone 2>/dev/null || echo "unknown")
+    case "$CTX_ZONE" in
+        red)
+            warn "context window in red zone (>=80%) — consider /compact after this commit; state could compact mid-task"
+            ;;
+        yellow)
+            [ "${KAIZEN_VERBOSE:-0}" = "1" ] && warn "context window in yellow zone (60-79%)"
+            ;;
+        *)
+            ;;
+    esac
+fi
+
 # ─── Final summary ───────────────────────────────────────────────────
 echo "" >&2
 if [ "$HARD_FAILS" -gt 0 ]; then
