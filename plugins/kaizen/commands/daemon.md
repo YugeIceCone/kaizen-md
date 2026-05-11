@@ -17,6 +17,8 @@ Default interval: every 30 minutes. State + log at `~/.claude/.kaizen-daemon/{st
 
 ## Subcommands
 
+### Cron mode (default — periodic ticks)
+
 | arg | effect |
 |---|---|
 | (none) or `status` | cron status + state + log tail |
@@ -24,6 +26,27 @@ Default interval: every 30 minutes. State + log at `~/.claude/.kaizen-daemon/{st
 | `install [--interval N]` | add cron entry (default every 30 min) |
 | `uninstall` | remove cron entry |
 | `log [N]` | tail last N log lines (default 20) |
+
+### Keep-alive watcher mode (instant via hash-poll)
+
+A long-running process that hash-polls the plugin source every N seconds (default 5) and ticks on **content drift** (touch / mtime-only updates correctly ignored — hash is content-based). Stdlib-only; no `inotify` / `watchdog` dependency.
+
+| arg | effect |
+|---|---|
+| `watch [--interval SEC]` | run foreground (testing / systemd ExecStart) |
+| `watch-start [--interval SEC]` | spawn detached child via `start_new_session=True` (nohup-equivalent) |
+| `watch-stop` | SIGTERM (waits 3 s) then SIGKILL fallback |
+| `watch-status` | print "running (pid N)" / "not running"; exit 0/1 for scripts |
+
+PID file: `~/.claude/.kaizen-daemon/watcher.pid`. Stale PIDs auto-detected via `kill -0` probe.
+
+### When to use which
+
+| Use case | Mode |
+|---|---|
+| Lightweight, set-and-forget, low resource | **cron** (every 30 min) |
+| Active development on the plugin source, want instant cache refresh | **watch** (every 5 s) |
+| Both — cron as fallback in case watcher dies | install both; both are idempotent |
 
 ## Safety
 

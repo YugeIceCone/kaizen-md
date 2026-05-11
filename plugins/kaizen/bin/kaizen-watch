@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# Keep-alive watcher — hash-poll the plugin source, tick on drift.
+# Default: spawn detached. Pass `fg` to run foreground.
+set -uo pipefail
+SCRIPT=$(python3 -c "import os, sys; print(os.path.realpath(sys.argv[1]))" "${BASH_SOURCE[0]}")
+PLUGIN_ROOT=$(cd "$(dirname "$SCRIPT")/.." && pwd)
+DAEMON="$PLUGIN_ROOT/skills/kaizen/scripts/daemon.py"
+
+case "${1:-start}" in
+    start)    shift; exec python3 "$DAEMON" watch-start "$@" ;;
+    stop)     shift; exec python3 "$DAEMON" watch-stop "$@" ;;
+    status)   shift; exec python3 "$DAEMON" watch-status "$@" ;;
+    fg)       shift; exec python3 "$DAEMON" watch "$@" ;;
+    *)        echo "usage: kaizen-watch [start|stop|status|fg] [--interval SEC]"; exit 1 ;;
+esac

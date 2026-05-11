@@ -31,10 +31,12 @@ State + log: `~/.claude/.kaizen-daemon/{state.json,log}`.
 from __future__ import annotations
 
 import argparse
+import asyncio
 import datetime as dt
 import hashlib
 import json
 import os
+import signal
 import subprocess
 import sys
 from pathlib import Path
@@ -299,6 +301,147 @@ def tick() -> dict:
     return state
 
 
+# ─── Keep-alive watcher (hash-poll loop) ─────────────────────────────
+
+
+PID_FILE = STATE_DIR / "watcher.pid"
+DEFAULT_WATCH_INTERVAL_SEC = 5.0
+
+
+def _pid_alive(pid: int) -> bool:
+    try:
+        os.kill(pid, 0)
+        return True
+    except (ProcessLookupError, PermissionError):
+        return False
+    except OSError:
+        return False
+
+
+def watch_status() -> dict:
+    if not PID_FILE.exists():
+        return {"running": False}
+    try:
+        pid = int(PID_FILE.read_text().strip())
+    except (OSError, ValueError):
+        return {"running": False, "stale_pid_file": True}
+    if _pid_alive(pid):
+        return {"running": True, "pid": pid}
+    return {"running": False, "stale_pid_file": True, "dead_pid": pid}
+
+
+def watch_stop() -> tuple[bool, str]:
+    import time
+    st = watch_status()
+    if not st.get("running"):
+        return False, "not running"
+    pid = st["pid"]
+    try:
+        os.kill(pid, signal.SIGTERM)
+    except ProcessLookupError:
+        PID_FILE.unlink(missing_ok=True)
+        return False, "process already gone"
+    # Wait up to 3s for graceful exit
+    for _ in range(30):
+        time.sleep(0.1)
+        if not _pid_alive(pid):
+            PID_FILE.unlink(missing_ok=True)
+            return True, f"sent SIGTERM to pid {pid}, exited cleanly"
+    # Still alive — force
+    try:
+        os.kill(pid, signal.SIGKILL)
+    except ProcessLookupError:
+        pass
+    PID_FILE.unlink(missing_ok=True)
+    return True, f"SIGTERM ignored; SIGKILL'd pid {pid}"
+
+
+async def watch_loop(interval: float) -> None:
+    """Foreground async loop. Hashes plugin source at interval; runs
+    tick() on drift. Stops on SIGTERM/SIGINT."""
+    stop_event = asyncio.Event()
+
+    def shutdown(*_):
+        log_line("INFO", "watcher received shutdown signal")
+        stop_event.set()
+
+    signal.signal(signal.SIGTERM, shutdown)
+    signal.signal(signal.SIGINT, shutdown)
+
+    last_hash = dir_hash(plugin_src())
+    log_line("INFO", f"watcher started (pid={os.getpid()}, interval={interval}s, hash={last_hash})")
+
+    # Initial tick — catch any drift accumulated while watcher was offline
+    tick()
+    state = load_state()
+    last_hash = state.get("source_hash", last_hash)
+
+    while not stop_event.is_set():
+        try:
+            await asyncio.wait_for(stop_event.wait(), timeout=interval)
+            break  # shutdown requested
+        except asyncio.TimeoutError:
+            pass
+
+        h = dir_hash(plugin_src())
+        if h != last_hash:
+            log_line("INFO", f"hash drift {last_hash} → {h} — running tick")
+            tick()
+            last_hash = h
+
+    log_line("INFO", "watcher exited cleanly")
+
+
+def watch_foreground(interval: float) -> int:
+    """Run the watcher in foreground (this process). Writes PID file."""
+    st = watch_status()
+    if st.get("running"):
+        print(f"watcher already running (pid {st['pid']}). /kaizen:daemon watch-stop first.", file=sys.stderr)
+        return 1
+    if st.get("stale_pid_file"):
+        PID_FILE.unlink(missing_ok=True)
+
+    STATE_DIR.mkdir(parents=True, exist_ok=True)
+    PID_FILE.write_text(str(os.getpid()))
+    try:
+        asyncio.run(watch_loop(interval))
+        return 0
+    finally:
+        PID_FILE.unlink(missing_ok=True)
+
+
+def watch_start(interval: float) -> tuple[bool, int | str]:
+    """Spawn the watcher in the background via subprocess, detached
+    from the current terminal. Returns (success, pid_or_reason)."""
+    st = watch_status()
+    if st.get("running"):
+        return False, f"already running (pid {st['pid']})"
+    if st.get("stale_pid_file"):
+        PID_FILE.unlink(missing_ok=True)
+
+    STATE_DIR.mkdir(parents=True, exist_ok=True)
+    daemon_script = scripts_dir() / "daemon.py"
+    log = LOG_FILE.open("a")
+    try:
+        p = subprocess.Popen(
+            ["python3", str(daemon_script), "watch", "--interval", str(interval)],
+            stdout=log, stderr=log, stdin=subprocess.DEVNULL,
+            start_new_session=True,  # detach from controlling terminal (nohup-equivalent)
+        )
+    finally:
+        log.close()
+
+    # Give the child a moment to write its own PID file (overwrites the parent-recorded one)
+    import time
+    for _ in range(30):
+        time.sleep(0.1)
+        st = watch_status()
+        if st.get("running") and st["pid"] == p.pid:
+            return True, p.pid
+    # Even if PID file isn't there yet, the subprocess may still be coming up
+    return True, p.pid
+
+
 # ─── CLI ─────────────────────────────────────────────────────────────
 
 
@@ -313,6 +456,15 @@ def main() -> None:
     sub.add_parser("status", help="print state + last log lines")
     lg = sub.add_parser("log", help="tail log")
     lg.add_argument("n", type=int, nargs="?", default=20)
+
+    # Keep-alive watcher subcommands
+    w = sub.add_parser("watch", help="run foreground watcher (hash-poll loop)")
+    w.add_argument("--interval", type=float, default=DEFAULT_WATCH_INTERVAL_SEC,
+                   help=f"seconds between hash checks (default {DEFAULT_WATCH_INTERVAL_SEC})")
+    ws = sub.add_parser("watch-start", help="spawn detached watcher")
+    ws.add_argument("--interval", type=float, default=DEFAULT_WATCH_INTERVAL_SEC)
+    sub.add_parser("watch-stop", help="stop watcher (SIGTERM, then SIGKILL after 3s)")
+    sub.add_parser("watch-status", help="check if watcher is alive")
 
     args = p.parse_args()
     cmd = args.cmd or "run"
@@ -365,6 +517,41 @@ def main() -> None:
             lines = f.readlines()
         for line in lines[-args.n:]:
             print(line.rstrip())
+
+    elif cmd == "watch":
+        sys.exit(watch_foreground(args.interval))
+
+    elif cmd == "watch-start":
+        ok, info = watch_start(args.interval)
+        if ok:
+            print(f"  ✓ watcher started (pid {info}, interval {args.interval}s)")
+            print(f"    log:   {LOG_FILE}")
+            print(f"    stop:  kaizen daemon watch-stop")
+        else:
+            print(f"  ! watch-start: {info}", file=sys.stderr)
+            sys.exit(1)
+
+    elif cmd == "watch-stop":
+        ok, info = watch_stop()
+        if ok:
+            print(f"  ✓ {info}")
+        else:
+            print(f"  ∘ {info}")
+            sys.exit(1 if "not running" not in info else 0)
+
+    elif cmd == "watch-status":
+        st = watch_status()
+        if st.get("running"):
+            print(f"  running (pid {st['pid']})")
+        else:
+            extras = []
+            if st.get("stale_pid_file"):
+                extras.append("stale pid file present")
+            if st.get("dead_pid"):
+                extras.append(f"dead pid {st['dead_pid']}")
+            tail = f" ({', '.join(extras)})" if extras else ""
+            print(f"  not running{tail}")
+            sys.exit(1)
 
     else:
         p.print_help()

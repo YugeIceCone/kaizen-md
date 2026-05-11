@@ -3,6 +3,45 @@
 All notable changes to the `kaizen` plugin documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [SemVer](https://semver.org/).
 
+## [1.5.2] — 2026-05-11
+
+### Added — keep-alive watcher mode (instant hash-drift detection)
+
+Beyond the v1.5.0 cron mode (periodic ticks), the daemon now ships a **long-running watcher** that hash-polls the plugin source every N seconds (default 5) and reacts to **content drift** within seconds — instead of waiting up to 30 minutes for the next cron tick.
+
+**Stdlib-only.** No `inotify` / `watchdog` dependency. The hash compare is fast (~10 ms for ~50 files), and a sleep-loop with `asyncio.wait_for(stop_event, timeout=interval)` lets SIGTERM cut in immediately without blocking on a poll cycle.
+
+**Subcommands** (added to `scripts/daemon.py`):
+
+| arg | effect |
+|---|---|
+| `watch [--interval SEC]` | foreground loop (use for systemd `ExecStart`, manual testing) |
+| `watch-start [--interval SEC]` | spawn detached child via `start_new_session=True` (nohup-equivalent) |
+| `watch-stop` | SIGTERM (waits 3 s) → SIGKILL fallback |
+| `watch-status` | print state; exit 0 if running / 1 if not (scriptable) |
+
+**`bin/kaizen-watch`** — convenience wrapper with `start | stop | status | fg` shorthand. Auto-symlinked into `~/.local/bin/` by `/kaizen:install`.
+
+**PID file** at `~/.claude/.kaizen-daemon/watcher.pid`. Stale PIDs auto-detected via `kill -0` probe before spawning a new instance — no orphaned processes.
+
+**Content-based drift, not mtime**: `touch` on a source file does NOT trigger a tick. Only actual content changes do (the `dir_hash` function hashes file contents, deterministic order). This eliminates false positives from `git status` / editors that bump mtime without writing.
+
+**Initial tick on startup**: when the watcher starts, it immediately runs a full tick to catch any drift accumulated while offline. Subsequent ticks fire only on hash mismatch.
+
+### Combined with cron
+
+| Mode | Trigger | Latency | Resource |
+|---|---|---|---|
+| `daemon install` (cron) | every 30 min | up to 30 min | zero between ticks |
+| `daemon watch-start` (watcher) | hash-poll every 5 s | 5 s | sleeping process |
+| Both | redundant safety | min(5s, 30min) | watcher process + cron |
+
+Running both is safe; both are idempotent.
+
+### Bugfix
+
+- daemon.py was missing top-level `asyncio` + `signal` imports (caught at watch-start time on first try). Fixed.
+
 ## [1.5.1] — 2026-05-11
 
 ### Docs — clarify daemon vs. CC's built-in `autoUpdate`
