@@ -3,6 +3,58 @@
 All notable changes to the `kaizen` plugin documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [SemVer](https://semver.org/).
 
+## [1.4.3] — 2026-05-11
+
+### Added — single-command maintenance flow
+
+`/kaizen:update` (and `kaizen-update` / `kaizen update` from the shell) collapses the manual `cd marketplace + git fetch + git pull + /kaizen:refresh-cache + /reload-plugins` dance into one command.
+
+**`scripts/update.sh`** — handles the full flow:
+
+1. `git ls-remote origin master` — peek at upstream HEAD without fetching (network-light).
+2. Compare local HEAD vs remote, report "up to date" or "N commits behind".
+3. If behind: `git pull --ff-only` (refuses non-fast-forward — surfaces conflicts instead of blindly merging).
+4. Run `refresh-cache.sh` to sync the version-named cache slot (always, so local hand-edits also flush).
+5. Print "/reload-plugins to activate".
+
+**Subcommands**:
+
+| arg | effect | exit |
+|---|---|---|
+| (none) or `pull` | full flow | 0 on success |
+| `check` | read-only status, no mutation | 0 if up-to-date, 1 if behind (scriptable in CI) |
+| `prune` | drop old cache versions, keep newest N (default 2) | 0 |
+| `path` | print marketplace dir | 0 |
+
+**`bin/kaizen-update`** — shell wrapper, symlinked into `~/.local/bin/` by `/kaizen:install`. Available as `kaizen update` (multiplexer) or `kaizen-update` (direct).
+
+**Env overrides**:
+
+- `KAIZEN_MARKETPLACE` — override marketplace dir
+- `KAIZEN_KEEP_VERSIONS` — prune retention (default 2)
+
+### Why
+
+Before:
+
+```
+cd ~/.claude/local-marketplaces/kaizen-md
+git fetch origin
+git log HEAD..origin/master
+git pull origin master
+/kaizen:refresh-cache
+/reload-plugins
+```
+
+After:
+
+```
+/kaizen:update
+/reload-plugins
+```
+
+Plus `--ff-only` safety, automatic cache refresh even on local edits, and a `prune` subcommand to clean up stale version dirs (the v1.1.0 / v1.1.6 / v1.4.0 / v1.4.1 / v1.4.2 stack would normally grow forever).
+
 ## [1.4.2] — 2026-05-11
 
 ### Added — zero-config shell access + cache refresh
