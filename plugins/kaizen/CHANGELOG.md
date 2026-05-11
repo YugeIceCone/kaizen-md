@@ -3,6 +3,57 @@
 All notable changes to the `kaizen` plugin documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [SemVer](https://semver.org/).
 
+## [1.5.0] — 2026-05-11
+
+### Added — auto-daemon + hygiene cleanups
+
+Cron-driven background worker that keeps the kaizen install healthy without manual intervention. Each tick (default every 30 min):
+
+1. **Hash-compare** plugin source vs Claude Code's cache → auto `refresh-cache` on drift
+2. **Read remote HEAD** via `git ls-remote` (network-light, no fetch). Notify-only by default — auto-pull is opt-in via `KAIZEN_DAEMON_AUTOPULL=1` (untrusted upstream code is a real risk)
+3. **Run hygiene fixes** — safe cleanups on kaizen-owned state only
+
+**`scripts/daemon.py`** — one-shot worker, cron-friendly. Subcommands:
+- `run` — single tick (cron uses this)
+- `install [--interval N]` — add crontab entry (default 30 min)
+- `uninstall` — remove crontab entry
+- `status` — cron state + last-run + log tail
+- `log [N]` — tail last N log lines
+
+State + log at `~/.claude/.kaizen-daemon/{state.json,log}`.
+
+**`scripts/hygiene.py`** — five checks, on-demand via `/kaizen:hygiene` or auto via daemon:
+
+| Check | Drift trigger | Auto-fix |
+|---|---|---|
+| `cache` | >`KAIZEN_KEEP_VERSIONS` (2) version dirs | rm old slots |
+| `backups` | >`KAIZEN_KEEP_BACKUPS` (10) tarballs per repo | rm old tarballs |
+| `inbox` | drained entries >`KAIZEN_INBOX_TTL_DAYS` (7d) | rm stale entries |
+| `rules` | `rules.py validate` fails | NONE — surfaces only (manual edit) |
+| `backlog` | `backlog.py verify` fails per repo | `backlog.py render` (regenerate .md) |
+
+Subcommands: `check` (default), `fix`, `check-<name>`, `fix-<name>`, `json`, `--verbose`.
+
+**Safe-fixes-only policy**: cleanups operate exclusively on kaizen-owned state (cache slots, backup tarballs, inbox entries, generated backlog.md). User source / brain notes / project files / git history are never touched.
+
+**`bin/kaizen-daemon` + `bin/kaizen-hygiene`** — auto-symlinked into `~/.local/bin/` by `/kaizen:install` (the v1.4.2 zero-config feature). Available as `kaizen daemon ...` (multiplexer) and `kaizen-daemon` (direct).
+
+**Discover-repos registry** at `~/.kaizen-installs.txt` — daemon writes paths there so hygiene's backlog check knows which repos to scan. Hand-add lines if you want hygiene to scan more before the daemon's first run.
+
+### Lifecycle
+
+```
+/kaizen:daemon install --interval 30    # add cron entry
+/kaizen:daemon status                    # see runs + log tail
+/kaizen:hygiene check                    # on-demand check (same logic)
+/kaizen:hygiene fix                      # on-demand safe cleanups
+/kaizen:daemon uninstall                 # remove cron entry
+```
+
+### Why minor bump (1.4.x → 1.5.0)
+
+New surface area (2 commands, 2 scripts, 2 wrappers, ~600 LOC), new cron integration, new daemon state schema. No breaking changes — `/kaizen:install`, `/kaizen:update`, `/kaizen:gate` etc. all behave identically.
+
 ## [1.4.4] — 2026-05-11
 
 ### Added — conditional auto-reload on `/kaizen:update`
