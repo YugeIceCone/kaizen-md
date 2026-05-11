@@ -17,10 +17,7 @@ set -uo pipefail
 # Read event JSON from stdin
 EVENT=$(cat 2>/dev/null || echo '{}')
 
-# kaizen-trace (non-blocking, minimal — bash commands may contain secrets)
-KZ_SID=$(printf '%s' "$EVENT" | python3 -c "import json,sys; print(json.loads(sys.stdin.read() or '{}').get('session_id',''))" 2>/dev/null)
-python3 "${CLAUDE_PLUGIN_ROOT}/skills/kaizen/scripts/trace.py" event \
-    --src hook --evt PreToolUse-bash --tool Bash ${KZ_SID:+--sid "$KZ_SID"} >/dev/null 2>&1 || true
+printf '%s' "$EVENT" | bash "${CLAUDE_PLUGIN_ROOT}/hooks/_trace.sh" PreToolUse-bash Bash
 
 # Extract command via python3 (already required for backlog.py)
 COMMAND=$(printf '%s' "$EVENT" | python3 -c "

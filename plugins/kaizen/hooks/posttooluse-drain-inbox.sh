@@ -14,10 +14,7 @@ set -uo pipefail
 
 INPUT=$(cat 2>/dev/null || echo "{}")
 
-# kaizen-trace (non-blocking, minimal — tool responses may contain secrets)
-KZ_SID=$(printf '%s' "$INPUT" | python3 -c "import json,sys; print(json.loads(sys.stdin.read() or '{}').get('session_id',''))" 2>/dev/null)
-python3 "${CLAUDE_PLUGIN_ROOT}/skills/kaizen/scripts/trace.py" event \
-    --src hook --evt PostToolUse-drain ${KZ_SID:+--sid "$KZ_SID"} >/dev/null 2>&1 || true
+printf '%s' "$INPUT" | bash "${CLAUDE_PLUGIN_ROOT}/hooks/_trace.sh" PostToolUse-drain
 
 DRAINED=$(python3 "${CLAUDE_PLUGIN_ROOT}/skills/kaizen/scripts/inbox.py" drain 2>/dev/null || echo "")
 

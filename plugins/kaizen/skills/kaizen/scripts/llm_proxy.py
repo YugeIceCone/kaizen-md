@@ -59,6 +59,7 @@ TRACE_PY = SCRIPTS_DIR / "trace.py"
 DEFAULT_UPSTREAM = "https://api.anthropic.com"
 DEFAULT_PORT = 8765
 CHUNK_SIZE = 8192
+MAX_BODY_BYTES = 50 * 1024 * 1024  # 50 MB cap — DoS hardening
 
 # Header names to NEVER include in trace data (case-insensitive match)
 SECRET_HEADER_RE = re.compile(
@@ -173,12 +174,16 @@ class ProxyHandler(http.server.BaseHTTPRequestHandler):
     def _forward(self):
         t0 = time.monotonic()
 
-        # Read body if any
+        # Read body if any — cap at MAX_BODY_BYTES to prevent DoS
         content_len = 0
         try:
             content_len = int(self.headers.get("Content-Length", "0"))
         except ValueError:
             pass
+        if content_len > MAX_BODY_BYTES:
+            trace_event("body-too-large", content_length=content_len, limit=MAX_BODY_BYTES)
+            self.send_error(413, f"Request body exceeds {MAX_BODY_BYTES} bytes")
+            return
         body = self.rfile.read(content_len) if content_len > 0 else b""
 
         req_meta = parse_request_meta(body, self.path)

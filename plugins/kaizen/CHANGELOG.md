@@ -3,6 +3,48 @@
 All notable changes to the `kaizen` plugin documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [SemVer](https://semver.org/).
 
+## [1.6.2] — 2026-05-12
+
+### Quality pass — DRY + KISS + hardening
+
+**DRY** — extracted `hooks/_trace.sh`. The 3-line trace pattern (extract `session_id`, call `trace.py event --src hook`) lived in all 7 hooks pre-v1.6.2. Now centralized:
+
+```bash
+# Old: 3 lines × 7 hooks = 21 lines of duplicated boilerplate
+KZ_SID=$(printf '%s' "$EVENT" | python3 -c "..." 2>/dev/null)
+python3 "${CLAUDE_PLUGIN_ROOT}/skills/kaizen/scripts/trace.py" event \
+    --src hook --evt X [--tool Y] ${KZ_SID:+--sid "$KZ_SID"} >/dev/null 2>&1 || true
+
+# New: 1 line × 7 hooks = 7 lines total
+printf '%s' "$EVENT" | bash "${CLAUDE_PLUGIN_ROOT}/hooks/_trace.sh" X [Y]
+```
+
+`_trace.sh` reads stdin once, extracts session_id, emits the trace event. Trace-call logic lives in ONE place; future changes touch one file, not seven. Eliminates a future "fix 7 hooks identically" foot-gun.
+
+Verified end-to-end: all 7 hooks still emit correctly tagged events with sid + tool; no payload leakage.
+
+**Hardening** — `llm_proxy.py` request body size cap:
+
+```python
+MAX_BODY_BYTES = 50 * 1024 * 1024   # 50 MB
+
+if content_len > MAX_BODY_BYTES:
+    trace_event("body-too-large", content_length=content_len, limit=MAX_BODY_BYTES)
+    self.send_error(413, ...)
+    return
+```
+
+Defends against DoS via crafted `Content-Length` headers. 50 MB is generous (max Anthropic message size + attachments) but bounds memory use. Trace records the violation under `src=llm evt=body-too-large` for debugging.
+
+**KISS** — no other simplification candidates in this pass. `trace.py` SSE parsing (walk backwards for `message_delta`) is the simplest workable approach for streaming token extraction. `llm_proxy.py` Connection: close keeps response handling trivial (no chunked re-encoding).
+
+### Audit findings (no fix needed)
+
+- `trace.py --since` regex handles `1h/30m/7d/Ns` cleanly; ISO fallback covers edge cases.
+- `trace.py` p95 latency falls back to `max` for samples < 20 — acceptable for small windows.
+- `llm_proxy.py` path concatenation (`upstream_base + self.path`) can't escape the upstream base (string concat, not `urljoin`), so path-traversal attacks are inert.
+- `llm_proxy.py` always passes auth headers to upstream but never includes them in trace events — verified via curl smoke test with `Bearer SECRET-…` payload.
+
 ## [1.6.1] — 2026-05-12
 
 ### Added — Anthropic API logging proxy
