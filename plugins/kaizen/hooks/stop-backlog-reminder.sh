@@ -6,8 +6,12 @@
 
 set -uo pipefail
 
-# Discard event JSON
-cat >/dev/null
+# Capture event JSON for trace, then discard
+EVENT=$(cat 2>/dev/null || echo '{}')
+
+# kaizen-trace (non-blocking)
+printf '%s' "$EVENT" | python3 "${CLAUDE_PLUGIN_ROOT}/skills/kaizen/scripts/trace.py" \
+    event --src hook --evt Stop >/dev/null 2>&1 || true
 
 REPO=$(git rev-parse --show-toplevel 2>/dev/null) || { echo '{}'; exit 0; }
 cd "$REPO" || { echo '{}'; exit 0; }
