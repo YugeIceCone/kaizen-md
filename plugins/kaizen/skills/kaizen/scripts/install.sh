@@ -102,8 +102,15 @@ fi
 
 echo ""
 
-# Seed backlog.json + backlog.md if absent
-BACKLOG_MD="$REPO_ROOT/$DEFAULT_BACKLOG"
+# Seed backlog.json + backlog.md if absent.
+# Resolve backlog_path from the (now-guaranteed-existing) config file
+# rather than the DEFAULT_BACKLOG var, which is only set on the
+# "config didn't exist" branch above.
+BACKLOG_REL=$(grep -E '^backlog_path' "$CONFIG_PATH" 2>/dev/null \
+    | head -1 \
+    | sed -E 's/^[^=]*=[[:space:]]*"?([^"]*)"?.*$/\1/')
+BACKLOG_REL="${BACKLOG_REL:-${DEFAULT_BACKLOG:-backlog.md}}"
+BACKLOG_MD="$REPO_ROOT/$BACKLOG_REL"
 BACKLOG_JSON="${BACKLOG_MD%.md}.json"
 if [ ! -f "$BACKLOG_JSON" ]; then
     mkdir -p "$(dirname "$BACKLOG_JSON")"

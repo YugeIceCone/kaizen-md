@@ -3,6 +3,13 @@
 All notable changes to the `kaizen` plugin documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [SemVer](https://semver.org/).
 
+## [1.1.6] — 2026-05-11
+
+### Fixed
+
+- **`install.sh` unbound-variable crash on re-install** — when `.kaizen.toml` already exists (re-install path), `DEFAULT_BACKLOG` was never set, but the seed-backlog block referenced it. `set -uo pipefail` then aborted with `DEFAULT_BACKLOG: unbound variable` (after the symlink + hooksPath + gitignore steps had already succeeded). This is **gotcha #7** from `plugin-pitfalls` — meta: the very skill that documents this failure mode caught the plugin's own version of it.
+- Fix: resolve `backlog_path` from the live `.kaizen.toml` via grep (with `${DEFAULT_BACKLOG:-backlog.md}` as fallback when neither config nor default is set).
+
 ## [1.1.5] — 2026-05-11
 
 ### Fixed
