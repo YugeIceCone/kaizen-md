@@ -12,6 +12,11 @@
 
 set -u
 
+# kaizen-trace (non-blocking) — read stdin first so it's not orphaned
+EVENT=$(cat 2>/dev/null || echo "{}")
+printf '%s' "$EVENT" | python3 "${CLAUDE_PLUGIN_ROOT}/skills/kaizen/scripts/trace.py" \
+    event --src hook --evt SessionStart >/dev/null 2>&1 || true
+
 # Repo root
 REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null) || {
     echo "{}"

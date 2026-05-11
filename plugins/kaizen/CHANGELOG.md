@@ -3,6 +3,81 @@
 All notable changes to the `kaizen` plugin documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [SemVer](https://semver.org/).
 
+## [1.6.0] — 2026-05-12
+
+### Added — unified tracing (`scripts/trace.py` + hook integration)
+
+Single append-only JSONL event log at `~/.claude/.kaizen-trace/events.jsonl` capturing structured events across hooks, agents, LLM calls, tool boundaries, and user actions. Fast queries, auto-rotation, retention pruning.
+
+**Schema** (one JSON object per line):
+
+```json
+{
+  "ts":   "2026-05-12T00:30:00.123Z",
+  "src":  "hook|agent|llm|tool|user|cc|plugin",
+  "evt":  "PreToolUse|invoke|complete|prompt|...",
+  "sid":  "<session_id or empty>",
+  "tool": "<tool name if applicable>",
+  "ms":   <duration_ms or null>,
+  "data": { ...arbitrary structured detail... }
+}
+```
+
+**Subcommands**:
+
+| arg | effect |
+|---|---|
+| (none) or `tail [-n N] [--src S] [--evt E]` | last N events |
+| `query --since DURATION [--src --evt --tool --sid --json --count]` | filter (`1h`, `30m`, `7d`, or ISO ts) |
+| `stats [--since DURATION]` | counts by src/evt/tool + p50/p95/max latency where `ms` set |
+| `event --src S --evt E [--tool --sid --ms --data JSON]` | append manual event (stdin JSON merges into data) |
+| `clear` / `path` | hygiene |
+
+**Hook integration** — all 7 kaizen hooks now emit trace events:
+
+| Hook | Event |
+|---|---|
+| `session-surface-backlog.sh` | `SessionStart` |
+| `userprompt-inbox.sh` | `UserPromptSubmit` |
+| `pretooluse-bash-gate.sh` | `PreToolUse-bash` (tool=Bash) |
+| `posttooluse-bash-commit.sh` | `PostToolUse-bash` (tool=Bash) |
+| `posttooluse-drain-inbox.sh` | `PostToolUse-drain` |
+| `stop-backlog-reminder.sh` | `Stop` |
+| `precompact-snapshot.sh` | `PreCompact` |
+
+Pattern: `printf '%s' "$EVENT" | trace.py event --src hook --evt <name>`. stdin event JSON is merged into the `data` field of the trace record, preserving session_id, cwd, tool_name, tool_input/response for replay.
+
+**Non-blocking** — trace failures swallow silently. `KAIZEN_TRACE_DISABLE=1` for production silence.
+
+**Rotation + retention**:
+
+| Knob | Default |
+|---|---|
+| `KAIZEN_TRACE_MAX_MB` | 100 — rotate to `events-YYYYMMDD-HHMMSSZ.jsonl.gz` |
+| `KAIZEN_TRACE_RETENTION_DAYS` | 7 — auto-prune old rotated files |
+| `KAIZEN_TRACE_DIR` | `~/.claude/.kaizen-trace` |
+
+**`bin/kaizen-trace`** — auto-symlinked into `~/.local/bin/` by `/kaizen:install`. Available as `kaizen trace ...` (multiplexer) or `kaizen-trace` (direct).
+
+### Sources instrumented vs. planned
+
+- ✅ hook — all 7 kaizen hooks emit on entry
+- ✅ user — via UserPromptSubmit hook
+- ✅ plugin — daemon/watcher emit on tick + drift (already used in daemon.py log; can move to trace.py in a follow-up)
+- ⚠ agent — agents can call trace.py from their invocation contract (documented; not auto-wired since agents are Claude-side dispatch)
+- ⚠ llm — local-LLM call tracing requires a wrapper or OpenAI-compatible proxy (v1.6.x follow-up)
+- ⚠ cc — covered indirectly via hooks (PreToolUse/PostToolUse already trace tool boundaries); no separate cc-internals source
+
+### Example queries
+
+```bash
+kaizen-trace                                         # last 20 events
+kaizen-trace query --since 1h --src hook             # all hook fires this hour
+kaizen-trace query --src tool --tool Bash --since 30m
+kaizen-trace stats --since 24h                       # latency p50/p95/max
+kaizen-trace query --sid <uuid> --json | jq         # session replay
+```
+
 ## [1.5.2] — 2026-05-11
 
 ### Added — keep-alive watcher mode (instant hash-drift detection)
