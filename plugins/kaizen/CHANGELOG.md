@@ -3,6 +3,16 @@
 All notable changes to the `kaizen` plugin documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [SemVer](https://semver.org/).
 
+## [1.1.1] — 2026-05-11
+
+### Fixed
+
+- **`hooks/hooks.json` schema** — wrapped in top-level `{"hooks": {...}}` record per Claude Code's strict validator. Without the wrapper, `/doctor` reported `Hook load failed: expected record, received undefined at path "hooks"`. All 6 hook events (SessionStart×2, UserPromptSubmit, PreToolUse, PostToolUse, Stop, PreCompact) now load correctly.
+
+### Changed
+
+- **`/kaizen:doctor` renamed to `/kaizen:health`** — frees up the `/doctor` slash command for Claude Code's built-in plugin diagnostic. The underlying script is still named `doctor.sh`; only the user-facing command name changed.
+
 ## [1.1.0] — 2026-05-11
 
 ### Added
