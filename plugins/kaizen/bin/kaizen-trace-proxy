@@ -1,0 +1,105 @@
+#!/usr/bin/env bash
+# Wrap the Claude Code → api.anthropic.com connection in a logging proxy.
+# Logs each request/response to kaizen-trace as src=llm.
+#
+# Subcommands:
+#   start [--port N] [--upstream URL]   spawn detached
+#   stop                                 SIGTERM the running proxy
+#   status                               check alive + print env-export
+#   fg [--port N] [--upstream URL]       run in foreground (systemd/test)
+
+set -uo pipefail
+
+SCRIPT=$(python3 -c "import os, sys; print(os.path.realpath(sys.argv[1]))" "${BASH_SOURCE[0]}")
+PLUGIN_ROOT=$(cd "$(dirname "$SCRIPT")/.." && pwd)
+PY="$PLUGIN_ROOT/skills/kaizen/scripts/llm_proxy.py"
+
+STATE_DIR="${KAIZEN_DAEMON_STATE:-$HOME/.claude/.kaizen-daemon}"
+PID_FILE="$STATE_DIR/llm-proxy.pid"
+LOG_FILE="$STATE_DIR/llm-proxy.log"
+mkdir -p "$STATE_DIR"
+
+CMD="${1:-status}"
+shift || true
+
+_alive() {
+    [ -f "$PID_FILE" ] || return 1
+    local pid
+    pid=$(cat "$PID_FILE" 2>/dev/null) || return 1
+    [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null
+}
+
+case "$CMD" in
+    start)
+        if _alive; then
+            echo "  ∘ already running (pid $(cat "$PID_FILE"))"
+            exit 0
+        fi
+        rm -f "$PID_FILE"
+        nohup python3 "$PY" "$@" >"$LOG_FILE" 2>&1 &
+        BG_PID=$!
+        echo "$BG_PID" > "$PID_FILE"
+        sleep 0.5
+        if _alive; then
+            echo "  ✓ started (pid $BG_PID)"
+            grep -E "listening|export" "$LOG_FILE" | head -3
+        else
+            echo "  ✗ failed to start; check $LOG_FILE" >&2
+            tail -5 "$LOG_FILE" >&2
+            exit 1
+        fi
+        ;;
+
+    stop)
+        if ! _alive; then
+            rm -f "$PID_FILE"
+            echo "  ∘ not running"
+            exit 0
+        fi
+        PID=$(cat "$PID_FILE")
+        kill -TERM "$PID" 2>/dev/null || true
+        for _ in $(seq 1 30); do
+            kill -0 "$PID" 2>/dev/null || break
+            sleep 0.1
+        done
+        if kill -0 "$PID" 2>/dev/null; then
+            kill -KILL "$PID" 2>/dev/null || true
+            echo "  ! SIGKILL'd $PID (graceful exit timed out)"
+        else
+            echo "  ✓ stopped (pid $PID)"
+        fi
+        rm -f "$PID_FILE"
+        ;;
+
+    status)
+        if _alive; then
+            PID=$(cat "$PID_FILE")
+            PORT=$(grep -oP 'listening on http://\S+' "$LOG_FILE" 2>/dev/null | head -1 | sed 's|.*://||')
+            echo "  ✓ running (pid $PID) on $PORT"
+            echo ""
+            echo "  Export to wire Claude Code through it:"
+            echo "    export ANTHROPIC_BASE_URL=http://$PORT"
+        else
+            echo "  not running"
+            exit 1
+        fi
+        ;;
+
+    log)
+        N="${1:-30}"
+        if [ -f "$LOG_FILE" ]; then
+            tail -n "$N" "$LOG_FILE"
+        else
+            echo "(no log yet at $LOG_FILE)"
+        fi
+        ;;
+
+    fg)
+        exec python3 "$PY" "$@"
+        ;;
+
+    *)
+        echo "usage: kaizen-trace-proxy [start|stop|status|log [N]|fg] [--port N] [--upstream URL]"
+        exit 1
+        ;;
+esac

@@ -14,9 +14,10 @@ set -uo pipefail
 
 INPUT=$(cat 2>/dev/null || echo "{}")
 
-# kaizen-trace (non-blocking)
-printf '%s' "$INPUT" | python3 "${CLAUDE_PLUGIN_ROOT}/skills/kaizen/scripts/trace.py" \
-    event --src hook --evt UserPromptSubmit >/dev/null 2>&1 || true
+# kaizen-trace (non-blocking, minimal — never logs full prompt text)
+KZ_SID=$(printf '%s' "$INPUT" | python3 -c "import json,sys; print(json.loads(sys.stdin.read() or '{}').get('session_id',''))" 2>/dev/null)
+python3 "${CLAUDE_PLUGIN_ROOT}/skills/kaizen/scripts/trace.py" event \
+    --src hook --evt UserPromptSubmit ${KZ_SID:+--sid "$KZ_SID"} >/dev/null 2>&1 || true
 
 PROMPT=$(echo "$INPUT" | python3 -c "
 import json, sys

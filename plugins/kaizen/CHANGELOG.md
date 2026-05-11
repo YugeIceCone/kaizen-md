@@ -3,6 +3,70 @@
 All notable changes to the `kaizen` plugin documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [SemVer](https://semver.org/).
 
+## [1.6.1] — 2026-05-12
+
+### Added — Anthropic API logging proxy
+
+**`scripts/llm_proxy.py`** — stdlib-only HTTP forwarding proxy that wraps the Claude Code ↔ `api.anthropic.com` connection. Each request/response logs to `kaizen-trace --src llm` with:
+
+- Request: `path`, `model`, `messages` count, `system_chars`, `max_tokens`, `stream`
+- Response: `status`, `input_tokens`, `output_tokens`, `ms`
+
+**Auth scrubbed** — `Authorization`, `x-api-key`, `anthropic-auth`, `Cookie`, `Set-Cookie` headers pass through to upstream but are NEVER written to trace data.
+
+**Streaming SSE** handled correctly — chunks pass through to client untouched (`Connection: close` semantics, no chunked re-encoding hassles). Final `message_delta` event captured for `output_tokens`.
+
+**`bin/kaizen-trace-proxy`** — manage the proxy:
+
+| arg | effect |
+|---|---|
+| `start [--port N] [--upstream URL]` | spawn detached (default `127.0.0.1:8765` → `api.anthropic.com`) |
+| `stop` | SIGTERM → 3 s → SIGKILL |
+| `status` | running yes/no + export hint |
+| `log [N]` | tail proxy stdout |
+| `fg [--port --upstream]` | foreground (systemd `ExecStart`) |
+
+PID file: `~/.claude/.kaizen-daemon/llm-proxy.pid`. Log: `…/llm-proxy.log`.
+
+**Usage**:
+
+```bash
+kaizen-trace-proxy start
+export ANTHROPIC_BASE_URL=http://127.0.0.1:8765
+# All subsequent CC sessions in this shell trace LLM calls
+```
+
+### Fixed — hook tracing was leaking tool_input verbatim (SECURITY)
+
+v1.6.0 hooks piped the entire event JSON into `trace.py event --data`, which captured `tool_input` and `tool_response` (containing command lines, edit diffs, file contents). A `curl -H "Authorization: Bearer …"` ran via Bash tool would land the secret in the trace log.
+
+**Fix**: all 7 kaizen hooks now extract ONLY `session_id` from the event and pass it as `--sid`. No `--data`, no stdin pipe. Trace records the essential metadata (event name, tool name, sid, timestamp) without any user payload.
+
+Pattern (before):
+
+```bash
+printf '%s' "$EVENT" | trace.py event --src hook --evt PreToolUse-bash --tool Bash
+# → trace data field contained full tool_input.command
+```
+
+Pattern (after):
+
+```bash
+KZ_SID=$(printf '%s' "$EVENT" | python3 -c "import json,sys; print(json.loads(sys.stdin.read() or '{}').get('session_id',''))")
+trace.py event --src hook --evt PreToolUse-bash --tool Bash ${KZ_SID:+--sid "$KZ_SID"}
+# → trace records only event + tool + sid
+```
+
+**If you ran v1.6.0 with active sessions**, your `~/.claude/.kaizen-trace/events.jsonl` may contain captured tool_input data including any secrets typed into Bash/Edit/Write. Recommended:
+
+```bash
+kaizen-trace clear        # wipe current + rotated trace files
+```
+
+before continuing.
+
+Trade-off: less debugging info per event (no `tool_input.command`, `tool_response.stdout` in the trace). If you need that data, query the Claude Code transcript directly (`~/.claude/projects/<slug>/<sid>.jsonl`) — but that file is user-controlled.
+
 ## [1.6.0] — 2026-05-12
 
 ### Added — unified tracing (`scripts/trace.py` + hook integration)

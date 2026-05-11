@@ -8,9 +8,10 @@ set -uo pipefail
 
 EVENT=$(cat 2>/dev/null || echo '{}')
 
-# kaizen-trace (non-blocking)
-printf '%s' "$EVENT" | python3 "${CLAUDE_PLUGIN_ROOT}/skills/kaizen/scripts/trace.py" \
-    event --src hook --evt PostToolUse-bash --tool Bash >/dev/null 2>&1 || true
+# kaizen-trace (non-blocking, minimal — bash commands may contain secrets)
+KZ_SID=$(printf '%s' "$EVENT" | python3 -c "import json,sys; print(json.loads(sys.stdin.read() or '{}').get('session_id',''))" 2>/dev/null)
+python3 "${CLAUDE_PLUGIN_ROOT}/skills/kaizen/scripts/trace.py" event \
+    --src hook --evt PostToolUse-bash --tool Bash ${KZ_SID:+--sid "$KZ_SID"} >/dev/null 2>&1 || true
 
 # Extract command + exit info
 COMMAND_INFO=$(printf '%s' "$EVENT" | python3 - <<'PY' 2>/dev/null
