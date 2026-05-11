@@ -9,7 +9,9 @@ The `kaizen-md` marketplace bundles plugins from multiple upstreams. Each is red
 - **Source:** `./plugins/kaizen` (this repo)
 - **In-plugin attributions:** see `plugins/kaizen/ATTRIBUTIONS.md` for the full list of bundled skills (coding-skills, superpowers, onion-ddd-workflow, remember, tdd, workflow-routing, plugin-pitfalls, publishing, behaviour-config) and their original authors.
 
-## pyright-lsp, typescript-lsp, rust-analyzer-lsp (Apache 2.0)
+## LSP plugins (Apache 2.0) — 12 language servers
+
+`clangd-lsp`, `csharp-lsp`, `gopls-lsp`, `jdtls-lsp`, `kotlin-lsp`, `lua-lsp`, `php-lsp`, `pyright-lsp`, `ruby-lsp`, `rust-analyzer-lsp`, `swift-lsp`, `typescript-lsp`
 
 - **Author:** Anthropic — support@anthropic.com
 - **License:** Apache 2.0 (see `plugins/<lsp-name>/LICENSE`)
@@ -26,12 +28,12 @@ When `claude-plugins-official` updates an LSP plugin (e.g. new args, new extensi
 # 1. pull upstream marketplace
 cd ~/.claude/plugins/marketplaces/claude-plugins-official && git pull
 
-# 2. re-extract the 3 LSP entries
+# 2. re-extract LSP entries (replace the wanted set as needed)
 python3 -c "
 import json
 src = json.load(open('.claude-plugin/marketplace.json'))
 for p in src['plugins']:
-    if p['name'] in {'pyright-lsp','typescript-lsp','rust-analyzer-lsp'}:
+    if p['name'].endswith('-lsp'):
         print(json.dumps(p, indent=2)); print('---')
 "
 
