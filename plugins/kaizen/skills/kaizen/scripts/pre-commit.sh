@@ -442,17 +442,115 @@ except Exception:
     fi
 fi
 
-# Cargo.toml or package.json dep added/removed → onion-ddd-workflow
+# ─── Coding-skills suggestions (8 principles + TDD) ──────────────────
+# Each trigger is heuristic on the staged diff. Fast, false-positive-tolerant:
+# suggestions are advisory only, never block. Pair with the matching
+# `coding-skills:<name>` skill to drive the fix.
+#
+# Active in this commit's staged diff. `+` line counts = added; we ignore
+# context lines. Tests excluded from KISS/SOLID/DRY by convention.
+
+ADDED_LINES=$(printf '%s' "$DIFF_CONTENT" | grep -c '^+[^+]' 2>/dev/null || echo 0)
+
+# 1. onion-ddd-workflow — Cargo.toml / package.json / go.mod dep added/removed
 if echo "$STAGED" | grep -qE "(^|/)(Cargo|package)\.toml$|(^|/)go\.mod$"; then
     if echo "$DIFF_CONTENT" | grep -E "^[\+\-][[:space:]]*[a-z][a-z0-9_-]*[[:space:]]*=[[:space:]]*" >/dev/null 2>&1; then
-        suggest "Dep change → invoke skill: onion-ddd-workflow (check dep direction, structural-lint authoring)"
+        suggest "Dep change → skill: onion-ddd-workflow (check dep direction, structural-lint authoring)"
     fi
 fi
-# Large single-file diff → KISS + SoC
+
+# 2. coding-skills:kiss + separation-of-concerns — large single-file diff
 LARGE_FILE_DIFF=$(git diff --cached --numstat 2>/dev/null | awk '$1+$2 > 100 && $3 !~ /^tests\// {print $3 " (+" $1 " -" $2 ")"}')
 if [ -n "$LARGE_FILE_DIFF" ]; then
-    suggest "Large single-file diff → invoke skill: coding-skills:kiss + coding-skills:separation-of-concerns"
+    suggest "Large single-file diff → skill: coding-skills:kiss + coding-skills:separation-of-concerns"
     echo "$LARGE_FILE_DIFF" | while read l; do suggest "  $l"; done
+fi
+
+# 3. coding-skills:dry — same literal string >40 chars appearing 2+ times across staged additions
+DUP_LITS=$(printf '%s' "$DIFF_CONTENT" \
+    | grep -E '^\+[^+]' \
+    | grep -oE '"[^"]{40,}"' 2>/dev/null \
+    | sort | uniq -c | awk '$1 >= 2 {print $1 "× " substr($0, length($1)+3, 60) "..."}' | head -3)
+if [ -n "$DUP_LITS" ]; then
+    suggest "Repeated string literals in staged adds → skill: coding-skills:dry"
+    echo "$DUP_LITS" | while read l; do suggest "  $l"; done
+fi
+
+# 4. coding-skills:solid — new trait + many methods (heuristic: 8+ pub fn in one staged file's adds)
+HIGH_FN_FILES=$(git diff --cached --numstat 2>/dev/null | awk '$3 !~ /^tests\// {print $3}' \
+    | while read f; do
+        [ -z "$f" ] && continue
+        n=$(git diff --cached -- "$f" 2>/dev/null | grep -cE '^\+[[:space:]]*pub[[:space:]]+(async[[:space:]]+)?fn[[:space:]]+' 2>/dev/null)
+        n=${n:-0}
+        [ "$n" -ge 8 ] 2>/dev/null && echo "$f (+$n pub fn)"
+    done)
+if [ -n "$HIGH_FN_FILES" ]; then
+    suggest "File adds 8+ pub fn → skill: coding-skills:solid (interface segregation, single-responsibility)"
+    echo "$HIGH_FN_FILES" | while read l; do suggest "  $l"; done
+fi
+
+# Helper: grep -c always prints a number (0 when no matches) — DON'T chain
+# `|| echo 0` (that would append a second "0" on grep's exit-1, yielding
+# "0\n0" which breaks `[ N -ge M ]` integer tests).
+
+# 5. coding-skills:law-of-demeter — long chains `.a().b().c().d()` in additions
+LONG_CHAINS=$(printf '%s' "$DIFF_CONTENT" | grep -E '^\+[^+]' \
+    | grep -cE '\.[a-zA-Z_][a-zA-Z0-9_]*\([^)]*\)\.[a-zA-Z_][a-zA-Z0-9_]*\([^)]*\)\.[a-zA-Z_][a-zA-Z0-9_]*\([^)]*\)\.[a-zA-Z_][a-zA-Z0-9_]*\(' 2>/dev/null)
+LONG_CHAINS=${LONG_CHAINS:-0}
+if [ "$LONG_CHAINS" -ge 2 ] 2>/dev/null; then
+    suggest "$LONG_CHAINS+ long method chains in additions → skill: coding-skills:law-of-demeter"
+fi
+
+# 6. coding-skills:yagni — new #[cfg(feature = "...")] gate OR new trait with no impl in same diff
+NEW_FEATURE_FLAGS=$(printf '%s' "$DIFF_CONTENT" | grep -cE '^\+[[:space:]]*#\[cfg\(feature' 2>/dev/null)
+NEW_FEATURE_FLAGS=${NEW_FEATURE_FLAGS:-0}
+NEW_TRAITS=$(printf '%s' "$DIFF_CONTENT" | grep -cE '^\+[[:space:]]*pub[[:space:]]+(unsafe[[:space:]]+)?trait[[:space:]]+' 2>/dev/null)
+NEW_TRAITS=${NEW_TRAITS:-0}
+NEW_IMPLS_FOR=$(printf '%s' "$DIFF_CONTENT" | grep -cE '^\+[[:space:]]*impl[[:space:]]+[A-Z][[:alnum:]_]*[[:space:]]+for[[:space:]]' 2>/dev/null)
+NEW_IMPLS_FOR=${NEW_IMPLS_FOR:-0}
+if { [ "$NEW_FEATURE_FLAGS" -ge 1 ] 2>/dev/null; } || { [ "$NEW_TRAITS" -ge 1 ] 2>/dev/null && [ "$NEW_IMPLS_FOR" -eq 0 ] 2>/dev/null; }; then
+    suggest "New feature-flag(s) or zero-impl trait → skill: coding-skills:yagni (justify the abstraction; 2+ consumers or named driver)"
+fi
+
+# 7. coding-skills:boy-scout-rule — TODO/FIXME/HACK/XXX in or adjacent to staged changes
+TODOS_NEAR=$(git diff --cached -U10 2>/dev/null | grep -cE '\b(TODO|FIXME|HACK|XXX)\b' 2>/dev/null)
+TODOS_NEAR=${TODOS_NEAR:-0}
+if [ "$TODOS_NEAR" -ge 1 ] 2>/dev/null; then
+    suggest "$TODOS_NEAR× TODO/FIXME/HACK/XXX near staged changes → skill: coding-skills:boy-scout-rule (consider improving in flight)"
+fi
+
+# 8. coding-skills:convention-over-configuration — new file diverges from sibling extension/case
+NEW_FILES=$(git diff --cached --name-status 2>/dev/null | awk '$1 == "A" {print $2}')
+if [ -n "$NEW_FILES" ]; then
+    CONVENTION_FLAGS=""
+    for new in $NEW_FILES; do
+        dir=$(dirname "$new")
+        base=$(basename "$new")
+        ext="${base##*.}"
+        [ "$ext" = "$base" ] && continue
+        # Most common ext among siblings
+        common_ext=$(ls "$dir" 2>/dev/null | grep -E '\.[^./]+$' | sed 's/.*\.//' | sort | uniq -c | sort -rn | head -1 | awk '{print $2}')
+        if [ -n "$common_ext" ] && [ "$ext" != "$common_ext" ] && [ "$ext" != "md" ]; then
+            CONVENTION_FLAGS="${CONVENTION_FLAGS}  $new (.$ext vs sibling .$common_ext)\n"
+        fi
+    done
+    if [ -n "$CONVENTION_FLAGS" ]; then
+        suggest "New file extension diverges from siblings → skill: coding-skills:convention-over-configuration"
+        printf "$CONVENTION_FLAGS" | while read l; do [ -n "$l" ] && suggest "$l"; done
+    fi
+fi
+
+# 9. tdd / test-driven-development — net-new non-test source file added
+#    (Check #7 already catches missing paired tests as a warn; this is a positive nudge for new code.)
+NEW_NON_TEST=$(echo "$NEW_FILES" | grep -vE '(^|/)(test_|tests/|_test\.|\.test\.|\.spec\.)' | grep -vE '\.(md|toml|json|lock|yml|yaml|sh)$' | head -5)
+if [ -n "$NEW_NON_TEST" ]; then
+    suggest "Net-new source file(s) added → skill: tdd (or coding-skills equivalent) — net-new code lands test-first"
+    echo "$NEW_NON_TEST" | while read l; do [ -n "$l" ] && suggest "  $l"; done
+fi
+
+# Meta: if ANY of the above fired AND diff is structural, also suggest the workflow umbrella
+if [ "${#SUGGESTIONS[@]}" -ge 3 ] && [ "$DIFF_IS_STRUCTURAL" = "1" ]; then
+    suggest "Structural diff with multiple coding-skills triggers → review with onion-ddd-workflow checklist before committing"
 fi
 
 # ─── Check 12: Context-window awareness (advisory) ───────────────────

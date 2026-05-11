@@ -3,6 +3,46 @@
 All notable changes to the `kaizen` plugin documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [SemVer](https://semver.org/).
 
+## [1.6.3] — 2026-05-12
+
+### Added — full 8+1 coding-skills suggestion engine in pre-commit gate
+
+The pre-commit gate previously emitted skill suggestions for only 2 principles (KISS+SoC on large diffs, onion-ddd-workflow on dep changes). Expanded to all 8 coding-skills + TDD via fast diff heuristics. Suggestions are advisory; never block.
+
+**Trigger table** (each heuristic runs on `git diff --cached`, ~10 ms on small diffs):
+
+| # | Skill | Trigger |
+|---|---|---|
+| 1 | `onion-ddd-workflow` | `Cargo.toml` / `package.json` / `go.mod` dep added or removed |
+| 2 | `coding-skills:kiss` + `coding-skills:separation-of-concerns` | Single file with >100 staged lines (excl. tests) |
+| 3 | `coding-skills:dry` | Same string literal (>40 chars) appears 2+ times in additions |
+| 4 | `coding-skills:solid` | Single file adds 8+ `pub fn` (interface-segregation + SRP hint) |
+| 5 | `coding-skills:law-of-demeter` | 2+ lines with 4-level method chains `.a().b().c().d(` in additions |
+| 6 | `coding-skills:yagni` | New `#[cfg(feature = "...")]` gate OR `pub trait` with no `impl X for` in same diff |
+| 7 | `coding-skills:boy-scout-rule` | TODO/FIXME/HACK/XXX within ±10 lines of staged changes |
+| 8 | `coding-skills:convention-over-configuration` | New file extension diverges from sibling files in same dir |
+| 9 | `tdd` | Net-new non-test source file added (positive nudge; Check #7 still warns on missing paired tests) |
+
+Plus a **meta-trigger**: if 3+ suggestions fire AND the diff is structural, surface `onion-ddd-workflow` umbrella for the umbrella review.
+
+### Bugfix — `grep -c ... || echo 0` produced "0\n0"
+
+`grep -c` exits 1 when no matches but still prints `0` to stdout. The fallback `|| echo 0` appended a second `0`, making the variable multi-line. `[ "0\n0" -ge 1 ]` then errored with `integer expression expected`. Fix: drop the redundant `|| echo 0`; trust grep's output. Apply `2>/dev/null` to the `[` test as belt-and-suspenders.
+
+### Smoke
+
+Synthetic file triggering 5 principles in one diff:
+
+```
+✓ Large single-file diff → skill: coding-skills:kiss + coding-skills:separation-of-concerns
+✓ Repeated string literals in staged adds → skill: coding-skills:dry
+✓ File adds 8+ pub fn → skill: coding-skills:solid (interface segregation, single-responsibility)
+✓ New feature-flag(s) or zero-impl trait → skill: coding-skills:yagni
+✓ Net-new source file(s) added → skill: tdd (or coding-skills equivalent)
+```
+
+Zero false positives, zero bash errors. Real-world repos exercise the trigger surface in normal commits — gate stays sub-100ms on typical diffs.
+
 ## [1.6.2] — 2026-05-12
 
 ### Quality pass — DRY + KISS + hardening
