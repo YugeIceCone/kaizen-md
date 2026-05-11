@@ -23,6 +23,9 @@ FAIL="${RED}✗${RESET}"
 WARN="${YELLOW}!${RESET}"
 SKIP="${DIM}∘${RESET}"
 
+# ─── Path resolution (used by multiple checks; hoist to avoid unbound) ─
+_SCRIPT_REAL_DIR="$(cd "$(dirname "$(python3 -c "import os,sys; print(os.path.realpath(sys.argv[1]))" "${BASH_SOURCE[0]}")")" && pwd)"
+
 # ─── Counters ────────────────────────────────────────────────────────
 HARD_FAILS=0
 SOFT_WARNS=0
@@ -193,7 +196,30 @@ fi
 # ─── Check 5: Pre-deletion gate ──────────────────────────────────────
 if [ -n "$DELETED" ]; then
     OVERRIDE_VAL=${!ALLOW_DELETE_ENV:-}
-    if [ "$OVERRIDE_VAL" = "1" ]; then
+
+    # Brain-rule allowlist: if EVERY staged deletion matches a
+    # deletion-allow rule, skip the belief scan entirely.
+    _SCRIPT_REAL_DIR="$(cd "$(dirname "$(python3 -c "import os,sys; print(os.path.realpath(sys.argv[1]))" "${BASH_SOURCE[0]}")")" && pwd)"
+    RULES_PY="$_SCRIPT_REAL_DIR/rules.py"
+    ALL_ALLOWED=1
+    ALLOWLIST_HITS=""
+    if [ -x "$RULES_PY" ]; then
+        for d in $DELETED; do
+            if hit=$(python3 "$RULES_PY" deletion-allowed "$d" 2>/dev/null) && echo "$hit" | grep -q "^yes"; then
+                ALLOWLIST_HITS="$ALLOWLIST_HITS  $d → $hit\n"
+            else
+                ALL_ALLOWED=0
+                break
+            fi
+        done
+    else
+        ALL_ALLOWED=0
+    fi
+
+    if [ "$ALL_ALLOWED" = "1" ] && [ -n "$DELETED" ]; then
+        pass "pre-deletion: all $(echo $DELETED | wc -w) deletion(s) allowlisted via brain rules"
+        printf "%b" "${DIM}$ALLOWLIST_HITS${RESET}" >&2
+    elif [ "$OVERRIDE_VAL" = "1" ]; then
         # Auto-backup before allowing the deletion through (reversibility net).
         _SCRIPT_REAL_DIR="$(cd "$(dirname "$(python3 -c "import os,sys; print(os.path.realpath(sys.argv[1]))" "${BASH_SOURCE[0]}")")" && pwd)"
         BACKUP_SH="$_SCRIPT_REAL_DIR/backup.sh"
@@ -249,9 +275,16 @@ else
     skip "CLAUDE.md scan: no CLAUDE.md staged"
 fi
 
-# ─── Check 7: New code → paired test (SOFT) ──────────────────────────
+# ─── Check 7: New code → paired test (SOFT by default) ───────────────
+# Brain-rule severity override: check-severity rule with check_id=paired-test.
 SKIP_TDD_VAL=${!SKIP_TDD_ENV:-}
-if [ "$SKIP_TDD_VAL" != "1" ]; then
+PAIRED_TEST_SEV="default"
+if [ -x "$_SCRIPT_REAL_DIR/rules.py" ]; then
+    PAIRED_TEST_SEV=$(python3 "$_SCRIPT_REAL_DIR/rules.py" severity paired-test 2>/dev/null || echo default)
+fi
+if [ "$PAIRED_TEST_SEV" = "skip" ]; then
+    skip "TDD-paired-test check (skipped by brain rule)"
+elif [ "$SKIP_TDD_VAL" != "1" ]; then
     NEW_FILES=$(git diff --cached --name-only --diff-filter=A 2>/dev/null)
     for f in $NEW_FILES; do
         case "$f" in
@@ -329,6 +362,43 @@ if [ -n "$VERIFY_CMD" ]; then
     fi
 else
     skip "project verify: no verify_cmd in .kaizen.toml"
+fi
+
+# ─── Check 11: Custom-pattern rules from brain ───────────────────────
+if [ -x "$_SCRIPT_REAL_DIR/rules.py" ]; then
+    CUSTOM_HITS=$(python3 - "$_SCRIPT_REAL_DIR/rules.py" "$DIFF_CONTENT" <<'PY' 2>/dev/null
+import json, re, subprocess, sys
+rules_py, diff = sys.argv[1], sys.argv[2]
+patterns = json.loads(subprocess.check_output(["python3", rules_py, "custom-patterns"]).decode() or "[]")
+fail = 0
+for p in patterns:
+    pat = p.get("pattern_regex", "")
+    if not pat:
+        continue
+    try:
+        if re.search(pat, diff, re.MULTILINE):
+            action = p.get("pattern_action", "warn")
+            msg = p.get("pattern_message", f"pattern matched: {pat}")
+            print(f"{action}|{p['name']}|{msg}")
+            if action == "block":
+                fail = 1
+    except re.error:
+        continue
+sys.exit(fail)
+PY
+)
+    EXIT_CODE=$?
+    if [ -n "$CUSTOM_HITS" ]; then
+        while IFS='|' read -r action name msg; do
+            if [ "$action" = "block" ]; then
+                hard_fail "custom-pattern brain rule: $name — $msg"
+            else
+                warn "custom-pattern brain rule: $name — $msg"
+            fi
+        done <<< "$CUSTOM_HITS"
+    else
+        pass "custom-pattern brain rules (no hits)"
+    fi
 fi
 
 # ─── Skill-weaving suggestions ───────────────────────────────────────

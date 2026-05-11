@@ -3,6 +3,31 @@
 All notable changes to the `kaizen` plugin documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [SemVer](https://semver.org/).
 
+## [1.2.0] — 2026-05-11
+
+### Added — brain-sourced rules + behaviour config
+
+Three new rule types stored as Remember Notes (frontmatter `kaizen:` block). Plugin scripts read at gate-time; survives across projects + sessions.
+
+- **`deletion-allow`** — whitelist `path_glob` for `git rm` (skips pre-deletion belief scan for matching paths)
+- **`check-severity`** — override any of the 10 gate checks: `skip` / `warn` / `block`
+- **`custom-pattern`** — run a regex over staged diff; `warn` or `block` on hit
+
+New skill: **`kaizen:behaviour-config`** (35th bundled) — full schema docs, all 3 rule types with examples + Iron Laws + authoring workflow.
+
+New CLI: **`scripts/rules.py`** — `list`, `show`, `deletion-allowed <path>`, `severity <check>`, `custom-patterns`, `validate`, `template <type>`.
+
+New slash command: **`/kaizen:rule`** wraps the CLI.
+
+Gate integrations:
+- Check #5 (pre-deletion gate) — if EVERY staged deletion matches a `deletion-allow` rule, the belief scan is skipped (no `KAIZEN_ALLOW_DELETE=1` needed).
+- Check #7 (paired-test) — consults `check-severity` rule for `check_id: paired-test`; can be set to `skip` to silence.
+- Check #11 (NEW) — runs `custom-pattern` rules over `git diff --cached`; emits warn or block per `pattern_action`.
+
+### Fixed
+
+- **`_SCRIPT_REAL_DIR` unbound variable** in `pre-commit.sh` when Check #5 (pre-deletion) didn't fire — gotcha #7 from plugin-pitfalls (set -u + fallback branches). Same lesson as install.sh (v1.1.6) and doctor.sh (v1.1.3). Third occurrence — hoist policy: any variable referenced by multiple checks gets defined once at script top.
+
 ## [1.1.6] — 2026-05-11
 
 ### Fixed
