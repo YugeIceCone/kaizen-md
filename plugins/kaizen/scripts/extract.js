@@ -1,0 +1,500 @@
+#!/usr/bin/env node
+'use strict';
+
+const fs = require('fs');
+const path = require('path');
+const os = require('os');
+const { getBrainRoot, loadConfig } = require('./config');
+
+const BRAIN_ROOT = getBrainRoot();
+const STATE_DIR = path.join(process.env.XDG_STATE_HOME || path.join(os.homedir(), '.local', 'state'), 'remember');
+const CLAUDE_PROJECTS_DIR = path.join(os.homedir(), '.claude', 'projects');
+const MAX_ASSISTANT_TEXT_LEN = loadConfig().extract?.max_assistant_text_len || 500;
+const MIN_SESSION_SIZE = loadConfig().extract?.min_session_size || 500;
+
+// --- Source definitions ---
+
+const SOURCES = {
+  'claude-code': {
+    processedFile: path.join(STATE_DIR, 'processed-claude-code'),
+  },
+  'openclaw': {
+    processedFile: path.join(STATE_DIR, 'processed-openclaw'),
+  },
+};
+
+function getDefaultSource() {
+  // Auto-detect: if OPENCLAW env or running inside OpenClaw, default to openclaw
+  if (process.env.OPENCLAW || process.env.OPENCLAW_WORKSPACE) return 'openclaw';
+  return 'claude-code';
+}
+
+// --- Session tracking ---
+
+function getProcessedFile(source) {
+  const src = SOURCES[source];
+  if (!src) throw new Error(`Unknown source: ${source}. Valid: ${Object.keys(SOURCES).join(', ')}`);
+  return src.processedFile;
+}
+
+function getProcessedSessions(source) {
+  try {
+    return new Set(fs.readFileSync(getProcessedFile(source), 'utf-8').trim().split('\n').filter(Boolean));
+  } catch {
+    return new Set();
+  }
+}
+
+function markSessionProcessed(sessionId, source) {
+  const file = getProcessedFile(source);
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.appendFileSync(file, sessionId + '\n', 'utf-8');
+}
+
+// --- OpenClaw memory file discovery ---
+
+function getOpenClawMemoryDir() {
+  // Check common locations for OpenClaw memory files
+  const candidates = [
+    process.env.OPENCLAW_WORKSPACE && path.join(process.env.OPENCLAW_WORKSPACE, 'memory'),
+    path.join(os.homedir(), '.openclaw', 'workspace', 'memory'),
+  ].filter(Boolean);
+  for (const dir of candidates) {
+    if (fs.existsSync(dir)) return dir;
+  }
+  return null;
+}
+
+function findOpenClawMemoryFiles() {
+  const memDir = getOpenClawMemoryDir();
+  if (!memDir) return [];
+  const files = [];
+  for (const file of fs.readdirSync(memDir)) {
+    if (!file.endsWith('.md')) continue;
+    const filePath = path.join(memDir, file);
+    let stat;
+    try { stat = fs.statSync(filePath); } catch { continue; }
+    if (!stat.isFile()) continue;
+    files.push(filePath);
+  }
+  return files.sort();
+}
+
+function getOpenClawSessionId(filePath) {
+  return path.basename(filePath, '.md');
+}
+
+function extractOpenClawSession(filePath) {
+  const sessionId = getOpenClawSessionId(filePath);
+  const content = fs.readFileSync(filePath, 'utf-8');
+
+  // Extract date from filename (YYYY-MM-DD.md or YYYY-MM-DD-topic.md)
+  const dateMatch = sessionId.match(/^(\d{4}-\d{2}-\d{2})/);
+  const dateStr = dateMatch ? dateMatch[1] : '';
+  const firstTs = dateStr ? `${dateStr}T00:00:00Z` : null;
+
+  // Parse the markdown into pseudo-messages (sections become context)
+  const messages = [];
+  const lines = content.split('\n');
+  let currentSection = '';
+  let sectionContent = [];
+
+  for (const line of lines) {
+    const headingMatch = line.match(/^#{1,3}\s+(.+)/);
+    if (headingMatch) {
+      // Flush previous section
+      if (currentSection && sectionContent.length) {
+        const text = sectionContent.join('\n').trim();
+        if (text) {
+          messages.push({ role: 'user', text: `## ${currentSection}\n${text}`, time: '', timestamp: firstTs || '' });
+        }
+      }
+      currentSection = headingMatch[1];
+      sectionContent = [];
+    } else {
+      sectionContent.push(line);
+    }
+  }
+  // Flush last section
+  if (currentSection && sectionContent.length) {
+    const text = sectionContent.join('\n').trim();
+    if (text) {
+      messages.push({ role: 'user', text: `## ${currentSection}\n${text}`, time: '', timestamp: firstTs || '' });
+    }
+  }
+
+  return {
+    session_id: sessionId,
+    project: 'openclaw',
+    cwd: null,
+    first_ts: firstTs,
+    last_ts: firstTs,
+    spans_multiple_days: false,
+    session_date: firstTs,
+    messages,
+  };
+}
+
+// --- Claude Code transcript discovery ---
+
+function findAllTranscripts() {
+  const transcripts = [];
+  if (!fs.existsSync(CLAUDE_PROJECTS_DIR)) return transcripts;
+  for (const projDir of fs.readdirSync(CLAUDE_PROJECTS_DIR)) {
+    const projPath = path.join(CLAUDE_PROJECTS_DIR, projDir);
+    let stat;
+    try { stat = fs.statSync(projPath); } catch { continue; }
+    if (!stat.isDirectory()) continue;
+    for (const file of fs.readdirSync(projPath)) {
+      if (file.endsWith('.jsonl')) {
+        transcripts.push(path.join(projPath, file));
+      }
+    }
+  }
+  return transcripts;
+}
+
+function getSessionId(filePath) {
+  return path.basename(filePath, '.jsonl');
+}
+
+function getProjectName(filePath) {
+  const parent = path.basename(path.dirname(filePath));
+  const parts = parent.split('-');
+  const idx = parts.indexOf('projects');
+  if (idx !== -1) {
+    const projectParts = parts.slice(idx + 1).filter(Boolean);
+    if (projectParts.length) return projectParts.join('/');
+  }
+  const meaningful = parts.filter(Boolean);
+  return meaningful.length >= 2 ? meaningful.slice(-2).join('/') : parent;
+}
+
+// --- Content extraction ---
+
+const NOISE_PREFIXES = [
+  '<local-command-',
+  '<command-name>',
+  '<system-',
+  '<user-prompt-submit-hook>',
+];
+
+function isNoiseContent(content) {
+  if (typeof content !== 'string') return false;
+  const trimmed = content.trim();
+  return NOISE_PREFIXES.some(p => trimmed.startsWith(p));
+}
+
+function extractUserText(message) {
+  const content = message.content;
+  if (typeof content === 'string') {
+    if (isNoiseContent(content)) return null;
+    const text = content.trim();
+    return text || null;
+  }
+  if (Array.isArray(content)) {
+    const texts = [];
+    for (const block of content) {
+      if (typeof block === 'object' && block?.type === 'text') {
+        const t = block.text?.trim();
+        if (t && !isNoiseContent(t)) texts.push(t);
+      } else if (typeof block === 'string') {
+        if (!isNoiseContent(block)) texts.push(block.trim());
+      }
+    }
+    return texts.length ? texts.join('\n') : null;
+  }
+  return null;
+}
+
+function extractAssistantText(message) {
+  const content = message.content;
+  if (typeof content === 'string') {
+    return content.length <= MAX_ASSISTANT_TEXT_LEN ? content.trim() || null : null;
+  }
+  if (!Array.isArray(content)) return null;
+
+  const texts = [];
+  let hasToolUse = false;
+  for (const block of content) {
+    if (typeof block !== 'object' || !block) continue;
+    if (block.type === 'tool_use') hasToolUse = true;
+    else if (block.type === 'text') {
+      const t = block.text?.trim();
+      if (t) texts.push(t);
+    }
+  }
+  if (!texts.length) return null;
+  const combined = texts.join('\n');
+  if (combined.length > MAX_ASSISTANT_TEXT_LEN) return null;
+  if (hasToolUse && combined.length < 20) return null;
+  return combined;
+}
+
+// --- Timestamp helpers ---
+
+function parseTimestamp(tsStr) {
+  if (!tsStr) return null;
+  try {
+    const d = new Date(tsStr);
+    return isNaN(d.getTime()) ? null : d;
+  } catch {
+    return null;
+  }
+}
+
+function formatTimestamp(tsStr, includeDate = false) {
+  const dt = parseTimestamp(tsStr);
+  if (!dt) return '';
+  if (includeDate) {
+    return dt.toISOString().slice(0, 16).replace('T', ' ');
+  }
+  return dt.toISOString().slice(11, 16);
+}
+
+function formatDateOnly(tsStr) {
+  const dt = parseTimestamp(tsStr);
+  return dt ? dt.toISOString().slice(0, 10) : '';
+}
+
+// --- Session extraction ---
+
+function extractSession(filePath) {
+  const sessionId = getSessionId(filePath);
+  const project = getProjectName(filePath);
+  const messages = [];
+  let sessionCwd = null;
+  let firstTs = null;
+  let lastTs = null;
+
+  const text = fs.readFileSync(filePath, 'utf-8');
+  for (const line of text.split('\n')) {
+    if (!line.trim()) continue;
+    let entry;
+    try { entry = JSON.parse(line); } catch { continue; }
+
+    const ts = entry.timestamp || '';
+    if (!firstTs && ts) firstTs = ts;
+    if (ts) lastTs = ts;
+    if (!sessionCwd && entry.cwd) sessionCwd = entry.cwd;
+
+    if (entry.type === 'user') {
+      if (entry.isMeta) continue;
+      const msg = entry.message || {};
+      const text = extractUserText(msg);
+      if (text) {
+        messages.push({ role: 'user', text, time: formatTimestamp(ts), timestamp: ts });
+      }
+    } else if (entry.type === 'assistant') {
+      const msg = entry.message || {};
+      const text = extractAssistantText(msg);
+      if (text) {
+        messages.push({ role: 'assistant', text, time: formatTimestamp(ts), timestamp: ts });
+      }
+    }
+  }
+
+  let spansMultipleDays = false;
+  if (firstTs && lastTs) {
+    const firstDate = formatDateOnly(firstTs);
+    const lastDate = formatDateOnly(lastTs);
+    if (firstDate && lastDate && firstDate !== lastDate) spansMultipleDays = true;
+  }
+
+  return {
+    session_id: sessionId,
+    project,
+    cwd: sessionCwd,
+    first_ts: firstTs,
+    last_ts: lastTs,
+    spans_multiple_days: spansMultipleDays,
+    session_date: firstTs,
+    messages,
+  };
+}
+
+// --- Formatting ---
+
+function formatSessionMarkdown(session) {
+  const lines = [];
+  const dateStr = formatDateOnly(session.first_ts);
+  const endDateStr = formatDateOnly(session.last_ts);
+  const spans = session.spans_multiple_days;
+
+  lines.push(`# Session: ${session.project}`);
+  if (dateStr) {
+    lines.push(spans && endDateStr && dateStr !== endDateStr
+      ? `**Date:** ${dateStr} to ${endDateStr}`
+      : `**Date:** ${dateStr}`);
+  }
+  lines.push(`**Session date (use for journal/tasks):** ${dateStr}`);
+  if (session.cwd) lines.push(`**Working dir:** \`${session.cwd}\``);
+  lines.push(`**Session ID:** \`${session.session_id}\``);
+  lines.push('');
+
+  if (!session.messages.length) {
+    lines.push('*(empty session)*');
+    return lines.join('\n');
+  }
+
+  let currentDay = null;
+  for (const msg of session.messages) {
+    if (spans && msg.timestamp) {
+      const msgDay = formatDateOnly(msg.timestamp);
+      if (msgDay && msgDay !== currentDay) {
+        currentDay = msgDay;
+        lines.push(`### ${msgDay}`);
+        lines.push('');
+      }
+    }
+    const timePrefix = msg.time ? `[${msg.time}] ` : '';
+    if (msg.role === 'user') {
+      lines.push(`**${timePrefix}User:** ${msg.text}`);
+    } else {
+      lines.push(`*${timePrefix}Claude: ${msg.text}*`);
+    }
+    lines.push('');
+  }
+
+  return lines.join('\n');
+}
+
+// --- CLI commands ---
+
+function cmdExtract(filePath, source) {
+  if (!fs.existsSync(filePath)) {
+    process.stderr.write(`Error: file not found: ${filePath}\n`);
+    process.exit(1);
+  }
+  const session = source === 'openclaw'
+    ? extractOpenClawSession(filePath)
+    : extractSession(filePath);
+  console.log(formatSessionMarkdown(session));
+}
+
+function cmdListUnprocessed(projectFilter, source) {
+  // If source specified, only that source. Otherwise, all available sources.
+  const sourcesToCheck = source ? [source] : Object.keys(SOURCES);
+
+  const unprocessed = [];
+
+  for (const src of sourcesToCheck) {
+    const processed = getProcessedSessions(src);
+
+    if (src === 'openclaw') {
+      const memFiles = findOpenClawMemoryFiles();
+      for (const f of memFiles) {
+        const sid = getOpenClawSessionId(f);
+        if (processed.has(sid)) continue;
+        let size;
+        try { size = fs.statSync(f).size; } catch { continue; }
+        if (size < MIN_SESSION_SIZE) continue;
+        unprocessed.push({ path: f, project: 'openclaw', size, source: src });
+      }
+    } else if (src === 'claude-code') {
+      const transcripts = findAllTranscripts();
+      for (const t of transcripts) {
+        const sid = getSessionId(t);
+        if (processed.has(sid)) continue;
+        const project = getProjectName(t);
+        if (projectFilter && !project.toLowerCase().includes(projectFilter.toLowerCase())) continue;
+        let size;
+        try { size = fs.statSync(t).size; } catch { continue; }
+        if (size < MIN_SESSION_SIZE) continue;
+        unprocessed.push({ path: t, project, size, source: src });
+      }
+    }
+  }
+
+  unprocessed.sort((a, b) => {
+    try {
+      return fs.statSync(a.path).mtimeMs - fs.statSync(b.path).mtimeMs;
+    } catch { return 0; }
+  });
+
+  if (!unprocessed.length) {
+    const label = source || 'all sources';
+    console.log(`No unprocessed sessions found (${label}).`);
+    return;
+  }
+
+  const label = source || 'all sources';
+  console.log(`Found ${unprocessed.length} unprocessed session(s) [${label}]:\n`);
+  for (const u of unprocessed) {
+    const sid = u.source === 'openclaw' ? getOpenClawSessionId(u.path) : getSessionId(u.path);
+    let mtime;
+    try {
+      const mt = fs.statSync(u.path).mtime;
+      mtime = mt.toISOString().slice(0, 16).replace('T', ' ');
+    } catch {
+      mtime = 'unknown';
+    }
+    const sizeKb = (u.size / 1024).toFixed(0);
+    console.log(`  ${sid}`);
+    console.log(`    Source: ${u.source}`);
+    console.log(`    Project: ${u.project}`);
+    console.log(`    Modified: ${mtime}`);
+    console.log(`    Size: ${sizeKb}KB`);
+    console.log(`    Path: ${u.path}`);
+    console.log();
+  }
+}
+
+function cmdMarkProcessed(sessionId, source) {
+  markSessionProcessed(sessionId, source);
+  console.log(`Marked as processed: ${sessionId} (source: ${source})`);
+}
+
+// --- Main ---
+
+function detectSourceFromPath(filePath) {
+  if (filePath.endsWith('.md')) return 'openclaw';
+  if (filePath.endsWith('.jsonl')) return 'claude-code';
+  return getDefaultSource();
+}
+
+function main() {
+  const args = process.argv.slice(2);
+
+  // Parse --source flag (can appear anywhere; optional)
+  const srcIdx = args.indexOf('--source');
+  const explicitSource = srcIdx !== -1 && args[srcIdx + 1] ? args[srcIdx + 1] : null;
+  // Remove --source and its value from args
+  const cleanArgs = srcIdx !== -1
+    ? args.filter((_, i) => i !== srcIdx && i !== srcIdx + 1)
+    : [...args];
+
+  if (!cleanArgs.length) {
+    console.log('Usage:');
+    console.log('  node extract.js [--source claude-code|openclaw] <file>');
+    console.log('  node extract.js [--source claude-code|openclaw] --unprocessed [--project <name>]');
+    console.log('  node extract.js [--source claude-code|openclaw] --mark-processed <session_id>');
+    console.log('');
+    console.log('Without --source:');
+    console.log('  --unprocessed scans ALL sources');
+    console.log('  <file> auto-detects from extension (.md → openclaw, .jsonl → claude-code)');
+    console.log('  --mark-processed requires --source');
+    console.log('');
+    console.log(`Sources: ${Object.keys(SOURCES).join(', ')}`);
+    console.log(`State dir: ${STATE_DIR}`);
+    process.exit(1);
+  }
+
+  if (cleanArgs[0] === '--unprocessed') {
+    const projIdx = cleanArgs.indexOf('--project');
+    const projectFilter = projIdx !== -1 && cleanArgs[projIdx + 1] ? cleanArgs[projIdx + 1] : null;
+    cmdListUnprocessed(projectFilter, explicitSource);
+  } else if (cleanArgs[0] === '--mark-processed') {
+    if (!cleanArgs[1]) {
+      process.stderr.write('Usage: extract.js --mark-processed <session-id> --source <source>\n');
+      process.exit(1);
+    }
+    const source = explicitSource || getDefaultSource();
+    cmdMarkProcessed(cleanArgs[1], source);
+  } else {
+    const source = explicitSource || detectSourceFromPath(cleanArgs[0]);
+    cmdExtract(cleanArgs[0], source);
+  }
+}
+
+main();

@@ -1,0 +1,29 @@
+{
+  "name": "kaizen",
+  "version": "1.1.0",
+  "description": "Consistent git commit discipline — pre-commit gate, micro-work backlog (JSON-sourced), sizing by trace+sem+grep. Self-contained: bundles 32 skills (tdd + 9 coding-skills + onion-ddd-workflow + 14 superpowers + workflow-routing + 5 remember/Second Brain) plus all supporting scripts/refs/assets. No external plugin dependencies.",
+  "author": {
+    "name": "YugeIceCone",
+    "url": "https://github.com/YugeIceCone"
+  },
+  "homepage": "https://github.com/YugeIceCone/kaizen-md",
+  "repository": "https://github.com/YugeIceCone/kaizen-md",
+  "license": "MIT",
+  "keywords": [
+    "git",
+    "pre-commit",
+    "workflow",
+    "backlog",
+    "discipline",
+    "coding-skills",
+    "onion-ddd",
+    "tdd",
+    "ddd",
+    "clean-architecture",
+    "hexagonal",
+    "kiss",
+    "yagni",
+    "dry",
+    "solid"
+  ]
+}

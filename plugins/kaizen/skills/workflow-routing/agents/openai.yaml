@@ -1,0 +1,4 @@
+interface:
+  display_name: "Workflow Router"
+  short_description: "Route work to the next stage"
+  default_prompt: "Use $workflow-router to route this task to the right workflow stage."

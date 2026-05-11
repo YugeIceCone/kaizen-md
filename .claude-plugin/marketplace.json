@@ -1,0 +1,17 @@
+{
+  "name": "kaizen-md",
+  "description": "Marketplace wrapping the kaizen plugin (consistent commit discipline + JSON-sourced backlog).",
+  "owner": {
+    "name": "YugeIceCone",
+    "url": "https://github.com/YugeIceCone"
+  },
+  "plugins": [
+    {
+      "name": "kaizen",
+      "description": "Pre-commit gate + BACKLOG (JSON-source, .md generated) + skill that solidifies consistent git workflow across projects. Weaves with coding-skills, onion-ddd-workflow, superpowers:*, tdd, Remember.",
+      "category": "productivity",
+      "source": "./plugins/kaizen",
+      "license": "MIT"
+    }
+  ]
+}

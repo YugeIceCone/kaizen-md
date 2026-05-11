@@ -1,0 +1,4 @@
+interface:
+  display_name: "Test-Driven Development"
+  short_description: "Enforce strict test-first development"
+  default_prompt: "Use $tdd to implement this change with a strict red-green-refactor workflow."

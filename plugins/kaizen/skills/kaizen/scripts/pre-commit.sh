@@ -1,0 +1,389 @@
+#!/usr/bin/env bash
+# kaizen pre-commit gate — runs the 8-item checklist.
+# Symlinked from ~/.claude/skills/kaizen/ into a project's
+# .kaizen/hooks/pre-commit via scripts/install.sh.
+#
+# Config: .kaizen.toml at repo root (see SKILL.md PART 4).
+# Bypass for emergencies: git commit --no-verify (agent must surface,
+# not silently bypass).
+
+set -u
+# Don't 'set -e' — we want to run every check, then summarise.
+
+# ─── Colours (no-op when not a TTY) ──────────────────────────────────
+if [ -t 2 ]; then
+    BOLD=$'\e[1m'; DIM=$'\e[2m'; RED=$'\e[31m'; YELLOW=$'\e[33m'
+    GREEN=$'\e[32m'; BLUE=$'\e[34m'; RESET=$'\e[0m'
+else
+    BOLD=""; DIM=""; RED=""; YELLOW=""; GREEN=""; BLUE=""; RESET=""
+fi
+
+PASS="${GREEN}✓${RESET}"
+FAIL="${RED}✗${RESET}"
+WARN="${YELLOW}!${RESET}"
+SKIP="${DIM}∘${RESET}"
+
+# ─── Counters ────────────────────────────────────────────────────────
+HARD_FAILS=0
+SOFT_WARNS=0
+SUGGESTIONS=()
+
+emit() { printf '%s  %s\n' "$1" "$2" >&2; }
+hard_fail() { HARD_FAILS=$((HARD_FAILS + 1)); emit "$FAIL" "$1"; }
+warn()      { SOFT_WARNS=$((SOFT_WARNS + 1)); emit "$WARN" "$1"; }
+pass()      { emit "$PASS" "$1"; }
+skip()      { emit "$SKIP" "$1"; }
+suggest()   { SUGGESTIONS+=("$1"); }
+
+# ─── Repo discovery ──────────────────────────────────────────────────
+REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null) || {
+    echo "kaizen: not a git repo" >&2; exit 0
+}
+cd "$REPO_ROOT"
+
+CONFIG="$REPO_ROOT/.kaizen.toml"
+
+# ─── Tiny TOML reader (key = "value" only, no nesting) ───────────────
+toml_get() {
+    local key="$1" default="$2"
+    [ -f "$CONFIG" ] || { echo "$default"; return; }
+    local v
+    v=$(grep -E "^${key}[[:space:]]*=" "$CONFIG" 2>/dev/null \
+        | head -1 \
+        | sed -E 's/^[^=]*=[[:space:]]*//; s/^"(.*)"$/\1/; s/^'\''(.*)'\''$/\1/')
+    [ -n "$v" ] && echo "$v" || echo "$default"
+}
+
+# ─── Config + defaults ───────────────────────────────────────────────
+COMPILE_CHECK_CMD=$(toml_get compile_check_cmd "")
+ARCH_LOG=$(toml_get architecture_log ".workflow/progress.md")
+PLAN_DIR=$(toml_get plan_dir "plans")
+VERIFY_CMD=$(toml_get verify_cmd "")
+ALLOW_DELETE_ENV=$(toml_get allow_deletion_env "KAIZEN_ALLOW_DELETE")
+SKIP_TDD_ENV=$(toml_get skip_tdd_check_env "KAIZEN_SKIP_TDD_CHECK")
+BRAIN_PATH=$(toml_get brain_path "$HOME/.claude/brain")
+PROJECT_MEMORY=$(toml_get project_memory_path "")
+
+# Heuristic compile-cmd if config is silent.
+if [ -z "$COMPILE_CHECK_CMD" ]; then
+    if [ -f "Cargo.toml" ]; then
+        COMPILE_CHECK_CMD="cargo check --workspace --offline"
+    elif [ -f "tsconfig.json" ]; then
+        COMPILE_CHECK_CMD="npx --no-install tsc --noEmit"
+    elif [ -f "go.mod" ]; then
+        COMPILE_CHECK_CMD="go build ./..."
+    elif [ -f "pyproject.toml" ]; then
+        if command -v ruff >/dev/null 2>&1; then
+            COMPILE_CHECK_CMD="ruff check ."
+        fi
+    fi
+fi
+
+# ─── Stage analysis ──────────────────────────────────────────────────
+STAGED=$(git diff --cached --name-only --diff-filter=ACMRT 2>/dev/null)
+DELETED=$(git diff --cached --name-only --diff-filter=D 2>/dev/null)
+RENAMED=$(git diff --cached --name-only --diff-filter=R 2>/dev/null)
+DIFF_CONTENT=$(git diff --cached 2>/dev/null)
+
+if [ -z "$STAGED" ] && [ -z "$DELETED" ] && [ -z "$RENAMED" ]; then
+    echo "kaizen: nothing staged — skipping gate" >&2
+    exit 0
+fi
+
+# Commit message — prepare-commit-msg already wrote it.
+COMMIT_MSG_FILE="${1:-.git/COMMIT_EDITMSG}"
+COMMIT_MSG=""
+[ -f "$COMMIT_MSG_FILE" ] && COMMIT_MSG=$(cat "$COMMIT_MSG_FILE")
+
+# ─── Structural classifier ───────────────────────────────────────────
+is_structural() {
+    local file="$1"
+    case "$file" in
+        # Manifest edits — but skip pure version bumps later via content check
+        */Cargo.toml|Cargo.toml|*/package.json|package.json|*/go.mod|go.mod|*/pyproject.toml|pyproject.toml|Gemfile|*/Gemfile)
+            return 0 ;;
+        # Crate / package roots
+        crates/*/src/lib.rs|crates/*/src/main.rs|packages/*/src/index.ts|packages/*/src/index.js|*/__init__.py)
+            # Structural only if pub mod / export / __all__ delta
+            if echo "$DIFF_CONTENT" | grep -E "^[\+\-][[:space:]]*(pub mod|pub use|export|__all__)" >/dev/null 2>&1; then
+                return 0
+            fi
+            return 1 ;;
+        # CLAUDE.md (rulebook) is structural
+        CLAUDE.md|*/CLAUDE.md) return 0 ;;
+        # Skip-list
+        Cargo.lock|package-lock.json|go.sum|TODO.md) return 1 ;;
+    esac
+    return 1
+}
+
+DIFF_IS_STRUCTURAL=0
+for f in $STAGED $DELETED $RENAMED; do
+    if is_structural "$f"; then
+        DIFF_IS_STRUCTURAL=1
+        break
+    fi
+done
+
+# Extra signal: trait/interface move (impl Trait for X relocated between files).
+# We approximate: same impl block added in one file AND deleted from another.
+if echo "$DIFF_CONTENT" | grep -E "^\+impl[[:space:]]+([[:alnum:]_:<>'/, ]+[[:space:]]+for[[:space:]]+)?[[:alnum:]_]+" >/dev/null 2>&1 \
+   && echo "$DIFF_CONTENT" | grep -E "^-impl[[:space:]]+([[:alnum:]_:<>'/, ]+[[:space:]]+for[[:space:]]+)?[[:alnum:]_]+" >/dev/null 2>&1; then
+    DIFF_IS_STRUCTURAL=1
+fi
+
+# ─── Check 1: Compile barrier ────────────────────────────────────────
+if [ -n "$COMPILE_CHECK_CMD" ]; then
+    if eval "$COMPILE_CHECK_CMD" >/tmp/kaizen-compile.log 2>&1; then
+        pass "compile barrier: $COMPILE_CHECK_CMD"
+    else
+        hard_fail "compile barrier failed: $COMPILE_CHECK_CMD"
+        echo "${DIM}        → /tmp/kaizen-compile.log (last lines):${RESET}" >&2
+        tail -10 /tmp/kaizen-compile.log | sed 's/^/        /' >&2
+    fi
+else
+    skip "compile barrier: no command resolved (set compile_check_cmd in .kaizen.toml)"
+fi
+
+# ─── Check 2: Conventional Commits prefix ────────────────────────────
+if [ -n "$COMMIT_MSG" ]; then
+    FIRST_LINE=$(echo "$COMMIT_MSG" | head -1)
+    if echo "$FIRST_LINE" | grep -qE '^(feat|fix|refactor|docs|chore|test|perf|build|ci|style|revert)(\([^)]+\))?: '; then
+        pass "Conventional Commits prefix"
+    else
+        hard_fail "commit message missing Conventional Commits prefix: $FIRST_LINE"
+        echo "${DIM}        → expected: feat(scope): ... | fix: ... | docs: ... etc.${RESET}" >&2
+    fi
+else
+    skip "Conventional Commits: no commit message yet (running pre-commit, not commit-msg)"
+fi
+
+# ─── Check 3: Structural change → architecture log row ───────────────
+if [ "$DIFF_IS_STRUCTURAL" = "1" ]; then
+    if echo "$STAGED" | grep -qF "$ARCH_LOG"; then
+        pass "structural change includes $ARCH_LOG row"
+    else
+        hard_fail "structural change WITHOUT $ARCH_LOG row update"
+        echo "${DIM}        → append a row: | YYYY-MM-DD | <scope> | <ΔLOC> | <summary> |${RESET}" >&2
+        suggest "Run: skill load onion-ddd-workflow (structural change touched layer boundary?)"
+    fi
+else
+    skip "structural classifier: not structural"
+fi
+
+# ─── Check 4: Plan-file mention → checkbox tick ──────────────────────
+if [ -n "$COMMIT_MSG" ]; then
+    # Stricter pattern: real plan paths only, no '<placeholder>' templates.
+    PLAN_MENTIONS=$(echo "$COMMIT_MSG" | grep -oE "${PLAN_DIR}/[A-Za-z0-9._-]+\.md" | sort -u || true)
+    if [ -n "$PLAN_MENTIONS" ]; then
+        for plan_path in $PLAN_MENTIONS; do
+            if echo "$STAGED" | grep -qF "$plan_path"; then
+                if echo "$DIFF_CONTENT" | grep -E "^\+- \[x\]" >/dev/null 2>&1; then
+                    pass "plan ${plan_path}: checkbox tick present"
+                else
+                    hard_fail "plan ${plan_path} mentioned but no ${BOLD}+- [x]${RESET} flip staged"
+                fi
+            else
+                hard_fail "plan ${plan_path} mentioned in commit but file not staged"
+            fi
+        done
+    fi
+fi
+
+# ─── Check 5: Pre-deletion gate ──────────────────────────────────────
+if [ -n "$DELETED" ]; then
+    OVERRIDE_VAL=${!ALLOW_DELETE_ENV:-}
+    if [ "$OVERRIDE_VAL" = "1" ]; then
+        # Auto-backup before allowing the deletion through (reversibility net).
+        _SCRIPT_REAL_DIR="$(cd "$(dirname "$(python3 -c "import os,sys; print(os.path.realpath(sys.argv[1]))" "${BASH_SOURCE[0]}")")" && pwd)"
+        BACKUP_SH="$_SCRIPT_REAL_DIR/backup.sh"
+        if [ -x "$BACKUP_SH" ]; then
+            bash "$BACKUP_SH" create --label "pre-delete-$(date -u +%Y%m%dT%H%M%SZ)" >&2 || true
+        fi
+        warn "deletion(s) detected — $ALLOW_DELETE_ENV=1 set, auto-backup taken before allowing"
+        for d in $DELETED; do warn "  deleted: $d"; done
+    else
+        # Scan brain Top Beliefs + project memory for deletion-prevention rules
+        BELIEF_HIT=""
+        if [ -f "$BRAIN_PATH/Notes/pref-no-deletions.md" ]; then
+            BELIEF_HIT="$BRAIN_PATH/Notes/pref-no-deletions.md"
+        fi
+        if [ -n "$PROJECT_MEMORY" ] && [ -d "$PROJECT_MEMORY" ]; then
+            PROJECT_HIT=$(find "$PROJECT_MEMORY" -name "feedback_*delet*.md" -o -name "feedback_*no_delete*.md" 2>/dev/null | head -1)
+            [ -n "$PROJECT_HIT" ] && BELIEF_HIT="$BELIEF_HIT $PROJECT_HIT"
+        fi
+        if [ -n "$BELIEF_HIT" ]; then
+            hard_fail "deletion staged + matching deletion-prevention belief(s) found:"
+            for b in $BELIEF_HIT; do echo "${DIM}        → $b${RESET}" >&2; done
+            echo "${DIM}        Override: $ALLOW_DELETE_ENV=1 git commit ...${RESET}" >&2
+        else
+            warn "deletion(s) detected — no matching belief, allowing"
+        fi
+    fi
+else
+    skip "pre-deletion: no deletions staged"
+fi
+
+# ─── Check 6: No sha / date / LOC count in CLAUDE.md ─────────────────
+if echo "$STAGED" | grep -qE "(^|/)CLAUDE\.md$"; then
+    CLAUDE_DIFF=$(git diff --cached -- '*CLAUDE.md' 2>/dev/null | grep -E "^\+" | grep -v "^+++")
+    SHA_PATTERN='[0-9a-f]{7,40}'
+    LOC_PATTERN='[0-9]+ (passed|failed|LOC|tests)'
+    if echo "$CLAUDE_DIFF" | grep -qE "$SHA_PATTERN"; then
+        # Allow shas inside code-fences / inline-code (heuristic: line starts with ` or contains 4+ backticks)
+        BAD=$(echo "$CLAUDE_DIFF" | grep -E "$SHA_PATTERN" | grep -vE '^\+[[:space:]]*`|^\+[[:space:]]*```')
+        if [ -n "$BAD" ]; then
+            hard_fail "CLAUDE.md edit contains commit sha (rulebook must not carry shas — use progress.md instead)"
+            echo "$BAD" | head -3 | sed 's/^/        /' >&2
+        fi
+    fi
+    if echo "$CLAUDE_DIFF" | grep -qE "$LOC_PATTERN"; then
+        BAD=$(echo "$CLAUDE_DIFF" | grep -E "$LOC_PATTERN" | grep -vE '^\+[[:space:]]*`')
+        if [ -n "$BAD" ]; then
+            warn "CLAUDE.md edit contains LOC/test count (volatile — use progress.md instead)"
+            echo "$BAD" | head -3 | sed 's/^/        /' >&2
+        fi
+    fi
+    pass "CLAUDE.md no-sha / no-LOC scan"
+else
+    skip "CLAUDE.md scan: no CLAUDE.md staged"
+fi
+
+# ─── Check 7: New code → paired test (SOFT) ──────────────────────────
+SKIP_TDD_VAL=${!SKIP_TDD_ENV:-}
+if [ "$SKIP_TDD_VAL" != "1" ]; then
+    NEW_FILES=$(git diff --cached --name-only --diff-filter=A 2>/dev/null)
+    for f in $NEW_FILES; do
+        case "$f" in
+            tests/*|*_test.go|*.test.ts|*.test.tsx|*.spec.ts|test_*.py|*_test.py) continue ;;
+            *.rs|*.ts|*.tsx|*.js|*.go|*.py)
+                # Skip files that are themselves tests-only (cfg(test) etc.)
+                if git show ":$f" 2>/dev/null | grep -qE "^#\[cfg\(test\)\]|^describe\(|^test\(|^def test_"; then
+                    continue
+                fi
+                # Look for a paired test
+                base=$(basename "$f" | sed -E 's/\.(rs|ts|tsx|js|go|py)$//')
+                dir=$(dirname "$f")
+                if find "$dir" "$dir/../tests" "tests" -name "${base}_test.*" -o -name "${base}.test.*" -o -name "test_${base}.*" 2>/dev/null | grep -q .; then
+                    continue
+                fi
+                if git show ":$f" 2>/dev/null | grep -qE "#\[cfg\(test\)\][[:space:]]*mod tests"; then
+                    continue
+                fi
+                warn "new file $f has no paired test (load skill: tdd — set $SKIP_TDD_ENV=1 to silence)"
+                ;;
+        esac
+    done
+else
+    skip "TDD-paired-test check ($SKIP_TDD_ENV=1)"
+fi
+
+# ─── Check 8.5: Backlog drift (.md regenerated from .json) ───────────
+BACKLOG_PATH=$(toml_get backlog_path "")
+if [ -n "$BACKLOG_PATH" ] && [ -f "$REPO_ROOT/$BACKLOG_PATH" ]; then
+    # Resolve sibling backlog.py via this script's real path (works whether
+    # installed at ~/.claude/skills/kaizen/scripts/ OR as a plugin
+    # under ~/.claude/local-marketplaces/.../plugins/.../scripts/).
+    _SCRIPT_REAL_DIR="$(cd "$(dirname "$(python3 -c "import os,sys; print(os.path.realpath(sys.argv[1]))" "${BASH_SOURCE[0]}")")" && pwd)"
+    BACKLOG_PY="$_SCRIPT_REAL_DIR/backlog.py"
+    if [ -x "$BACKLOG_PY" ] && command -v python3 >/dev/null 2>&1; then
+        if python3 "$BACKLOG_PY" verify >/tmp/kaizen-backlog.log 2>&1; then
+            pass "backlog: .md matches .json (no drift)"
+        else
+            hard_fail "backlog: .md drifted from .json"
+            tail -3 /tmp/kaizen-backlog.log | sed 's/^/        /' >&2
+            echo "${DIM}        → Fix: python3 $BACKLOG_PY render${RESET}" >&2
+        fi
+    else
+        skip "backlog drift: backlog.py not found or python3 missing"
+    fi
+else
+    skip "backlog: no backlog_path configured"
+fi
+
+# ─── Check 9: Committed-secret detection (HARD) ──────────────────────
+# Regex scan over the staged diff for high-confidence secret patterns.
+# Bypass via KAIZEN_ALLOW_SECRET=1 (e.g. an example/fixture file).
+SECRET_OVERRIDE=${KAIZEN_ALLOW_SECRET:-}
+SECRET_HITS=$(echo "$DIFF_CONTENT" | grep -E "^\+" | grep -vE "^\+\+\+" | grep -ChE \
+    "(AKIA|ASIA)[0-9A-Z]{16}|-----BEGIN[ A-Z]+PRIVATE KEY-----|gh[oprsu]_[A-Za-z0-9_]{36,}|sk-[A-Za-z0-9]{32,}|xox[abprs]-[A-Za-z0-9-]{10,}|AIza[0-9A-Za-z_-]{35}|eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}" 2>/dev/null | head -1)
+if [ -n "$SECRET_HITS" ] && [ "$SECRET_HITS" != "0" ]; then
+    if [ "$SECRET_OVERRIDE" = "1" ]; then
+        warn "secret-pattern match(es) but KAIZEN_ALLOW_SECRET=1 — gate bypassed"
+    else
+        hard_fail "committed-secret patterns detected in staged diff ($SECRET_HITS line(s))"
+        echo "${DIM}        → patterns: AWS keys, private keys, GitHub tokens, OpenAI/Slack/Google API keys, JWTs${RESET}" >&2
+        echo "${DIM}        → bypass for fixtures: KAIZEN_ALLOW_SECRET=1 git commit ...${RESET}" >&2
+    fi
+else
+    pass "secret-pattern scan (no high-confidence hits)"
+fi
+
+# ─── Check 8: Project-specific verify ────────────────────────────────
+if [ -n "$VERIFY_CMD" ]; then
+    if eval "$VERIFY_CMD" >/tmp/kaizen-verify.log 2>&1; then
+        pass "project verify: $VERIFY_CMD"
+    else
+        hard_fail "project verify failed: $VERIFY_CMD"
+        tail -10 /tmp/kaizen-verify.log | sed 's/^/        /' >&2
+    fi
+else
+    skip "project verify: no verify_cmd in .kaizen.toml"
+fi
+
+# ─── Skill-weaving suggestions ───────────────────────────────────────
+# Active workflow-routing routine? Surface the active stage so the
+# committer knows whether to advance via /workflow or commit ad-hoc.
+WORKFLOW_STATE_FILE=".workflow/state.json"
+if [ -f "$WORKFLOW_STATE_FILE" ] && command -v python3 >/dev/null 2>&1; then
+    ACTIVE_STAGE=$(python3 -c "
+import json, sys
+try:
+    s = json.load(open('$WORKFLOW_STATE_FILE'))
+    cur = s.get('current', 0)
+    stages = s.get('stages', [])
+    if cur < len(stages):
+        print(f\"{s.get('routine','?')} :: {stages[cur]} (stage {cur+1}/{len(stages)})\")
+except Exception:
+    pass
+" 2>/dev/null)
+    if [ -n "$ACTIVE_STAGE" ]; then
+        suggest "Active workflow-routing routine: $ACTIVE_STAGE — advance via /workflow or surface deviation"
+    fi
+fi
+
+# Cargo.toml or package.json dep added/removed → onion-ddd-workflow
+if echo "$STAGED" | grep -qE "(^|/)(Cargo|package)\.toml$|(^|/)go\.mod$"; then
+    if echo "$DIFF_CONTENT" | grep -E "^[\+\-][[:space:]]*[a-z][a-z0-9_-]*[[:space:]]*=[[:space:]]*" >/dev/null 2>&1; then
+        suggest "Dep change → invoke skill: onion-ddd-workflow (check dep direction, structural-lint authoring)"
+    fi
+fi
+# Large single-file diff → KISS + SoC
+LARGE_FILE_DIFF=$(git diff --cached --numstat 2>/dev/null | awk '$1+$2 > 100 && $3 !~ /^tests\// {print $3 " (+" $1 " -" $2 ")"}')
+if [ -n "$LARGE_FILE_DIFF" ]; then
+    suggest "Large single-file diff → invoke skill: coding-skills:kiss + coding-skills:separation-of-concerns"
+    echo "$LARGE_FILE_DIFF" | while read l; do suggest "  $l"; done
+fi
+
+# ─── Final summary ───────────────────────────────────────────────────
+echo "" >&2
+if [ "$HARD_FAILS" -gt 0 ]; then
+    echo "${BOLD}${RED}kaizen: $HARD_FAILS hard fail(s), $SOFT_WARNS warning(s)${RESET}" >&2
+    if [ "${#SUGGESTIONS[@]}" -gt 0 ]; then
+        echo "${BOLD}Suggested skills:${RESET}" >&2
+        printf '  %s\n' "${SUGGESTIONS[@]}" >&2
+    fi
+    echo "${DIM}Bypass: git commit --no-verify (last resort — surface, don't silently skip)${RESET}" >&2
+    exit 1
+fi
+
+if [ "$SOFT_WARNS" -gt 0 ]; then
+    echo "${BOLD}${YELLOW}kaizen: 0 hard fails, $SOFT_WARNS warning(s)${RESET}" >&2
+else
+    echo "${BOLD}${GREEN}kaizen: gate passed${RESET}" >&2
+fi
+if [ "${#SUGGESTIONS[@]}" -gt 0 ]; then
+    echo "${BOLD}Skills to consider:${RESET}" >&2
+    printf '  %s\n' "${SUGGESTIONS[@]}" >&2
+fi
+exit 0

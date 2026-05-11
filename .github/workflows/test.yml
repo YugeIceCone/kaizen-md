@@ -1,0 +1,72 @@
+name: test
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+
+jobs:
+  pipeline:
+    name: pipeline (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify scripts pass bash syntax check
+        run: |
+          for f in plugins/kaizen/skills/kaizen/scripts/*.sh \
+                   plugins/kaizen/hooks/*.sh; do
+            bash -n "$f" || { echo "syntax fail: $f"; exit 1; }
+          done
+
+      - name: Verify Python scripts parse
+        run: |
+          python3 -c "import ast; ast.parse(open('plugins/kaizen/skills/kaizen/scripts/backlog.py').read())"
+          python3 -c "import ast; ast.parse(open('plugins/kaizen/skills/kaizen/scripts/mcp_server.py').read())"
+          python3 -c "import ast; ast.parse(open('plugins/kaizen/skills/kaizen/scripts/flow_demo.py').read())"
+
+      - name: Verify all JSON manifests valid
+        run: |
+          for f in .claude-plugin/marketplace.json \
+                   plugins/kaizen/.claude-plugin/plugin.json \
+                   plugins/kaizen/hooks/hooks.json \
+                   plugins/kaizen/.mcp.json \
+                   plugins/kaizen/config.defaults.json; do
+            python3 -c "import json; json.load(open('$f'))" || exit 1
+          done
+
+      - name: Verify all SKILL.md files have name + description frontmatter
+        run: |
+          missing=0
+          for f in plugins/kaizen/skills/*/SKILL.md; do
+            grep -qE '^name:' "$f"        || { echo "missing name: $f"; missing=1; }
+            grep -qE '^description:' "$f" || { echo "missing description: $f"; missing=1; }
+          done
+          [ "$missing" = "0" ]
+
+      - name: Run pipeline test
+        run: |
+          chmod +x plugins/kaizen/skills/kaizen/scripts/*.sh
+          chmod +x plugins/kaizen/hooks/*.sh
+          bash plugins/kaizen/skills/kaizen/scripts/test-pipeline.sh
+
+      - name: No GNU-only utilities
+        run: |
+          # Cross-platform discipline: scripts must work on macOS BSD too
+          if grep -rE '\breadlink -f\b' \
+               plugins/kaizen/skills/kaizen/scripts/ \
+               plugins/kaizen/hooks/; then
+            echo "GNU-only readlink -f found — use python3-based realpath_f instead"
+            exit 1
+          fi
+          if grep -rE 'find .* -printf' \
+               plugins/kaizen/skills/kaizen/scripts/ \
+               plugins/kaizen/hooks/; then
+            echo "GNU-only find -printf found — use shell glob instead"
+            exit 1
+          fi
