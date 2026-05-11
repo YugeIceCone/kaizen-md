@@ -3,6 +3,19 @@
 All notable changes to the `kaizen` plugin documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [SemVer](https://semver.org/).
 
+## [1.5.1] — 2026-05-11
+
+### Docs — clarify daemon vs. CC's built-in `autoUpdate`
+
+Trace surfaced that Claude Code already has a per-marketplace `autoUpdate: true` flag (in `~/.claude/settings.json` → `extraKnownMarketplaces.<name>.autoUpdate`), and your `kaizen-md` entry already has it on. So the daemon's hash-compare refresh-cache step partially overlaps with CC's session-start refresh.
+
+**No code change** — the daemon stays as designed. CC's `autoUpdate` covers session-start; daemon covers mid-session + hygiene. Both rsync source→cache idempotently; running both is safe.
+
+**Updated docs**:
+
+- `commands/daemon.md` — adds a "Relationship to Claude Code's built-in autoUpdate" table showing which capability comes from which layer (session-start = CC, mid-session + prune + retention + validation = daemon).
+- `plugin-pitfalls` #15 — documents the autoUpdate session-start-only timing window, with the failure symptom ("pushed v1.4.1, /plugin update says done, but command still missing") that triggered the trace.
+
 ## [1.5.0] — 2026-05-11
 
 ### Added — auto-daemon + hygiene cleanups

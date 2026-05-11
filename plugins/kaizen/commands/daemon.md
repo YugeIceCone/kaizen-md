@@ -61,6 +61,25 @@ Retention tunables (env vars):
 - One-off project / no recurring kaizen use → cron entry is noise. Use `/kaizen:hygiene check` on demand instead.
 - Restricted shells / containers without cron → use systemd user timer manually. The daemon worker (`daemon.py run`) is the same; wire any scheduler.
 
+## Relationship to Claude Code's built-in `autoUpdate`
+
+CC has a per-marketplace `autoUpdate: true` flag in `~/.claude/settings.json` → `extraKnownMarketplaces.<name>.autoUpdate`. When set, CC refreshes the marketplace cache **at session start**. The kaizen daemon is COMPLEMENTARY, not redundant:
+
+| Capability | CC `autoUpdate` | kaizen daemon |
+|---|---|---|
+| Session-start refresh | ✓ | — |
+| Mid-session refresh (cron tick) | ✗ | ✓ |
+| Cache version pruning | ✗ | ✓ |
+| Backup retention | ✗ | ✓ |
+| Drained-inbox cleanup | ✗ | ✓ |
+| Brain-rules validation | ✗ | ✓ |
+| Backlog drift re-render | ✗ | ✓ |
+| `git pull` from origin | ✓ for `source: "git"` marketplaces | opt-in (`KAIZEN_DAEMON_AUTOPULL=1`) |
+
+Running both is safe — both rsync source→cache and are idempotent. The daemon catches the gap CC leaves: long-running sessions don't pick up pushed changes until next session restart, and CC has no retention/hygiene policy.
+
+See `kaizen:plugin-pitfalls` #15 for the full failure-mode write-up.
+
 ## Related
 
 - `/kaizen:hygiene` — same checks, on-demand only (no cron)

@@ -514,6 +514,48 @@ vs
 
 Functionally equivalent for the same matcher pattern. Pick one and stay consistent within a file. kaizen v1.4.0 uses **inline addition** when the matcher is "*" already (UserPromptSubmit), and **new matcher entry** when the existing block is scoped to a specific tool (e.g. existing Bash matcher + new "*" matcher for drain — they're different scopes).
 
+## 15. `autoUpdate` is session-start-only, not continuous
+
+**Discovered:** v1.5.0 — while building the kaizen daemon, we found that Claude Code's built-in marketplace auto-update was already running for `kaizen-md` but didn't catch our mid-session pushes.
+
+**The mechanism (per-marketplace opt-in):**
+
+```json
+// ~/.claude/settings.json
+{
+  "extraKnownMarketplaces": {
+    "kaizen-md": {
+      "source": { "source": "directory", "path": "..." },
+      "autoUpdate": true              // ← per-marketplace toggle
+    }
+  }
+}
+```
+
+Cache mirror lives at `~/.claude/plugins/known_marketplaces.json` with `lastUpdated` timestamps. Default is **OFF** for marketplaces without the explicit field.
+
+**What it does:** at SESSION START, CC re-reads the marketplace source (re-pulls if `source: "git"`, re-reads dir if `source: "directory"`) and refreshes the version-named cache slot if changed.
+
+**What it does NOT do:**
+- Fire mid-session. A push (or local edit) after CC started won't reach the cache until the next session.
+- Prune old cache versions. They accumulate forever (`v1.1.0/v1.1.6/v1.4.0/…`) — no retention policy.
+- Touch user state beyond the plugin cache (backups, inbox, brain rules).
+
+**Failure symptom:** "I pushed v1.4.1 and `/plugin update` said it's done, but `/kaizen:env` is still `Unknown command`." Cache stayed at v1.4.0 because the session was still alive from before the push.
+
+**Defence:**
+
+For local-source marketplaces (yours under active development), pair `autoUpdate: true` with an explicit refresh path for mid-session updates — either a one-shot script you can `/reload-plugins` after, or a cron-driven daemon. Kaizen's daemon (`/kaizen:daemon`) is the latter and complements CC's autoUpdate cleanly:
+
+| Trigger | CC autoUpdate | Daemon |
+|---|---|---|
+| Session start | ✓ | — |
+| Mid-session (cron tick) | ✗ | ✓ |
+| Cache prune | ✗ | ✓ |
+| Backup retention | ✗ | ✓ |
+
+Running both is safe — both rsync source→cache and are idempotent.
+
 ## Pre-publish lint checklist
 
 Compact, runnable pre-publish check covering all gotchas above:
