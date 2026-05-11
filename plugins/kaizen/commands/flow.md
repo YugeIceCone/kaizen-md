@@ -1,75 +1,90 @@
 ---
 name: flow
-description: Run the pocketflow Node+Flow demo against the current backlog. 3-node pipeline (ReadBacklog → Analyze → Report) demonstrates the Node/Flow discipline (single-responsibility, prep/exec/post phases, shared store) over a real artifact.
+description: Run the async pocketflow Node+Flow demo over the current workspace. 4-node pipeline (ReadBacklog → DetectPackages → GenerateDocs → WriteReport) with parallel fan-out via asyncio.gather. No LLM calls, no pip deps — vendors AsyncNode + AsyncFlow.
 ---
 
-# kaizen flow demo
+# kaizen flow demo (async, v1.4.0+)
 
-Demonstrates the **Node + Flow discipline** (single-responsibility steps, `prep` / `exec` / `post` phases, shared store between nodes) using the project's own backlog as input. Pure offline — no LLM calls.
+Demonstrates the **async Node + Flow discipline** (single-responsibility steps, `prep_async` / `exec_async` / `post_async` phases, shared store between nodes, parallel fan-out) against a real artifact: this workspace's backlog + its package inventory.
 
-Run:
-
-!`python3 ${CLAUDE_PLUGIN_ROOT}/skills/kaizen/scripts/flow_demo.py`
+!`python3 ${CLAUDE_PLUGIN_ROOT}/skills/kaizen/scripts/flow_demo.py "${ARGUMENTS:-.}"`
 
 ## The Flow
 
 ```
-ReadBacklogNode  →  AnalyzeNode  →  ReportNode
+ReadBacklog → DetectPackages → GenerateDocs → WriteReport
+                               ↑ fan-out via      ↑ terminal
+                                 asyncio.gather
 ```
 
 | Node | Responsibility |
 |---|---|
-| **ReadBacklogNode** | `prep`: resolve `backlog.json` path. `exec`: parse JSON. `post`: store data in shared. |
-| **AnalyzeNode** | `prep`: pull data. `exec`: count items per section + tag, identify items missing probe/verify. `post`: store analysis. |
-| **ReportNode** | `prep`: pull analysis. `exec`: format as human-readable text. `post`: store report. |
+| **ReadBacklog** | `prep`: resolve backlog path from `.kaizen.toml`. `exec`: load `backlog.json` off-loop via `asyncio.to_thread`. `post`: store size in shared. |
+| **DetectPackages** | `prep`: get workspace root. `exec`: call `docs_gen.detect_packages` (scans for `Cargo.toml` / `package.json` / `go.mod` / `pyproject.toml`). `post`: store package list. |
+| **GenerateDocs** | `prep`: pull packages + root. `exec`: **fan-out N packages → N parallel `asyncio.gather` tasks** — each calls `docs_gen.scan_package`. `post`: store records. |
+| **WriteReport** | `prep`: gather sizes + records + per-node timings. `exec`: aggregate stats. `post`: print JSON summary. |
 
-The Flow itself is wired with `>>`:
+## Sample output (on shodan)
 
-```python
-read >> analyze >> report
-flow = Flow(start=read)
-flow.run({"backlog_path": path})
+```json
+{
+  "workspace_root": "/home/cherry86/workspace/shodan",
+  "backlog_items": 8,
+  "packages_detected": 26,
+  "packages_scanned": 26,
+  "total_loc": 236702,
+  "total_files": 1612,
+  "by_language": { "rust": 26 },
+  "top_5_by_loc": [
+    { "name": "shodan", "loc": 118351 },
+    { "name": "shodan-nodes", "loc": 48222 }
+  ],
+  "per_node_ms": {
+    "ReadBacklog": 0,
+    "DetectPackages": 6,
+    "GenerateDocs": 1141
+  }
+}
 ```
+
+24 crates scanned concurrently in ~1.1 s wall-clock. Sequential would be ~5–10× slower.
 
 ## Why this pattern?
 
-Every LLM-driven feature in the shodan workspace (and any project following the bundled `onion-ddd-workflow` skill) MUST decompose into:
+Every LLM-driven feature in shodan (and any project following the bundled `kaizen:onion-ddd-workflow`) MUST decompose into:
 
-1. **Node impls** — each discrete step is a `Node` with one responsibility
-2. **A Flow** — composes the nodes, defines transitions
-3. **Explicit state machine** — shared store carries data; no hidden globals
+1. **Node impls** — each step is a single-responsibility `Node` (or `AsyncNode`).
+2. **A Flow** — composes the nodes, defines transitions, owns shared state.
+3. **Explicit state machine** — shared store carries data between phases; no hidden globals.
 
-The demo is the simplest possible instance: 3 nodes, no LLM, no branching. Real Modes (chat, plan, agent) add branching and LlmClient nodes, but follow the same skeleton.
+The demo is the simplest non-trivial instance: 4 nodes, no LLM, no branching, with one fan-out. Real Modes (chat, plan, agent) add branching, LlmClient nodes, and retries — same skeleton.
 
-## Install once
+## Zero pip dependencies
+
+The script vendors a minimal `AsyncNode` + `AsyncFlow` (~40 LOC) whose shape mirrors PocketFlow's API exactly. If you'd rather use the upstream lib:
 
 ```bash
 pip install --user --break-system-packages pocketflow
 ```
 
-(Or via pipx / a virtualenv if you prefer isolated installs.)
+…then swap the two class definitions for `from pocketflow import AsyncNode, AsyncFlow`. Nothing else changes.
 
-## Sample output
+## Run from any shell
 
-```
-Backlog analysis (pocketflow Flow demo)
-========================================
-Total items:       8
-  in_flight:       0
-  next_up:         5
-  done:            0
-  parked:          3
-Decisions:         6
+If `${CLAUDE_PLUGIN_ROOT}` is empty (you're outside Claude Code), source the kaizen env first:
 
-Top 5 tags:
-  observability        7
-  bus                  2
-  lsp                  1
-  ...
-
-Discipline gaps:
-  items missing probe field:   0
-  items missing verify field:  0
+```bash
+source ~/.claude/local-marketplaces/kaizen-md/plugins/kaizen/skills/kaizen/scripts/kaizen-env.sh
+kaizen-flow .
 ```
 
-The "Discipline gaps" line is the load-bearing metric — items missing `probe` or `verify` fields are unsized work, breaking the sizing rule.
+`/kaizen:env install` adds that line to your `~/.bashrc` once.
+
+## Inputs
+
+```bash
+/kaizen:flow                # cwd
+/kaizen:flow /path/to/workspace
+```
+
+Pass a path or use cwd. The workspace doesn't need to be a kaizen-installed repo — the demo just needs at least one detectable package manifest.

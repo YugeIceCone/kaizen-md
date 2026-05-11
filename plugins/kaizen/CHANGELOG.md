@@ -3,6 +3,19 @@
 All notable changes to the `kaizen` plugin documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [SemVer](https://semver.org/).
 
+## [1.4.1] — 2026-05-11
+
+### Added — shell env for interactive use
+
+`${CLAUDE_PLUGIN_ROOT}` is auto-set inside Claude Code (hooks/skills) but undefined in your regular shell. v1.4.0 docs gave commands like `python3 ${CLAUDE_PLUGIN_ROOT}/skills/...` that collapsed to `/skills/...` in bash/zsh and failed.
+
+- **`scripts/kaizen-env.sh`** — sourceable env exporter. Sets `KAIZEN_ROOT`, `KAIZEN_SCRIPTS`, prepends scripts dir to `$PATH`, defines aliases (`kaizen-flow`, `kaizen-docs`, `kaizen-backlog`, `kaizen-cache`, `kaizen-context`, `kaizen-inbox`, `kaizen-rules`). Resolves its own location via `realpath`/`python3 os.path.realpath` so symlinked installs work.
+- **`/kaizen:env`** slash command — `print | install | install-zsh | path | uninstall`. `install` appends `source <path>/kaizen-env.sh` to `~/.bashrc` (or `~/.zshrc`) with idempotence + timestamped backup on uninstall.
+
+### Fixed
+
+- **`/kaizen:flow` was stale** — description said "3-node pipeline (ReadBacklog → Analyze → Report)" but v1.4.0 shipped the 4-node async demo with `asyncio.gather` fan-out. Updated description + body to match real behaviour, including the shodan-realistic sample output (26 packages, 236k LOC, 1.14 s parallel scan).
+
 ## [1.4.0] — 2026-05-11
 
 ### Added — docs generator, async demo, non-blocking inbox
