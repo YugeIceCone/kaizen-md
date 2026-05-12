@@ -3,6 +3,29 @@
 All notable changes to the `kaizen` plugin documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [SemVer](https://semver.org/).
 
+## [1.24.3] — 2026-05-12
+
+### Fix — `/kaizen:scrape <subcommand>` arg pass-through
+
+`commands/scrape.md` was using `${ARGUMENTS:-stats}` inside the inline-bash block. Claude Code substitutes **bare `$ARGUMENTS`** at template-render time (the whole word, including braces, is rewritten to the user's args) but treats **braced `${ARGUMENTS:-X}`** as bash syntax and leaves it verbatim. Bash then evaluates it against an unset `ARGUMENTS` env var, so the `:-stats` fallback always fires — and `/kaizen:scrape detect-llm` silently became `/kaizen:scrape stats`.
+
+The fix is a one-character swap:
+
+```
+- !`bash ${CLAUDE_PLUGIN_ROOT}/bin/kaizen-scrape ${ARGUMENTS:-stats}`
++ !`bash ${CLAUDE_PLUGIN_ROOT}/bin/kaizen-scrape $ARGUMENTS`
+```
+
+When the user passes no args, `$ARGUMENTS` substitutes to empty, and the bin shim's own `case "${1:-stats}"` provides the default. When the user passes `detect-llm`, the template becomes `bash bin/kaizen-scrape detect-llm` and routes correctly.
+
+### Lesson
+
+For other kaizen commands that take subcommand args, the same fix applies (`$ARGUMENTS` not `${ARGUMENTS:-X}`). Defaults belong in the underlying script's argparse / case statement, not in the slash-command template — pushing defaults into bash makes them invisible to Claude Code's template substitution.
+
+### Why patch (1.24.2 → 1.24.3)
+
+One-character change in one file. Pure-fix; no behavior changes elsewhere.
+
 ## [1.24.2] — 2026-05-12
 
 ### Fix — `/kaizen:scrape detect-llm` no longer triggers a 123-package install
