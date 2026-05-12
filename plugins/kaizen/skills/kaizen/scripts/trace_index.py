@@ -241,17 +241,23 @@ def iter_all_events():
         yield from iter_jsonl(f)
 
 
+import _embed as _kz_embed  # v1.25.0+: HTTP-first embedding backend
+
+
 def cmd_index(max_n: Optional[int] = None, embed_data: bool = False) -> dict:
     """Incremental index: skip events whose content_hash is already in db."""
-    model, np = _load_model()
     conn = open_db()
+
+    # v1.25.0+: resolve the actual backend; model/dim come from there.
+    backend = _kz_embed.resolve_backend()
+    active_model = backend.get("model", DEFAULT_MODEL)
 
     # Set/check model + dim
     stored_model = get_meta(conn, "model", "")
-    if stored_model and stored_model != DEFAULT_MODEL:
-        print(f"  ! model changed ({stored_model} → {DEFAULT_MODEL}); reindex recommended", file=sys.stderr)
-    set_meta(conn, "model", DEFAULT_MODEL)
-    set_meta(conn, "dim", str(DEFAULT_DIM))
+    if stored_model and stored_model != active_model:
+        print(f"  ! model changed ({stored_model} → {active_model}); reindex recommended", file=sys.stderr)
+    set_meta(conn, "model", active_model)
+    set_meta(conn, "backend_kind", backend.get("kind", "local"))
 
     # Existing hashes
     existing = set(row["content_hash"] for row in conn.execute("SELECT content_hash FROM trace_events"))
@@ -267,14 +273,15 @@ def cmd_index(max_n: Optional[int] = None, embed_data: bool = False) -> dict:
             break
 
     if not new_events:
-        return {"indexed": 0, "total": len(existing), "model": DEFAULT_MODEL}
+        return {"indexed": 0, "total": len(existing), "model": active_model}
 
-    # Batch embed
+    # Batch embed via _embed (HTTP /v1/embeddings or local sentence-transformers).
     texts = [event_to_text(ev, embed_data=embed_data) for ev, _ in new_events]
-    embeddings = model.encode(texts, batch_size=64, show_progress_bar=False, convert_to_numpy=True)
+    embeddings_bytes, actual_dim = _kz_embed.embed_batch(texts)
+    set_meta(conn, "dim", str(actual_dim))
 
-    # Insert
-    for (ev, h), emb in zip(new_events, embeddings):
+    # Insert — embeddings_bytes is already a list of float32 bytes from _kz_embed.embed_batch.
+    for (ev, h), emb_blob in zip(new_events, embeddings_bytes):
         data_json = json.dumps(ev.get("data", {}), separators=(",", ":")) if ev.get("data") else None
         conn.execute("""
             INSERT OR IGNORE INTO trace_events
@@ -288,7 +295,7 @@ def cmd_index(max_n: Optional[int] = None, embed_data: bool = False) -> dict:
             ev.get("tool", ""),
             ev.get("ms"),
             data_json,
-            emb.astype(np.float32).tobytes(),
+            emb_blob,
             h,
         ))
 
@@ -335,7 +342,8 @@ def cmd_search(query: str, top_k: int = 10, src: str = "", sid: str = "",
         sys.stderr.write("trace-search: index not built. Run: kaizen-trace-index index\n")
         return []
 
-    model, np = _load_model()
+    # v1.25.0+: query embed via shared _embed (HTTP llama-server or local fallback).
+    import numpy as np
     conn = open_db(create=False)
 
     # SQL filters
@@ -365,14 +373,19 @@ def cmd_search(query: str, top_k: int = 10, src: str = "", sid: str = "",
         conn.close()
         return []
 
-    # Embed the query
-    q_emb = model.encode([query], convert_to_numpy=True)[0]
+    # Embed the query via the shared backend.
+    q_blob, q_dim = _kz_embed.embed_one(query)
+    q_emb = np.frombuffer(q_blob, dtype=np.float32)
     q_norm = q_emb / (np.linalg.norm(q_emb) + 1e-9)
 
-    # Score all rows
+    # Score all rows (skip dim mismatches — backend may have changed mid-DB).
     scored = []
+    skipped_mismatch = 0
     for row in rows:
         emb = np.frombuffer(row["embedding"], dtype=np.float32)
+        if emb.shape[0] != q_dim:
+            skipped_mismatch += 1
+            continue
         emb_norm = emb / (np.linalg.norm(emb) + 1e-9)
         sim = float(np.dot(q_norm, emb_norm))
         scored.append((sim, row))

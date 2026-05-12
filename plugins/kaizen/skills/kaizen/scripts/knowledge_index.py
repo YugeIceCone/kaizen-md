@@ -436,10 +436,13 @@ def item_to_text(item: dict, embed_body: bool) -> str:
     return " | ".join(bits)
 
 
+import _embed as _kz_embed  # v1.25.0+: HTTP-first embedding backend
+
+
 def embed_one(text: str):
-    model, np = _load_model()
-    vec = model.encode(text, convert_to_numpy=True, show_progress_bar=False)
-    return vec.astype(np.float32).tobytes()
+    # v1.25.0+: routes via _embed (llama-server HTTP first, sentence-transformers fallback).
+    blob, _dim = _kz_embed.embed_one(text)
+    return blob
 
 
 # ─── Data-returning helpers (also used by knowledge_mcp.py) ──────────
@@ -513,11 +516,12 @@ def do_search(
     if not DB_PATH.is_file():
         return []
     conn = open_db(create=False)
-    model, np = _load_model()
-    qvec = model.encode(query, convert_to_numpy=True, show_progress_bar=False).astype(
-        np.float32
-    )
+    # v1.25.0+: query embedding via shared _embed backend.
+    import numpy as np
+    qblob, _ = _kz_embed.embed_one(query)
+    qvec = np.frombuffer(qblob, dtype=np.float32).astype(np.float32)
     qnorm = qvec / (np.linalg.norm(qvec) + 1e-12)
+    q_dim = qvec.shape[0]
 
     where_sql = ""
     params: list = []
@@ -528,14 +532,21 @@ def do_search(
         f"SELECT * FROM knowledge_items{where_sql}", params
     ).fetchall()
     scored = []
+    skipped_mismatch = 0
     for r in rows:
         if not r["embedding"]:
             continue
         evec = np.frombuffer(r["embedding"], dtype=np.float32)
-        if evec.shape[0] != DEFAULT_DIM:
+        if evec.shape[0] != q_dim:
+            skipped_mismatch += 1
             continue
         score = float(np.dot(qnorm, evec / (np.linalg.norm(evec) + 1e-12)))
         scored.append((score, r))
+    if skipped_mismatch:
+        sys.stderr.write(
+            f"kaizen-knowledge: skipped {skipped_mismatch} row(s) with dim != {q_dim} — "
+            f"reindex after embed-backend change\n"
+        )
     scored.sort(key=lambda x: x[0], reverse=True)
     out = []
     for score, r in scored[:top_k]:

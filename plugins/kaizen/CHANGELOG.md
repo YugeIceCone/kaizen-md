@@ -3,6 +3,73 @@
 All notable changes to the `kaizen` plugin documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [SemVer](https://semver.org/).
 
+## [1.25.0] — 2026-05-12
+
+### Added — `_embed.py` shared embedding backend (HTTP-first)
+
+All four kaizen indexers (trace / knowledge / onboard / scrape) now route embeddings through `skills/kaizen/scripts/_embed.py`. Resolution order:
+
+1. **`KAIZEN_EMBED_BACKEND=local`** → force sentence-transformers.
+2. **`KAIZEN_EMBED_BACKEND=http`** + `KAIZEN_EMBED_HTTP_BASE_URL` + `KAIZEN_EMBED_HTTP_MODEL` → force HTTP, no probe.
+3. **Cached** at `~/.claude/.kaizen/embed_endpoint.json`.
+4. **Live probe** of the 5 endpoints scrape uses — but only accepts hits whose model name matches an embedding-model pattern (`nomic-embed`, `bge-*`, `gte-*`, `minilm`, `stella`, `jina-embed`, `e5-*`, `*-embed`, `text-embedding`).
+5. **Fallback** to local sentence-transformers (`all-MiniLM-L6-v2`).
+
+When a llama-server `--embedding` endpoint is up, kaizen now uses it via `POST /v1/embeddings` — **no sentence-transformers / torch / numpy install needed** for embedding calls.
+
+### Changed — embed-vs-chat detection in `detect-llm`
+
+`scrape_index.py` now distinguishes chat from embedding models by name pattern (using `_embed.is_embedding_model_name`). Embedding-only models are **explicitly skipped** when probing for a chat backend (they can't satisfy SmartScraperGraph). Cache shape extended:
+
+```json
+{"provider": "openai", "model": "...", "base_url": "...", "kind": "chat"}
+```
+
+Surfaces the kind in `detect-llm` output. If only an embedding model is reachable, scrape exits with an actionable error pointing at llama-swap or model-loading via Unsloth.
+
+### Changed — all four indexers wired to `_embed`
+
+- `trace_index.py` — `cmd_index` uses `_embed.embed_batch()`; `cmd_search` uses `_embed.embed_one()`. Model + dim now come from the resolved backend (not hard-coded constants).
+- `knowledge_index.py` — `embed_one()` + search path delegate to `_embed`.
+- `onboard_index.py` — same.
+- `scrape_index.py` — `EmbedAndPersist` node + `do_search` use `_embed`.
+
+All four also now **detect dim mismatches** between query vector and stored rows — surfaces a count + reindex hint when you switch embedding backends mid-DB.
+
+### Why this matters when you have local embeddings
+
+Before: every indexer ran sentence-transformers locally on CPU (Python, ~80ms/query, ~3GB of dep install).
+
+After (with `nomic-embed-text-v2` on `llama-server --embedding --port 8080`): one HTTP POST to your GPU-accelerated server. **5-20× faster per embedding**, model quality jump from 2021 MiniLM (384-dim) to 2025 nomic-v2 (768-dim).
+
+### Migration
+
+After switching backends (e.g. local → HTTP with nomic), existing index rows have the old dim. Searches surface a `skipped N row(s) with dim != Q` warning. To rebuild:
+
+```
+/kaizen:trace-search clear     # then re-index when ready
+/kaizen:knowledge clear
+/kaizen:onboard clear
+/kaizen:scrape clear
+```
+
+### Companion: chat-model picks (Unsloth GGUFs)
+
+For users wanting a small chat model to complement nomic embeddings — recommended downloads from Unsloth's HF org:
+
+| Tier | Model |
+|------|-------|
+| Lightest (~3GB) | `unsloth/Qwen3-4B-Thinking-2507-GGUF` |
+| Sweet spot (~5GB) | `unsloth/Qwen2.5-7B-Instruct-GGUF` |
+| **Best quality (~17GB MoE)** | `unsloth/Qwen3-30B-A3B-Instruct-2507-GGUF` (3B active params; 30B-quality at 3B-speed) |
+| Structured-output specialist | `unsloth/Qwen3-Coder-30B-A3B-Instruct-GGUF` |
+
+Pair via `llama-swap` (or two `llama-server` instances on different ports) so chat AND embed are both available; kaizen detects both correctly.
+
+### Why minor (1.24.3 → 1.25.0)
+
+New shared module (~290 LOC), 5 scripts refactored to use it, new env-var surface (`KAIZEN_EMBED_BACKEND`, `KAIZEN_EMBED_HTTP_BASE_URL`, `KAIZEN_EMBED_HTTP_MODEL`), new cache file. Existing local-only paths still work as fallback. No breaking changes — the resolver auto-routes based on what's running.
+
 ## [1.24.3] — 2026-05-12
 
 ### Fix — `/kaizen:scrape <subcommand>` arg pass-through

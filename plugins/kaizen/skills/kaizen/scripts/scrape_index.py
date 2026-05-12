@@ -98,26 +98,7 @@ SNIPPET_MAX = _cfg.SCRAPE_SNIPPET_MAX
 # ─── Lazy ML + scrapegraph imports ───────────────────────────────────
 
 
-_embed_model = None
-_np = None
-
-
-def _load_embedder():
-    global _embed_model, _np
-    if _embed_model is None:
-        try:
-            from sentence_transformers import SentenceTransformer  # type: ignore
-            import numpy as np  # type: ignore
-        except ImportError as e:
-            sys.stderr.write(
-                f"kaizen-scrape: missing embed dep: {e}\n"
-                "PEP 723 should auto-install via uv. If running with python3:\n"
-                "  pip install --user sentence-transformers numpy\n"
-            )
-            sys.exit(1)
-        _np = np
-        _embed_model = SentenceTransformer(DEFAULT_MODEL)
-    return _embed_model, _np
+import _embed  # noqa: E402 — v1.25.0+: HTTP-first embedding backend
 
 
 def _load_scraper_cls():
@@ -272,18 +253,26 @@ def detect_llm(refresh: bool = False, verbose: bool = False) -> dict | None:
         if verbose:
             sys.stderr.write(f"  probing {base_url}{list_path}...")
         model = _probe_endpoint(base_url, list_path, model_field, _cfg.SCRAPE_LLM_PROBE_TIMEOUT)
-        if model:
+        if not model:
             if verbose:
-                sys.stderr.write(f" ✓ {provider}/{model}\n")
-            result = {"provider": provider, "model": model, "base_url": base_url}
-            try:
-                _LLM_CACHE_PATH.parent.mkdir(parents=True, exist_ok=True)
-                _LLM_CACHE_PATH.write_text(json.dumps(result, indent=2))
-            except OSError:
-                pass
-            return result
-        elif verbose:
-            sys.stderr.write(" ✗\n")
+                sys.stderr.write(" ✗\n")
+            continue
+        # v1.25.0+: distinguish chat vs embed models by name pattern.
+        # An embedding model can't satisfy SmartScraperGraph's chat needs.
+        kind = "embed" if _embed.is_embedding_model_name(model) else "chat"
+        if kind == "embed":
+            if verbose:
+                sys.stderr.write(f" ∘ {provider}/{model} (embedding-only — skipping for chat)\n")
+            continue
+        if verbose:
+            sys.stderr.write(f" ✓ {provider}/{model}\n")
+        result = {"provider": provider, "model": model, "base_url": base_url, "kind": kind}
+        try:
+            _LLM_CACHE_PATH.parent.mkdir(parents=True, exist_ok=True)
+            _LLM_CACHE_PATH.write_text(json.dumps(result, indent=2))
+        except OSError:
+            pass
+        return result
     return None
 
 
@@ -439,18 +428,19 @@ class EmbedAndPersist(AsyncNode):
             store["persisted"] = 0
             return None
 
-        model, np = _load_embedder()
         conn = open_db(create=True)
         prompt = store["prompt"]
         ts = dt.datetime.now(dt.timezone.utc).isoformat()
         written = 0
+        actual_dim = 0
+        actual_model = ""
         for item in store["synth"]:
             if item.get("skip"):
                 continue
             text = item["text"]
             embed_input = (item["title"] + "\n" + text).strip()[:SNIPPET_MAX * 4]
-            vec = model.encode(embed_input, convert_to_numpy=True, show_progress_bar=False)
-            blob = vec.astype(np.float32).tobytes()
+            blob, dim = _embed.embed_one(embed_input)
+            actual_dim = dim
             sha = item_sha(item["url"], prompt)
             conn.execute(
                 """INSERT OR REPLACE INTO scrape_items
@@ -463,8 +453,11 @@ class EmbedAndPersist(AsyncNode):
                 ),
             )
             written += 1
-        set_meta(conn, "model", DEFAULT_MODEL)
-        set_meta(conn, "dim", str(DEFAULT_DIM))
+        backend = _embed.resolve_backend()
+        actual_model = backend.get("model", DEFAULT_MODEL)
+        set_meta(conn, "model", actual_model)
+        set_meta(conn, "dim", str(actual_dim or DEFAULT_DIM))
+        set_meta(conn, "backend_kind", backend.get("kind", "local"))
         set_meta(conn, "last_scrape_ts", ts)
         conn.commit()
         conn.close()
@@ -506,19 +499,32 @@ def do_search(query: str, top_k: int = 10) -> list[dict]:
     if not DB_PATH.is_file():
         return []
     conn = open_db(create=False)
-    model, np = _load_embedder()
-    qvec = model.encode(query, convert_to_numpy=True, show_progress_bar=False).astype(
+    # v1.25.0+: use shared _embed backend (HTTP llama-server or fallback).
+    # numpy is loaded inside _embed; we import locally here for the cosine math.
+    import numpy as np
+    qblob, _ = _embed.embed_one(query)
+    qvec = np.frombuffer(qblob, dtype=np.float32).astype(
         np.float32
     )
     qnorm = qvec / (np.linalg.norm(qvec) + 1e-12)
+    q_dim = qvec.shape[0]
     rows = conn.execute("SELECT * FROM scrape_items").fetchall()
     scored = []
+    skipped_mismatch = 0
     for r in rows:
         evec = np.frombuffer(r["embedding"], dtype=np.float32)
-        if evec.shape[0] != DEFAULT_DIM:
+        if evec.shape[0] != q_dim:
+            # v1.25.0+: dim mismatch (e.g. backend switched from 384 → 768).
+            # Skip but count; surface the count to the user.
+            skipped_mismatch += 1
             continue
         score = float(np.dot(qnorm, evec / (np.linalg.norm(evec) + 1e-12)))
         scored.append((score, r))
+    if skipped_mismatch:
+        sys.stderr.write(
+            f"kaizen-scrape: skipped {skipped_mismatch} row(s) with dim != {q_dim} — "
+            f"reindex with `clear` + `scrape` after backend change\n"
+        )
     scored.sort(key=lambda x: x[0], reverse=True)
     out = []
     for s, r in scored[:top_k]:
