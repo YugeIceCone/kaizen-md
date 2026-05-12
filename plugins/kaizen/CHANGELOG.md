@@ -3,6 +3,73 @@
 All notable changes to the `kaizen` plugin documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [SemVer](https://semver.org/).
 
+## [1.16.0] — 2026-05-12
+
+Knowledge RAG over the non-trace corpus + Self-RAG retrieval discipline skill. Second of two releases closing the four-track ask from v1.14.0; v1.15.0 shipped Python tooling + advisory Confidence-Score branching, this one ships the RAG / vectorized-data half.
+
+### Added — `knowledge_index.py` (semantic search over brain / plans / backlog / schemas / persona)
+
+`skills/kaizen/scripts/knowledge_index.py` — sibling of `trace_index.py`. Same architecture (SQLite + sentence-transformers + 384-dim cosine), same model (`all-MiniLM-L6-v2`), same privacy defaults (signature embedding only; body opt-in via `--embed-body`). PEP 723 inline metadata pins CPU torch, mirroring the v1.12.0 trace-index pattern — uv-managed venv, no system-pip pollution.
+
+**Five source iterators:**
+
+| Source       | Where                                              | What becomes a unit |
+|--------------|----------------------------------------------------|---------------------|
+| `brain-note` | `~/.claude/brain/Notes/*.md`                       | One per `.md`; frontmatter `name:` + `tags:` parsed |
+| `plan`       | `<repo>/plans/**/*.md` (incl. archive)              | One per `.md`; title = first `# H1` |
+| `backlog`    | `<repo>/.workflow/backlog.json` items              | One per item; title = `BK-N title` |
+| `schema`     | built-in + user + project tiers (same as `/kaizen:schema list`) | One per `schema.yaml` |
+| `persona`    | `~/.claude/brain/Persona.md` `## Top Beliefs`      | One per `[[Notes/...]]` reference |
+
+**Privacy:** files matching `*secret*`, `*credential*`, `*token*` in their path are skipped entirely regardless of `--embed-body`.
+
+**Subcommands:** `index | reindex | search | stats | get | path | clear` — surface mirrors `trace-index` so users already familiar with one can read the other.
+
+### Added — `/kaizen:knowledge` slash command
+
+`commands/knowledge.md` — wraps `knowledge_index.py`. Default subcommand is `stats` (zero-arg call shows the current index state). Search example:
+
+```bash
+/kaizen:knowledge search "onion ddd boundary lint" --top-k 5
+/kaizen:knowledge search "merge freeze" --source brain-note
+```
+
+### Added — `bin/kaizen-knowledge-index` shell shim
+
+6-line wrapper that delegates to `uv run --script` so the PEP 723 deps install on first run. `install.sh` auto-symlinks `kaizen-*` into `~/.local/bin/` — next `/kaizen:install` picks up the new shim (symlink count: 18 → 19).
+
+### Added — `self-rag` skill (retrieval discipline)
+
+`skills/self-rag/SKILL.md` — codifies the Self-RAG metacognitive pattern (Asai et al. 2023, adapted) against kaizen's two corpora:
+
+1. **Pre-retrieval decision** — should I retrieve at all? (Litmus: am I about to cite a project-specific noun I'm not 100% sure is fresh in context?)
+2. **Relevance + freshness + source-tier checks** — topic match? `freshness:` field stable? persona belief > project plan > old backlog probe?
+3. **Post-answer verification** — citation tight? contradictions surfaced? gap checks for adjacent retrievals missed?
+
+Iron Laws: never retrieve and then ignore; never claim a convention you didn't verify; never embed PII / secrets in queries; stale beliefs decay (>6 months + not `freshness: stable` → advisory only).
+
+### Permissions
+
+`plugin.json` allows `python3 ${CLAUDE_PLUGIN_ROOT}/skills/kaizen/scripts/knowledge_index.py:*` for the slash command's embedded `!` invocation.
+
+### First-time setup
+
+The PEP 723 metadata auto-installs `sentence-transformers`, `numpy`, and CPU torch on first invocation via `uv run --script`. Same one-time setup as `kaizen-trace-index` (no separate dependency dance).
+
+```bash
+/kaizen:knowledge index           # first index — installs deps, downloads model (~80MB)
+/kaizen:knowledge search "..."    # subsequent calls reuse the venv + cached model
+```
+
+### Why minor (1.15.0 → 1.16.0)
+
+New 500-LOC index script, new slash command, new shell shim, new discipline skill. Additive surface; no breaking changes; mirrors the v1.12.0 trace-search shape so users have a consistent mental model across both corpora.
+
+### Deferred to v1.16.x
+
+- MCP wrapper for `knowledge_index.py` (parallel to `trace_mcp.py` — exposes `search` as an `mcp__plugin_kaizen_kaizen-knowledge-search__*` tool). Slash command is the v1.16.0 surface; MCP wrapper is a thin follow-up.
+- Real runtime state-machine branching for Confidence-Score (`workflow.sh branch <stage> <key>` subcommand that mutates `state.stages[current:]`). v1.15.0 shipped the advisory layer; real splicing if the advisory layer sees real use.
+
 ## [1.15.0] — 2026-05-12
 
 Python tooling depth + Confidence-Score branching (advisory). First of two releases closing the v1.14.0 deferred items; the second (knowledge-RAG + Self-RAG) lands as v1.16.0.

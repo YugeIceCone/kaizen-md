@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+# kaizen-knowledge-index — semantic search over brain notes, plans, backlog, schemas, persona.
+set -uo pipefail
+SCRIPT=$(python3 -c "import os, sys; print(os.path.realpath(sys.argv[1]))" "${BASH_SOURCE[0]}")
+PLUGIN_ROOT=$(cd "$(dirname "$SCRIPT")/.." && pwd)
+exec uv run --script "$PLUGIN_ROOT/skills/kaizen/scripts/knowledge_index.py" "$@"
