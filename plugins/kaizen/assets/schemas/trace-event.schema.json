@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/YugeIceCone/kaizen-md/assets/schemas/trace-event.schema.json",
+  "title": "Kaizen trace event",
+  "description": "One JSONL line in ~/.claude/.kaizen/trace/events.jsonl (v1.22.0+ path; previously ~/.claude/.kaizen-trace/events.jsonl). Producer: trace.py via hooks/_trace.sh, llm_proxy.py, daemon.py, browser_mcp.py. Consumer: trace.py query/tail, trace_index.py for semantic search, observe.py.",
+  "type": "object",
+  "required": ["ts", "src", "evt"],
+  "properties": {
+    "ts": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO UTC timestamp with millisecond precision (e.g. 2026-05-12T00:30:00.123Z)."
+    },
+    "src": {
+      "enum": ["hook", "agent", "llm", "tool", "user", "cc", "plugin"],
+      "description": "Event source — which subsystem emitted it."
+    },
+    "evt": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Event name, free-form within the src namespace (e.g. 'PreToolUse-bash', 'UserPromptSubmit', 'chat-completion')."
+    },
+    "sid": {
+      "type": "string",
+      "description": "Claude Code session id (uuid form). Empty when not applicable (e.g. plugin-level events)."
+    },
+    "tool": {
+      "type": "string",
+      "description": "Tool name for src=hook | src=tool events (e.g. 'Bash', 'Edit', 'Read')."
+    },
+    "ms": {
+      "type": ["integer", "null"],
+      "minimum": 0,
+      "description": "Duration in milliseconds for timed events. Null when the event has no duration semantic."
+    },
+    "data": {
+      "type": "object",
+      "description": "Event-specific payload. Shape varies by src+evt; not constrained here. NEVER embedded in semantic search vectors regardless of --embed-data flag (only specific safe fields per kaizen privacy policy).",
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": false
+}

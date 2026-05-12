@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/YugeIceCone/kaizen-md/assets/schemas/inbox-message.schema.json",
+  "title": "Kaizen inbox message",
+  "description": "One file per user prompt under ~/.claude/.kaizen/inbox/<ts>-<n>.json (v1.22.0+ path; previously ~/.claude/kaizen-inbox/). Producer: inbox.py capture (called by hooks/userprompt-inbox.sh). Consumer: inbox.py {list,peek,drain,stats}. Surfaces pending messages on the next PostToolUse boundary as additionalContext.",
+  "type": "object",
+  "required": ["ts", "prompt"],
+  "properties": {
+    "ts": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO UTC timestamp with millisecond precision — when the user submitted this prompt."
+    },
+    "prompt": {
+      "type": "string",
+      "description": "Verbatim user text from UserPromptSubmit."
+    },
+    "session_id": {
+      "type": "string",
+      "default": "",
+      "description": "Claude Code session uuid this message was sent in."
+    },
+    "drained": {
+      "type": "boolean",
+      "default": false,
+      "description": "Has this message been surfaced to Claude via the PostToolUse drain yet?"
+    },
+    "drained_at": {
+      "type": ["string", "null"],
+      "format": "date-time",
+      "description": "When the drain happened (ISO UTC). Null until drained."
+    },
+    "drain_reason": {
+      "type": "string",
+      "default": "",
+      "description": "Why the drain fired — typically 'turn-starter-completed' or empty if not drained."
+    }
+  },
+  "additionalProperties": false
+}

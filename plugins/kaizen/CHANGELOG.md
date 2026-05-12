@@ -3,6 +3,54 @@
 All notable changes to the `kaizen` plugin documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [SemVer](https://semver.org/).
 
+## [1.23.0] — 2026-05-12
+
+### Added — `/kaizen:review` and `/kaizen:audit` (two distinct tools per the synavos article)
+
+Per [synavos.com/code-review-vs-code-audit](https://synavos.com/blogs/code-review-vs-code-audit/), code review and code audit are operationally distinct:
+
+| Tool                  | Cadence       | Scope         | Output                  | Catches                                            |
+|-----------------------|---------------|---------------|-------------------------|----------------------------------------------------|
+| `/kaizen:review`      | Per-change    | Current diff  | Inline-style checklist  | Logic/style/maintainability, paired-test gaps, minor security |
+| `/kaizen:audit`       | Periodic      | Whole repo    | Severity-classified MD  | Architecture violations, deep security, perf, compliance |
+
+**`/kaizen:review`** — fast diff-time review. Defaults to HEAD vs `main`/`master`/`HEAD~1`; `--staged` reviews `git diff --cached`. Checks: paired-test gap (new `pub fn` / exports / def without tests), deep-nesting hotspots, fresh TODO/FIXME/XXX, long-function smells (>80-line hunks), hardcoded-secret patterns, diff-size advisory (>15 files), trailing whitespace. Flags: `--base`, `--staged`, `--agent` (dispatch agent-critic), `--json`. ~150 LOC.
+
+**`/kaizen:audit`** — periodic comprehensive audit. Whole-repo or `--scope <dir>`. Severity tiers: Critical / High / Medium / Low / Info. Categories:
+
+- **Security** — hardcoded credentials, unsafe Rust outside ffi/, eval/exec/shell=True
+- **Architecture** — onion-DDD violations (outer-ring crates imported in core), mod-density signal
+- **Tech debt** — TODO/FIXME/XXX/HACK marker count
+- **Dependencies** — lockfile staleness (>6 months), direct-dep audit hint
+- **Coverage** — test-file / source-file ratio
+- **Documentation** — README / CLAUDE.md / architecture_log presence
+- **Compliance** — LICENSE file presence
+
+Writes a formal markdown report to `<repo>/.kaizen/workflow/audits/<UTC>-<scope>.md` by default. Flags: `--scope`, `--no-report`, `--json`, `--agent` (dispatch agent-aegis + kaizen-debt-auditor in parallel). ~250 LOC.
+
+Smoke-tested against the shodan workspace: surfaced a real onion violation (tokio import in `crates/core/`), unsafe-block density, missing LICENSE, mod-density signal — 7 findings classified correctly across 4 severity tiers.
+
+### Added — three JSON Schemas backfilling the v1.9.0 dataclasses
+
+The v1.19.0 schema polish added JSON Schema mirrors for the new shapes but left the original three v1.9.0 dataclasses uncovered. Backfilling now:
+
+- `assets/schemas/trace-event.schema.json` — TraceEvent (events.jsonl line shape)
+- `assets/schemas/inbox-message.schema.json` — InboxMessage (kaizen-inbox file shape)
+- `assets/schemas/daemon-state.schema.json` — DaemonState (daemon state.json shape)
+
+All three use the same draft 2020-12 + `$defs` pattern as the v1.19.0 schemas. README inventory updated. JSON-validated.
+
+### Surface — new files
+
+- `commands/review.md`, `commands/audit.md`
+- `skills/kaizen/scripts/review.sh` (~190 LOC), `skills/kaizen/scripts/audit.sh` (~280 LOC)
+- `bin/kaizen-review`, `bin/kaizen-audit` — shims (count 23 → 25)
+- `assets/schemas/trace-event.schema.json`, `inbox-message.schema.json`, `daemon-state.schema.json`
+
+### Why minor (1.22.0 → 1.23.0)
+
+Two new slash commands + three new JSON Schemas. Pure-additive; no script behavior changes elsewhere.
+
 ## [1.22.0] — 2026-05-12
 
 Path unification + single-file config SSOT. Everything kaizen-owned now lives under one `.kaizen/` root (user-global) or `<repo>/.kaizen/` (project-side). `config.py` becomes the one file you edit to retune plugin-wide defaults.

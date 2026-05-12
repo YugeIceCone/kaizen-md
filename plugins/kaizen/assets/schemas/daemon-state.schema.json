@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/YugeIceCone/kaizen-md/assets/schemas/daemon-state.schema.json",
+  "title": "Kaizen daemon state",
+  "description": "Single file at ~/.claude/.kaizen/daemon/state.json (v1.22.0+ path; previously ~/.claude/.kaizen-daemon/state.json). Producer + consumer: daemon.py tick / status. Tracks cron-driven hash-compare + hygiene runs.",
+  "type": "object",
+  "properties": {
+    "runs": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 0,
+      "description": "Total ticks since install."
+    },
+    "last_run": {
+      "type": ["string", "null"],
+      "format": "date-time",
+      "description": "ISO UTC of the most recent tick. Null before the first run."
+    },
+    "source_hash": {
+      "type": "string",
+      "default": "",
+      "description": "SHA1 of the plugin source dir at last tick. Used to detect source drift."
+    },
+    "cache_hash": {
+      "type": "string",
+      "default": "",
+      "description": "SHA1 of the cached version dir at last tick. Drift from source_hash triggers refresh-cache."
+    },
+    "local_sha": {
+      "type": "string",
+      "pattern": "^([a-f0-9]{7,40})?$",
+      "default": "",
+      "description": "git rev-parse HEAD of the marketplace at last tick."
+    },
+    "remote_sha": {
+      "type": "string",
+      "pattern": "^([a-f0-9]{7,40})?$",
+      "default": "",
+      "description": "ls-remote origin master at last tick. Drift from local_sha indicates an upstream update."
+    },
+    "actions": {
+      "type": "object",
+      "description": "Counts of each maintenance action the daemon has performed across all ticks.",
+      "additionalProperties": {
+        "type": "integer",
+        "minimum": 0
+      }
+    }
+  },
+  "additionalProperties": false
+}

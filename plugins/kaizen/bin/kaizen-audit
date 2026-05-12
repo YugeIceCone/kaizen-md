@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+# kaizen-audit — comprehensive periodic codebase audit.
+set -uo pipefail
+SCRIPT=$(python3 -c "import os, sys; print(os.path.realpath(sys.argv[1]))" "${BASH_SOURCE[0]}")
+PLUGIN_ROOT=$(cd "$(dirname "$SCRIPT")/.." && pwd)
+exec bash "$PLUGIN_ROOT/skills/kaizen/scripts/audit.sh" "$@"
