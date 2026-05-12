@@ -3,6 +3,34 @@
 All notable changes to the `kaizen` plugin documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [SemVer](https://semver.org/).
 
+## [1.18.0] — 2026-05-12
+
+### Added — `kaizen:agent-formatting` skill
+
+Codifies a rule the user corrected mid-session — don't mix Claude Code slash commands with shell-syntax in assistant messages. Triggers when drafting a response that contains both a `/foo` and a bash command, or when the user asks "is this slash or bash?".
+
+**The three formats:**
+
+| Surface                                          | Format                              | Chaining            |
+|--------------------------------------------------|-------------------------------------|---------------------|
+| Slash command (`/kaizen:foo`, `/workflow ...`)   | Plain line, no fence                | Never with shell ops |
+| Inline bash (output back to the conversation)    | `!cmd` on its own line              | None                |
+| Terminal bash (user's own shell)                 | Fenced ```` ```bash ```` block       | Shell ops allowed   |
+
+Anti-patterns codified explicitly (with fix examples in the skill body):
+
+- Slash command wrapped in a `bash` code fence
+- Slash commands chained with `&&`, `||`, `;`, or `|`
+- Mixing a bash command and a slash command inside one fenced block
+
+### Why a skill + embedded schema
+
+The skill body contains a **machine-parseable YAML rules block** (`schema_version: 1`) that lists each rule's `id`, `pattern`, `format`, and `rationale`. Any future linter (or the kaizen gate, if/when it scans assistant message drafts) can consume the structured rules without re-parsing the prose. The human-readable body and the structured schema live in the same file by design — single source of truth, no drift.
+
+### Why minor (1.17.0 → 1.18.0)
+
+New skill = new agent-facing surface. Additive only. No script changes, no permission changes, no breaking surface.
+
 ## [1.17.0] — 2026-05-12
 
 Closes the three v1.16.x follow-ups in one release: (1) MCP wrapper for `knowledge_index.py`, (2) real runtime state-machine branching for Confidence-Score (`workflow.sh branch <stage> <key>`), (3) `do_*` data-returning helpers in `knowledge_index.py` (refactor enabling the MCP wrapper).
