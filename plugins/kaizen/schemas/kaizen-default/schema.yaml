@@ -1,0 +1,81 @@
+# Kaizen default workflow schema — mirrors the routines hardcoded in the
+# v1.0+ workflow-routing skill (audit / build-feature / fix-bug / refactor
+# / migrate / harden). DECLARATIVE re-statement, not yet wired into the
+# runtime.
+#
+# See docs/workflow-schemas-research.md for the migration design.
+
+name: kaizen-default
+version: 1
+description: |
+  Full kaizen workflow: research → explore → analyze → plan → tasks →
+  execute → review → validate. Suitable for medium-risk multi-step work.
+
+artifacts:
+  - id: research
+    generates: research/<topic>.md
+    template: research/note.md
+    requires: []
+    description: External-fact gathering before any code touches. Cite sources.
+
+  - id: explore
+    generates: explore/<area>.md
+    template: explore/note.md
+    requires: []
+    description: |
+      Codebase structure + existing patterns. Output: file map +
+      entry points + naming conventions.
+
+  - id: analyze
+    generates: analyze/<change>.md
+    template: analyze/note.md
+    requires: [research, explore]
+    description: |
+      Blast radius. Affected files + interfaces + invariants + tests.
+      Forces a Decision: is this scope a micro or a plan-file?
+
+  - id: plan
+    generates: plans/<date>-<slug>.md
+    template: plans/plan.md
+    requires: [analyze]
+    description: |
+      Phased plan with verification gates per phase. Only for ≥3-phase
+      work; smaller goes in BACKLOG.md instead.
+
+  - id: tasks
+    generates: tasks-<date>.md
+    template: tasks/tasks.md
+    requires: [plan]
+    description: |
+      Concrete per-task briefs with files, constraints, verification.
+
+  - id: execute
+    generates: (in-place code changes)
+    template: null
+    requires: [tasks]
+    description: |
+      One task at a time. Per kaizen Iron Laws: compile-barrier per
+      task; commit after each passing task; no batch commits.
+
+  - id: review
+    generates: review-<date>.md
+    template: review/note.md
+    requires: [execute]
+    description: |
+      Self-review pass + (optional) `kaizen-reviewer` agent dispatch.
+
+  - id: validate
+    generates: validate-<date>.md
+    template: validate/note.md
+    requires: [review]
+    description: |
+      All gates green: tests pass, clippy clean, no warnings,
+      coverage ≥ baseline, vibe-check passes.
+
+apply:
+  gate: validate
+  progress: plans/<date>-<slug>.md
+  description: |
+    Implementation gated on validate.md being green. Progress is
+    tracked via plan-phase checkbox state per kaizen's existing
+    plan-file discipline.

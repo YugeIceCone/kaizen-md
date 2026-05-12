@@ -3,6 +3,49 @@
 All notable changes to the `kaizen` plugin documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [SemVer](https://semver.org/).
 
+## [1.13.0] — 2026-05-12
+
+Research → implement based on two external sources:
+
+- [Presta vibe-coding checklist](https://wearepresta.com/vibe-coding-tips-checklist-avoid-breaking-builds/) — AI-as-draft discipline, pre-commit + review checklists, governance/traceability.
+- [intent-driven.dev OpenSpec custom schemas](https://intent-driven.dev/blog/2026/02/12/openspec-custom-schemas/) — declarative yaml workflow schemas with markdown templates.
+
+### Added — `kaizen:vibe-check` skill + slash command + diff-aware script
+
+**Skill**: `skills/vibe-check/SKILL.md` — full AI-coding discipline encoded as a kaizen skill. Codifies the Presta checklist with kaizen's gate-integration recipe: pre-commit checklist, anti-patterns, safe prompt patterns, review checklist, governance via commit-message markers + trace audit, gradual adoption phases, Iron Laws.
+
+**Slash command**: `/kaizen:vibe-check` runs `scripts/vibe_check.sh` against the staged diff. Augments `/kaizen:gate` with 5 AI-specific checks:
+
+1. Gate dry-run (delegates to `pre-commit.sh`)
+2. New exported fns vs new tests imbalance (Rust + JS/TS heuristics)
+3. Orphan imports — new `use` statements referencing crates not yet in any `Cargo.toml`
+4. Commit-message marker check — `[AI]` / `AI-assisted` / `AI:generated` presence
+5. Diff size advisory — flag >15-file diffs per kaizen sizing rule
+
+Advisory only — never blocks (the existing `/kaizen:gate` is the enforcement layer; vibe-check augments).
+
+### Added — `schemas/` scaffold (declarative workflow schemas)
+
+OpenSpec-inspired yaml schemas with markdown templates, shipped as a scaffold for the v1.14.0+ workflow-runtime migration:
+
+- `schemas/minimalist/{schema.yaml,templates/specs/spec.md,templates/tasks/tasks.md}` — 2-artifact low-ceremony workflow (specs as Given/When/Then → tasks).
+- `schemas/kaizen-default/schema.yaml` — 8-artifact full kaizen routine (research → explore → analyze → plan → tasks → execute → review → validate) as declarative yaml. Mirrors the existing hardcoded `workflow-routing` routines without breaking them.
+
+Resolution order (when v1.14.0+ wires the loader): project (`.workflow/schemas/`) → user (`~/.claude/kaizen-schemas/`) → built-in (this dir).
+
+### Added — `docs/workflow-schemas-research.md`
+
+Design doc for the v1.14.0+ migration. Covers: why declarative beats hardcoded, the schema format, agent consumption pattern, strangler-fig migration plan (v1.13.0 → v2.0.0 over 5 minor + 1 major release), open questions to resolve with empirical use.
+
+### Deferred
+
+- Workflow runtime that loads + executes schemas (v1.14.0+).
+- Brain-rule type `dependency-allowlist` integration with vibe-check's orphan-import check (would let users define `allowlist: [serde, tokio, ...]`). Pattern already established in v1.2.0's brain-rule system; wiring is a v1.13.x follow-up.
+
+### Why minor (1.12.0 → 1.13.0)
+
+New skill + new slash command + new script + scaffold for a future declarative system. Additive surface; no breaking changes.
+
 ## [1.12.0] — 2026-05-12
 
 Three hardening tracks land together.

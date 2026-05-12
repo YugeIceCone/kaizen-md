@@ -1,0 +1,47 @@
+# Minimalist workflow schema — OpenSpec-inspired declarative spec
+# (per intent-driven.dev/blog/2026/02/12/openspec-custom-schemas)
+#
+# For low-risk projects: specs as user stories with Given/When/Then,
+# tasks follow directly. NO proposal, NO design step.
+#
+# Resolution order when kaizen loads schemas:
+#   1. <repo>/.workflow/schemas/<name>/schema.yaml   (project-level)
+#   2. ~/.claude/kaizen-schemas/<name>/schema.yaml   (user-level)
+#   3. <plugin>/schemas/<name>/schema.yaml           (built-in — this file)
+#
+# DEFERRED — kaizen's existing workflow-routing skill has hardcoded
+# routines (audit/build-feature/fix-bug/refactor/migrate/harden). This
+# schema FILE is the scaffold for a future v1.14.0+ migration where
+# those routines become declarative entries in similar yaml schemas.
+# See docs/workflow-schemas-research.md for the design discussion.
+
+name: minimalist
+version: 1
+description: |
+  Two-artifact workflow for low-risk changes. Skips proposal + design,
+  goes straight from specs (Given/When/Then) to tasks.
+
+artifacts:
+  - id: specs
+    generates: specs/**/*.md
+    template: specs/spec.md
+    requires: []
+    description: |
+      User stories with Given/When/Then acceptance criteria. One file
+      per feature; nested directories OK.
+
+  - id: tasks
+    generates: tasks.md
+    template: tasks/tasks.md
+    requires: [specs]
+    description: |
+      Concrete tasks derived from spec acceptance criteria. Each task
+      lists files-to-touch, verify-command, and the spec it implements.
+
+apply:
+  gate: tasks
+  progress: tasks.md
+  description: |
+    Implementation is gated on tasks.md being complete. Progress is
+    tracked by checkbox state in tasks.md (the same `- [x]` pattern
+    kaizen's plans/ uses).
