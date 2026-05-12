@@ -33,6 +33,9 @@ KAIZEN_BACKUP_DIR="${KAIZEN_BACKUP_DIR:-$KAIZEN_USER_DIR/backups}"
 
 KAIZEN_USER_SCHEMAS="${KAIZEN_USER_SCHEMAS:-$KAIZEN_USER_DIR/schemas}"
 
+KAIZEN_SCRAPE_DIR="${KAIZEN_SCRAPE_DIR:-$KAIZEN_USER_DIR/scrape}"
+KAIZEN_SCRAPE_DB="$KAIZEN_SCRAPE_DIR/index.db"
+
 # ─── Project-side (relative to the project root passed in or $PWD) ───
 
 # kaizen_project_workflow_dir [<project-root>]   →   prints <root>/.kaizen/workflow

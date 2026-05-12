@@ -3,6 +3,116 @@
 All notable changes to the `kaizen` plugin documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [SemVer](https://semver.org/).
 
+## [1.24.0] — 2026-05-12
+
+### Added — `/kaizen:scrape` (LLM-driven scrape → semantic SQLite index)
+
+Three kaizen patterns composed into one command:
+
+1. **PocketFlow async wireframe** (from `flow_demo.py`) — Node+Flow pipeline with `asyncio.gather` fan-out.
+2. **[ScrapeGraphAI](https://github.com/scrapegraphai/scrapegraph-ai)** — `SmartScraperGraph(prompt, source, config).run()` for LLM-driven extraction.
+3. **Kaizen indexer** — same SQLite + `sentence-transformers` (`all-MiniLM-L6-v2`, 384-dim) shape as trace / knowledge / onboard.
+
+**Pipeline** (`skills/kaizen/scripts/scrape_index.py`, ~530 LOC):
+
+```
+FetchURLs → ScrapeFanOut → Synthesize → EmbedAndPersist
+            (asyncio.gather                    (terminal)
+             per URL)
+```
+
+- **FetchURLs** — validates input + resolves the default prompt from `config.SCRAPE_DEFAULT_PROMPT`.
+- **ScrapeFanOut** — `SmartScraperGraph` per URL via `asyncio.to_thread` + `asyncio.gather`.
+- **Synthesize** — flattens each extraction to `{url, title, text, content_json}`. Privacy filter drops `api_key`/`secret`/`token`/`password`/`auth`/`credential` fields at any nesting depth.
+- **EmbedAndPersist** — sentence-transformers encodes `title + text`; SQLite upsert by `sha = sha1(url|prompt)[:16]` (re-scraping the same pair replaces the row).
+
+### Subcommands
+
+```
+scrape <url> [--prompt "..."] [--no-embed] [--json]
+batch <urls-file>           # one URL per line, fan-out
+search "<query>"            # cosine ranking; --top-k, --json
+stats | get <id> | list [--limit N] | path | clear
+```
+
+### LLM provider — Ollama-default
+
+Defaults to local Ollama (`ollama/llama3` @ `http://localhost:11434`) so no API keys are required. Setup once:
+
+```bash
+ollama pull llama3
+```
+
+Env overrides:
+
+```
+KAIZEN_SCRAPE_LLM_MODEL=openai/gpt-4o-mini       # requires OPENAI_API_KEY
+KAIZEN_SCRAPE_LLM_BASE_URL=http://localhost:11434
+```
+
+### SQLite schema
+
+```sql
+CREATE TABLE scrape_items (
+  id INTEGER PK,
+  url TEXT, prompt TEXT, title TEXT,
+  content_json TEXT,        -- raw SmartScraperGraph extraction
+  text_extract TEXT,        -- denormalized text for snippet + embed
+  embedding BLOB,           -- 384-dim float32
+  sha TEXT UNIQUE,
+  ts TEXT
+);
+```
+
+DB at `~/.claude/.kaizen/scrape/index.db` (v1.22.0 unified layout). Override via `KAIZEN_SCRAPE_DIR`.
+
+### Config — `config.py` extended
+
+Three new lines in the top-level editable defaults section:
+
+```python
+USER_SCRAPE_NAME      = "scrape"
+SCRAPE_SNIPPET_MAX    = 1024
+SCRAPE_LLM_MODEL      = "ollama/llama3"
+SCRAPE_LLM_BASE_URL   = "http://localhost:11434"
+SCRAPE_DEFAULT_PROMPT = "Extract the main content as structured data: title, headings, key facts, and any tabular data. Return JSON."
+```
+
+Single-edit principle preserved — change the model in one place to retune every scrape call.
+
+### SSOT — `ScrapeItem` dataclass + JSON Schema
+
+- `schemas.py` adds `ScrapeItem` (with `.validate()`); `_self_test()` extended with round-trip + negative case.
+- `assets/schemas/scrape-item.schema.json` — JSON Schema mirror. README inventory updated.
+
+### Surface — new files
+
+- `commands/scrape.md` — slash command + LLM provider docs + pipeline diagram.
+- `skills/kaizen/scripts/scrape_index.py` — pipeline + indexer (530 LOC, PEP 723 inline metadata).
+- `bin/kaizen-scrape` — shell shim (count 25 → 26).
+- `assets/schemas/scrape-item.schema.json` — JSON Schema mirror.
+
+### Smoke-tested (no ML required for the structural layer)
+
+- `python3 scrape_index.py --help` — argparse builds cleanly without scrapegraphai installed.
+- `python3 _paths.py` self-test — SCRAPE_DIR / SCRAPE_DB resolve.
+- `_paths.sh` source — `KAIZEN_SCRAPE_DIR` + `KAIZEN_SCRAPE_DB` exported.
+- `python3 config.py --defaults` — 4 new SCRAPE_* keys in the dict.
+- `python3 schemas.py` — all 10 dataclasses round-trip (incl. `ScrapeItem` + negative case).
+- `assets/schemas/scrape-item.schema.json` — JSON-validates.
+
+End-to-end embed + scrape deferred to first user invocation — `uv run --script` lazily installs `scrapegraphai`, `sentence-transformers`, CPU torch + downloads the model (~80 MB) and SmartScraperGraph's playwright/chromium stack on demand.
+
+### Why minor (1.23.0 → 1.24.0)
+
+New script, new slash command, new shim, new dataclass + JSON Schema, new config knobs. Pure-additive; no behavior changes elsewhere. New `scrapegraphai` dep is uv-managed (PEP 723 inline) so existing scripts are unaffected.
+
+### Followups (deferred to v1.24.x)
+
+- MCP wrapper (parallel to trace_mcp / knowledge_mcp / onboard_mcp).
+- `--scope=project` mode that writes to `<repo>/.kaizen/scrape.db` instead of the user-global location.
+- Optional Pydantic `schema=` parameter for structured-output scrapes (per ScrapeGraphAI's API).
+
 ## [1.23.0] — 2026-05-12
 
 ### Added — `/kaizen:review` and `/kaizen:audit` (two distinct tools per the synavos article)

@@ -101,6 +101,12 @@ USER_SCHEMAS = Path(
     os.environ.get("KAIZEN_USER_SCHEMAS", KAIZEN_USER_DIR / _cfg.USER_SCHEMAS_NAME)
 )
 
+# v1.24.0+ — scrape index (SmartScraperGraph extractions + embeddings).
+SCRAPE_DIR = Path(
+    os.environ.get("KAIZEN_SCRAPE_DIR", KAIZEN_USER_DIR / _cfg.USER_SCRAPE_NAME)
+)
+SCRAPE_DB = SCRAPE_DIR / "index.db"
+
 
 # ─── Project-side (resolved at call time, per cwd) ───────────────────
 

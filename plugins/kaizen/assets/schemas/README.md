@@ -16,6 +16,7 @@ Formal JSON Schema (draft 2020-12) definitions for kaizen's main data shapes. Mi
 | `trace-event.schema.json`       | `TraceEvent`                  | `~/.claude/.kaizen/trace/events.jsonl` (v1.23.0)   |
 | `inbox-message.schema.json`     | `InboxMessage`                | `~/.claude/.kaizen/inbox/<ts>-<n>.json` (v1.23.0)  |
 | `daemon-state.schema.json`      | `DaemonState`                 | `~/.claude/.kaizen/daemon/state.json` (v1.23.0)    |
+| `scrape-item.schema.json`       | `ScrapeItem`                  | `~/.claude/.kaizen/scrape/index.db` rows (v1.24.0) |
 
 ## Wiring into editors
 

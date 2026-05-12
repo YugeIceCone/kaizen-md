@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/YugeIceCone/kaizen-md/assets/schemas/scrape-item.schema.json",
+  "title": "Kaizen scrape-index item",
+  "description": "One row in the scrape SQLite index at ~/.claude/.kaizen/scrape/index.db. Produced by scrape_index.py's PocketFlow pipeline (FetchURLs → ScrapeFanOut → Synthesize → EmbedAndPersist). Wraps a ScrapeGraphAI SmartScraperGraph extraction with denormalized text + 384-dim embedding for semantic search.",
+  "type": "object",
+  "required": ["url", "prompt", "content_json"],
+  "properties": {
+    "url": {
+      "type": "string",
+      "format": "uri",
+      "description": "Source URL passed to SmartScraperGraph."
+    },
+    "prompt": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Extraction prompt the LLM was given. Default: config.SCRAPE_DEFAULT_PROMPT."
+    },
+    "title": {
+      "type": "string",
+      "description": "Heuristically-extracted title from the result (looks for 'title'|'name'|'headline'|'page_title' fields)."
+    },
+    "content_json": {
+      "type": "string",
+      "description": "Raw SmartScraperGraph extraction encoded as JSON. Decoded to a dict on `get`."
+    },
+    "text_extract": {
+      "type": "string",
+      "description": "Denormalized flat text from the extraction, privacy-filtered to drop api_key/secret/token/password/auth/credential fields at any nesting depth. Used for embedding + snippet display."
+    },
+    "sha": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{16}$",
+      "description": "16-hex SHA1 prefix of `url|prompt`. Used for upsert — re-scraping the same (url, prompt) pair replaces the row."
+    },
+    "ts": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO UTC timestamp when this row was persisted."
+    },
+    "id": {
+      "type": ["integer", "null"],
+      "description": "SQLite primary key. Null before insert."
+    },
+    "score": {
+      "type": "number",
+      "minimum": -1,
+      "maximum": 1,
+      "description": "Cosine similarity score. Only present in do_search results."
+    }
+  },
+  "additionalProperties": false
+}

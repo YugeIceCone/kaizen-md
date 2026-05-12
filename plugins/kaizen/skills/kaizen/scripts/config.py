@@ -58,6 +58,7 @@ USER_DAEMON_NAME        = "daemon"
 USER_INBOX_NAME         = "inbox"
 USER_BACKUPS_NAME       = "backups"
 USER_SCHEMAS_NAME       = "schemas"
+USER_SCRAPE_NAME        = "scrape"               # v1.24.0+ — scrape index dir
 
 # Project-side layout (relative to repo root).
 PROJECT_KAIZEN_NAME     = ".kaizen"              # env: --
@@ -71,6 +72,16 @@ EMBED_DIM               = 384                    # env: -- (matches all-MiniLM-L
 ONBOARD_MAX_BYTES       = 1_000_000              # env: KAIZEN_ONBOARD_MAX_BYTES
 ONBOARD_SNIPPET_MAX     = 2048
 KNOWLEDGE_SNIPPET_MAX   = 400
+SCRAPE_SNIPPET_MAX      = 1024                   # v1.24.0+ — chars stored per scrape item
+
+# Scrape — defaults the user can retune (env vars still win).
+SCRAPE_LLM_MODEL        = "ollama/llama3"        # env: KAIZEN_SCRAPE_LLM_MODEL
+SCRAPE_LLM_BASE_URL     = "http://localhost:11434"  # env: KAIZEN_SCRAPE_LLM_BASE_URL
+SCRAPE_DEFAULT_PROMPT   = "Extract the main content as structured data: title, headings, key facts, and any tabular data. Return JSON."
+
+# Env-var resolution for scrape (additional to those at the bottom of this block).
+SCRAPE_LLM_MODEL    = os.environ.get("KAIZEN_SCRAPE_LLM_MODEL",    SCRAPE_LLM_MODEL)
+SCRAPE_LLM_BASE_URL = os.environ.get("KAIZEN_SCRAPE_LLM_BASE_URL", SCRAPE_LLM_BASE_URL)
 
 # Env-var resolution for the knobs that ARE env-overridable.
 EMBED_MODEL = os.environ.get("KAIZEN_EMBED_MODEL", EMBED_MODEL)
@@ -236,6 +247,10 @@ def plugin_defaults_dict() -> dict:
         "ONBOARD_MAX_BYTES": ONBOARD_MAX_BYTES,
         "ONBOARD_SNIPPET_MAX": ONBOARD_SNIPPET_MAX,
         "KNOWLEDGE_SNIPPET_MAX": KNOWLEDGE_SNIPPET_MAX,
+        "USER_SCRAPE_NAME": USER_SCRAPE_NAME,
+        "SCRAPE_SNIPPET_MAX": SCRAPE_SNIPPET_MAX,
+        "SCRAPE_LLM_MODEL": SCRAPE_LLM_MODEL,
+        "SCRAPE_LLM_BASE_URL": SCRAPE_LLM_BASE_URL,
     }
 
 
