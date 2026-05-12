@@ -3,6 +3,30 @@
 All notable changes to the `kaizen` plugin documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [SemVer](https://semver.org/).
 
+## [1.25.3] — 2026-05-12
+
+### Fixed — stale HTTP embed cache no longer breaks indexers
+
+Reproducer (caught by `/kaizen:enable-all`): `~/.claude/.kaizen/embed_endpoint.json` pinned to a now-dead `llama-server` port (e.g. `http://127.0.0.1:56625/v1` from a llama-swap session that has since terminated). `resolve_backend()` returned the cached config without a liveness check; `_embed_http*` raised an uncaught `urllib.error.URLError [Errno 111] Connection refused`, escaping to the indexer caller. Two of eight `/kaizen:enable-all` sub-steps failed silently.
+
+Fix: `embed_one` and `embed_batch` now catch `URLError` / `OSError` from the HTTP backend, invalidate the cache (new helper `_invalidate_cache`), re-resolve, and retry once. If the live re-probe finds a different live HTTP endpoint, that's used; otherwise the call falls through to the local sentence-transformers backend.
+
+Surfaces a one-line stderr notice (`kaizen embed: cached HTTP endpoint ... unreachable; invalidating cache and falling back`) so the user knows recovery happened.
+
+### Added — `tests/test_embed.py` regression coverage
+
+Seven new unit tests guard the fallback path:
+
+- `embed_one` falls back to local when cached HTTP is unreachable
+- `embed_batch` falls back to local when cached HTTP is unreachable
+- `embed_one` retries against the new HTTP endpoint when the re-probe finds one
+- `embed_batch` empty input short-circuits without touching any backend
+- `_invalidate_cache` clears in-memory state
+- `is_embedding_model_name` correctly identifies embed names (nomic, bge, gte, MiniLM, OpenAI text-embedding, stella, jina, e5)
+- `is_embedding_model_name` does NOT misidentify chat names (qwen3 instruct, llama, mixtral, claude)
+
+`test-pipeline.sh` Stage 7 picks these up automatically via `unittest discover`. Plugin unit-test count: 85 → 92.
+
 ## [1.25.2] — 2026-05-12
 
 ### Fixed — `test-pipeline.sh` hook tests no longer leak "unbound variable" stderr

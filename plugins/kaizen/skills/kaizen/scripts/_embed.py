@@ -104,6 +104,22 @@ def _write_cache(cfg: dict) -> None:
         pass
 
 
+def _invalidate_cache() -> None:
+    """Drop the cached endpoint so the next resolve_backend() re-probes.
+
+    Called from embed_one / embed_batch when the HTTP backend fails
+    with a connection error — the cached endpoint may have died since
+    the cache was written (llama-server restart, port reassignment).
+    Without this, every subsequent embed call would retry the dead
+    endpoint instead of falling through to the local backend."""
+    global _cached_cfg
+    _cached_cfg = None
+    try:
+        _EMBED_CACHE_PATH.unlink(missing_ok=True)
+    except OSError:
+        pass
+
+
 def _probe_for_embed_model(base_url: str, list_path: str, timeout: float) -> Optional[str]:
     """Hit a /v1/models endpoint; return the first embedding-shaped model name."""
     url = base_url.rstrip("/") + list_path
@@ -247,11 +263,24 @@ def embed_one(text: str) -> tuple[bytes, int]:
 
     Routes to HTTP if a llama-server (or other OpenAI-compatible)
     embedding endpoint is detected; falls back to sentence-transformers
-    otherwise."""
+    otherwise. If the cached HTTP endpoint is unreachable, invalidates
+    the cache, re-resolves, and retries once."""
     cfg = resolve_backend()
-    if cfg["kind"] == "http":
+    if cfg["kind"] != "http":
+        return _embed_local(text)
+    try:
         return _embed_http(text, cfg["base_url"], cfg["model"])
-    return _embed_local(text)
+    except (urllib.error.URLError, OSError) as e:
+        sys.stderr.write(
+            f"kaizen embed: cached HTTP endpoint {cfg['base_url']} "
+            f"unreachable ({e.__class__.__name__}); invalidating cache "
+            "and falling back\n"
+        )
+        _invalidate_cache()
+        cfg = resolve_backend(refresh=True)
+        if cfg["kind"] == "http":
+            return _embed_http(text, cfg["base_url"], cfg["model"])
+        return _embed_local(text)
 
 
 def _embed_http_batch(texts: list[str], base_url: str, model: str) -> tuple[list[bytes], int]:
@@ -295,13 +324,26 @@ def embed_batch(texts: list[str]) -> tuple[list[bytes], int]:
 
     Batches via HTTP (single POST with list input) or local
     sentence-transformers (model.encode supports lists natively).
-    Empty input returns ([], 0)."""
+    Empty input returns ([], 0). Stale-HTTP-cache recovery mirrors
+    embed_one: catch URLError → invalidate cache → re-resolve → retry."""
     if not texts:
         return [], 0
     cfg = resolve_backend()
-    if cfg["kind"] == "http":
+    if cfg["kind"] != "http":
+        return _embed_local_batch(texts)
+    try:
         return _embed_http_batch(texts, cfg["base_url"], cfg["model"])
-    return _embed_local_batch(texts)
+    except (urllib.error.URLError, OSError) as e:
+        sys.stderr.write(
+            f"kaizen embed: cached HTTP endpoint {cfg['base_url']} "
+            f"unreachable ({e.__class__.__name__}); invalidating cache "
+            "and falling back\n"
+        )
+        _invalidate_cache()
+        cfg = resolve_backend(refresh=True)
+        if cfg["kind"] == "http":
+            return _embed_http_batch(texts, cfg["base_url"], cfg["model"])
+        return _embed_local_batch(texts)
 
 
 def get_dim() -> int:
