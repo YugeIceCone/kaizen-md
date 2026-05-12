@@ -4,9 +4,23 @@
 # dependencies = [
 #     "sentence-transformers>=2.7",
 #     "numpy>=1.24",
+#     "torch>=2.0",
 # ]
+#
+# [[tool.uv.index]]
+# name = "pytorch-cpu"
+# url = "https://download.pytorch.org/whl/cpu"
+# explicit = true
+#
+# [tool.uv.sources]
+# torch = { index = "pytorch-cpu" }
 # ///
 """kaizen trace-index — SQLite-backed semantic search over trace events.
+
+**CPU-only torch** by default. PEP 723 above pins `torch` to the CPU
+wheel index (`pytorch-cpu`), saving ~3.5 GB of CUDA libraries from the
+uv-managed venv. For GPU inference, invoke `trace_index_gpu.py` instead
+(see `bin/kaizen-trace-index` — env var `KAIZEN_TRACE_GPU=1` switches).
 
 Indexes `~/.claude/.kaizen-trace/events.jsonl` (+ rotated `.gz`) into
 `~/.claude/.kaizen-trace/index.db`. Each event gets a 384-dim embedding

@@ -3,6 +3,48 @@
 All notable changes to the `kaizen` plugin documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [SemVer](https://semver.org/).
 
+## [1.12.0] — 2026-05-12
+
+Three hardening tracks land together.
+
+### Changed — trace-search defaults to **CPU torch** (GPU opt-in)
+
+v1.11.0 shipped sentence-transformers with `torch` from default PyPI, which pulled ~3.5 GB of CUDA runtime libraries even on CPU-only flows. v1.12.0 inverts the default:
+
+- **CPU default** (`trace_index.py`): PEP 723 inline-metadata pins `torch` to `https://download.pytorch.org/whl/cpu` — ~200 MB venv (vs ~3.5 GB GPU). Fast enough for inference of `all-MiniLM-L6-v2`.
+- **GPU opt-in** (`trace_index_gpu.py`, NEW): thin `runpy.run_path` shim with default-PyPI torch. Auto-installs CUDA wheels on Linux.
+- **Wrapper switch** (`bin/kaizen-trace-index`): `KAIZEN_TRACE_GPU=1 kaizen-trace-index ...` picks the GPU script; default picks CPU.
+- **MCP server** (`trace_mcp.py`): always CPU — long-running server rarely benefits from GPU for short embedding calls. Document escape hatch via CLI for batch reindex.
+
+The GPU venv from v1.11.0 stays cached and usable when toggled via env var. The new CPU venv is a separate uv-managed slot (~200 MB). Switch modes freely — both share the same SQLite store; embeddings are model+dim-tagged in `trace_meta` so they're forward-compatible.
+
+### Added — installer hardening (preflight checks + install log)
+
+`install.sh` now logs every install to `~/.claude/kaizen-install.log` with ISO timestamps. Before touching the repo, it runs preflight checks:
+
+- **Required**: `git`, `python3` — abort with clear message if missing.
+- **Advisories** (non-fatal, surface only): `uv` not on PATH (trace-index + MCP servers won't auto-install deps); `$HOME/.local/bin` not on PATH (kaizen-* symlinks unfindable from shell).
+
+Each advisory points at the fix (e.g. `curl -LsSf https://astral.sh/uv/install.sh | sh`, `export PATH=$HOME/.local/bin:$PATH`). Install continues either way — no silent failures.
+
+### Added — `config.py --validate` for `.kaizen.toml` schema checks
+
+New subcommand `kaizen-config --validate` (and `python3 config.py --validate`) checks the loaded config against `KNOWN_KEYS` and filesystem reality:
+
+- **Schema warnings**: unknown top-level keys (typo or future-version field) — surface, don't block.
+- **Filesystem warnings**: `backlog_path` parent dir absent; `compile_check_cmd` first word not on PATH; `brain_path` doesn't exist.
+- Exit 0 if only warnings; exit 1 only on hard errors (none defined yet — placeholder for future ones).
+
+`KNOWN_KEYS` includes the 4 default keys plus 7 commonly-observed extensions (`plan_dir`, `allow_deletion_env`, `skip_tdd_check_env`, `brain_path`, `project_memory_path`, `trace_embedding_model`, `trace_index_path`).
+
+### Bumps minor (1.11.0 → 1.12.0)
+
+CPU default is a behavior change for `kaizen-trace-index` — but the GPU path remains accessible via env var, so it's additive in capability. Installer hardening is observable surface. Config validate is purely new.
+
+### Why minor not patch
+
+CPU default fundamentally changes which venv `uv run` resolves on a fresh install — disk footprint drops from ~3.5 GB to ~200 MB. Worth marking as a meaningful release.
+
 ## [1.11.0] — 2026-05-12
 
 ### Added — SQLite-backed semantic search over kaizen trace (sentence-transformers)

@@ -12,10 +12,60 @@
 set -eu
 
 SKILL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+PLUGIN_ROOT="$(cd "$SKILL_DIR/../.." && pwd)"
+INSTALL_LOG="$HOME/.claude/kaizen-install.log"
+mkdir -p "$(dirname "$INSTALL_LOG")"
+
+# ─── Preflight checks (v1.12.0+) ─────────────────────────────────────
+# Validate prereqs BEFORE touching the repo. Required: git + python3.
+# Optional warnings: uv (for trace-index + MCP servers), ~/.local/bin on PATH.
+
+preflight_log() {
+    printf '[%s] %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*" >> "$INSTALL_LOG"
+}
+
+preflight_log "=== /kaizen:install begin at $(pwd) ==="
+
+REQUIRED=(git python3)
+MISSING_REQ=""
+for cmd in "${REQUIRED[@]}"; do
+    if ! command -v "$cmd" >/dev/null 2>&1; then
+        MISSING_REQ="$MISSING_REQ $cmd"
+    fi
+done
+if [ -n "$MISSING_REQ" ]; then
+    echo "kaizen install: required commands missing:$MISSING_REQ" >&2
+    echo "  install them, then re-run /kaizen:install" >&2
+    preflight_log "FAIL: missing required: $MISSING_REQ"
+    exit 1
+fi
+
 REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null) || {
     echo "kaizen install: must run inside a git repo" >&2
+    preflight_log "FAIL: not inside git repo (pwd=$(pwd))"
     exit 1
 }
+
+# Optional advisories (non-fatal)
+ADVISORIES=()
+if ! command -v uv >/dev/null 2>&1; then
+    ADVISORIES+=("uv not on PATH — trace-index + MCP servers (browser, trace-search) won't auto-install deps")
+    ADVISORIES+=("    install: curl -LsSf https://astral.sh/uv/install.sh | sh")
+fi
+case ":$PATH:" in
+    *":$HOME/.local/bin:"*) ;;
+    *) ADVISORIES+=("\$HOME/.local/bin NOT on \$PATH — kaizen-* symlinks won't be findable from your shell")
+       ADVISORIES+=("    add to ~/.bashrc: export PATH=\"\$HOME/.local/bin:\$PATH\"") ;;
+esac
+
+if [ "${#ADVISORIES[@]}" -gt 0 ]; then
+    echo "  ! Advisories (install will continue):" >&2
+    for a in "${ADVISORIES[@]}"; do
+        echo "    ${a}" >&2
+        preflight_log "ADVISORY: $a"
+    done
+    echo "" >&2
+fi
 
 HOOKS_DIR="$REPO_ROOT/.kaizen/hooks"
 CONFIG_PATH="$REPO_ROOT/.kaizen.toml"

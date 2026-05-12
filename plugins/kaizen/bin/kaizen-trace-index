@@ -1,12 +1,37 @@
 #!/usr/bin/env bash
 # SQLite-backed semantic search over kaizen trace events.
+#
+# Default: CPU torch (PEP 723 pins to pytorch-cpu index, ~200MB venv).
+# GPU mode: set KAIZEN_TRACE_GPU=1 (uses default-PyPI torch, ~3.5GB w/ CUDA).
+#
+# Both share the same SQLite store at ~/.claude/.kaizen-trace/index.db.
+# Embeddings are model+dim-tagged in trace_meta — switching modes is safe
+# as long as the embedding model name stays the same (default
+# all-MiniLM-L6-v2 in both).
+
 set -uo pipefail
+
 SCRIPT=$(python3 -c "import os, sys; print(os.path.realpath(sys.argv[1]))" "${BASH_SOURCE[0]}")
 PLUGIN_ROOT=$(cd "$(dirname "$SCRIPT")/.." && pwd)
+SCRIPTS_DIR="$PLUGIN_ROOT/skills/kaizen/scripts"
 
-# Use uv to handle the PEP 723 inline-script-metadata deps (sentence-transformers + numpy)
-if command -v uv >/dev/null 2>&1; then
-    exec uv run --script "$PLUGIN_ROOT/skills/kaizen/scripts/trace_index.py" "$@"
+# Pick CPU or GPU variant based on env
+if [ "${KAIZEN_TRACE_GPU:-0}" = "1" ]; then
+    TARGET="$SCRIPTS_DIR/trace_index_gpu.py"
 else
-    exec python3 "$PLUGIN_ROOT/skills/kaizen/scripts/trace_index.py" "$@"
+    TARGET="$SCRIPTS_DIR/trace_index.py"
 fi
+
+if [ ! -x "$TARGET" ]; then
+    echo "kaizen-trace-index: target script not executable: $TARGET" >&2
+    exit 1
+fi
+
+if command -v uv >/dev/null 2>&1; then
+    exec uv run --script "$TARGET" "$@"
+fi
+
+# Bare python3 fallback (no uv) — relies on user having sentence-transformers + numpy installed manually
+echo "kaizen-trace-index: uv not on PATH; falling back to bare python3" >&2
+echo "    (no isolated env — your global python3 must have sentence-transformers + numpy + torch installed)" >&2
+exec python3 "$TARGET" "$@"

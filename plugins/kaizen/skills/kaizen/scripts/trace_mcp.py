@@ -5,10 +5,23 @@
 #     "mcp>=1.0",
 #     "sentence-transformers>=2.7",
 #     "numpy>=1.24",
+#     "torch>=2.0",
 # ]
+#
+# [[tool.uv.index]]
+# name = "pytorch-cpu"
+# url = "https://download.pytorch.org/whl/cpu"
+# explicit = true
+#
+# [tool.uv.sources]
+# torch = { index = "pytorch-cpu" }
 # ///
 """kaizen trace-search-mcp — MCP server exposing semantic-search over the
 kaizen trace SQLite index. FastMCP + async wrappers around `trace_index.py`.
+
+**CPU-only torch** — MCP server is long-running and rarely benefits from
+GPU for short embedding calls. For batch reindex with GPU, use the CLI:
+`KAIZEN_TRACE_GPU=1 kaizen-trace-index index`.
 
 Tools (Claude can invoke):
 
