@@ -125,7 +125,24 @@ if [ "$USER_ONLY" -eq 0 ]; then
 
   legacy="$PROJECT_ROOT/$KAIZEN_LEGACY_PROJECT_WORKFLOW"
   new="$(kaizen_project_workflow_dir "$PROJECT_ROOT")"
+
+  # The move is safe when paired with the install.sh .gitignore rule
+  # `.kaizen/*` + `!.kaizen/workflow/` — durable artifacts under
+  # .kaizen/workflow/ (progress.md, backlog.{json,md}, audits/) stay
+  # tracked while ephemeral subdirs (cache/, hooks/, trace/, ...) stay
+  # ignored. Migrate freely.
   move_if_present "$legacy" "$new"
+
+  # If the legacy dir contained git-tracked files, surface a hint so
+  # the user can stage the rename in their next commit. git won't auto-
+  # stage filesystem renames.
+  if [ -d "$PROJECT_ROOT/.git" ] || git -C "$PROJECT_ROOT" rev-parse --show-toplevel >/dev/null 2>&1; then
+    TRACKED_HITS=$(git -C "$PROJECT_ROOT" ls-files -- "${KAIZEN_LEGACY_PROJECT_WORKFLOW%/}" 2>/dev/null || true)
+    if [ -n "$TRACKED_HITS" ]; then
+      printf '    %sgit-tracked files were moved on disk — stage the rename with:%s\n' "$DIM" "$RESET"
+      printf '%s\n' "$TRACKED_HITS" | sed "s|^${KAIZEN_LEGACY_PROJECT_WORKFLOW%/}/|      git add -A .kaizen/workflow/|"
+    fi
+  fi
 
   # Rewrite .kaizen.toml paths if they still reference .workflow/.
   TOML="$PROJECT_ROOT/.kaizen.toml"

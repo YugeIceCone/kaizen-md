@@ -111,10 +111,13 @@ if [ -z "$STAGED" ] && [ -z "$DELETED" ] && [ -z "$RENAMED" ]; then
     exit 0
 fi
 
-# Commit message — prepare-commit-msg already wrote it.
-COMMIT_MSG_FILE="${1:-.git/COMMIT_EDITMSG}"
-COMMIT_MSG=""
-[ -f "$COMMIT_MSG_FILE" ] && COMMIT_MSG=$(cat "$COMMIT_MSG_FILE")
+# NOTE on commit-message handling:
+# Checks #2 (Conventional Commits) and #4 (plan-file checkbox tick) used
+# to read .git/COMMIT_EDITMSG here. That file is stale at pre-commit time
+# for `git commit -m "..."` invocations (git only writes the new message
+# to it AFTER prepare-commit-msg, which fires AFTER pre-commit). Both
+# checks now live in scripts/commit-msg.sh where git passes the message
+# file path as $1 — the canonical hook for message validation.
 
 # ─── Structural classifier ───────────────────────────────────────────
 is_structural() {
@@ -187,17 +190,8 @@ else
 fi
 
 # ─── Check 2: Conventional Commits prefix ────────────────────────────
-if [ -n "$COMMIT_MSG" ]; then
-    FIRST_LINE=$(echo "$COMMIT_MSG" | head -1)
-    if echo "$FIRST_LINE" | grep -qE '^(feat|fix|refactor|docs|chore|test|perf|build|ci|style|revert)(\([^)]+\))?: '; then
-        pass "Conventional Commits prefix"
-    else
-        hard_fail "commit message missing Conventional Commits prefix: $FIRST_LINE"
-        echo "${DIM}        → expected: feat(scope): ... | fix: ... | docs: ... etc.${RESET}" >&2
-    fi
-else
-    skip "Conventional Commits: no commit message yet (running pre-commit, not commit-msg)"
-fi
+# Moved to scripts/commit-msg.sh — see NOTE above. Pre-commit cannot
+# reliably read the staged message for `git commit -m` invocations.
 
 # ─── Check 3: Structural change → architecture log row ───────────────
 if [ "$DIFF_IS_STRUCTURAL" = "1" ]; then
@@ -213,23 +207,8 @@ else
 fi
 
 # ─── Check 4: Plan-file mention → checkbox tick ──────────────────────
-if [ -n "$COMMIT_MSG" ]; then
-    # Stricter pattern: real plan paths only, no '<placeholder>' templates.
-    PLAN_MENTIONS=$(echo "$COMMIT_MSG" | grep -oE "${PLAN_DIR}/[A-Za-z0-9._-]+\.md" | sort -u || true)
-    if [ -n "$PLAN_MENTIONS" ]; then
-        for plan_path in $PLAN_MENTIONS; do
-            if echo "$STAGED" | grep -qF "$plan_path"; then
-                if echo "$DIFF_CONTENT" | grep -E "^\+- \[x\]" >/dev/null 2>&1; then
-                    pass "plan ${plan_path}: checkbox tick present"
-                else
-                    hard_fail "plan ${plan_path} mentioned but no ${BOLD}+- [x]${RESET} flip staged"
-                fi
-            else
-                hard_fail "plan ${plan_path} mentioned in commit but file not staged"
-            fi
-        done
-    fi
-fi
+# Moved to scripts/commit-msg.sh — see NOTE above. Pre-commit cannot
+# reliably read the staged message for `git commit -m` invocations.
 
 # ─── Check 5: Pre-deletion gate ──────────────────────────────────────
 if [ -n "$DELETED" ]; then

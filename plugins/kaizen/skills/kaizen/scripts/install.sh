@@ -84,15 +84,25 @@ fi
 
 mkdir -p "$HOOKS_DIR"
 
-# Symlink the hook
-HOOK_TARGET="$SKILL_DIR/scripts/pre-commit.sh"
-HOOK_LINK="$HOOKS_DIR/pre-commit"
-if [ -e "$HOOK_LINK" ] && [ ! -L "$HOOK_LINK" ]; then
-    echo "  ! existing $HOOK_LINK is not a symlink — backing up to $HOOK_LINK.bak"
-    mv "$HOOK_LINK" "$HOOK_LINK.bak"
-fi
-ln -sf "$HOOK_TARGET" "$HOOK_LINK"
-echo "  ✓ linked $HOOK_LINK → $HOOK_TARGET"
+# Symlink hooks. Two are wired:
+#   pre-commit  — staging-state checks (compile, structural, secrets, etc.)
+#   commit-msg  — message-dependent checks (Conventional Commits, plan-file
+#                 mention). Lives here because `git commit -m` does NOT
+#                 pre-populate .git/COMMIT_EDITMSG for pre-commit to read.
+for hook_name in pre-commit commit-msg; do
+    HOOK_TARGET="$SKILL_DIR/scripts/${hook_name}.sh"
+    HOOK_LINK="$HOOKS_DIR/$hook_name"
+    if [ ! -f "$HOOK_TARGET" ]; then
+        echo "  ! skill is missing $hook_name.sh — skipping" >&2
+        continue
+    fi
+    if [ -e "$HOOK_LINK" ] && [ ! -L "$HOOK_LINK" ]; then
+        echo "  ! existing $HOOK_LINK is not a symlink — backing up to $HOOK_LINK.bak"
+        mv "$HOOK_LINK" "$HOOK_LINK.bak"
+    fi
+    ln -sf "$HOOK_TARGET" "$HOOK_LINK"
+    echo "  ✓ linked $HOOK_LINK → $HOOK_TARGET"
+done
 
 # Local hooksPath
 git config core.hooksPath .kaizen/hooks
@@ -118,19 +128,27 @@ if [ ! -f "$CONFIG_PATH" ]; then
     PMEM="$HOME/.claude/projects/$SLUG/memory"
 
     # Detect canonical workflow-state dir for backlog placement.
-    # Strongest signal: state.json from the workflow-routing skill
-    # — proves the project actively uses .workflow/ for state.
-    # Weaker signal: just the directory existing (project convention).
-    if [ -f "$REPO_ROOT/.workflow/state.json" ] || [ -f "$REPO_ROOT/.workflow/progress.md" ]; then
+    #
+    # Order matters: .kaizen/workflow/ is the post-v1.22 unified layout
+    # and the migrate's destination, so check it first. Legacy
+    # .workflow/ is the second-best signal (project predates v1.22 or
+    # migrate was skipped). Greenfield defaults to .kaizen/workflow/
+    # so the install + migrate paths converge on one canonical location.
+    if [ -f "$REPO_ROOT/.kaizen/workflow/progress.md" ] || [ -f "$REPO_ROOT/.kaizen/workflow/state.json" ]; then
+        DEFAULT_BACKLOG=".kaizen/workflow/backlog.md"
+        DEFAULT_ARCH_LOG=".kaizen/workflow/progress.md"
+        echo "  ∘ detected .kaizen/workflow/ (unified layout)"
+    elif [ -f "$REPO_ROOT/.workflow/state.json" ] || [ -f "$REPO_ROOT/.workflow/progress.md" ]; then
         DEFAULT_BACKLOG=".workflow/backlog.md"
         DEFAULT_ARCH_LOG=".workflow/progress.md"
-        echo "  ∘ detected .workflow/ (workflow-routing or project convention)"
+        echo "  ∘ detected .workflow/ (legacy pre-v1.22 layout; migrate may move it)"
     elif [ -d "$REPO_ROOT/docs/workflow" ]; then
         DEFAULT_BACKLOG="docs/workflow/backlog.md"
         DEFAULT_ARCH_LOG="docs/workflow/progress.md"
     else
-        DEFAULT_BACKLOG="backlog.md"
-        DEFAULT_ARCH_LOG=".workflow/progress.md"
+        DEFAULT_BACKLOG=".kaizen/workflow/backlog.md"
+        DEFAULT_ARCH_LOG=".kaizen/workflow/progress.md"
+        echo "  ∘ greenfield → defaulting to .kaizen/workflow/ (unified layout)"
     fi
 
     cat > "$CONFIG_PATH" <<TOML
@@ -154,11 +172,48 @@ else
     echo "  ∘ $CONFIG_PATH already exists, leaving as-is"
 fi
 
-# .gitignore — create if missing so the local hooks dir is excluded by default
+# gitignore policy — scoped to .kaizen/ via a per-dir .gitignore.
+#
+# Rationale: keeps the root .gitignore project-focused (Rust target,
+# OS junk, etc.) and co-locates the kaizen rule with the dir it
+# controls. The per-dir file ignores everything inside .kaizen/
+# except its own .gitignore and the workflow/ subdir (durable
+# artifacts — progress.md, backlog.{json,md}, audits/).
+KAIZEN_GITIGNORE="$REPO_ROOT/.kaizen/.gitignore"
+if [ ! -f "$KAIZEN_GITIGNORE" ]; then
+    mkdir -p "$REPO_ROOT/.kaizen"
+    cat > "$KAIZEN_GITIGNORE" <<'KIGNORE'
+# kaizen — per-dir gitignore.
+#
+# Ignores ephemeral kaizen state (cache/, hooks/, trace/, daemon
+# socket, etc.). Durable workflow artifacts under workflow/ stay
+# tracked: progress.md (architecture log), backlog.{json,md},
+# audits/ (durable reports). This keeps the rule local to .kaizen/
+# so the repo root's .gitignore stays project-focused.
+
+*
+!.gitignore
+!workflow/
+!workflow/**
+KIGNORE
+    echo "  ✓ wrote $KAIZEN_GITIGNORE (ignore ephemeral, track workflow/)"
+fi
+
+# Clean up any legacy blanket-ignore from a pre-per-dir install. Old
+# installs wrote `.kaizen/` (or the intermediate `.kaizen/*` +
+# `!.kaizen/workflow/`) to the repo root .gitignore; both are now
+# redundant since .kaizen/.gitignore owns the policy.
 [ -f "$GITIGNORE" ] || touch "$GITIGNORE"
-if ! grep -qxF ".kaizen/" "$GITIGNORE"; then
-    echo ".kaizen/" >> "$GITIGNORE"
-    echo "  ✓ added .kaizen/ to .gitignore"
+LEGACY_PATTERNS=('.kaizen/' '.kaizen/*' '!.kaizen/workflow/')
+REMOVED_ANY=0
+for pat in "${LEGACY_PATTERNS[@]}"; do
+    if grep -qxF "$pat" "$GITIGNORE"; then
+        grep -vxF "$pat" "$GITIGNORE" > "${GITIGNORE}.tmp" && mv "${GITIGNORE}.tmp" "$GITIGNORE"
+        REMOVED_ANY=1
+    fi
+done
+if [ "$REMOVED_ANY" = "1" ]; then
+    echo "  ✓ pruned legacy .kaizen entries from root .gitignore (.kaizen/.gitignore owns the policy)"
 fi
 
 echo ""

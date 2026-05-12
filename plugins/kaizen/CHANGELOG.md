@@ -3,6 +3,27 @@
 All notable changes to the `kaizen` plugin documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [SemVer](https://semver.org/).
 
+## [1.25.1] — 2026-05-12
+
+### Fixed — commit-message checks moved to dedicated `commit-msg` hook
+
+The "yarrr" reproducer: pre-commit's Conventional Commits and plan-mention checks fell back to reading `.git/COMMIT_EDITMSG`, but git does **not** pre-populate that file for `git commit -m "..."` invocations — pre-commit always saw the **previous** commit's message and either passed-or-failed on stale state.
+
+Fix splits message-dependent checks into a new `commit-msg.sh` hook, which git invokes with the message-file path as `$1` (the canonical contract for message validation):
+
+- **Pre-commit** (`pre-commit.sh`) — staging-state checks only: compile barrier, structural-change → arch-log, pre-deletion gate, secrets scan, coding-skills suggestions, dependency-allowlist, etc.
+- **Commit-msg** (`commit-msg.sh`, new) — message-dependent checks: Conventional Commits prefix (now also accepts `feat!:` / `fix(scope)!:` breaking-change markers per CC §6), plan-file mention → `+- [x]` checkbox tick.
+
+`scripts/install.sh` now loops both hooks; older installs need to re-run `/kaizen:install` to pick up `commit-msg`. `scripts/doctor.sh` and `scripts/test-pipeline.sh` updated to recognize the split.
+
+### Changed — `.kaizen/` gitignore policy moved to per-dir file
+
+`install.sh` now writes `.kaizen/.gitignore` (per-dir) instead of appending `.kaizen/` to the repo root `.gitignore`. The per-dir file ignores ephemeral siblings (`cache/`, `hooks/`, `trace/`, daemon socket) but tracks durable workflow artifacts (`workflow/progress.md`, `workflow/backlog.{json,md}`, `workflow/audits/`). Legacy entries in the root `.gitignore` (`.kaizen/`, `.kaizen/*`, `!.kaizen/workflow/`) are auto-pruned on re-install since they're now redundant. Rationale: keeps the project root `.gitignore` focused on the project, co-locates the rule with the directory it controls.
+
+### Changed — `migrate_paths.sh` surfaces tracked-file rename hints
+
+When the legacy `.workflow/` was filesystem-renamed to `.kaizen/workflow/` and contained git-tracked files, the migrator now prints `git add -A .kaizen/workflow/...` lines so the user can stage the rename in their next commit (git doesn't auto-stage filesystem renames).
+
 ## [1.25.0] — 2026-05-12
 
 ### Added — `_embed.py` shared embedding backend (HTTP-first)
