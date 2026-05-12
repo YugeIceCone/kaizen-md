@@ -3,6 +3,61 @@
 All notable changes to the `kaizen` plugin documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [SemVer](https://semver.org/).
 
+## [1.11.0] — 2026-05-12
+
+### Added — SQLite-backed semantic search over kaizen trace (sentence-transformers)
+
+`scripts/trace_index.py` + `scripts/trace_mcp.py` + `bin/kaizen-trace-index` + `commands/trace-search.md` + new MCP server registration.
+
+L3 trace events are now indexed into SQLite at `~/.claude/.kaizen-trace/index.db` with 384-dim embeddings from `sentence-transformers` (default model: `all-MiniLM-L6-v2`). Cosine similarity ranks search hits. SQL pre-filters by `src` / `sid` / `evt` / `since` before scoring for speed at scale.
+
+PEP 723 inline-script-metadata declares `sentence-transformers + numpy` as deps. uv reads it on first invocation and resolves a cached venv (~500MB w/ torch; ~80MB model weights from HuggingFace). Cold start ~30s once; warm searches sub-second.
+
+**Privacy model**: by default ONLY the event signature is embedded (`src + evt + tool + sid_prefix + latency_category`). NO commands, file paths, prompts, or payload data participate in the vector. `--embed-data` opt-in adds safe fields (`model`, `status`, `verdict`, `outcome`, `kind`). Sensitive fields are NEVER embedded regardless of flag.
+
+**SQLite schema**:
+
+- `trace_events(id, ts, src, evt, sid, tool, ms, data_json, embedding BLOB, content_hash UNIQUE)` — indexed on ts/src/sid/evt.
+- `trace_meta(key, value)` — model name, dim, last_indexed_ts, total_events.
+
+Content-hash dedup keys on `ts|src|evt|sid|tool|ms` — incremental indexing skips already-stored events on re-runs.
+
+### Subcommands (`kaizen-trace-index`)
+
+- `index [--max N] [--embed-data]` — incremental
+- `reindex [--embed-data]` — wipe + rebuild
+- `search "<query>" [--top-k 10] [--src S --sid SID --evt E --since 1h] [--json]`
+- `stats` — total indexed, model, dim, ts range
+- `get <id>` — fetch event by SQLite id (returned by search)
+- `path` / `clear`
+
+### MCP server `kaizen-trace-search`
+
+Registered in `.mcp.json` as the second on-demand MCP server (after `kaizen-browser`). Five tools exposed to Claude (`mcp__plugin_kaizen_kaizen-trace-search__*`):
+
+- `trace_search(query, top_k, src, sid, evt, since)` — semantic search
+- `trace_index_status()` — health (total events, model, ts range)
+- `trace_index_run(embed_data, max_n)` — incremental re-index
+- `trace_get(event_id)` — fetch by id
+- `trace_recent(limit, src)` — latest N by ts (no ranking — fast)
+
+The MCP server keeps a sentence-transformers model loaded across tool calls (~500MB RAM after first call; instant embeddings thereafter).
+
+### Composition
+
+- L3 trace events (events.jsonl) → indexed here as a queryable layer
+- v1.9.0 `schemas.TraceEvent` validates on read upstream; trace-index assumes valid events
+- v1.10.0 `kaizen-observe drill` is the broad cross-layer report; trace-search is the deep semantic-narrow query
+- v1.7.x browser MCP events flow through hooks → already in trace → searchable here
+
+### Why sentence-transformers (not TF-IDF or fastembed)
+
+User explicitly requested `from sentence_transformers import SentenceTransformer` (sbert.net). Heavier (~500MB w/ torch dep) but gold-standard quality, well-supported, broad model catalog. Future micros can offer a lighter `fastembed` adapter behind the same SQL+MCP surface if size becomes a concern.
+
+### Bumps minor (1.10.0 → 1.11.0)
+
+Two new scripts + one new MCP server + one bin wrapper + one slash command. Additive; no breaking changes. Deferred: daemon integration to auto-index on each tick (manual `index` needed for now).
+
 ## [1.10.0] — 2026-05-12
 
 ### Added — `kaizen-observe` (unified 6-layer observability)

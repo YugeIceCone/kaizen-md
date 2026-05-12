@@ -11,6 +11,14 @@
         "--script",
         "${CLAUDE_PLUGIN_ROOT}/skills/kaizen/scripts/browser_mcp.py"
       ]
+    },
+    "kaizen-trace-search": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--script",
+        "${CLAUDE_PLUGIN_ROOT}/skills/kaizen/scripts/trace_mcp.py"
+      ]
     }
   }
 }
