@@ -251,8 +251,28 @@ def open_db(root: Path, create: bool = True) -> sqlite3.Connection:
                 key TEXT PRIMARY KEY,
                 value TEXT
             );
+            -- v1.28.0+: chunk-level table for RAG-grade hybrid search.
+            -- One file → many chunks. Each chunk carries its own embedding
+            -- and a (char_start, char_end) back to the source for citation.
+            -- language is denormalized so hybrid_search can filter without
+            -- joining to code_files.
+            CREATE TABLE IF NOT EXISTS code_chunks (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                file_id INTEGER NOT NULL REFERENCES code_files(id) ON DELETE CASCADE,
+                chunk_idx INTEGER NOT NULL,
+                char_start INTEGER NOT NULL,
+                char_end INTEGER NOT NULL,
+                text TEXT NOT NULL,
+                embedding BLOB NOT NULL,
+                language TEXT NOT NULL,
+                UNIQUE(file_id, chunk_idx)
+            );
+            CREATE INDEX IF NOT EXISTS idx_chunk_file ON code_chunks(file_id);
+            CREATE INDEX IF NOT EXISTS idx_chunk_lang ON code_chunks(language);
             """
         )
+        # FTS5 mirror (separate from executescript because it uses triggers).
+        _kz_search.ensure_fts_mirror(conn, "code_chunks")
     return conn
 
 
@@ -433,6 +453,8 @@ def process_file(path: Path, root: Path) -> dict | None:
 
 
 import _embed as _kz_embed  # v1.25.0+: HTTP-first embedding backend
+import _chunk as _kz_chunk  # v1.27.0+: sentence-boundary chunker
+import _search as _kz_search  # v1.27.0+: BM25+dense hybrid search
 
 
 def embed_one(text: str):
@@ -445,12 +467,20 @@ def embed_one(text: str):
 
 
 def do_index(root: Path, use_git: bool = True) -> dict:
-    """Run incremental indexing. Returns {new, skipped, stale_removed, total}."""
+    """Run incremental indexing. Returns {new, skipped, stale_removed, total, total_chunks}.
+
+    v1.28.0+: each updated file is chunked via `_chunk.chunk_text`, all
+    chunks embedded in a single batch via `_embed.embed_batch`, and
+    written to `code_chunks` (with a FK back to `code_files`). The file
+    row's `embedding` column gets the FIRST chunk's vector — preserves
+    the legacy whole-file search path while RAG-grade hybrid search uses
+    the per-chunk table."""
     conn = open_db(root, create=True)
     seen_paths: set[str] = set()
     new_count = 0
     skip_count = 0
     error_count = 0
+    chunk_count = 0
     for path in iter_source_files(root, use_git=use_git):
         rec = process_file(path, root)
         if not rec:
@@ -463,35 +493,62 @@ def do_index(root: Path, use_git: bool = True) -> dict:
         if existing and existing["sha"] == rec["sha"]:
             skip_count += 1
             continue
-        emb = embed_one(rec["cleaned_for_embed"])
+        # Chunk the cleaned content. Empty doc after cleaning → skip.
+        chunks = _kz_chunk.chunk_text(rec["cleaned_for_embed"])
+        if not chunks:
+            error_count += 1
+            continue
+        # Embed all chunks in one batch (HTTP roundtrip amortized).
+        chunk_texts = _kz_chunk.apply_passage_prefix_batch([c.text for c in chunks])
+        chunk_blobs, _dim = _kz_embed.embed_batch(chunk_texts)
+        file_emb = chunk_blobs[0]  # first chunk = whole-file "representative"
+        # Upsert the file row.
         conn.execute(
             """INSERT OR REPLACE INTO code_files
                (path, language, bytes, sloc, snippet, embedding, sha, updated_at)
                VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
             (
-                rec["path"],
-                rec["language"],
-                rec["bytes"],
-                rec["sloc"],
-                rec["snippet"],
-                emb,
-                rec["sha"],
-                rec["updated_at"],
+                rec["path"], rec["language"], rec["bytes"], rec["sloc"],
+                rec["snippet"], file_emb, rec["sha"], rec["updated_at"],
             ),
         )
+        # Fetch the (possibly newly assigned) file_id.
+        file_id = conn.execute(
+            "SELECT id FROM code_files WHERE path = ?", (rec["path"],)
+        ).fetchone()["id"]
+        # Replace this file's chunks atomically.
+        conn.execute("DELETE FROM code_chunks WHERE file_id = ?", (file_id,))
+        conn.executemany(
+            """INSERT INTO code_chunks
+               (file_id, chunk_idx, char_start, char_end, text, embedding, language)
+               VALUES (?, ?, ?, ?, ?, ?, ?)""",
+            [
+                (file_id, c.chunk_idx, c.char_start, c.char_end,
+                 c.text, blob, rec["language"])
+                for c, blob in zip(chunks, chunk_blobs)
+            ],
+        )
+        chunk_count += len(chunks)
         new_count += 1
-    # Remove stale entries (in db but no longer in tree)
+    # Remove stale entries (in db but no longer in tree). FK cascade
+    # drops dependent chunks automatically (we declared ON DELETE CASCADE).
     all_in_db = conn.execute("SELECT path FROM code_files").fetchall()
     stale = [r["path"] for r in all_in_db if r["path"] not in seen_paths]
     if stale:
-        conn.executemany(
-            "DELETE FROM code_files WHERE path = ?", [(p,) for p in stale]
-        )
+        # SQLite default does NOT enforce FK cascades unless PRAGMA enables it.
+        # Manual delete for portability.
+        for p in stale:
+            row = conn.execute("SELECT id FROM code_files WHERE path = ?", (p,)).fetchone()
+            if row:
+                conn.execute("DELETE FROM code_chunks WHERE file_id = ?", (row["id"],))
+                conn.execute("DELETE FROM code_files WHERE path = ?", (p,))
     set_meta(conn, "model", DEFAULT_MODEL)
     set_meta(conn, "dim", str(DEFAULT_DIM))
     set_meta(conn, "last_indexed_ts", dt.datetime.now(dt.timezone.utc).isoformat())
     total = conn.execute("SELECT COUNT(*) FROM code_files").fetchone()[0]
+    total_chunks = conn.execute("SELECT COUNT(*) FROM code_chunks").fetchone()[0]
     set_meta(conn, "total_files", str(total))
+    set_meta(conn, "total_chunks", str(total_chunks))
     set_meta(conn, "root", str(root))
     conn.commit()
     conn.close()
@@ -501,6 +558,8 @@ def do_index(root: Path, use_git: bool = True) -> dict:
         "stale_removed": len(stale),
         "errors": error_count,
         "total": total,
+        "total_chunks": total_chunks,
+        "new_chunks": chunk_count,
         "model": DEFAULT_MODEL,
         "db": str(db_path(root)),
     }
@@ -511,13 +570,107 @@ def do_search(
     query: str,
     top_k: int = 10,
     language: str | None = None,
+    *,
+    alpha: float = 0.5,
+    legacy: bool = False,
 ) -> list[dict]:
-    """Cosine-similarity search. Returns [{score, id, path, language, sloc, snippet, updated_at}]."""
+    """Search the index. Returns ranked file results with best-chunk citation.
+
+    Two paths:
+      - **default (chunked)** — BM25 + dense hybrid over `code_chunks`.
+        Results carry `matched_chunk_idx` + `char_range` for citation.
+      - **legacy=True** — cosine over `code_files.embedding` (whole-file
+        match, pre-v1.28 behavior). Useful for very-coarse search or when
+        chunks aren't populated (db indexed before v1.28.0).
+    """
     path = db_path(root)
     if not path.is_file():
         return []
     conn = open_db(root, create=False)
-    # v1.25.0+: query embedding via shared _embed backend.
+
+    if legacy:
+        return _do_search_legacy(conn, query, top_k=top_k, language=language)
+
+    # Chunked path: hybrid_search returns [(chunk_id, score), ...].
+    extra_where = "language = ?" if language else ""
+    extra_params: list = [language] if language else []
+    try:
+        hits = _kz_search.hybrid_search(
+            conn, "code_chunks", query, top_k=top_k,
+            candidate_pool=max(top_k * 5, 50),
+            alpha=alpha,
+            extra_where=extra_where, extra_params=extra_params,
+        )
+    except sqlite3.OperationalError as e:
+        # FTS table missing → db was indexed pre-v1.28. Fall back to legacy.
+        sys.stderr.write(
+            f"kaizen-onboard: chunked search unavailable ({e}); falling back to legacy.\n"
+            "  Re-run `kaizen-onboard reindex` to enable hybrid search.\n"
+        )
+        return _do_search_legacy(conn, query, top_k=top_k, language=language)
+
+    if not hits:
+        conn.close()
+        return []
+
+    # Group by file: keep the best-scoring chunk per file (matches Onyx's
+    # default "best chunk wins" answer-render path).
+    best_per_file: dict[int, dict] = {}
+    chunk_ids = [c for c, _ in hits]
+    placeholders = ",".join("?" * len(chunk_ids))
+    chunk_rows = conn.execute(
+        f"""SELECT id, file_id, chunk_idx, char_start, char_end, text
+            FROM code_chunks WHERE id IN ({placeholders})""",
+        chunk_ids,
+    ).fetchall()
+    chunk_by_id = {r["id"]: r for r in chunk_rows}
+    for cid, score in hits:
+        cr = chunk_by_id.get(cid)
+        if cr is None:
+            continue
+        fid = cr["file_id"]
+        if fid not in best_per_file or score > best_per_file[fid]["score"]:
+            best_per_file[fid] = {
+                "score": score,
+                "matched_chunk_idx": cr["chunk_idx"],
+                "char_range": [cr["char_start"], cr["char_end"]],
+                "matched_snippet": cr["text"][:500],
+            }
+
+    # Fetch file metadata in one query.
+    file_ids = list(best_per_file.keys())
+    placeholders = ",".join("?" * len(file_ids))
+    file_rows = conn.execute(
+        f"SELECT * FROM code_files WHERE id IN ({placeholders})", file_ids
+    ).fetchall()
+    out: list[dict] = []
+    for fr in file_rows:
+        info = best_per_file[fr["id"]]
+        out.append({
+            "score": round(info["score"], 4),
+            "id": fr["id"],
+            "path": fr["path"],
+            "language": fr["language"],
+            "bytes": fr["bytes"],
+            "sloc": fr["sloc"],
+            "matched_chunk_idx": info["matched_chunk_idx"],
+            "char_range": info["char_range"],
+            "snippet": info["matched_snippet"],
+            "updated_at": fr["updated_at"],
+        })
+    out.sort(key=lambda x: x["score"], reverse=True)
+    conn.close()
+    return out
+
+
+def _do_search_legacy(
+    conn: sqlite3.Connection,
+    query: str,
+    top_k: int = 10,
+    language: str | None = None,
+) -> list[dict]:
+    """Pre-v1.28 whole-file cosine search. Used as fallback when chunks
+    aren't populated, and via `--legacy`."""
     np = _kz_embed.require_numpy()
     qblob, _ = _kz_embed.embed_one(query)
     qvec = np.frombuffer(qblob, dtype=np.float32).astype(np.float32)
@@ -548,18 +701,16 @@ def do_search(
     scored.sort(key=lambda x: x[0], reverse=True)
     out = []
     for score, r in scored[:top_k]:
-        out.append(
-            {
-                "score": round(score, 4),
-                "id": r["id"],
-                "path": r["path"],
-                "language": r["language"],
-                "bytes": r["bytes"],
-                "sloc": r["sloc"],
-                "snippet": r["snippet"],
-                "updated_at": r["updated_at"],
-            }
-        )
+        out.append({
+            "score": round(score, 4),
+            "id": r["id"],
+            "path": r["path"],
+            "language": r["language"],
+            "bytes": r["bytes"],
+            "sloc": r["sloc"],
+            "snippet": r["snippet"],
+            "updated_at": r["updated_at"],
+        })
     conn.close()
     return out
 
@@ -570,6 +721,11 @@ def do_stats(root: Path) -> dict:
         return {"indexed": False, "db_path": str(path)}
     conn = open_db(root, create=False)
     total = conn.execute("SELECT COUNT(*) FROM code_files").fetchone()[0]
+    # v1.28.0+: chunks table may not exist on pre-v1.28 dbs.
+    try:
+        total_chunks = conn.execute("SELECT COUNT(*) FROM code_chunks").fetchone()[0]
+    except sqlite3.OperationalError:
+        total_chunks = 0
     total_bytes = conn.execute("SELECT COALESCE(SUM(bytes),0) FROM code_files").fetchone()[0]
     total_sloc = conn.execute("SELECT COALESCE(SUM(sloc),0) FROM code_files").fetchone()[0]
     by_lang = {
@@ -586,6 +742,7 @@ def do_stats(root: Path) -> dict:
         "dim": get_meta(conn, "dim", ""),
         "last_indexed_ts": get_meta(conn, "last_indexed_ts", ""),
         "total": total,
+        "total_chunks": total_chunks,
         "total_bytes": total_bytes,
         "total_sloc": total_sloc,
         "by_language": by_lang,
@@ -649,7 +806,11 @@ def cmd_reindex(args):
 
 def cmd_search(args):
     root = _resolve_root(args)
-    results = do_search(root, args.query, top_k=args.top_k, language=args.lang)
+    results = do_search(
+        root, args.query,
+        top_k=args.top_k, language=args.lang,
+        alpha=args.alpha, legacy=args.legacy,
+    )
     if args.json:
         print(json.dumps(results, indent=2))
         return
@@ -658,7 +819,10 @@ def cmd_search(args):
         return
     for r in results:
         print(f"  {r['score']:.3f}  {r['language']:<10} {r['path']}")
-        print(f"           {r['sloc']} sloc, {r['bytes']} bytes, updated {r['updated_at']}")
+        cite = ""
+        if "char_range" in r:
+            cite = f" [chunk {r['matched_chunk_idx']} chars {r['char_range'][0]}..{r['char_range'][1]}]"
+        print(f"           {r['sloc']} sloc, {r['bytes']} bytes, updated {r['updated_at']}{cite}")
         if r["snippet"]:
             first = r["snippet"].split("\n", 1)[0][:120]
             print(f"           {first}")
@@ -675,7 +839,8 @@ def cmd_stats(args):
     print(f"model:     {s.get('model', '?') or '?'}")
     print(f"dim:       {s.get('dim', '?') or '?'}")
     print(f"indexed:   {s.get('last_indexed_ts', '?') or '?'}")
-    print(f"total:     {s['total']} files, {s['total_sloc']:,} sloc, {s['total_bytes']:,} bytes")
+    chunks_str = f", {s['total_chunks']:,} chunks" if s.get("total_chunks") else " (pre-v1.28 db — `reindex` to enable hybrid search)"
+    print(f"total:     {s['total']} files, {s['total_sloc']:,} sloc, {s['total_bytes']:,} bytes{chunks_str}")
     for lang, n in s["by_language"].items():
         print(f"  {lang:<12} {n}")
 
@@ -720,10 +885,14 @@ def build_parser() -> argparse.ArgumentParser:
     pr.add_argument("--no-git", action="store_true")
     pr.set_defaults(func=cmd_reindex)
 
-    ps = sub.add_parser("search", help="semantic search")
+    ps = sub.add_parser("search", help="semantic search (default: BM25+dense hybrid on chunks)")
     ps.add_argument("query")
     ps.add_argument("--top-k", type=int, default=10)
     ps.add_argument("--lang", help="filter by language (rust|python|typescript|...)")
+    ps.add_argument("--alpha", type=float, default=0.5,
+                    help="hybrid weight: 1.0=dense only, 0.0=BM25 only, 0.5=balanced (default)")
+    ps.add_argument("--legacy", action="store_true",
+                    help="use pre-v1.28 whole-file cosine instead of chunked hybrid")
     ps.add_argument("--root")
     ps.add_argument("--json", action="store_true")
     ps.set_defaults(func=cmd_search)

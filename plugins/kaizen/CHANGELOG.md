@@ -3,6 +3,86 @@
 All notable changes to the `kaizen` plugin documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [SemVer](https://semver.org/).
 
+## [1.28.0] — 2026-05-12
+
+### Changed — `/kaizen:onboard` switches to RAG-grade hybrid search (chunked + BM25 + dense)
+
+First indexer to adopt the v1.27.0 foundation. Default search path is now BM25 (via SQLite FTS5) + dense cosine, fused at `alpha=0.5`. Each file is sentence-aware chunked at 512 tokens, embedded in batch via `_embed.embed_batch`, and stored in a new `code_chunks` table.
+
+**Schema (additive, no migration required)**
+
+```sql
+CREATE TABLE code_chunks (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    file_id INTEGER NOT NULL REFERENCES code_files(id) ON DELETE CASCADE,
+    chunk_idx INTEGER NOT NULL,
+    char_start INTEGER NOT NULL,
+    char_end INTEGER NOT NULL,
+    text TEXT NOT NULL,
+    embedding BLOB NOT NULL,
+    language TEXT NOT NULL,                  -- denormalized so hybrid filter works
+    UNIQUE(file_id, chunk_idx)
+);
+-- Plus code_chunks_fts (FTS5 virtual) created by _search.ensure_fts_mirror.
+```
+
+`code_files.embedding` is preserved (gets the first chunk's vector) so the legacy whole-file cosine path keeps working.
+
+**Search behavior**
+
+```
+# Default (chunked hybrid, alpha=0.5)
+/kaizen:onboard search "lazy initialization pattern"
+
+# Tune blend
+/kaizen:onboard search "function add" --alpha 0.7    # lean toward dense
+/kaizen:onboard search "TODO comments" --alpha 0.2    # lean toward BM25 (literal)
+
+# Filter by language
+/kaizen:onboard search "channel send" --lang rust
+
+# Legacy (pre-v1.28 whole-file cosine — useful for very-coarse "what's this codebase about?" queries)
+/kaizen:onboard search "auth system" --legacy
+```
+
+Results now carry `matched_chunk_idx` + `char_range` for citation (mirrors Onyx's per-chunk `source_links`). Output shape (JSON):
+
+```json
+{
+  "score": 0.6234,
+  "id": 412,
+  "path": "src/main.rs",
+  "language": "rust",
+  "matched_chunk_idx": 3,
+  "char_range": [1024, 2046],
+  "snippet": "first 500 chars of the matched chunk..."
+}
+```
+
+**Backward compat**
+
+Pre-v1.28 onboard dbs (no `code_chunks_fts` table) fall back gracefully to the legacy whole-file cosine path; stderr shows a one-line hint to `kaizen-onboard reindex` for hybrid. `/kaizen:onboard stats` also surfaces the chunks-missing state.
+
+**Migration**
+
+```
+kaizen-onboard reindex
+```
+
+Reindex of a 1017-file shodan workspace generated ~8000 chunks (avg ~8 per file). Storage doubled (vector blobs are the bulk). Hybrid search adds ~50ms per query for the BM25 pass over 8K chunks (still well under 200ms total).
+
+### Indexers NOT YET migrated (planned next)
+
+- `knowledge_index.py` — v1.29.0 (smaller corpus, less impact)
+- `trace_index.py` — v1.30.0 (events are short — chunking may not help; will measure)
+- `scrape_index.py` — v1.31.0 (web content benefits most from chunking)
+
+### Tests
+
+3 new tests: `tests/test_onboard_chunked.py` verifying schema creation (chunks table + FTS shadow), index path populating chunks + FTS in sync, and the legacy fallback on `OperationalError` from a missing FTS shadow.
+
+Plugin unit-test count: 118 → 121.
+
 ## [1.27.0] — 2026-05-12
 
 ### Added — RAG foundation: `_chunk.py` + `_search.py` (sentence-aware chunking + BM25/dense hybrid)
