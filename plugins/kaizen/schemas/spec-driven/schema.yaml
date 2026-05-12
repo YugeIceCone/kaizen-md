@@ -34,13 +34,26 @@ artifacts:
     generates: design.md
     template: design.md
     requires: [analyze]
+    branch_high: [tasks, decisions, implement, validate, reflect, handoff]
+    branch_medium: [tasks, decisions, implement, validate, reflect, handoff]
+    branch_low: [analyze, design, tasks, decisions, implement, validate, reflect, handoff]
     description: |
       Phase 2 — architect the solution. Produce design.md with
       architecture overview, sequence diagrams, data models, interface
-      contracts, and an error matrix. Branch on the Confidence Score
-      from analyze.md: high (>85%) → full plan, medium (66–85%) → PoC
-      first, low (<66%) → research loop-back. Gate: design must be
-      complete before implementation.
+      contracts, and an error matrix.
+
+      Confidence-Score branching (v1.15.0, advisory):
+        high   (>85%) → straight to tasks (branch_high)
+        medium (66–85) → PoC first, then tasks (branch_medium; add a
+                         PoC sub-section to design.md or open a
+                         dedicated poc/ folder before tasks)
+        low    (<66%) → loop back to analyze (branch_low; re-run
+                         requirements gathering with deeper research)
+
+      Inspect via:
+        /kaizen:schema branches spec-driven design
+
+      Gate: design must be complete before implementation.
 
   - id: tasks
     generates: tasks.md

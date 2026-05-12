@@ -16,6 +16,7 @@ Inspect / validate workflow schemas. A schema is a declarative yaml file declari
 - `validate <name>` → structural + DAG check (cycles, unknown `requires:` refs, bad `apply.gate`)
 - `stages <name>` → print topo-ordered stage ids, one per line (the same output `/workflow schema=<name>` consumes)
 - `artifact <name> <id>` → print one artifact's dict as JSON, including its description prose
+- `branches <name> <id>` (v1.15.0+) → print the artifact's `branch_high` / `branch_medium` / `branch_low` paths as JSON. Advisory: the agent reads these after completing a branching stage (e.g. `design` in `spec-driven`) and walks the matching tier; the workflow.sh state machine isn't modified.
 
 ## Built-in schemas (v1.14.0)
 

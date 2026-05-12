@@ -3,6 +3,48 @@
 All notable changes to the `kaizen` plugin documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [SemVer](https://semver.org/).
 
+## [1.15.0] — 2026-05-12
+
+Python tooling depth + Confidence-Score branching (advisory). First of two releases closing the v1.14.0 deferred items; the second (knowledge-RAG + Self-RAG) lands as v1.16.0.
+
+### Changed — pre-commit gate Python detection
+
+`skills/kaizen/scripts/pre-commit.sh` compile-barrier heuristic for Python projects:
+
+**Before (v1.14.0):** Detected `pyproject.toml` only; ran `ruff check .` if `ruff` on PATH; silently disabled the gate otherwise.
+
+**After (v1.15.0):**
+1. Detects `pyproject.toml` **OR** `requirements.txt` **OR** `setup.py` **OR** `setup.cfg` (broader Python-project signal).
+2. Composes `ruff check . && ruff format --check .` when `ruff` is on PATH (format drift now blocks the gate, same as lint).
+3. Appends `&& ty check` when [Astral's `ty`](https://docs.astral.sh/ty/) is on PATH. `ty` is alpha as of 2026-05; integration is opt-in / detect-if-available — no hard requirement, no soft warn if missing.
+4. Fallback: `python3 -m compileall -q .` when neither ruff nor ty is installed. Better to byte-compile than silently disable the gate.
+
+The composed command is cached by staged-content SHA exactly like the existing barrier (cache-key includes the full chained command, so a fresh `ruff` or `ty` install invalidates correctly on the next run).
+
+### Added — Confidence-Score branching (advisory) in `spec-driven`
+
+Closes the v1.14.0 deferred Confidence-Score routing item — at the **advisory** fidelity. Real runtime state-machine splicing (a `workflow.sh branch <stage> <key>` subcommand that rewrites `state.stages[current:]`) is deferred to v1.15.x if the advisory layer sees real use.
+
+`schemas/spec-driven/schema.yaml` — `design` artifact gains three new fields:
+
+```yaml
+branch_high:   [tasks, decisions, implement, validate, reflect, handoff]
+branch_medium: [tasks, decisions, implement, validate, reflect, handoff]
+branch_low:    [analyze, design, tasks, decisions, implement, validate, reflect, handoff]
+```
+
+(The medium branch currently matches high; a future v1.15.x adds a true `poc` artifact + medium-specific path. Low loops back through analyze + design.)
+
+`skills/workflow-routing/scripts/workflow_runner.py` — new subcommand `branches <name> <stage>` strips the `branch_` prefix and emits the path dict as JSON. The schema-yaml parser handles the new inline-list fields with no code changes (existing inline-list path covers `branch_*: [a, b, c]`).
+
+`commands/schema.md` — documented the new subcommand.
+
+`schemas/spec-driven/templates/design.md` — added a "after completing this document" block instructing the agent to call `/kaizen:schema branches spec-driven design` and walk the matching tier.
+
+### Why minor (1.14.0 → 1.15.0)
+
+Two additive surfaces: gate-level Python tooling depth (new compose chain + new fallback) and schema-level advisory branching (new parser-compatible field + new runner subcommand). Existing routines and state machine unchanged. No breaking changes.
+
 ## [1.14.0] — 2026-05-12
 
 Schemas runtime + spec-driven workflow. Closes the v1.13.0 deferred track and folds in the highest-signal ideas from [github/awesome-copilot/.../spec-driven-workflow-v1](https://github.com/github/awesome-copilot/blob/main/instructions/spec-driven-workflow-v1.instructions.md).

@@ -13,6 +13,21 @@
 
 Chosen strategy: <high|medium|low> — <rationale>.
 
+After completing this document, inspect the schema's branch paths to know which downstream stages apply:
+
+```bash
+/kaizen:schema branches spec-driven design
+# → {high: [...], medium: [...], low: [...]}
+```
+
+Then advance the workflow with the rationale recorded:
+
+```bash
+workflow.sh advance design "confidence=<level>; choosing <path>: <why>"
+```
+
+The workflow.sh state machine itself walks every stage in topo order. The branch lists are **advisory** — they tell the agent which stages are most relevant for the chosen confidence tier. Stages not in the chosen branch can be tick-noted as "skipped: outside <level>-confidence path" rather than re-doing them.
+
 ## Architecture overview
 
 <one-paragraph high-level: components, boundaries, integration surface>

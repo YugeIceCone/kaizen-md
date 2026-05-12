@@ -17,6 +17,11 @@ Subcommands:
     validate <name>           Structural + DAG validation; exit 1 on any error
     stages <name>             Print topo-ordered stage ids, one per line (workflow.sh consumes this)
     artifact <name> <id>      Print one artifact dict as JSON (so the agent sees its description)
+    branches <name> <id>      Print branch_high/medium/low alternative-path stage lists for an
+                              artifact as JSON. Advisory in v1.15.0 — the agent reads this after
+                              completing the artifact (e.g. design.md) and decides which path to
+                              walk based on its Confidence Score. workflow.sh state machine is
+                              not modified; the agent uses /kaizen:schema branches output to plan.
 
 Schema format (minimal subset, stdlib-parseable):
 
@@ -431,13 +436,27 @@ def main():
                 return
         sys.exit(f"artifact {aid!r} not found in schema {name!r}")
 
+    elif cmd == "branches":
+        name = _need(2, "schema-name")
+        aid = _need(3, "artifact-id")
+        schema = load_schema(name)
+        for a in schema["artifacts"]:
+            if a.get("id") != aid:
+                continue
+            out = {k[len("branch_"):]: v for k, v in a.items() if k.startswith("branch_")}
+            if not out:
+                sys.exit(f"artifact {aid!r} has no branch_* fields")
+            print(json.dumps(out, indent=2))
+            return
+        sys.exit(f"artifact {aid!r} not found in schema {name!r}")
+
     elif cmd in ("-h", "--help"):
         print(__doc__)
 
     else:
         sys.exit(
             f"unknown subcommand: {cmd}\n"
-            "try: list | show <name> | validate <name> | stages <name> | artifact <name> <id>"
+            "try: list | show <name> | validate <name> | stages <name> | artifact <name> <id> | branches <name> <id>"
         )
 
 

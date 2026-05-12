@@ -75,10 +75,28 @@ if [ -z "$COMPILE_CHECK_CMD" ]; then
         COMPILE_CHECK_CMD="npx --no-install tsc --noEmit"
     elif [ -f "go.mod" ]; then
         COMPILE_CHECK_CMD="go build ./..."
-    elif [ -f "pyproject.toml" ]; then
+    elif [ -f "pyproject.toml" ] || [ -f "requirements.txt" ] || [ -f "setup.py" ] || [ -f "setup.cfg" ]; then
+        # Python: compose ruff (check + format --check) and optional ty (alpha as of 2026-05; opt-in).
+        # v1.15.0: prefer ruff over pyright/mypy in detection order; ty (Astral) is appended when on PATH.
+        # Empty COMPILE_CHECK_CMD remains the fallback if no Python tooling is installed.
+        _py_parts=()
         if command -v ruff >/dev/null 2>&1; then
-            COMPILE_CHECK_CMD="ruff check ."
+            _py_parts+=("ruff check .")
+            _py_parts+=("ruff format --check .")
         fi
+        if command -v ty >/dev/null 2>&1; then
+            _py_parts+=("ty check")
+        fi
+        if [ ${#_py_parts[@]} -eq 0 ]; then
+            # Last-resort: byte-compile staged .py files so the gate isn't silently disabled.
+            COMPILE_CHECK_CMD="python3 -m compileall -q ."
+        else
+            COMPILE_CHECK_CMD="${_py_parts[0]}"
+            for ((i=1; i<${#_py_parts[@]}; i++)); do
+                COMPILE_CHECK_CMD="$COMPILE_CHECK_CMD && ${_py_parts[i]}"
+            done
+        fi
+        unset _py_parts
     fi
 fi
 
