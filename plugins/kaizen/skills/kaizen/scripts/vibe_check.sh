@@ -54,14 +54,22 @@ if [ -n "$DIFF" ]; then
     # 3. Orphan imports — new `use` referencing crate NOT in manifest
     if [ -f "Cargo.toml" ]; then
         # Heuristic: extract added `use foo::` lines; check if `foo` exists in any Cargo.toml dependencies
+        RULES_PY="$SCRIPT_DIR/rules.py"
         ORPHANS=""
+        ALLOWED=""
         for crate in $(printf '%s\n' "$DIFF" | grep -oE '^\+[[:space:]]*use[[:space:]]+[a-z_][a-z0-9_]*' | awk '{print $NF}' | sort -u); do
             # Skip std, core, alloc, crate, self, super
             case "$crate" in
                 std|core|alloc|crate|self|super|use) continue ;;
             esac
             # Check workspace + all crate Cargo.tomls
-            if ! grep -rqE "^${crate}[[:space:]]*=" --include=Cargo.toml . 2>/dev/null; then
+            if grep -rqE "^${crate}[[:space:]]*=" --include=Cargo.toml . 2>/dev/null; then
+                continue
+            fi
+            # Not in any manifest — consult dependency-allowlist brain rule
+            if [ -f "$RULES_PY" ] && python3 "$RULES_PY" dependency-allowed "$crate" >/dev/null 2>&1; then
+                ALLOWED="$ALLOWED $crate"
+            else
                 ORPHANS="$ORPHANS $crate"
             fi
         done
@@ -70,6 +78,9 @@ if [ -n "$DIFF" ]; then
             echo "    → add to Cargo.toml + cargo update before committing" >&2
         else
             echo "  ✓ no orphan imports (Rust)" >&2
+        fi
+        if [ -n "$ALLOWED" ]; then
+            echo "  ∘ allowlisted deps (brain rule):$ALLOWED" >&2
         fi
     fi
 fi

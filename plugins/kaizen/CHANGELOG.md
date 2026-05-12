@@ -3,6 +3,40 @@
 All notable changes to the `kaizen` plugin documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [SemVer](https://semver.org/).
 
+## [1.13.2] — 2026-05-12
+
+### Added — `dependency-allowlist` brain-rule type
+
+Closes the v1.13.0 follow-up. Vibe-check's orphan-import check (Rust `use` not in any `Cargo.toml`) now consults brain-sourced `dependency-allowlist` rules and demotes listed crates from `! orphan` to `∘ allowlisted` — advisory only, no behaviour change for unlisted crates.
+
+**`skills/kaizen/scripts/rules.py`** — fourth rule_type added:
+
+- `VALID_RULE_TYPES` extended with `dependency-allowlist`.
+- `dependency_allowed(name) -> (bool, rule_name)` — union lookup across all loaded rules; first hit wins.
+- New CLI subcommand: `dependency-allowed <crate>` (prints `yes (<rule-name>)` or `no`; exits 0/1 accordingly).
+- New template: `template dependency-allowlist` emits a ready-to-edit brain note with a starter `serde,tokio,reqwest,anyhow,thiserror,clap,tracing` allowlist.
+- Validation: requires non-empty `allowlist` (comma-separated).
+
+**`skills/kaizen/scripts/vibe_check.sh`** — orphan-import section now partitions detected orphans through `rules.py dependency-allowed`. Listed crates print as `∘ allowlisted deps (brain rule): <names>`; unlisted continue to print as `! orphan imports`. The composed `/kaizen:vibe-check` skill body and `kaizen:rule` command surface already documented this rule type (referenced as a forward declaration in v1.13.0) — wiring now matches the documentation.
+
+### Author a `dependency-allowlist` rule
+
+```bash
+# 1. Get a template:
+python3 ${CLAUDE_PLUGIN_ROOT}/skills/kaizen/scripts/rules.py template dependency-allowlist > ~/.claude/brain/Notes/kaizen-allow-core-deps.md
+# 2. Edit the allowlist line in the YAML frontmatter:
+#    allowlist: "serde,tokio,my-internal-crate,..."
+# 3. Validate:
+/kaizen:rule validate
+# 4. Next /kaizen:vibe-check run picks it up — no plugin restart.
+```
+
+Multiple `dependency-allowlist` notes across the brain are unioned at lookup time; you can split by team / project / scope.
+
+### Why patch (1.13.1 → 1.13.2)
+
+Bug-fix-shaped: vibe-check's SKILL.md and `commands/vibe-check.md` already advertised `dependency-allowlist` consultation but no implementation existed. This closes the doc-vs-behaviour gap. Additive surface; no breaking changes.
+
 ## [1.13.1] — 2026-05-12
 
 ### Added — `bin/kaizen-vibe-check` shell wrapper

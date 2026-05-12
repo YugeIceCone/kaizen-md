@@ -4,15 +4,20 @@
 Scans `~/.claude/brain/Notes/*.md` for files with a `kaizen:` block in their
 YAML frontmatter. Each becomes a runtime rule the gate consults.
 
-Three rule_types:
+Four rule_types:
 
-  deletion-allow      path_glob: <fnmatch>      Allow `git rm` on matching paths
-                                                without KAIZEN_ALLOW_DELETE=1.
-  check-severity      check_id: <name>          Override a gate check's severity.
-                      severity: skip|warn|block
-  custom-pattern      pattern_regex: <regex>    Run a regex over the staged diff;
-                      pattern_action: warn|block  emit warning or block on hit.
-                      pattern_message: <string>
+  deletion-allow        path_glob: <fnmatch>      Allow `git rm` on matching paths
+                                                  without KAIZEN_ALLOW_DELETE=1.
+  check-severity        check_id: <name>          Override a gate check's severity.
+                        severity: skip|warn|block
+  custom-pattern        pattern_regex: <regex>    Run a regex over the staged diff;
+                        pattern_action: warn|block  emit warning or block on hit.
+                        pattern_message: <string>
+  dependency-allowlist  allowlist: <csv>          Comma-separated crates / packages
+                                                  pre-vetted for import. Consulted
+                                                  by /kaizen:vibe-check to demote
+                                                  orphan-import warnings on the
+                                                  listed names.
 
 Frontmatter schema (per brain note):
 
@@ -32,13 +37,14 @@ Frontmatter schema (per brain note):
 Body of the .md note is human-readable rationale (agent-visible, plugin ignores).
 
 Subcommands:
-    list                      List all kaizen rules
-    show <name>               Print one rule as JSON
-    deletion-allowed <path>   Print yes/no
-    severity <check_id>       Print the override severity or "default"
-    custom-patterns           Print all custom-pattern rules as JSON
-    validate                  Schema-check all rules; exit 1 on any error
-    template <rule_type>      Print a brain-note template to stdout
+    list                       List all kaizen rules
+    show <name>                Print one rule as JSON
+    deletion-allowed <path>    Print yes/no
+    severity <check_id>        Print the override severity or "default"
+    custom-patterns            Print all custom-pattern rules as JSON
+    dependency-allowed <crate> Print yes/no for the given crate/package name
+    validate                   Schema-check all rules; exit 1 on any error
+    template <rule_type>       Print a brain-note template to stdout
 
 Env:
     KAIZEN_BRAIN              Override brain path (default ~/.claude/brain)
@@ -56,7 +62,7 @@ from pathlib import Path
 BRAIN = Path(os.environ.get("KAIZEN_BRAIN", os.path.expanduser("~/.claude/brain")))
 NOTES_DIR = BRAIN / "Notes"
 
-VALID_RULE_TYPES = {"deletion-allow", "check-severity", "custom-pattern"}
+VALID_RULE_TYPES = {"deletion-allow", "check-severity", "custom-pattern", "dependency-allowlist"}
 VALID_SEVERITY = {"skip", "warn", "block"}
 VALID_ACTION = {"warn", "block"}
 
@@ -159,6 +165,20 @@ def custom_patterns() -> list[dict]:
     return [r for r in load_rules() if r.get("rule_type") == "custom-pattern"]
 
 
+def _split_csv(value: str) -> list[str]:
+    return [item.strip() for item in value.split(",") if item.strip()]
+
+
+def dependency_allowed(name: str) -> tuple[bool, str | None]:
+    """Return (allowed, rule_name) — union over all dependency-allowlist rules."""
+    for r in load_rules():
+        if r.get("rule_type") != "dependency-allowlist":
+            continue
+        if name in _split_csv(r.get("allowlist", "")):
+            return True, r["name"]
+    return False, None
+
+
 # ─── Validation ───────────────────────────────────────────────────────
 
 
@@ -186,6 +206,9 @@ def validate_rule(r: dict) -> list[str]:
             re.compile(r.get("pattern_regex", ""))
         except re.error as e:
             errs.append(f"custom-pattern regex invalid: {e}")
+    elif rt == "dependency-allowlist":
+        if not _split_csv(r.get("allowlist", "")):
+            errs.append("dependency-allowlist requires non-empty allowlist (comma-separated)")
     return errs
 
 
@@ -255,6 +278,29 @@ kaizen:
 Unresolved markers in main are tech debt; force a moment of consideration
 at commit time.
 """,
+        "dependency-allowlist": f"""---
+name: kaizen-allow-core-deps
+description: Pre-vetted dependencies. /kaizen:vibe-check skips orphan-import warnings on these.
+type: behaviour
+tags: [kaizen, dependency-allowlist]
+sources_count: 1
+freshness: stable
+created: {today}
+updated: {today}
+kaizen:
+  rule_type: dependency-allowlist
+  allowlist: "serde,tokio,reqwest,anyhow,thiserror,clap,tracing"
+---
+
+# Why
+
+These crates are reviewed, version-pinned, and widely used across this
+workspace. A new `use <crate>::*` import for any of them is expected —
+shouldn't trigger the vibe-check orphan-import warning every time.
+
+Append more comma-separated names as additional deps are vetted. Multiple
+dependency-allowlist rules across notes are unioned at lookup time.
+""",
     }
     return templates.get(rule_type, f"Unknown rule_type: {rule_type}\nExpected one of {VALID_RULE_TYPES}")
 
@@ -306,6 +352,16 @@ def main():
     elif cmd == "custom-patterns":
         print(json.dumps(custom_patterns(), indent=2))
 
+    elif cmd == "dependency-allowed":
+        if len(sys.argv) < 3:
+            sys.exit("usage: dependency-allowed <crate>")
+        allowed, by = dependency_allowed(sys.argv[2])
+        if allowed:
+            print(f"yes ({by})")
+        else:
+            print("no")
+        sys.exit(0 if allowed else 1)
+
     elif cmd == "validate":
         rules = load_rules()
         ok = True
@@ -328,7 +384,7 @@ def main():
         print(__doc__)
 
     else:
-        sys.exit(f"unknown subcommand: {cmd}\ntry: list|show|deletion-allowed|severity|custom-patterns|validate|template")
+        sys.exit(f"unknown subcommand: {cmd}\ntry: list|show|deletion-allowed|severity|custom-patterns|dependency-allowed|validate|template")
 
 
 if __name__ == "__main__":
