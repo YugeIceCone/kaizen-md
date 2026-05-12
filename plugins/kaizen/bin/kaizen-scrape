@@ -1,6 +1,22 @@
 #!/usr/bin/env bash
 # kaizen-scrape — LLM-driven scrape + semantic SQLite index.
+#
+# Dispatches by subcommand: meta commands (stats/path/clear/list/get/
+# detect-llm/--help) run on plain python3 — stdlib-only, instant. Only
+# scrape/batch/search need scrapegraphai + sentence-transformers, so
+# those route through `uv run --script` which honors the PEP 723 inline
+# metadata. Avoids the 123-package install when the user is just
+# checking status or probing local LLMs.
 set -uo pipefail
 SCRIPT=$(python3 -c "import os, sys; print(os.path.realpath(sys.argv[1]))" "${BASH_SOURCE[0]}")
 PLUGIN_ROOT=$(cd "$(dirname "$SCRIPT")/.." && pwd)
-exec uv run --script "$PLUGIN_ROOT/skills/kaizen/scripts/scrape_index.py" "$@"
+TARGET="$PLUGIN_ROOT/skills/kaizen/scripts/scrape_index.py"
+
+case "${1:-stats}" in
+  stats|path|clear|list|get|detect-llm|-h|--help|"")
+    exec python3 "$TARGET" "$@"
+    ;;
+  *)
+    exec uv run --script "$TARGET" "$@"
+    ;;
+esac

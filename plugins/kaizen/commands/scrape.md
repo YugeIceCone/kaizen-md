@@ -11,7 +11,7 @@ LLM-driven scrape that ends in a queryable SQLite index. Three kaizen patterns c
 2. **ScrapeGraphAI** — `SmartScraperGraph(prompt, source, config).run()` produces structured extraction.
 3. **kaizen indexer** — same SQLite + sentence-transformers (`all-MiniLM-L6-v2`, 384-dim) shape as trace, knowledge, onboard.
 
-!`uv run --script ${CLAUDE_PLUGIN_ROOT}/skills/kaizen/scripts/scrape_index.py ${ARGUMENTS:-stats}`
+!`bash ${CLAUDE_PLUGIN_ROOT}/bin/kaizen-scrape ${ARGUMENTS:-stats}`
 
 ## Subcommands
 

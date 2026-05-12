@@ -3,6 +3,37 @@
 All notable changes to the `kaizen` plugin documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [SemVer](https://semver.org/).
 
+## [1.24.2] — 2026-05-12
+
+### Fix — `/kaizen:scrape detect-llm` no longer triggers a 123-package install
+
+**Symptom (v1.24.1):** running `/kaizen:scrape detect-llm` (or any meta subcommand — `stats`, `path`, `list`, `get`, `clear`) installed scrapegraphai + sentence-transformers + ~120 transitive deps because the slash command pipes through `uv run --script`, and PEP 723 inline metadata installs ALL declared deps unconditionally before the script even runs.
+
+**Fix:** `bin/kaizen-scrape` now dispatches by subcommand:
+
+```bash
+case "${1:-stats}" in
+  stats|path|clear|list|get|detect-llm|-h|--help|"")
+    exec python3 "$TARGET" "$@"          # stdlib only — instant
+    ;;
+  *)
+    exec uv run --script "$TARGET" "$@"  # scrape/batch/search — full PEP 723
+    ;;
+esac
+```
+
+The script's heavy imports (scrapegraphai, sentence-transformers) are already lazy inside `_load_scraper_cls()` / `_load_embedder()`, so plain `python3` runs the meta subcommands fine.
+
+Measured: `detect-llm` now runs in **80ms** (was ~30+ seconds on first run).
+
+### Fix — slash command arg pass-through
+
+The `commands/scrape.md` body changed from `!\`uv run --script ... ${ARGUMENTS:-stats}\`` to `!\`bash bin/kaizen-scrape ${ARGUMENTS:-stats}\``. Routing through the bin shim is the same pattern as other kaizen commands and propagates args consistently.
+
+### Why patch (1.24.1 → 1.24.2)
+
+Two small but high-impact fixes — the v1.24.1 zero-config detection is now actually instant, and the slash command surface matches the rest of the kaizen plugin's pattern.
+
 ## [1.24.1] — 2026-05-12
 
 ### Added — zero-config LLM endpoint detection for `/kaizen:scrape`
