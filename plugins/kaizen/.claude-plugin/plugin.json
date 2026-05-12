@@ -1,6 +1,6 @@
 {
   "name": "kaizen",
-  "version": "1.24.0",
+  "version": "1.24.1",
   "description": "Consistent git commit discipline — pre-commit gate, micro-work backlog (JSON-sourced), sizing by trace+sem+grep, brain-sourced behaviour rules. Ships 3 agents (reviewer/curator/debt-auditor) with worktree isolation, hash-keyed cache, statusline, context-window awareness, language-agnostic docs generator, async Node+Flow demo, and non-blocking message inbox (UserPromptSubmit→PostToolUse) so Claude sees user input on every tool boundary. Self-contained: bundles 35 skills (tdd + 9 coding-skills + onion-ddd-workflow + 14 superpowers + workflow-routing + 5 remember/Second Brain + plugin-pitfalls + behaviour-config + publishing) plus all supporting scripts/refs/assets. No external plugin dependencies.",
   "author": {
     "name": "YugeIceCone",

@@ -75,13 +75,35 @@ KNOWLEDGE_SNIPPET_MAX   = 400
 SCRAPE_SNIPPET_MAX      = 1024                   # v1.24.0+ — chars stored per scrape item
 
 # Scrape — defaults the user can retune (env vars still win).
-SCRAPE_LLM_MODEL        = "ollama/llama3"        # env: KAIZEN_SCRAPE_LLM_MODEL
-SCRAPE_LLM_BASE_URL     = "http://localhost:11434"  # env: KAIZEN_SCRAPE_LLM_BASE_URL
+# Empty SCRAPE_LLM_MODEL ("") triggers zero-config auto-detect on first use
+# (probes llama.cpp server / Ollama / LM Studio / vLLM / text-gen-webui ports).
+SCRAPE_LLM_MODEL        = ""                      # env: KAIZEN_SCRAPE_LLM_MODEL — "" = auto
+SCRAPE_LLM_BASE_URL     = ""                      # env: KAIZEN_SCRAPE_LLM_BASE_URL — "" = auto
+SCRAPE_LLM_AUTO         = True                    # env: KAIZEN_SCRAPE_LLM_AUTO=0 to disable probe
+SCRAPE_LLM_PROBE_TIMEOUT = 2.0                    # seconds per endpoint
 SCRAPE_DEFAULT_PROMPT   = "Extract the main content as structured data: title, headings, key facts, and any tabular data. Return JSON."
 
-# Env-var resolution for scrape (additional to those at the bottom of this block).
+# Probe targets — ordered by ascending invasiveness (local-first). Each entry:
+#   (provider_prefix, base_url, list_endpoint, model_field)
+# provider_prefix is what scrapegraph-ai's model string needs: "openai/<m>"
+# for OpenAI-compatible servers, "ollama/<m>" for Ollama.
+SCRAPE_LLM_PROBES = [
+    # llama.cpp `llama-server` (most common port). Native OpenAI-compatible API.
+    ("openai", "http://localhost:8080/v1", "/models", "id"),
+    # Ollama (different endpoint shape — handled in detect_llm)
+    ("ollama", "http://localhost:11434",   "/api/tags", "name"),
+    # LM Studio
+    ("openai", "http://localhost:1234/v1", "/models", "id"),
+    # vLLM / OpenAI Python proxy
+    ("openai", "http://localhost:8000/v1", "/models", "id"),
+    # text-generation-webui (oobabooga) OpenAI extension
+    ("openai", "http://localhost:5000/v1", "/models", "id"),
+]
+
+# Env-var resolution for scrape (env wins over the constants above).
 SCRAPE_LLM_MODEL    = os.environ.get("KAIZEN_SCRAPE_LLM_MODEL",    SCRAPE_LLM_MODEL)
 SCRAPE_LLM_BASE_URL = os.environ.get("KAIZEN_SCRAPE_LLM_BASE_URL", SCRAPE_LLM_BASE_URL)
+SCRAPE_LLM_AUTO     = os.environ.get("KAIZEN_SCRAPE_LLM_AUTO", "1") not in ("0", "false", "no")
 
 # Env-var resolution for the knobs that ARE env-overridable.
 EMBED_MODEL = os.environ.get("KAIZEN_EMBED_MODEL", EMBED_MODEL)
@@ -251,6 +273,8 @@ def plugin_defaults_dict() -> dict:
         "SCRAPE_SNIPPET_MAX": SCRAPE_SNIPPET_MAX,
         "SCRAPE_LLM_MODEL": SCRAPE_LLM_MODEL,
         "SCRAPE_LLM_BASE_URL": SCRAPE_LLM_BASE_URL,
+        "SCRAPE_LLM_AUTO": SCRAPE_LLM_AUTO,
+        "SCRAPE_LLM_PROBE_TIMEOUT": SCRAPE_LLM_PROBE_TIMEOUT,
     }
 
 

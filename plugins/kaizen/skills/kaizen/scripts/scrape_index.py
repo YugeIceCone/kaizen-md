@@ -219,21 +219,124 @@ def extract_title(extraction: Any) -> str:
     return ""
 
 
+_LLM_CACHE_PATH = _p.SCRAPE_DIR / "llm_endpoint.json"
+
+
+def _probe_endpoint(base_url: str, list_path: str, model_field: str, timeout: float) -> str | None:
+    """Hit <base_url><list_path>; return the first model name or None.
+
+    Stdlib-only (urllib). Used for zero-config detection of llama.cpp
+    server / Ollama / LM Studio / vLLM / text-gen-webui."""
+    import urllib.request
+    import urllib.error
+    url = base_url.rstrip("/") + list_path
+    try:
+        req = urllib.request.Request(url, headers={"Accept": "application/json"})
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            if resp.status != 200:
+                return None
+            data = json.loads(resp.read())
+    except (urllib.error.URLError, OSError, json.JSONDecodeError, TimeoutError):
+        return None
+    # OpenAI shape: {"data": [{"id": "..."}, ...]}
+    if isinstance(data, dict) and isinstance(data.get("data"), list):
+        for item in data["data"]:
+            if isinstance(item, dict) and item.get(model_field):
+                return str(item[model_field])
+    # Ollama shape: {"models": [{"name": "..."}, ...]}
+    if isinstance(data, dict) and isinstance(data.get("models"), list):
+        for item in data["models"]:
+            if isinstance(item, dict) and item.get(model_field):
+                return str(item[model_field])
+    return None
+
+
+def detect_llm(refresh: bool = False, verbose: bool = False) -> dict | None:
+    """Zero-config probe of common local-LLM endpoints. Returns {provider,
+    model, base_url} on success, None otherwise. Caches the result to
+    SCRAPE_DIR/llm_endpoint.json so subsequent calls skip the probe.
+
+    Args:
+        refresh: ignore the cache and probe afresh.
+        verbose: print each probe attempt to stderr.
+    """
+    if not refresh and _LLM_CACHE_PATH.is_file():
+        try:
+            cached = json.loads(_LLM_CACHE_PATH.read_text())
+            if cached.get("model") and cached.get("base_url"):
+                return cached
+        except (OSError, json.JSONDecodeError):
+            pass
+
+    for provider, base_url, list_path, model_field in _cfg.SCRAPE_LLM_PROBES:
+        if verbose:
+            sys.stderr.write(f"  probing {base_url}{list_path}...")
+        model = _probe_endpoint(base_url, list_path, model_field, _cfg.SCRAPE_LLM_PROBE_TIMEOUT)
+        if model:
+            if verbose:
+                sys.stderr.write(f" ✓ {provider}/{model}\n")
+            result = {"provider": provider, "model": model, "base_url": base_url}
+            try:
+                _LLM_CACHE_PATH.parent.mkdir(parents=True, exist_ok=True)
+                _LLM_CACHE_PATH.write_text(json.dumps(result, indent=2))
+            except OSError:
+                pass
+            return result
+        elif verbose:
+            sys.stderr.write(" ✗\n")
+    return None
+
+
 def llm_config() -> dict:
+    """Resolve the LLM config for scrapegraph-ai. Priority order:
+      1. Explicit env / config: KAIZEN_SCRAPE_LLM_MODEL + KAIZEN_SCRAPE_LLM_BASE_URL
+      2. Auto-detect cache (zero-config) — re-uses last successful probe
+      3. Live probe of SCRAPE_LLM_PROBES (one-time per cache miss)
+      4. Hard failure with actionable error
+    """
     model = _cfg.SCRAPE_LLM_MODEL
+    base_url = _cfg.SCRAPE_LLM_BASE_URL
+
+    # Auto-detect path (model unset OR auto enabled with model unset)
+    if not model and _cfg.SCRAPE_LLM_AUTO:
+        det = detect_llm()
+        if det is None:
+            sys.stderr.write(
+                "kaizen-scrape: no local LLM endpoint detected and "
+                "KAIZEN_SCRAPE_LLM_MODEL not set.\n"
+                "  Start one of:\n"
+                "    llama-server -m <model.gguf> --port 8080    (llama.cpp)\n"
+                "    ollama serve                                 (ollama)\n"
+                "  Or set explicitly:\n"
+                "    export KAIZEN_SCRAPE_LLM_MODEL=openai/gpt-4o-mini\n"
+                "    export OPENAI_API_KEY=...\n"
+                "  Or probe manually: kaizen-scrape detect-llm --refresh\n"
+            )
+            sys.exit(2)
+        model = f"{det['provider']}/{det['model']}"
+        base_url = det["base_url"]
+
     cfg: dict = {"llm": {"model": model, "temperature": 0}}
     if model.startswith("ollama/"):
-        cfg["llm"]["base_url"] = _cfg.SCRAPE_LLM_BASE_URL
+        cfg["llm"]["base_url"] = base_url or "http://localhost:11434"
         cfg["llm"]["format"] = "json"
     elif model.startswith("openai/"):
         api_key = os.environ.get("OPENAI_API_KEY")
-        if not api_key:
+        if base_url:
+            # openai/* with base_url override = llama-server / LM Studio / vLLM / etc.
+            # These don't validate the key, so a placeholder works.
+            cfg["llm"]["base_url"] = base_url
+            cfg["llm"]["api_key"] = api_key or "sk-local-noop"
+        elif api_key:
+            cfg["llm"]["api_key"] = api_key
+        else:
             sys.stderr.write(
-                "kaizen-scrape: KAIZEN_SCRAPE_LLM_MODEL is openai/* but "
-                "OPENAI_API_KEY is not set\n"
+                "kaizen-scrape: KAIZEN_SCRAPE_LLM_MODEL is openai/* with no "
+                "base_url and OPENAI_API_KEY is not set.\n"
+                "  Either set OPENAI_API_KEY, or set KAIZEN_SCRAPE_LLM_BASE_URL\n"
+                "  to point at a local OpenAI-compatible server.\n"
             )
             sys.exit(2)
-        cfg["llm"]["api_key"] = api_key
     cfg["headless"] = True
     cfg["verbose"] = False
     return cfg
@@ -566,6 +669,26 @@ def cmd_clear(args):
         print("kaizen-scrape: no index to clear", file=sys.stderr)
 
 
+def cmd_detect_llm(args):
+    """Zero-config probe of common local-LLM endpoints."""
+    det = detect_llm(refresh=args.refresh, verbose=True)
+    if det is None:
+        print("kaizen-scrape: no local LLM endpoint detected.", file=sys.stderr)
+        print("Probed:", file=sys.stderr)
+        for provider, base_url, list_path, _ in _cfg.SCRAPE_LLM_PROBES:
+            print(f"  {provider:<8} {base_url}{list_path}", file=sys.stderr)
+        print("Start one of:", file=sys.stderr)
+        print("  llama-server -m <model.gguf> --port 8080    (llama.cpp)", file=sys.stderr)
+        print("  ollama serve                                 (ollama)", file=sys.stderr)
+        sys.exit(1)
+    if args.json:
+        print(json.dumps(det, indent=2))
+    else:
+        print(f"detected:  {det['provider']}/{det['model']}")
+        print(f"base_url:  {det['base_url']}")
+        print(f"cached at: {_LLM_CACHE_PATH}")
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="kaizen-scrape",
@@ -610,6 +733,14 @@ def build_parser() -> argparse.ArgumentParser:
 
     pc = sub.add_parser("clear")
     pc.set_defaults(func=cmd_clear)
+
+    pdl = sub.add_parser(
+        "detect-llm",
+        help="zero-config probe of common local-LLM endpoints (llama.cpp/Ollama/LM Studio/vLLM/text-gen-webui)",
+    )
+    pdl.add_argument("--refresh", action="store_true", help="ignore the cached endpoint, probe afresh")
+    pdl.add_argument("--json", action="store_true")
+    pdl.set_defaults(func=cmd_detect_llm)
 
     return p
 

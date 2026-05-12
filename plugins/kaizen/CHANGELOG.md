@@ -3,6 +3,72 @@
 All notable changes to the `kaizen` plugin documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [SemVer](https://semver.org/).
 
+## [1.24.1] — 2026-05-12
+
+### Added — zero-config LLM endpoint detection for `/kaizen:scrape`
+
+v1.24.0 defaulted to Ollama; v1.24.1 auto-detects any locally-running OpenAI-compatible server **first**. Probes these endpoints in order with a 2-second timeout each:
+
+| Port  | Server                                | API style                     |
+|-------|---------------------------------------|-------------------------------|
+| 8080  | **llama.cpp `llama-server`**          | OpenAI-compatible (`/v1/...`) |
+| 11434 | Ollama                                | Native (`/api/tags`)          |
+| 1234  | LM Studio                             | OpenAI-compatible             |
+| 8000  | vLLM                                  | OpenAI-compatible             |
+| 5000  | text-generation-webui (oobabooga)     | OpenAI extension              |
+
+Hits `/v1/models` (OpenAI shape) or `/api/tags` (Ollama shape); the first model in the response is selected. Result is cached at `~/.claude/.kaizen/scrape/llm_endpoint.json` — subsequent runs skip the probe.
+
+### Added — `/kaizen:scrape detect-llm [--refresh] [--json]`
+
+New subcommand to inspect / re-trigger the probe. Verbose output shows each endpoint attempt and which one succeeded.
+
+```
+/kaizen:scrape detect-llm
+  probing http://localhost:8080/v1/models... ✓ openai/<model-name>
+  detected:  openai/<model-name>
+  base_url:  http://localhost:8080/v1
+  cached at: ~/.claude/.kaizen/scrape/llm_endpoint.json
+```
+
+### Changed — `config.py` scrape knobs
+
+```python
+SCRAPE_LLM_MODEL         = ""           # "" = auto-detect (was "ollama/llama3")
+SCRAPE_LLM_BASE_URL      = ""           # "" = auto-detect (was "http://localhost:11434")
+SCRAPE_LLM_AUTO          = True         # env: KAIZEN_SCRAPE_LLM_AUTO=0 to disable
+SCRAPE_LLM_PROBE_TIMEOUT = 2.0          # seconds per endpoint
+SCRAPE_LLM_PROBES        = [...]        # 5-entry probe list (llama.cpp first)
+```
+
+Single-edit principle preserved — add a new probe target by editing one tuple.
+
+### Smart resolution order
+
+`llm_config()` now resolves in this order:
+
+1. **Explicit env / config** — `KAIZEN_SCRAPE_LLM_MODEL` + `KAIZEN_SCRAPE_LLM_BASE_URL` win when set.
+2. **Auto-detect cache** — re-uses last successful probe.
+3. **Live probe** — runs `detect_llm()` if no cache.
+4. **Actionable error** — prints exact commands to start a local server or set an env var.
+
+For `openai/*` model + `base_url` override (local server) → uses `sk-local-noop` placeholder API key automatically (llama.cpp / LM Studio / vLLM don't validate it). For real `openai/*` without base_url → still requires `OPENAI_API_KEY`.
+
+### Smoke-tested live
+
+`detect-llm --refresh` on this machine found `openai/NVIDIA-Nemotron-Nano-12B-v2-Q4_K_M-imat.gguf` on `http://localhost:8080/v1` in <1 second. Cached to disk. Subsequent `/kaizen:scrape` calls now route through llama.cpp without any explicit configuration.
+
+### llama.cpp Python paths
+
+For users running llama.cpp locally, two options:
+
+- **`llama-server`** (recommended, zero-glue): `llama-server -m model.gguf --port 8080` exposes the standard OpenAI-compatible API. Probed at port 8080 first. **No code changes**, no new deps.
+- **`llama-cpp-python`** bindings: `pip install llama-cpp-python` for direct in-process use. Requires a custom LLM wrapper for scrapegraph-ai. Not built into kaizen — pursue if `llama-server` doesn't fit.
+
+### Why patch (1.24.0 → 1.24.1)
+
+Pure-additive on top of v1.24.0 — no breaking changes. Existing explicit env-var configs work exactly as before. The probe is opt-out (`KAIZEN_SCRAPE_LLM_AUTO=0`) for users who want pin-only.
+
 ## [1.24.0] — 2026-05-12
 
 ### Added — `/kaizen:scrape` (LLM-driven scrape → semantic SQLite index)

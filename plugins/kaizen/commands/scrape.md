@@ -42,26 +42,49 @@ FetchURLs → ScrapeFanOut → Synthesize → EmbedAndPersist
 - **Synthesize** — flattens each extraction to `{url, title, text, content_json}`. Drops fields named `api_key`/`secret`/`token`/`password`/`auth`/`credential` at any depth (privacy filter).
 - **EmbedAndPersist** — encodes `title + text` with `sentence-transformers`, writes `(url, prompt, title, content_json, text_extract, embedding, sha, ts)` rows. `sha = sha1(url|prompt)[:16]` → re-scraping the same `(url, prompt)` pair upserts.
 
-## LLM provider
+## LLM provider — zero-config (v1.24.1+)
 
-Defaults to **Ollama local** so no API keys are required. One-time setup:
+If neither `KAIZEN_SCRAPE_LLM_MODEL` nor `KAIZEN_SCRAPE_LLM_BASE_URL` is set, the script probes common local-LLM endpoints in order (each with a 2-second timeout) and uses the first one that responds with a usable model list:
 
-```bash
-ollama pull llama3
+| Port  | Server                                    | API style                |
+|-------|-------------------------------------------|--------------------------|
+| 8080  | **llama.cpp `llama-server`**              | OpenAI-compatible (`/v1/...`) |
+| 11434 | Ollama                                    | Native (`/api/tags`)     |
+| 1234  | LM Studio                                 | OpenAI-compatible        |
+| 8000  | vLLM                                      | OpenAI-compatible        |
+| 5000  | text-generation-webui (oobabooga)         | OpenAI extension         |
+
+The resolved endpoint is cached at `~/.claude/.kaizen/scrape/llm_endpoint.json` so subsequent runs skip the probe. Inspect / refresh manually:
+
+```
+/kaizen:scrape detect-llm
+/kaizen:scrape detect-llm --refresh
 ```
 
-Env-var overrides (no slash chaining; one per line in your shell rc):
+### llama.cpp setup
+
+```bash
+llama-server -m /path/to/model.gguf --port 8080
+```
+
+Now `/kaizen:scrape detect-llm` resolves it; `/kaizen:scrape scrape <url>` uses it. No keys, no config.
+
+### Explicit overrides
+
+Env vars win over zero-config:
 
 ```
 KAIZEN_SCRAPE_LLM_MODEL=ollama/llama3
 KAIZEN_SCRAPE_LLM_BASE_URL=http://localhost:11434
+KAIZEN_SCRAPE_LLM_AUTO=0                          # disable the probe entirely
 ```
 
-To switch to OpenAI:
+### Switch to OpenAI
 
 ```
 KAIZEN_SCRAPE_LLM_MODEL=openai/gpt-4o-mini
 OPENAI_API_KEY=...
+unset KAIZEN_SCRAPE_LLM_BASE_URL                  # use openai.com, not a local server
 ```
 
 ## SQLite schema
