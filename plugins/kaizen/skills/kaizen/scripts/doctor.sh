@@ -50,19 +50,28 @@ echo "${BOLD}[ hook ]${RESET}"
 HOOKS_PATH=$(git config core.hooksPath 2>/dev/null)
 if [ "$HOOKS_PATH" = ".kaizen/hooks" ]; then
     log_pass "core.hooksPath = .kaizen/hooks (local)"
-    HOOK_LINK=".kaizen/hooks/pre-commit"
-    if [ -L "$HOOK_LINK" ]; then
-        TGT=$(realpath_f "$HOOK_LINK" 2>/dev/null)
-        if [ -x "$TGT" ]; then
-            log_pass "pre-commit → $TGT (executable)"
+    # pre-commit is required; commit-msg is optional for older installs
+    # that pre-date the v1.25.1 hook split. Re-running /kaizen:install
+    # adds it.
+    for hook_name in pre-commit commit-msg; do
+        HOOK_LINK=".kaizen/hooks/$hook_name"
+        if [ -L "$HOOK_LINK" ]; then
+            TGT=$(realpath_f "$HOOK_LINK" 2>/dev/null)
+            if [ -x "$TGT" ]; then
+                log_pass "$hook_name → $TGT (executable)"
+            else
+                check_fail "$hook_name symlink points at non-executable $TGT"
+            fi
+        elif [ -f "$HOOK_LINK" ]; then
+            check_warn "$hook_name is a regular file, not a symlink (manual install?)"
         else
-            check_fail "pre-commit symlink points at non-executable $TGT"
+            if [ "$hook_name" = "pre-commit" ]; then
+                check_fail "pre-commit hook missing — re-run /kaizen:install"
+            else
+                check_warn "commit-msg hook missing — re-run /kaizen:install for Conventional Commits + plan-mention checks"
+            fi
         fi
-    elif [ -f "$HOOK_LINK" ]; then
-        check_warn "pre-commit is a regular file, not a symlink (manual install?)"
-    else
-        check_fail "pre-commit hook missing — re-run /kaizen:install"
-    fi
+    done
 else
     check_warn "core.hooksPath = '${HOOKS_PATH:-<unset>}' (expected .kaizen/hooks)"
     log_info "run /kaizen:install to activate"
@@ -72,7 +81,7 @@ echo ""
 
 # ─── Section 3: Scripts ───────────────────────────────────────────────
 echo "${BOLD}[ scripts ]${RESET}"
-for s in backlog.py pre-commit.sh install.sh migrate.sh backup.sh status.sh disable-skill.sh test-pipeline.sh doctor.sh; do
+for s in backlog.py pre-commit.sh commit-msg.sh install.sh migrate.sh backup.sh status.sh disable-skill.sh test-pipeline.sh doctor.sh; do
     p="$_LIB_DIR/$s"
     if [ -x "$p" ]; then
         log_pass "$s"

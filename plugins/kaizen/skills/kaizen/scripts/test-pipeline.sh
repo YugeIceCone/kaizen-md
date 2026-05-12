@@ -21,6 +21,11 @@ PLUGIN_ROOT="$(cd "$_SCRIPT_REAL_DIR/../../.." && pwd)"
 HOOKS_DIR="$PLUGIN_ROOT/hooks"
 GW_SCRIPTS="$_SCRIPT_REAL_DIR"
 
+# Hook scripts read CLAUDE_PLUGIN_ROOT at run time (Claude Code's harness
+# sets it). The test harness simulates that here so hook stdout stays
+# valid JSON instead of "unbound variable" stderr noise.
+export CLAUDE_PLUGIN_ROOT="$PLUGIN_ROOT"
+
 VERBOSE=0
 KEEP_SANDBOX=0
 for arg in "$@"; do
@@ -89,7 +94,7 @@ tap "install.sh runs cleanly" bash "$GW_SCRIPTS/install.sh"
 assert ".kaizen.toml exists" $([ -f "$SANDBOX/.kaizen.toml" ] && echo 0 || echo 1)
 assert ".kaizen/hooks/pre-commit is a symlink" $([ -L "$SANDBOX/.kaizen/hooks/pre-commit" ] && echo 0 || echo 1)
 assert "core.hooksPath set to .kaizen/hooks" $([ "$(git config core.hooksPath)" = ".kaizen/hooks" ] && echo 0 || echo 1)
-assert ".kaizen/ added to .gitignore" $(grep -q "^\.kaizen/" .gitignore && echo 0 || echo 1)
+assert ".kaizen/.gitignore policy file written" $([ -f .kaizen/.gitignore ] && echo 0 || echo 1)
 
 # Resolve backlog_path from .kaizen.toml so we test what install set up
 BACKLOG_MD=$(grep -E '^backlog_path' .kaizen.toml 2>/dev/null \

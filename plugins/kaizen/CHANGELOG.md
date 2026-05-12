@@ -3,6 +3,20 @@
 All notable changes to the `kaizen` plugin documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [SemVer](https://semver.org/).
 
+## [1.25.2] — 2026-05-12
+
+### Fixed — `test-pipeline.sh` hook tests no longer leak "unbound variable" stderr
+
+Six hook scripts read `${CLAUDE_PLUGIN_ROOT}` at run time (Claude Code's harness exports it; the test harness didn't). The result: hook stdout was contaminated by `CLAUDE_PLUGIN_ROOT: unbound variable` lines so JSON-shape assertions intermittently failed (test #25 `Stop hook (no in_flight) → {}` flapped). Fix: `test-pipeline.sh` now exports `CLAUDE_PLUGIN_ROOT="$PLUGIN_ROOT"` before invoking hooks.
+
+### Fixed — `test-pipeline.sh` gitignore assertion follows v1.25.1 policy
+
+Test #5 used to assert `^\.kaizen/` in the repo root `.gitignore`; v1.25.1 moved that policy to a per-dir `.kaizen/.gitignore`. Assertion updated to check the per-dir file exists.
+
+### Changed — `doctor.sh` recognizes the v1.25.1 hook split
+
+The `[hook]` section now reports both `pre-commit` (required) and `commit-msg` (optional, warns if absent so older installs surface "re-run /kaizen:install"). The `[scripts]` presence-check list also includes `commit-msg.sh`.
+
 ## [1.25.1] — 2026-05-12
 
 ### Fixed — commit-message checks moved to dedicated `commit-msg` hook
