@@ -1,0 +1,101 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/YugeIceCone/kaizen-md/assets/schemas/workflow-state.schema.json",
+  "title": "Kaizen workflow runtime state",
+  "description": "Active workflow state. Lives at <repo>/.workflow/state.json. Written by skills/workflow-routing/scripts/workflow.sh (init/advance/branch/artifact/dispatch).",
+  "type": "object",
+  "required": ["id", "routine", "stages", "current"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^wf-[0-9]{8}-[0-9]{6}$",
+      "description": "Auto-generated at init: wf-YYYYMMDD-HHMMSS (UTC)."
+    },
+    "prompt": {
+      "type": "string",
+      "description": "The user's free-form prompt at init time."
+    },
+    "routine": {
+      "type": "string",
+      "description": "Hardcoded routine name (audit / build-feature / fix-bug / refactor / migrate / harden / batch-migrate / custom) OR 'schema:<name>' for schema-driven runs."
+    },
+    "schema_name": {
+      "type": "string",
+      "default": "",
+      "description": "v1.14.0+: the schema name if routine is 'schema:<name>'; empty for hardcoded routines."
+    },
+    "stages": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Ordered stage list. May be mutated by `branch` (v1.17.0+)."
+    },
+    "current": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Index into .stages of the next-to-run stage. Bumped on advance."
+    },
+    "completed": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/CompletedRecord" },
+      "default": []
+    },
+    "subagent_mode": {
+      "enum": ["no", "yes", "full"],
+      "default": "no"
+    },
+    "auto_mode": {
+      "enum": ["no", "yes"],
+      "default": "no"
+    },
+    "tdd_mode": {
+      "enum": ["no", "yes"],
+      "default": "no"
+    },
+    "artifacts": {
+      "type": "object",
+      "description": "Ad-hoc {key: value} bag for stage outputs (plan_file, audit_report, etc.).",
+      "additionalProperties": { "type": "string" }
+    },
+    "subagents": {
+      "type": "object",
+      "description": "{agent_id: stage} mapping for SubagentStop hook auto-advance.",
+      "additionalProperties": { "type": "string" }
+    },
+    "branch_decisions": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/BranchDecision" },
+      "default": [],
+      "description": "v1.17.0+: audit trail of `workflow.sh branch <stage> <key>` calls."
+    },
+    "started_at": { "type": "string", "format": "date-time" },
+    "updated_at": { "type": "string", "format": "date-time" }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "CompletedRecord": {
+      "type": "object",
+      "required": ["stage", "at"],
+      "properties": {
+        "stage": { "type": "string" },
+        "msg": { "type": "string" },
+        "at": { "type": "string", "format": "date-time" }
+      },
+      "additionalProperties": false
+    },
+    "BranchDecision": {
+      "type": "object",
+      "required": ["stage", "key", "new_tail", "at"],
+      "properties": {
+        "stage": { "type": "string" },
+        "key": { "type": "string", "description": "high | medium | low (or schema-defined custom)" },
+        "new_tail": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "The stage list spliced into state.stages[current:]."
+        },
+        "at": { "type": "string", "format": "date-time" }
+      },
+      "additionalProperties": false
+    }
+  }
+}

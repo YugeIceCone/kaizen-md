@@ -1,0 +1,79 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/YugeIceCone/kaizen-md/assets/schemas/agent-formatting.schema.json",
+  "title": "Kaizen agent-formatting rules block",
+  "description": "Embedded YAML block in skills/agent-formatting/SKILL.md. Codifies slash-vs-bash discipline for assistant messages. Parseable by future linters / gate integration.",
+  "type": "object",
+  "required": ["schema_version", "rules"],
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "rules": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/FormattingRule" }
+    },
+    "forbidden_constructs": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/ForbiddenConstruct" }
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "FormattingRule": {
+      "type": "object",
+      "required": ["id", "applies_to"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]*$"
+        },
+        "applies_to": {
+          "type": "string",
+          "description": "Free-form scope label (e.g. claude-code-slash-commands)."
+        },
+        "pattern": {
+          "type": "string",
+          "description": "Optional regex matching the rule's surface (e.g. '^/[a-z]')."
+        },
+        "format": {
+          "type": "object",
+          "description": "Constraints on how this surface is rendered.",
+          "properties": {
+            "fence": {
+              "description": "Code fence to use, or 'none' for plain lines.",
+              "anyOf": [
+                { "enum": ["none", "bash", "yaml", "json", "python", "rust", "javascript", "typescript"] },
+                { "type": "string" }
+              ]
+            },
+            "prefix": {
+              "type": "string",
+              "description": "Required prefix character(s) — e.g. '!' for inline bash."
+            },
+            "one_per_line": { "type": "boolean" },
+            "chain_with": {
+              "description": "What chaining is allowed — 'none' / shell-operators-allowed / etc.",
+              "type": "string"
+            }
+          }
+        },
+        "rationale": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "ForbiddenConstruct": {
+      "type": "object",
+      "required": ["description", "example", "fix"],
+      "properties": {
+        "description": { "type": "string" },
+        "example": { "type": "string" },
+        "fix": { "type": "string" }
+      },
+      "additionalProperties": false
+    }
+  }
+}

@@ -1,0 +1,91 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/YugeIceCone/kaizen-md/assets/schemas/workflow.schema.json",
+  "title": "Kaizen workflow schema",
+  "description": "Declarative workflow definition. Lives at schemas/<name>/schema.yaml (built-in), .workflow/schemas/<name>/schema.yaml (project), or ~/.claude/kaizen-schemas/<name>/schema.yaml (user). Consumed by skills/workflow-routing/scripts/workflow_runner.py.",
+  "type": "object",
+  "required": ["name", "artifacts"],
+  "properties": {
+    "name": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*$",
+      "description": "Kebab id, matches the schema directory name."
+    },
+    "version": {
+      "type": "integer",
+      "minimum": 1,
+      "default": 1
+    },
+    "description": {
+      "type": "string"
+    },
+    "artifacts": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/Artifact" }
+    },
+    "apply": { "$ref": "#/$defs/Apply" }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "Artifact": {
+      "type": "object",
+      "required": ["id"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]*$",
+          "description": "Unique within this schema; referenced by other artifacts' .requires[]."
+        },
+        "generates": {
+          "type": "string",
+          "description": "Output path or glob this artifact produces."
+        },
+        "template": {
+          "type": ["string", "null"],
+          "description": "Relative path to the artifact's template (under <schema-dir>/templates/), or null for code-only stages."
+        },
+        "requires": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": [],
+          "description": "Artifact ids that must complete before this one. DAG edges."
+        },
+        "description": {
+          "type": "string"
+        },
+        "branch_high": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "v1.15.0+: Confidence-Score routing — stages to run when confidence > 85%. Splice via workflow.sh branch <id> high."
+        },
+        "branch_medium": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Stages to run on medium confidence (66–85%)."
+        },
+        "branch_low": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Stages to run on low confidence (<66%)."
+        }
+      },
+      "additionalProperties": true
+    },
+    "Apply": {
+      "type": "object",
+      "properties": {
+        "gate": {
+          "type": "string",
+          "description": "Artifact id whose completion gates implementation."
+        },
+        "progress": {
+          "type": "string",
+          "description": "File path that tracks progress (typically a checkbox list)."
+        },
+        "description": { "type": "string" }
+      },
+      "additionalProperties": false
+    }
+  }
+}

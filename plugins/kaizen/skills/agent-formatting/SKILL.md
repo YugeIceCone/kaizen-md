@@ -18,8 +18,11 @@ Apply BEFORE drafting any assistant message that contains a command. ALWAYS appl
 
 ## The rules (machine-parseable schema)
 
+The block below conforms to `assets/schemas/agent-formatting.schema.json` (mirrored by the `AgentFormattingSchema` dataclass in `skills/kaizen/scripts/schemas.py`). External tools (ajv, jsonschema, future kaizen linters) can validate this block against the JSON Schema directly.
+
 ```yaml
 # kaizen.agent-formatting.v1 — structured rules
+# $schema: ../../assets/schemas/agent-formatting.schema.json
 schema_version: 1
 rules:
   - id: slash-plain

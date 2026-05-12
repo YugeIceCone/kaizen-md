@@ -3,6 +3,62 @@
 All notable changes to the `kaizen` plugin documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [SemVer](https://semver.org/).
 
+## [1.19.0] — 2026-05-12
+
+Schema polish — extend the runtime SSOT (`schemas.py` dataclasses) to cover everything added since v1.9.0, ship matching JSON Schema files for IDE / editor / external-tool consumption, wire `yaml-language-server` directives into the workflow yaml files.
+
+### Added — dataclass coverage for v1.14–v1.18 surfaces
+
+`skills/kaizen/scripts/schemas.py` previously covered 4 shapes (`TraceEvent`, `InboxMessage`, `DaemonState`, `BacklogItem`/`Decision`/`Store`). v1.19.0 adds 8 more dataclasses:
+
+| Dataclass                | Shape it documents                                        |
+|--------------------------|-----------------------------------------------------------|
+| `WorkflowSchema`         | `schemas/<name>/schema.yaml` envelope                     |
+| `WorkflowArtifact`       | One entry in `.artifacts[]` (including `branch_*` fields) |
+| `WorkflowApply`          | `.apply` block (gate + progress)                          |
+| `WorkflowState`          | `.workflow/state.json` (incl. `branch_decisions[]`)       |
+| `KnowledgeItem`          | Knowledge SQLite row + iter_* yield shape                 |
+| `KaizenBrainRule`        | `kaizen:` frontmatter block in brain notes                |
+| `FormattingRule`         | One rule in `agent-formatting`'s embedded yaml            |
+| `ForbiddenConstruct`     | One entry in `forbidden_constructs[]`                     |
+| `AgentFormattingSchema`  | The full embedded yaml envelope                           |
+
+`KnowledgeItem.validate()` and `KaizenBrainRule.validate()` enforce per-source / per-rule-type constraints. `_self_test()` extended with 6 new round-trip assertions + 4 negative tests; all green.
+
+### Added — `assets/schemas/` JSON Schema mirrors
+
+6 hand-written JSON Schema (draft 2020-12) files mirroring the dataclasses:
+
+- `workflow.schema.json` — workflow yaml shape (with `$defs` for `Artifact`, `Apply`)
+- `workflow-state.schema.json` — runtime state shape (`CompletedRecord`, `BranchDecision`)
+- `backlog.schema.json` — `.workflow/backlog.json` (`BacklogItem`, `BacklogDecision`)
+- `knowledge-item.schema.json` — knowledge index row
+- `brain-rule.schema.json` — `oneOf` over the 4 rule types (deletion-allow, check-severity, custom-pattern, dependency-allowlist)
+- `agent-formatting.schema.json` — embedded yaml block shape
+
+`assets/schemas/README.md` documents the inventory + IDE wiring recipe (VSCode `yaml.schemas` block, ajv + jsonschema example).
+
+### Added — `yaml-language-server: $schema=...` directives
+
+All three built-in workflow yamls (`minimalist`, `kaizen-default`, `spec-driven`) now carry a `# yaml-language-server: $schema=...` directive at the top. Most YAML extensions auto-pick this up for hover / autocomplete / inline validation.
+
+Verified: `workflow_runner.py validate` still passes for all three (the parser already strips comments, so the directive is inert at parse time).
+
+### Added — schema cross-reference in `agent-formatting` skill body
+
+The embedded yaml block in `skills/agent-formatting/SKILL.md` now points at its JSON Schema mirror (`../../assets/schemas/agent-formatting.schema.json`), tying the runtime dataclass, the JSON Schema, and the human-readable skill body together as a single conceptual unit with three views.
+
+### Two SSOT layers, one source of truth
+
+- **Runtime SSOT**: dataclasses in `schemas.py`. Scripts construct + validate via `asdict()` / `from_dict()` / `.validate()`.
+- **Tooling SSOT**: JSON Schemas in `assets/schemas/`. IDEs + external linters (ajv, jsonschema) consume these.
+
+Both layers are hand-maintained for now (no auto-gen). The `assets/schemas/README.md` "Keeping in sync" section is the contract.
+
+### Why minor (1.18.0 → 1.19.0)
+
+Pure-additive: new dataclasses, new JSON Schema files, new yaml comments. No script behaviour changes, no breaking surface, no permission changes. The existing parsers / validators still work exactly as before.
+
 ## [1.18.0] — 2026-05-12
 
 ### Added — `kaizen:agent-formatting` skill

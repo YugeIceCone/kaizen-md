@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/YugeIceCone/kaizen-md/assets/schemas/brain-rule.schema.json",
+  "title": "Kaizen brain-sourced behaviour rule",
+  "description": "The `kaizen:` block in the YAML frontmatter of `~/.claude/brain/Notes/*.md`. Parsed by skills/kaizen/scripts/rules.py. Each note becomes one runtime rule the pre-commit gate + vibe-check consult.",
+  "oneOf": [
+    { "$ref": "#/$defs/DeletionAllow" },
+    { "$ref": "#/$defs/CheckSeverity" },
+    { "$ref": "#/$defs/CustomPattern" },
+    { "$ref": "#/$defs/DependencyAllowlist" }
+  ],
+  "$defs": {
+    "DeletionAllow": {
+      "type": "object",
+      "required": ["rule_type", "path_glob"],
+      "properties": {
+        "rule_type": { "const": "deletion-allow" },
+        "path_glob": {
+          "type": "string",
+          "description": "fnmatch glob; `git rm` on matching paths skips the KAIZEN_ALLOW_DELETE prompt."
+        }
+      },
+      "additionalProperties": false
+    },
+    "CheckSeverity": {
+      "type": "object",
+      "required": ["rule_type", "check_id", "severity"],
+      "properties": {
+        "rule_type": { "const": "check-severity" },
+        "check_id": {
+          "type": "string",
+          "description": "Gate check identifier (e.g. paired-test, backlog-drift, compile-barrier)."
+        },
+        "severity": {
+          "enum": ["skip", "warn", "block"]
+        }
+      },
+      "additionalProperties": false
+    },
+    "CustomPattern": {
+      "type": "object",
+      "required": ["rule_type", "pattern_regex", "pattern_action"],
+      "properties": {
+        "rule_type": { "const": "custom-pattern" },
+        "pattern_regex": {
+          "type": "string",
+          "description": "Python regex run against the staged diff."
+        },
+        "pattern_action": {
+          "enum": ["warn", "block"]
+        },
+        "pattern_message": {
+          "type": "string",
+          "description": "Message surfaced on hit."
+        }
+      },
+      "additionalProperties": false
+    },
+    "DependencyAllowlist": {
+      "type": "object",
+      "required": ["rule_type", "allowlist"],
+      "properties": {
+        "rule_type": { "const": "dependency-allowlist" },
+        "allowlist": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9_-]+(,[a-zA-Z0-9_-]+)*$",
+          "description": "Comma-separated list of pre-vetted dependency names. Consulted by /kaizen:vibe-check to demote orphan-import warnings."
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

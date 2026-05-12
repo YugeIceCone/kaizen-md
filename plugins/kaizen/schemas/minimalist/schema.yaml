@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=../../assets/schemas/workflow.schema.json
 # Minimalist workflow schema — OpenSpec-inspired declarative spec
 # (per intent-driven.dev/blog/2026/02/12/openspec-custom-schemas)
 #

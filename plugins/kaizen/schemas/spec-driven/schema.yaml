@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=../../assets/schemas/workflow.schema.json
 # Spec-driven workflow schema — 6-phase loop adapted from GitHub's
 # awesome-copilot/instructions/spec-driven-workflow-v1.instructions.md.
 #

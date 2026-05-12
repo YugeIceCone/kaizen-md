@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/YugeIceCone/kaizen-md/assets/schemas/backlog.schema.json",
+  "title": "Kaizen backlog store",
+  "description": "Micro-work backlog. Lives at <repo>/.workflow/backlog.json. Source of truth; .workflow/backlog.md is generated from this. Mutated only via skills/kaizen/scripts/backlog.py.",
+  "type": "object",
+  "required": ["schema_version", "kind", "items"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "kind": { "const": "kaizen.backlog" },
+    "items": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/BacklogItem" }
+    },
+    "decisions": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/BacklogDecision" },
+      "default": []
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "created": { "type": "string", "format": "date-time" },
+        "updated": { "type": "string", "format": "date-time" }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "BacklogItem": {
+      "type": "object",
+      "required": ["id", "title"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^BK-[0-9]+$"
+        },
+        "title": { "type": "string", "minLength": 1 },
+        "section": {
+          "enum": ["next_up", "in_flight", "done", "parked"],
+          "default": "next_up"
+        },
+        "probe": {
+          "type": "string",
+          "description": "Command (grep / cargo-tree / ast-grep) proving the work is micro-sized."
+        },
+        "verify": {
+          "type": "string",
+          "description": "Command proving completion."
+        },
+        "ref": {
+          "type": "string",
+          "description": "Source quote or context."
+        },
+        "tags": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "created": { "type": ["string", "null"], "format": "date-time" },
+        "started": { "type": ["string", "null"], "format": "date-time" },
+        "completed": { "type": ["string", "null"], "format": "date-time" },
+        "parked": { "type": ["string", "null"], "format": "date-time" },
+        "parked_reason": { "type": "string" },
+        "committed_sha": { "type": "string", "pattern": "^([a-f0-9]{7,40})?$" }
+      },
+      "additionalProperties": false
+    },
+    "BacklogDecision": {
+      "type": "object",
+      "required": ["text"],
+      "properties": {
+        "text": { "type": "string" },
+        "why": { "type": "string" },
+        "ts": { "type": ["string", "null"], "format": "date-time" }
+      },
+      "additionalProperties": false
+    }
+  }
+}

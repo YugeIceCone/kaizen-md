@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/YugeIceCone/kaizen-md/assets/schemas/knowledge-item.schema.json",
+  "title": "Kaizen knowledge index item",
+  "description": "One row in the knowledge SQLite index (~/.claude/.kaizen-knowledge/index.db). Produced by knowledge_index.py's iter_* generators and persisted via do_index. Consumed via do_search / do_get / knowledge_recent.",
+  "type": "object",
+  "required": ["source", "source_path", "title"],
+  "properties": {
+    "source": {
+      "enum": ["brain-note", "plan", "backlog", "schema", "persona"],
+      "description": "Which corpus this item came from."
+    },
+    "source_path": {
+      "type": "string",
+      "description": "Absolute path to the source file, or 'BK-N (path)' form for backlog items."
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Human-readable title — typically the H1, the frontmatter name, or a derived label."
+    },
+    "snippet": {
+      "type": "string",
+      "default": "",
+      "description": "First ~400 chars of body, whitespace-normalised. Stored for display; embedded only when --embed-body."
+    },
+    "tags": {
+      "type": "array",
+      "items": { "type": "string" },
+      "default": []
+    },
+    "updated_at": {
+      "type": "string",
+      "description": "ISO timestamp from mtime or backlog updated_at; may be empty for derived items."
+    },
+    "body_embedded": {
+      "type": "boolean",
+      "default": false,
+      "description": "Was the snippet included in the embedding vector? Privacy-safe default: false (signature-only)."
+    },
+    "sha": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{16}$",
+      "description": "Content-identity hash — 16-hex SHA1 prefix of (source|source_path|title|updated_at). Used for dedup + stale-removal."
+    },
+    "id": {
+      "type": ["integer", "null"],
+      "description": "SQLite primary key. Null on items emitted by iter_* before insert."
+    },
+    "score": {
+      "type": "number",
+      "minimum": -1,
+      "maximum": 1,
+      "description": "Cosine similarity score. Only present in do_search results."
+    }
+  },
+  "additionalProperties": false
+}
