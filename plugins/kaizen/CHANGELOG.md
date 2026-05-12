@@ -3,6 +3,60 @@
 All notable changes to the `kaizen` plugin documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [SemVer](https://semver.org/).
 
+## [1.29.3] — 2026-05-12
+
+### Fixed — `/kaizen:scrape` end-to-end against real URLs (granite4.1 + Ollama embed)
+
+Three bugs found while running `/kaizen:scrape scrape https://github.com/onyx-dot-app/onyx/tree/main` end-to-end:
+
+**Bug 1 — OpenAI-compat path didn't force JSON mode**
+
+`llm_config()` only set `format=json` for the `ollama/*` provider path. `pin-chat` writes `openai/<model>` (Ollama's OpenAI-compat at `:11434/v1` for flexibility). Granite4.1 then returned a beautifully-structured **Markdown** summary instead of JSON, and ScrapeGraphAI raised `OutputParserException: Invalid json output`.
+
+Fix: for `openai/*` with a local `base_url`, set `model_kwargs={"response_format": {"type": "json_object"}}` so ChatOpenAI forwards `response_format: json_object` to `/v1/chat/completions`. Ollama, llama.cpp, vLLM, and real OpenAI all honor this. The unit smoke test now returns clean JSON:
+
+```
+$ kaizen-models chat granite4.1:8b "Extract title and one fact from: <h1>Apollo 11</h1>..." --format json
+{"title":"Apollo 11","fact":"First crewed moon landing, 1969."}
+```
+
+Same fix for `openai/*` with real `OPENAI_API_KEY`.
+
+**Bug 2 — env-forced HTTP endpoint died, fallback re-resolved the SAME dead config**
+
+`_embed.embed_one` / `embed_batch` catch `URLError` from the HTTP backend and call `resolve_backend(refresh=True)`. But `refresh=True` only bypasses the **cache** — the **env-force** step (KAIZEN_EMBED_BACKEND=http + KAIZEN_EMBED_HTTP_*) still returned the SAME dead pinned endpoint. The fallback loop hit URLError on the second call too and escaped to the caller.
+
+Fix: new `bypass_env_http: bool = False` parameter on `resolve_backend`. The fallback path in `embed_one` / `embed_batch` now passes `bypass_env_http=True`, which skips the env-force step and proceeds to live probe → local fallback. Plus an extra defensive `try/except` wrap on the second `_embed_http` call so if the re-resolved endpoint is ALSO dead, we cleanly bail to local instead of escaping.
+
+**Bug 3 — live embed probe was openai-only; missed Ollama's nomic / qwen3-embedding installs**
+
+`resolve_backend` step 4's live probe iterated `SCRAPE_LLM_PROBES` but `continue`d on every `provider != "openai"`. A user who pulled `qwen3-embedding:0.6b` via Ollama would never auto-detect — even though Ollama exposes `/v1/embeddings` via its OpenAI-compat shim.
+
+Fix: for `provider == "ollama"` entries, convert the base URL to `<host>/v1` and probe `/models`. Ollama's OpenAI-compat path lists installed embed-shaped models (`qwen3-embedding`, `nomic-embed-text`, `bge-*`, etc.) and is now correctly auto-detected.
+
+### Also Fixed — `/kaizen:models pull <name>` silently exit-0 on missing model
+
+`cmd_pull` propagated `ollama._types.ResponseError` as a Python traceback but the script's exit code was unreliable when run under `uv run --script`. Wrapped the pull loop in `try/except Exception` that emits a clean one-line error and returns exit 1.
+
+```
+$ kaizen-models pull totally-fake-model-xyz
+  pulling manifest
+kaizen models: pull failed — ResponseError: pull model manifest: file does not exist (status code: -1)
+(exit: 1)
+```
+
+### Tests
+
+2 new in `tests/test_embed.py::TestBypassEnvHttp`: verifies the env-force step is skipped when `bypass_env_http=True` and that the function falls through to local. Suite: 137 → 139, all pass.
+
+### Live verification
+
+Full end-to-end scrape against `https://github.com/onyx-dot-app/onyx/tree/main` now succeeds: granite4.1:8b extracts 13-field structured JSON (`repository`, `overview.features`, `deployment_modes`, `enterprise_features`, `licensing`, `stats`, `latest_release`, `languages`, `topics`); `qwen3-embedding:0.6b` via Ollama produces the vector; row is persisted to `~/.claude/.kaizen/scrape/index.db`.
+
+### Known issue, deferred
+
+`model_tokens` parameter still emits a warning ("default 8192") from ScrapeGraphAI. Placing it inside `cfg["llm"]` makes ScrapeGraphAI read it correctly but then ChatOpenAI's `parse()` rejects it as an unknown kwarg. Top-level `cfg["model_tokens"]` doesn't suppress the warning either. 8192 truncation produces good results in practice — leaving this as a v1.30.x research item.
+
 ## [1.29.2] — 2026-05-12
 
 ### Changed — `granite4.1:8b` promoted to winner; `qwen3.5:9b` reclassified as generalist

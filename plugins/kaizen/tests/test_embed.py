@@ -95,6 +95,50 @@ class TestStaleHttpCacheFallback(unittest.TestCase):
         local_mock.assert_not_called()
 
 
+class TestBypassEnvHttp(unittest.TestCase):
+    """v1.29.3+: when the env-forced HTTP endpoint dies, the fallback
+    path must pass bypass_env_http=True so refresh doesn't return the
+    SAME dead config from the env-forced step."""
+
+    def setUp(self) -> None:
+        # Snapshot + clear env so this test is hermetic.
+        self._snap = {
+            k: os.environ.get(k) for k in (
+                "KAIZEN_EMBED_BACKEND",
+                "KAIZEN_EMBED_HTTP_BASE_URL",
+                "KAIZEN_EMBED_HTTP_MODEL",
+            )
+        }
+        os.environ["KAIZEN_EMBED_BACKEND"] = "http"
+        os.environ["KAIZEN_EMBED_HTTP_BASE_URL"] = "http://dead.local/v1"
+        os.environ["KAIZEN_EMBED_HTTP_MODEL"] = "dead-pinned"
+        _embed._cached_cfg = None
+
+    def tearDown(self) -> None:
+        for k, v in self._snap.items():
+            if v is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = v
+        _embed._cached_cfg = None
+
+    def test_resolve_returns_env_when_not_bypassed(self) -> None:
+        cfg = _embed.resolve_backend(refresh=True)
+        self.assertEqual(cfg["kind"], "http")
+        self.assertEqual(cfg["base_url"], "http://dead.local/v1")
+
+    def test_resolve_skips_env_when_bypassed(self) -> None:
+        _embed._cached_cfg = None
+        # No live probes will succeed in CI; fall through to local.
+        with patch.object(_embed, "_probe_for_embed_model", return_value=None):
+            cfg = _embed.resolve_backend(refresh=True, bypass_env_http=True)
+        self.assertEqual(cfg["kind"], "local")
+        self.assertNotEqual(cfg.get("base_url", ""), "http://dead.local/v1")
+
+
+import os  # noqa: E402 — used by TestBypassEnvHttp only
+
+
 class TestInvalidateCache(unittest.TestCase):
     def test_clears_in_memory_state(self) -> None:
         _embed._cached_cfg = {"kind": "http", "base_url": "x", "model": "y"}

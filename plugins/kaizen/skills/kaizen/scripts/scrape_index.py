@@ -447,18 +447,45 @@ def llm_config() -> dict:
         base_url = det["base_url"]
 
     cfg: dict = {"llm": {"model": model, "temperature": 0}}
+
+    # v1.29.3+: pull model_tokens from the recommendations table when the
+    # model is in our curated list. ScrapeGraphAI's default (8192) silently
+    # truncates ≈90% of a full HTML page when the model supports 128K-256K.
+    # Lives at the top-level graph config — placing it inside cfg["llm"]
+    # propagates it to ChatOpenAI's parse() which raises TypeError on
+    # unknown kwargs in recent scrapegraph-ai versions.
+    bare_model = model.split("/", 1)[1] if "/" in model else model
+    ctx_tokens = 32_768  # sane non-truncating default
+    for rec in OLLAMA_SCRAPE_RECOMMENDATIONS:
+        if _model_name_matches(bare_model, rec["name"]):
+            ctx_tokens = rec["ctx_k"] * 1024
+            break
+
     if model.startswith("ollama/"):
         cfg["llm"]["base_url"] = base_url or "http://localhost:11434"
         cfg["llm"]["format"] = "json"
     elif model.startswith("openai/"):
         api_key = os.environ.get("OPENAI_API_KEY")
         if base_url:
-            # openai/* with base_url override = llama-server / LM Studio / vLLM / etc.
-            # These don't validate the key, so a placeholder works.
+            # openai/* with base_url override = llama.cpp / LM Studio / vLLM /
+            # Ollama-via-/v1/ etc. These don't validate the key, so a
+            # placeholder works.
             cfg["llm"]["base_url"] = base_url
             cfg["llm"]["api_key"] = api_key or "sk-local-noop"
+            # v1.29.3+: force JSON mode for OpenAI-compat endpoints serving
+            # JSON-capable models. Without this, granite4.1 / qwen3.5 etc.
+            # return Markdown summaries instead of JSON and ScrapeGraphAI's
+            # parser raises OutputParserException. ChatOpenAI propagates
+            # model_kwargs to the /v1/chat/completions call.
+            cfg["llm"]["model_kwargs"] = {
+                "response_format": {"type": "json_object"},
+            }
         elif api_key:
             cfg["llm"]["api_key"] = api_key
+            # Real OpenAI API also supports json_object response_format.
+            cfg["llm"]["model_kwargs"] = {
+                "response_format": {"type": "json_object"},
+            }
         else:
             sys.stderr.write(
                 "kaizen-scrape: KAIZEN_SCRAPE_LLM_MODEL is openai/* with no "
@@ -469,6 +496,8 @@ def llm_config() -> dict:
             sys.exit(2)
     cfg["headless"] = True
     cfg["verbose"] = False
+    # Graph-level model_tokens (NOT inside cfg["llm"] — see comment above).
+    cfg["model_tokens"] = ctx_tokens
     return cfg
 
 

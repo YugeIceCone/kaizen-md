@@ -166,12 +166,19 @@ def _probe_for_embed_model(base_url: str, list_path: str, timeout: float) -> Opt
     return None
 
 
-def resolve_backend(refresh: bool = False) -> dict:
+def resolve_backend(refresh: bool = False, bypass_env_http: bool = False) -> dict:
     """Return the active embedding backend config.
 
     Shape:
       {kind: "http", base_url: str, model: str, dim: int?}    OR
       {kind: "local", model: str, dim: int}
+
+    Args:
+      refresh: ignore cached config; re-evaluate.
+      bypass_env_http: skip the KAIZEN_EMBED_BACKEND=http env-forced step
+        and proceed to live probe / local fallback. Used by embed_one /
+        embed_batch when the env-pinned endpoint died — without this
+        flag, refresh=True would return the SAME dead config from step 2.
     """
     global _cached_cfg
     if _cached_cfg is not None and not refresh:
@@ -184,8 +191,9 @@ def resolve_backend(refresh: bool = False) -> dict:
         _cached_cfg = cfg
         return cfg
 
-    # 2. Env force-http
-    if backend == "http":
+    # 2. Env force-http (skipped when bypass_env_http=True so the fallback
+    # path in embed_one/embed_batch doesn't keep returning a dead endpoint).
+    if backend == "http" and not bypass_env_http:
         base_url = os.environ.get("KAIZEN_EMBED_HTTP_BASE_URL", "")
         model = os.environ.get("KAIZEN_EMBED_HTTP_MODEL", "")
         if base_url and model:
@@ -204,10 +212,20 @@ def resolve_backend(refresh: bool = False) -> dict:
             _cached_cfg = cached
             return cached
 
-    # 4. Live probe — only OpenAI-shaped endpoints serve /v1/embeddings
+    # 4. Live probe — every endpoint that speaks OpenAI-compat
+    # /v1/embeddings. Ollama's native bind (port 11434) also serves
+    # /v1/models + /v1/embeddings via its OpenAI-compat shim, so we
+    # convert "ollama" probes to /v1 form here. Without this, a user
+    # who pulled nomic-embed-text via Ollama would never auto-detect.
+    probe_targets: list[tuple[str, str]] = []
     for provider, base_url, list_path, _model_field in _cfg.SCRAPE_LLM_PROBES:
-        if provider != "openai":
-            continue
+        if provider == "openai":
+            probe_targets.append((base_url, list_path))
+        elif provider == "ollama":
+            # Ollama: native base_url is http://localhost:11434 (no /v1).
+            # Its OpenAI-compat shim is http://localhost:11434/v1.
+            probe_targets.append((base_url.rstrip("/") + "/v1", "/models"))
+    for base_url, list_path in probe_targets:
         model = _probe_for_embed_model(base_url, list_path, _cfg.SCRAPE_LLM_PROBE_TIMEOUT)
         if model:
             cfg = {"kind": "http", "base_url": base_url, "model": model}
@@ -299,9 +317,18 @@ def embed_one(text: str) -> tuple[bytes, int]:
             "and falling back\n"
         )
         _invalidate_cache()
-        cfg = resolve_backend(refresh=True)
-        if cfg["kind"] == "http":
-            return _embed_http(text, cfg["base_url"], cfg["model"])
+        # bypass_env_http=True so refresh DOESN'T return the SAME
+        # dead config from the env-forced step. Live probe will pick
+        # up Ollama's OpenAI-compat endpoint if running.
+        cfg2 = resolve_backend(refresh=True, bypass_env_http=True)
+        if cfg2["kind"] == "http":
+            try:
+                return _embed_http(text, cfg2["base_url"], cfg2["model"])
+            except (urllib.error.URLError, OSError) as e2:
+                sys.stderr.write(
+                    f"kaizen embed: re-resolved endpoint {cfg2['base_url']} "
+                    f"also unreachable ({e2.__class__.__name__}); using local.\n"
+                )
         return _embed_local(text)
 
 
@@ -362,9 +389,15 @@ def embed_batch(texts: list[str]) -> tuple[list[bytes], int]:
             "and falling back\n"
         )
         _invalidate_cache()
-        cfg = resolve_backend(refresh=True)
-        if cfg["kind"] == "http":
-            return _embed_http_batch(texts, cfg["base_url"], cfg["model"])
+        cfg2 = resolve_backend(refresh=True, bypass_env_http=True)
+        if cfg2["kind"] == "http":
+            try:
+                return _embed_http_batch(texts, cfg2["base_url"], cfg2["model"])
+            except (urllib.error.URLError, OSError) as e2:
+                sys.stderr.write(
+                    f"kaizen embed: re-resolved endpoint {cfg2['base_url']} "
+                    f"also unreachable ({e2.__class__.__name__}); using local.\n"
+                )
         return _embed_local_batch(texts)
 
 

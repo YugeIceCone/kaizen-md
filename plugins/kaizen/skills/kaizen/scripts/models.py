@@ -185,19 +185,26 @@ def cmd_pull(args) -> int:
         return 1
     client = _client()
     last_status = ""
-    for progress in client.pull(args.name, stream=True):
-        status = getattr(progress, "status", None) or progress.get("status", "")
-        completed = getattr(progress, "completed", None) or progress.get("completed", 0)
-        total = getattr(progress, "total", None) or progress.get("total", 0)
-        if total and isinstance(total, int) and total > 0:
-            pct = (completed / total) * 100 if completed else 0
-            line = f"\r  {status}: {_human_bytes(completed)} / {_human_bytes(total)} ({pct:.1f}%)"
-            sys.stderr.write(line.ljust(80))
-            sys.stderr.flush()
-        elif status != last_status:
-            sys.stderr.write(f"\n  {status}")
-            sys.stderr.flush()
-            last_status = status
+    try:
+        for progress in client.pull(args.name, stream=True):
+            status = getattr(progress, "status", None) or progress.get("status", "")
+            completed = getattr(progress, "completed", None) or progress.get("completed", 0)
+            total = getattr(progress, "total", None) or progress.get("total", 0)
+            if total and isinstance(total, int) and total > 0:
+                pct = (completed / total) * 100 if completed else 0
+                line = f"\r  {status}: {_human_bytes(completed)} / {_human_bytes(total)} ({pct:.1f}%)"
+                sys.stderr.write(line.ljust(80))
+                sys.stderr.flush()
+            elif status != last_status:
+                sys.stderr.write(f"\n  {status}")
+                sys.stderr.flush()
+                last_status = status
+    except Exception as e:
+        # ollama._types.ResponseError ("pull model manifest: file does not
+        # exist") + network errors. Catch broadly and surface cleanly so
+        # callers see exit code 1 instead of a Python traceback.
+        sys.stderr.write(f"\nkaizen models: pull failed — {e.__class__.__name__}: {e}\n")
+        return 1
     sys.stderr.write("\n")
     print(f"✓ pulled {args.name}")
     return 0
