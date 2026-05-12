@@ -500,8 +500,7 @@ def do_search(query: str, top_k: int = 10) -> list[dict]:
         return []
     conn = open_db(create=False)
     # v1.25.0+: use shared _embed backend (HTTP llama-server or fallback).
-    # numpy is loaded inside _embed; we import locally here for the cosine math.
-    import numpy as np
+    np = _embed.require_numpy()
     qblob, _ = _embed.embed_one(query)
     qvec = np.frombuffer(qblob, dtype=np.float32).astype(
         np.float32

@@ -517,7 +517,7 @@ def do_search(
         return []
     conn = open_db(create=False)
     # v1.25.0+: query embedding via shared _embed backend.
-    import numpy as np
+    np = _kz_embed.require_numpy()
     qblob, _ = _kz_embed.embed_one(query)
     qvec = np.frombuffer(qblob, dtype=np.float32).astype(np.float32)
     qnorm = qvec / (np.linalg.norm(qvec) + 1e-12)

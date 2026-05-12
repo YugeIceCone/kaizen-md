@@ -104,6 +104,28 @@ def _write_cache(cfg: dict) -> None:
         pass
 
 
+def require_numpy():
+    """Import numpy or exit(1) with an actionable install hint.
+
+    numpy is the one dependency every indexer needs regardless of
+    backend: even when HTTP embedding succeeds, search must compute
+    cosine similarity client-side over the SQLite-stored vector
+    blobs. Each indexer's do_search / cmd_search calls this so an
+    `import numpy as np` ModuleNotFoundError becomes a one-line
+    actionable message instead of a stack trace."""
+    try:
+        import numpy as np  # type: ignore
+        return np
+    except ImportError:
+        sys.stderr.write(
+            "kaizen: numpy not installed — required for embedding search.\n"
+            "  pip install --user numpy\n"
+            "(HTTP-only embedding via llama-server still needs numpy "
+            "for client-side cosine similarity.)\n"
+        )
+        sys.exit(1)
+
+
 def _invalidate_cache() -> None:
     """Drop the cached endpoint so the next resolve_backend() re-probes.
 

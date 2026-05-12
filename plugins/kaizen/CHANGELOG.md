@@ -3,6 +3,24 @@
 All notable changes to the `kaizen` plugin documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [SemVer](https://semver.org/).
 
+## [1.25.4] — 2026-05-12
+
+### Fixed — missing `numpy` now surfaces an actionable error instead of a stack trace
+
+All four indexers (knowledge / trace / onboard / scrape) had a bare `import numpy as np` inside their search functions, outside the existing "lazy-import-with-hint" pattern that wrapped `sentence-transformers` loading. Result: a user running on the HTTP embedding backend without sentence-transformers/numpy installed (a perfectly valid v1.25.0+ configuration) got `ModuleNotFoundError: No module named 'numpy'` with a five-line stack trace at first search.
+
+`numpy` is unavoidable for the search path — even HTTP-backed embedding stores vectors in SQLite and computes cosine similarity client-side — so the right fix is a clear install hint, not lazy-skip.
+
+New helper `_embed.require_numpy()` returns the module or exits with:
+
+```
+kaizen: numpy not installed — required for embedding search.
+  pip install --user numpy
+(HTTP-only embedding via llama-server still needs numpy for client-side cosine similarity.)
+```
+
+The four indexer search functions now call `np = _kz_embed.require_numpy()` in place of the bare import.
+
 ## [1.25.3] — 2026-05-12
 
 ### Fixed — stale HTTP embed cache no longer breaks indexers

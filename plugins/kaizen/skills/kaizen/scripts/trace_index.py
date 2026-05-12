@@ -343,7 +343,7 @@ def cmd_search(query: str, top_k: int = 10, src: str = "", sid: str = "",
         return []
 
     # v1.25.0+: query embed via shared _embed (HTTP llama-server or local fallback).
-    import numpy as np
+    np = _kz_embed.require_numpy()
     conn = open_db(create=False)
 
     # SQL filters
