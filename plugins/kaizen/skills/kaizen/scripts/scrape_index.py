@@ -109,6 +109,11 @@ import _embed  # noqa: E402 — v1.25.0+: HTTP-first embedding backend
 def _load_scraper_cls():
     try:
         from scrapegraphai.graphs import SmartScraperGraph  # type: ignore
+        # v1.29.4+: register our curated picks into scrapegraphai's
+        # model_tokens table so the 8192-default warning doesn't fire and
+        # the full context budget is honored on the openai/* path. Called
+        # here because at this point scrapegraphai is guaranteed importable.
+        _register_recommendation_tokens()
         return SmartScraperGraph
     except ImportError as e:
         sys.stderr.write(
@@ -451,9 +456,6 @@ def llm_config() -> dict:
     # v1.29.3+: pull model_tokens from the recommendations table when the
     # model is in our curated list. ScrapeGraphAI's default (8192) silently
     # truncates ≈90% of a full HTML page when the model supports 128K-256K.
-    # Lives at the top-level graph config — placing it inside cfg["llm"]
-    # propagates it to ChatOpenAI's parse() which raises TypeError on
-    # unknown kwargs in recent scrapegraph-ai versions.
     bare_model = model.split("/", 1)[1] if "/" in model else model
     ctx_tokens = 32_768  # sane non-truncating default
     for rec in OLLAMA_SCRAPE_RECOMMENDATIONS:
@@ -464,6 +466,12 @@ def llm_config() -> dict:
     if model.startswith("ollama/"):
         cfg["llm"]["base_url"] = base_url or "http://localhost:11434"
         cfg["llm"]["format"] = "json"
+        # v1.29.4+: per https://docs.scrapegraphai.com (Context7 lookup),
+        # model_tokens IS supported on the ollama/* path — the OllamaLLM
+        # provider reads it and skips passing through to the underlying
+        # client. Documented at:
+        #   /scrapegraphai/scrapegraph-ai/llms.txt
+        cfg["llm"]["model_tokens"] = ctx_tokens
     elif model.startswith("openai/"):
         api_key = os.environ.get("OPENAI_API_KEY")
         if base_url:
@@ -472,17 +480,19 @@ def llm_config() -> dict:
             # placeholder works.
             cfg["llm"]["base_url"] = base_url
             cfg["llm"]["api_key"] = api_key or "sk-local-noop"
-            # v1.29.3+: force JSON mode for OpenAI-compat endpoints serving
-            # JSON-capable models. Without this, granite4.1 / qwen3.5 etc.
-            # return Markdown summaries instead of JSON and ScrapeGraphAI's
-            # parser raises OutputParserException. ChatOpenAI propagates
-            # model_kwargs to the /v1/chat/completions call.
+            # v1.29.3+: force JSON mode for OpenAI-compat endpoints. Without
+            # this, granite4.1 / qwen3.5 return Markdown and ScrapeGraphAI's
+            # parser raises OutputParserException.
             cfg["llm"]["model_kwargs"] = {
                 "response_format": {"type": "json_object"},
             }
+            # NB: model_tokens is NOT settable on the openai/* path — the
+            # provider forwards every cfg["llm"] kwarg to ChatOpenAI which
+            # rejects it with TypeError. We register the ctx via the
+            # `models_tokens` global dict at scraper-load time instead.
+            # See _register_recommendation_tokens() below.
         elif api_key:
             cfg["llm"]["api_key"] = api_key
-            # Real OpenAI API also supports json_object response_format.
             cfg["llm"]["model_kwargs"] = {
                 "response_format": {"type": "json_object"},
             }
@@ -496,9 +506,37 @@ def llm_config() -> dict:
             sys.exit(2)
     cfg["headless"] = True
     cfg["verbose"] = False
-    # Graph-level model_tokens (NOT inside cfg["llm"] — see comment above).
-    cfg["model_tokens"] = ctx_tokens
     return cfg
+
+
+def _register_recommendation_tokens() -> None:
+    """Inject OLLAMA_SCRAPE_RECOMMENDATIONS into ScrapeGraphAI's hardcoded
+    models_tokens dict (v1.29.4+).
+
+    ScrapeGraphAI ships a static dict at `scrapegraphai.helpers.models_tokens
+    .models_tokens` keyed by provider → model → max_tokens. If a model name
+    is missing, the lookup falls through to the default 8192 and emits:
+
+        "Max input tokens for model X not found, please specify the
+         model_tokens parameter in the llm section of the graph
+         configuration. Using default token size: 8192"
+
+    Our curated picks (granite4.1, qwen3.5, qwen3.6, gemma4, qwen3-embedding)
+    aren't in the upstream dict yet. Registering them at scraper load
+    silences the warning AND honors the full context budget on the openai/*
+    path (where cfg["llm"]["model_tokens"] would propagate to ChatOpenAI
+    and raise TypeError).
+
+    Idempotent — safe to call multiple times. Defensive — silent no-op if
+    scrapegraphai isn't installed (e.g. running stats / detect-llm via
+    plain python3 instead of `uv run --script`)."""
+    try:
+        from scrapegraphai.helpers.models_tokens import models_tokens  # type: ignore
+    except ImportError:
+        return
+    entries = {rec["name"]: rec["ctx_k"] * 1024 for rec in OLLAMA_SCRAPE_RECOMMENDATIONS}
+    for provider in ("openai", "ollama"):
+        models_tokens.setdefault(provider, {}).update(entries)
 
 
 # ─── PocketFlow async pipeline (vendored AsyncNode/AsyncFlow) ────────

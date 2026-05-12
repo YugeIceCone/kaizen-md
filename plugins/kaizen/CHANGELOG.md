@@ -3,6 +3,54 @@
 All notable changes to the `kaizen` plugin documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [SemVer](https://semver.org/).
 
+## [1.29.4] — 2026-05-12
+
+### Fixed — `model_tokens` warning silenced + full context honored (Context7-verified)
+
+Context7 lookup of ScrapeGraphAI docs (`/scrapegraphai/scrapegraph-ai/llms.txt`) confirmed:
+
+1. `model_tokens` belongs **inside `cfg["llm"]`** — but only the `ollama/*` provider knows to consume it without forwarding to ChatOpenAI's `parse()`.
+2. `scrapegraphai.helpers.models_tokens.models_tokens` is a public mutable dict keyed by `provider → model → max_tokens`. Extending it at runtime is the canonical way to add unknown models to the lookup table.
+
+**Three changes mirror those findings:**
+
+1. **`pin-chat` switches to native Ollama provider.** v1.29.0–3 wrote `openai/<model>` via `:11434/v1` (OpenAI-compat). v1.29.4 writes `ollama/<model>` via `:11434` (no `/v1`). ScrapeGraphAI's `ollama/*` branch reads `cfg["llm"]["model_tokens"]` and `cfg["llm"]["format"] = "json"` as documented — both work end-to-end.
+2. **`llm_config` sets `model_tokens` inside the ollama/* branch.** Pulled from `OLLAMA_SCRAPE_RECOMMENDATIONS[*]["ctx_k"] * 1024` via loose match. Full 128K (granite) / 256K (qwen3.5) honored.
+3. **`_register_recommendation_tokens()` patches the upstream lookup table.** Mutates `scrapegraphai.helpers.models_tokens.models_tokens["ollama"]` + `[...]["openai"]` with our curated entries on first `_load_scraper_cls()` call. Belt-and-suspenders: silences the warning AND honors full context on the `openai/*` path too (where setting `cfg["llm"]["model_tokens"]` would raise TypeError).
+
+**Live verification — second Onyx scrape, this time no warnings:**
+
+```
+$ kaizen-scrape scrape https://github.com/onyx-dot-app/onyx/tree/main --json
+{
+  "ok": true,
+  "urls": 1,
+  "persisted": 1,
+  ...  (full structured JSON, no truncation warning, no parse exception)
+}
+$ kaizen-scrape stats
+total:     2 files
+model:     qwen3-embedding:0.6b
+dim:       1024
+```
+
+### Removed — top-level `cfg["model_tokens"]` workaround from v1.29.3
+
+The hack was ineffective (ScrapeGraphAI reads from `cfg["llm"]["model_tokens"]` OR the global dict, never the top-level). The Context7-verified fixes above replace it cleanly.
+
+### Tests
+
+Existing 139 tests still pass — no behavior covered by the existing tests changes. The new `_register_recommendation_tokens` is a defensive no-op when scrapegraphai isn't importable (e.g. when `kaizen-scrape stats` runs under plain python3 instead of `uv run --script`).
+
+### Migration
+
+```
+/kaizen:models pin-chat granite4.1:8b
+source ~/.claude/.kaizen/profile.env
+```
+
+Repins from `openai/granite4.1:8b` → `ollama/granite4.1:8b`. The openai-prefixed env still works for users explicitly running vLLM / LM Studio / real OpenAI; the recommendation-table registration helps that path too via the upstream dict.
+
 ## [1.29.3] — 2026-05-12
 
 ### Fixed — `/kaizen:scrape` end-to-end against real URLs (granite4.1 + Ollama embed)

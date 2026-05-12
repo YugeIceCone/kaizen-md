@@ -505,18 +505,25 @@ def cmd_pin_embed(args) -> int:
 
 
 def cmd_pin_chat(args) -> int:
-    host = _host()
-    base_url = host.rstrip("/") + "/v1"
-    # scrape uses provider-prefixed names; "openai/" works against Ollama's OpenAI-compat endpoint.
-    prefixed = args.model if "/" in args.model else f"openai/{args.model}"
+    """Pin a chat model for scrape. v1.29.4+: writes the native Ollama
+    provider prefix (`ollama/<model>`) + base URL without `/v1`. This
+    lets ScrapeGraphAI take its ollama/* branch where `format=json` and
+    `model_tokens` are documented config keys (the openai/* branch
+    forwards both to ChatOpenAI which rejects model_tokens)."""
+    host = _host().rstrip("/")
+    # scrape uses provider-prefixed names. Ollama's native path is
+    # `ollama/<model>` against the un-prefixed host. The openai/*
+    # path stays available for users who explicitly set the env vars
+    # to point at vLLM / LM Studio / real OpenAI.
+    prefixed = args.model if "/" in args.model else f"ollama/{args.model}"
     updates = {
-        "KAIZEN_SCRAPE_LLM_BASE_URL": base_url,
+        "KAIZEN_SCRAPE_LLM_BASE_URL": host,
         "KAIZEN_SCRAPE_LLM_MODEL": prefixed,
         "KAIZEN_SCRAPE_LLM_AUTO": "0",
     }
     path = _profile_env_path()
     _set_env_lines(path, updates)
-    print(f"✓ pinned chat model {prefixed} via {base_url}")
+    print(f"✓ pinned chat model {prefixed} via {host}")
     print(f"  wrote {path}")
     print(f"  reload: source {path}")
     return 0
