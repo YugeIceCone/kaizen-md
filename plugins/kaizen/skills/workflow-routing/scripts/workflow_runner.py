@@ -7,8 +7,8 @@ gating implementation. The runner resolves the schema by name, parses it
 (stdlib-only), validates the DAG, and emits stage order for workflow.sh.
 
 Resolution order (first hit wins):
-    1. <repo>/.workflow/schemas/<name>/schema.yaml   (project)
-    2. ~/.claude/kaizen-schemas/<name>/schema.yaml   (user)
+    1. <repo>/.kaizen/workflow/schemas/<name>/schema.yaml   (project; v1.22+ canonical)
+    2. ~/.claude/.kaizen/schemas/<name>/schema.yaml   (user; v1.22+ canonical)
     3. <plugin>/schemas/<name>/schema.yaml           (built-in, this dir)
 
 Subcommands:

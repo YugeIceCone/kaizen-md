@@ -35,7 +35,7 @@ The workflow ships four custom agents at `~/.claude/agents/` that the orchestrat
 | Stage(s) | Custom agent | Why |
 |---|---|---|
 | explore, detect-stack, research, audit | `wf-explorer` | Read-only, knows routine stage prompts; cheaper than general-purpose for the front of every routine |
-| analyze, review, validate, debug, fix, create-plan, create-tasks, execute-tasks, report | `wf-stage` | Knows `.workflow/state.json` and the `advance` protocol — saves prompt boilerplate |
+| analyze, review, validate, debug, fix, create-plan, create-tasks, execute-tasks, report | `wf-stage` | Knows `.kaizen/workflow/state.json` and the `advance` protocol — saves prompt boilerplate |
 | per-phase parallel execution (subagent=full) | `wf-phase` | Worktree-isolated; reads plan's Resume Protocol; one phase per dispatch |
 | batch-migrate.analyze (decomposition into 5–30 units) | `wf-decomposer` | Enforces `/batch`'s independence contract |
 | simplify, batch-fanout | (none — bundled commands) | Run as bundled `/simplify` / `/batch`, no subagent |
@@ -136,7 +136,7 @@ The Stop hook (see `references/hooks-config.md`) reinforces auto=yes by re-promp
 
 ## State File Discipline
 
-`scripts/workflow.sh` is the only writer for `.workflow/state.json`. The model never edits it directly. Instead:
+`scripts/workflow.sh` is the only writer for `.kaizen/workflow/state.json`. The model never edits it directly. Instead:
 
 - After each stage: `advance <stage> "<one-line result>"`.
 - When a stage produces a durable artifact: `artifact <key> <value>` (e.g. `artifact plan_file plans/2026-04-26-x.md`).

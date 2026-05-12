@@ -6,7 +6,7 @@ All snippets go in `~/.claude/settings.json` (user-global) or `<project>/.claude
 
 ## Required: Stop hook (auto=yes self-driving)
 
-When `auto=yes` and a stage just finished, Claude would normally stop and wait for the user. The Stop hook reads `.workflow/state.json` and emits `decision: block` to keep Claude going.
+When `auto=yes` and a stage just finished, Claude would normally stop and wait for the user. The Stop hook reads `.kaizen/workflow/state.json` and emits `decision: block` to keep Claude going.
 
 ```json
 {
@@ -46,7 +46,7 @@ If a previous session left a workflow mid-flight, this hook injects a system rem
         "hooks": [
           {
             "type": "command",
-            "command": "bash -c 'STATE=\"${CLAUDE_PROJECT_DIR:-.}/.workflow/state.json\"; [ -f \"$STATE\" ] && echo \"{\\\"hookSpecificOutput\\\":{\\\"hookEventName\\\":\\\"SessionStart\\\",\\\"additionalContext\\\":\\\"Active workflow detected. Run: bash $HOME/.claude/skills/workflow/scripts/workflow.sh status — and use the workflow-routing skill to resume.\\\"}}\" || echo \"{}\"'"
+            "command": "bash -c 'STATE=\"${CLAUDE_PROJECT_DIR:-.}/.kaizen/workflow/state.json\"; [ -f \"$STATE\" ] && echo \"{\\\"hookSpecificOutput\\\":{\\\"hookEventName\\\":\\\"SessionStart\\\",\\\"additionalContext\\\":\\\"Active workflow detected. Run: bash $HOME/.claude/skills/workflow/scripts/workflow.sh status — and use the workflow-routing skill to resume.\\\"}}\" || echo \"{}\"'"
           }
         ]
       }

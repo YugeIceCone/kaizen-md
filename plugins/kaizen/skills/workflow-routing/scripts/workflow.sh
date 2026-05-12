@@ -2,7 +2,7 @@
 # workflow.sh — state machine and hook handler for the /workflow skill.
 #
 # Subcommands:
-#   init "<args>"        Parse free-form args, write .workflow/state.json, print routine + first stage.
+#   init "<args>"        Parse free-form args, write .kaizen/workflow/state.json, print routine + first stage.
 #   next                 Read state, print the next stage to run.
 #   advance <stage> <msg> Mark stage complete, optionally store an artifact, print next stage.
 #   artifact <key> <val> Record an artifact (e.g. plan_file=plans/2026-04-26-x.md).
@@ -12,7 +12,7 @@
 #                        emit a system reminder that nudges the model to advance the next stage.
 #                        Wire as a Stop hook in settings.json (see references/hooks-config.md).
 #
-# State file: $WORKFLOW_STATE_DIR/state.json (default: ./.workflow/state.json).
+# State file: $WORKFLOW_STATE_DIR/state.json (default: ./.kaizen/workflow/state.json post-v1.22).
 # Pure-bash; no jq dependency. Handles concurrent reads safely; serial writes only.
 
 set -euo pipefail
@@ -388,7 +388,7 @@ PY
 
 cmd_pre_compact() {
   # PreCompact hook: snapshot the workflow state + the next-stage instruction
-  # to .workflow/snapshot.md so PostCompact can re-inject it.
+  # to .kaizen/workflow/snapshot.md so PostCompact can re-inject it.
   [ -f "$STATE_FILE" ] || { echo '{}'; exit 0; }
   python3 - "$STATE_FILE" "$STATE_DIR/snapshot.md" <<'PY'
 import json, sys, datetime
@@ -517,13 +517,13 @@ subcommands:
 
   schema=NAME (v1.14.0+)          opt-in to a declarative schema-driven routine.
                                   Stages come from <plugin>/schemas/<name>/schema.yaml
-                                  (or .workflow/schemas/<name>/, or ~/.claude/kaizen-schemas/<name>/).
+                                  (or .kaizen/workflow/schemas/<name>/, or ~/.claude/.kaizen/schemas/<name>/).
                                   Inspect via: python3 workflow_runner.py list|show|validate|stages
 
 hook handlers (invoked from settings.json, read stdin, emit JSON):
   stop-hook                       (Stop event — drives auto=yes chaining)
   subagent-stop                   (SubagentStop event — auto-advances on completion)
-  pre-compact                     (PreCompact event — snapshots state to .workflow/snapshot.md)
+  pre-compact                     (PreCompact event — snapshots state to .kaizen/workflow/snapshot.md)
   post-compact                    (PostCompact event — re-injects snapshot as context)
 
 state: $STATE_FILE

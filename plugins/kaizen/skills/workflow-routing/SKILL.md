@@ -37,8 +37,8 @@ Pass `schema=<name>` and the stage sequence comes from a declarative yaml file. 
 - **spec-driven** — `analyze → design → (decisions, tasks) → implement → validate → reflect → handoff` (EARS requirements + Decision Records, adapted from GitHub's awesome-copilot spec-driven-workflow-v1)
 
 Schemas resolve in this order (first hit wins):
-1. `<repo>/.workflow/schemas/<name>/schema.yaml` (project-versioned)
-2. `~/.claude/kaizen-schemas/<name>/schema.yaml` (user-wide)
+1. `<repo>/.kaizen/workflow/schemas/<name>/schema.yaml` (project-versioned; v1.22+ canonical)
+2. `~/.claude/.kaizen/schemas/<name>/schema.yaml` (user-wide; v1.22+ canonical)
 3. `<plugin>/schemas/<name>/schema.yaml` (built-in)
 
 Inspect schemas with `/kaizen:schema list|show|validate|stages|artifact|branches`. The state machine treats schema-driven and hardcoded routines identically once initialized — `routine` is `schema:<name>` instead of `audit`/`build-feature`/etc., and `schema_name` is recorded in state.json. All `advance`, `dispatch`, `status`, `subagent-stop`, `pre-compact`, `post-compact` logic is unchanged.
@@ -63,7 +63,7 @@ Trigger this skill when:
 - the `/workflow` command was invoked (the command file points here)
 - the user asks for an end-to-end audit, build, fix, refactor, migration, or hardening pass
 - a multi-stage routine needs sequencing with subagent + auto-mode controls
-- a `.workflow/state.json` file already exists in the project and needs to advance
+- a `.kaizen/workflow/state.json` file already exists in the project and needs to advance
 
 If only a single skill is needed (e.g. "just create a plan"), redirect to that skill instead.
 
@@ -77,12 +77,12 @@ From `/workflow` arguments (parsed by the script):
 - **auto=no|yes** — autonomy (default `no`)
 - **schema=NAME** — optional (v1.14.0+) source stages from a declarative schema instead of a hardcoded routine. See "Schema-driven routines" above.
 
-Also reads `.workflow/state.json` if present (for resume).
+Also reads `.kaizen/workflow/state.json` if present (for resume).
 
 ## Orchestration Loop
 
-1. **Initialize.** Run the init script (the `/workflow` command does this). The script writes `.workflow/state.json` and prints the routine, the stages, and the first stage to run.
-2. **Read state.** Load `.workflow/state.json` to know the routine, current stage index, completed stages, subagent mode, auto mode, and any artifacts already produced.
+1. **Initialize.** Run the init script (the `/workflow` command does this). The script writes `.kaizen/workflow/state.json` and prints the routine, the stages, and the first stage to run.
+2. **Read state.** Load `.kaizen/workflow/state.json` to know the routine, current stage index, completed stages, subagent mode, auto mode, and any artifacts already produced.
 3. **Run the current stage.** Invoke the matching skill (e.g. `explore`, `create-plan`). Honor the `subagent` mode per `references/orchestration.md`:
     - `no` — run the stage in this session
     - `yes` — dispatch a subagent for read-only stages (explore, research, audit, analyze, review)

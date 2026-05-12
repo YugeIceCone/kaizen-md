@@ -3,6 +3,24 @@
 All notable changes to the `kaizen` plugin documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [SemVer](https://semver.org/).
 
+## [1.26.1] — 2026-05-12
+
+### Fixed — README + workflow-routing skill drift after v1.22 unify
+
+Cleanup pass on documentation that hadn't caught up with the v1.22 `.workflow/ → .kaizen/workflow/` migration. **No code changes** — every drifted file was a doc/comment/docstring.
+
+`README.md` — version badge bumped 1.2.0 → 1.26.0; "10 checks" wording replaced with the actual pre-commit + commit-msg split (v1.25.1+); skill count 32 → 39; mentions of `/kaizen:doctor` replaced with `/kaizen:health` (renamed in v1.1.1); the install-detail section now lists both hooks + the per-dir `.kaizen/.gitignore` policy + the `bin/kaizen-*` symlink step; the namespace table moved from `.workflow/` → `.kaizen/workflow/` with a backward-compat note pointing at `/kaizen:migrate-paths`; new Ollama optional-peer mention.
+
+`skills/workflow-routing/SKILL.md` (4 sites) — schema resolution paths, the "when to use" trigger, the inputs section, and the orchestration loop steps now reference `.kaizen/workflow/state.json`.
+
+`skills/workflow-routing/references/orchestration.md` (2 sites) — `wf-stage` subagent description + the state-file discipline section.
+
+`skills/workflow-routing/references/hooks-config.md` (2 sites) — Stop hook description + SessionStart hook bash one-liner.
+
+`skills/workflow-routing/scripts/workflow.sh` (5 sites) — `init` docstring, state-file path comment, PreCompact comment, schema-source paragraph, `pre-compact` hook handler description.
+
+`skills/workflow-routing/scripts/workflow_runner.py` (1 site) — docstring resolution order section.
+
 ## [1.26.0] — 2026-05-12
 
 ### Added — `/kaizen:models` Ollama-backed model lifecycle + capability surface
