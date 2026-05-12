@@ -26,11 +26,13 @@ import scrape_index as si  # noqa: E402
 
 class TestRecommendationsShape(unittest.TestCase):
     def test_list_is_ranked(self) -> None:
-        # Updated 2026-05-12: qwen3.5:9b is the current winner; qwen2.5:7b
-        # was the v1.29.0 initial pick before the user pointed at fresher
-        # models. Keep this assertion narrow (just-the-winner) so future
-        # bumps don't have to touch every rank.
-        self.assertEqual(si.OLLAMA_SCRAPE_RECOMMENDATIONS[0]["name"], "qwen3.5:9b")
+        # Updated 2026-05-12 (v1.29.2): granite4.1:8b promoted to winner —
+        # only pick whose official model card explicitly documents
+        # "structured JSON output", which matches ScrapeGraphAI's exact
+        # workload (HTML → JSON via format=json). qwen3.5:9b stays in the
+        # list as the generalist fallback. Keep this assertion narrow so
+        # future bumps don't have to touch every rank.
+        self.assertEqual(si.OLLAMA_SCRAPE_RECOMMENDATIONS[0]["name"], "granite4.1:8b")
         self.assertEqual(si.OLLAMA_SCRAPE_RECOMMENDATIONS[0]["tier"], "winner")
 
     def test_each_entry_well_formed(self) -> None:
@@ -74,19 +76,19 @@ class TestPickBestChatModel(unittest.TestCase):
         self.assertIsNone(si.pick_best_chat_model(["nomic-embed-text", "bge-small-en"]))
 
     def test_winner_chosen_over_lower_rank(self) -> None:
-        # granite4.1:8b is rank 2, qwen3.5:9b is rank 1 (winner)
-        out = si.pick_best_chat_model(["granite4.1:8b", "qwen3.5:9b"])
-        self.assertEqual(out, "qwen3.5:9b")
+        # qwen3.5:9b is rank 2, granite4.1:8b is rank 1 (winner) post-v1.29.2
+        out = si.pick_best_chat_model(["qwen3.5:9b", "granite4.1:8b"])
+        self.assertEqual(out, "granite4.1:8b")
 
     def test_winner_chosen_regardless_of_install_order(self) -> None:
         # Order in `installed` list shouldn't matter; ranking does.
-        out = si.pick_best_chat_model(["qwen3.5:9b", "granite4.1:8b"])
-        self.assertEqual(out, "qwen3.5:9b")
+        out = si.pick_best_chat_model(["granite4.1:8b", "qwen3.5:9b"])
+        self.assertEqual(out, "granite4.1:8b")
 
     def test_falls_back_to_lower_ranked_when_winner_missing(self) -> None:
-        # No qwen3.5:9b installed → granite4.1:8b (rank 2) wins over qwen3.5:4b (rank 4)
-        out = si.pick_best_chat_model(["qwen3.5:4b", "granite4.1:8b"])
-        self.assertEqual(out, "granite4.1:8b")
+        # No granite4.1:8b installed → qwen3.5:9b (rank 2) wins over qwen3.5:4b (rank 4)
+        out = si.pick_best_chat_model(["qwen3.5:4b", "qwen3.5:9b"])
+        self.assertEqual(out, "qwen3.5:9b")
 
     def test_falls_back_to_arbitrary_when_no_rec(self) -> None:
         # No recommended chat model is installed; first non-embed wins.

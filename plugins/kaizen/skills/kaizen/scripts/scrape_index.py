@@ -40,7 +40,7 @@ Override via env:
   KAIZEN_SCRAPE_LLM_BASE_URL=http://localhost:11434
 
 Ollama setup (one-time):
-  /kaizen:models pull qwen3.5:9b          # the curated winner (2026-05-12)
+  /kaizen:models pull granite4.1:8b       # the curated winner (2026-05-12)
   /kaizen:models pull nomic-embed-text    # for embedding (separate from scrape)
 
 ## SQLite schema (~/.claude/.kaizen/scrape/index.db)
@@ -224,16 +224,17 @@ _LLM_CACHE_PATH = _p.SCRAPE_DIR / "llm_endpoint.json"
 # Order = preference rank (best first).
 OLLAMA_SCRAPE_RECOMMENDATIONS = [
     {
-        "name": "qwen3.5:9b", "size_gb": 6.6, "ctx_k": 256, "tier": "winner",
-        "why": "Apache 2.0, 256K ctx, unified vision-language foundation with "
-               "agentic + tools + thinking. Successor to qwen2.5 (which dominated "
-               "scrapegraphai examples). Default winner for full-page scrapes.",
+        "name": "granite4.1:8b", "size_gb": 5.3, "ctx_k": 128, "tier": "winner",
+        "why": "Apache 2.0, 128K ctx, model card explicitly cites 'structured JSON output' "
+               "+ tool-calling + RAG-tuned + multilingual. The only pick whose official "
+               "documentation matches ScrapeGraphAI's exact workload (HTML → JSON via "
+               "format=json). Smallest of the strong picks too (5.3GB).",
     },
     {
-        "name": "granite4.1:8b", "size_gb": 5.3, "ctx_k": 128, "tier": "json-best",
-        "why": "Apache 2.0, 128K ctx, model card explicitly cites 'structured JSON output' "
-               "+ tool-calling + RAG-tuned. Highest JSON reliability per pound for "
-               "ScrapeGraphAI's extraction workload.",
+        "name": "qwen3.5:9b", "size_gb": 6.6, "ctx_k": 256, "tier": "generalist",
+        "why": "Apache 2.0, 256K ctx, unified vision-language + tools + thinking. Best "
+               "all-rounder when you also use the model for general chat / coding / "
+               "reasoning beyond scrape. Wider context than granite for long pages.",
     },
     {
         "name": "gemma4:e4b", "size_gb": 9.6, "ctx_k": 128, "tier": "multimodal",
@@ -248,8 +249,9 @@ OLLAMA_SCRAPE_RECOMMENDATIONS = [
     },
     {
         "name": "granite4.1:3b", "size_gb": 2.1, "ctx_k": 128, "tier": "laptop",
-        "why": "≤4GB tier with the same JSON-output + tool-calling discipline as "
-               "granite4.1:8b. Slower / less accurate on dense HTML.",
+        "why": "≤4GB tier with the same JSON-output + tool-calling discipline as the "
+               "winner. Slower / less accurate on dense HTML but the same documented "
+               "structured-output reliability.",
     },
     {
         "name": "qwen3.6:27b", "size_gb": 17.0, "ctx_k": 256, "tier": "quality",

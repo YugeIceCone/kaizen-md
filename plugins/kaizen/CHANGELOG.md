@@ -3,6 +3,37 @@
 All notable changes to the `kaizen` plugin documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [SemVer](https://semver.org/).
 
+## [1.29.2] — 2026-05-12
+
+### Changed — `granite4.1:8b` promoted to winner; `qwen3.5:9b` reclassified as generalist
+
+User test result on real workload showed `granite4.1:8b` was the right call: its model card is the only one in the ranked list whose **official documentation explicitly cites "structured JSON output"** alongside tool-calling and RAG tuning. That matches ScrapeGraphAI's exact workload (HTML → JSON via `format=json`) better than qwen3.5's vision-language generalist surface.
+
+Live smoke test against `format=json`:
+
+```
+$ kaizen-models chat granite4.1:8b "Extract title and one fact from: <h1>Apollo 11</h1>..." --format json
+{"title":"Apollo 11","fact":"First crewed moon landing, 1969."}
+```
+
+Clean, single-line, no preamble — exactly what SmartScraperGraph wants.
+
+**New rank #1**: `granite4.1:8b` — 5.3GB, 128K ctx, Apache 2.0, smaller than the prior winner (qwen3.5:9b was 6.6GB) AND with the documented JSON discipline.
+
+**qwen3.5:9b** keeps its slot at rank 2 as the "generalist" tier — best all-rounder when the model is used beyond scrape (chat, coding, reasoning, multimodal). Its 256K context still beats granite's 128K for very long pages, so users with full-book-sized scrapes should override via `KAIZEN_SCRAPE_LLM_MODEL`.
+
+**Default behavior**. The smart `detect-llm` picker now reports:
+
+```
+probing http://localhost:11434/api/tags... ✓ ollama/granite4.1:8b (✓ recommended: granite4.1:8b)
+```
+
+when both granite4.1:8b and qwen3.5:9b are installed — granite wins because it's rank 1.
+
+### Tests
+
+`test_scrape_recommend.py` updated: winner assertion + the picker-prefers-rank-1 cases now name granite4.1:8b. All 16/16 pass; suite 137/137.
+
 ## [1.29.1] — 2026-05-12
 
 ### Fixed — `OLLAMA_SCRAPE_RECOMMENDATIONS` refreshed against the current Ollama library
