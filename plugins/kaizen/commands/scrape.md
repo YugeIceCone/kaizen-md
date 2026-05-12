@@ -28,6 +28,8 @@ LLM-driven scrape that ends in a queryable SQLite index. Three kaizen patterns c
 | `list [--limit N]`                       | N most-recent items.                                           |
 | `path`                                   | DB path.                                                       |
 | `clear`                                  | Drop the index.                                                |
+| `detect-llm [--refresh]`                 | Probe local LLM endpoints; print the chosen `provider/model`.  |
+| `recommend [--json]`                     | List curated Ollama chat-model picks for SmartScraperGraph (v1.29.0+ — winner: `qwen2.5:7b`). Marks already-pulled models with `✓`. |
 
 ## Pipeline (the four async nodes)
 

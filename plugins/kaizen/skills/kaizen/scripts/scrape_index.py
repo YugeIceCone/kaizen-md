@@ -28,15 +28,20 @@ Combines three kaizen patterns:
 
 ## LLM provider (defaults)
 
-Defaults to **Ollama local** (`ollama/llama3` @ `http://localhost:11434`)
-so no API keys are required out of the box. Override via env:
+Defaults to **Ollama local** (auto-detected at `http://localhost:11434`)
+so no API keys are required out of the box. v1.29.0+ also picks the
+best-installed chat model from a curated list (winner: `qwen2.5:7b`),
+preferring it over arbitrary `/api/tags` ordering. See
+`kaizen-scrape recommend` for the full ranked picks + per-model rationale.
+
+Override via env:
 
   KAIZEN_SCRAPE_LLM_MODEL=openai/gpt-4o-mini   # then needs OPENAI_API_KEY
   KAIZEN_SCRAPE_LLM_BASE_URL=http://localhost:11434
 
 Ollama setup (one-time):
-  ollama pull llama3
-  ollama pull nomic-embed-text
+  /kaizen:models pull qwen2.5:7b          # the curated winner
+  /kaizen:models pull nomic-embed-text    # for embedding (separate from scrape)
 
 ## SQLite schema (~/.claude/.kaizen/scrape/index.db)
 
@@ -203,6 +208,112 @@ def extract_title(extraction: Any) -> str:
 _LLM_CACHE_PATH = _p.SCRAPE_DIR / "llm_endpoint.json"
 
 
+# ─── Ollama-hosted chat-model recommendations for ScrapeGraphAI ──────
+#
+# Curated 2026-05-12 (see kaizen agent survey of ollama.com/search,
+# ScrapeGraphAI README, and the Ollama model library). Ranked: the
+# detect_llm Ollama branch prefers a recommended model over an
+# arbitrarily-listed one when both are installed.
+#
+# Source for "why" + "tier" is the survey result; the picks reflect:
+#   - Reliable JSON output under Ollama's `format=json` flag
+#   - ≥32K context (full-page scrapes hit 5K–50K tokens of HTML)
+#   - Tool-style structured-output discipline
+#   - Local-friendly size (laptop tier through GPU-best)
+#
+# Order = preference rank (best first).
+OLLAMA_SCRAPE_RECOMMENDATIONS = [
+    {
+        "name": "qwen2.5:7b", "size_gb": 4.7, "ctx_k": 128, "tier": "winner",
+        "why": "Best JSON-mode reliability per pound. Apache 2.0, 128K ctx, "
+               "model card explicitly cites 'improved JSON structured output'. "
+               "ScrapeGraphAI community defacto pick.",
+    },
+    {
+        "name": "llama3.1:8b", "size_gb": 4.9, "ctx_k": 128, "tier": "fallback",
+        "why": "Meta SOTA tool use; broad ecosystem. Slightly looser JSON adherence than qwen2.5.",
+    },
+    {
+        "name": "qwen3:8b", "size_gb": 5.2, "ctx_k": 40, "tier": "newer",
+        "why": "Reasoning + agentic-tool tuned. Note: only 40K ctx — borderline for full-page scrapes.",
+    },
+    {
+        "name": "granite3.3:8b", "size_gb": 4.9, "ctx_k": 128, "tier": "alt",
+        "why": "IBM Granite — strong tool-calling, alternative to Llama/Qwen if you want vendor diversity.",
+    },
+    {
+        "name": "llama3.2:3b", "size_gb": 2.0, "ctx_k": 128, "tier": "laptop",
+        "why": "≤4GB tier. Acceptable JSON on short pages; struggles on dense HTML.",
+    },
+    {
+        "name": "qwen2.5:32b", "size_gb": 20.0, "ctx_k": 128, "tier": "quality",
+        "why": "Dense reasoning at 128K. For users with 24GB+ RAM.",
+    },
+    {
+        "name": "qwen3:30b-a3b", "size_gb": 19.0, "ctx_k": 256, "tier": "best-moe",
+        "why": "MoE: 30B quality at ~7B speed (only 3B active params), 256K ctx. Sweet spot if RAM allows.",
+    },
+]
+RECOMMENDED_NAMES = [r["name"] for r in OLLAMA_SCRAPE_RECOMMENDATIONS]
+
+
+def _model_name_matches(installed: str, recommended: str) -> bool:
+    """Loose match: Ollama lists models with optional `:tag` suffix.
+    `qwen2.5:7b` should match an installed `qwen2.5:7b-instruct-q4_0`.
+    Also handle the family-only case where someone pulled `qwen2.5` and
+    we recommend `qwen2.5:7b`."""
+    if installed == recommended:
+        return True
+    # qwen2.5:7b matches qwen2.5:7b-instruct-q4_0
+    if installed.startswith(recommended + "-"):
+        return True
+    # qwen2.5:7b matches qwen2.5:7b-anything via `:`
+    if installed.startswith(recommended + ":"):
+        return True
+    return False
+
+
+def pick_best_chat_model(installed: list[str]) -> str | None:
+    """Given a list of locally-installed Ollama model names, return the
+    highest-ranked recommendation if one is installed, else the first
+    chat-shaped (non-embed) installed model, else None."""
+    # Prefer in recommendation order.
+    for rec in RECOMMENDED_NAMES:
+        for inst in installed:
+            if _model_name_matches(inst, rec):
+                return inst
+    # Fall back: first non-embed.
+    for inst in installed:
+        if not _embed.is_embedding_model_name(inst):
+            return inst
+    return None
+
+
+def _probe_ollama_all_models(base_url: str, timeout: float) -> list[str]:
+    """List ALL installed Ollama models. Returns names, oldest-installed
+    first (Ollama's default order). Empty list on connection failure or
+    parse error — caller decides what to do.
+
+    Stdlib-only — we don't import the `ollama` package here so this stays
+    on the python3-only path of bin/kaizen-scrape. Richer metadata (size,
+    digest, modified_at) is available via `/kaizen:models list`."""
+    import urllib.request
+    import urllib.error
+    url = base_url.rstrip("/") + "/api/tags"
+    try:
+        req = urllib.request.Request(url, headers={"Accept": "application/json"})
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            if resp.status != 200:
+                return []
+            data = json.loads(resp.read())
+    except (urllib.error.URLError, OSError, json.JSONDecodeError, TimeoutError):
+        return []
+    items = data.get("models") if isinstance(data, dict) else None
+    if not isinstance(items, list):
+        return []
+    return [str(it.get("name") or it.get("model") or "") for it in items if isinstance(it, dict)]
+
+
 def _probe_endpoint(base_url: str, list_path: str, model_field: str, timeout: float) -> str | None:
     """Hit <base_url><list_path>; return the first model name or None.
 
@@ -252,20 +363,40 @@ def detect_llm(refresh: bool = False, verbose: bool = False) -> dict | None:
     for provider, base_url, list_path, model_field in _cfg.SCRAPE_LLM_PROBES:
         if verbose:
             sys.stderr.write(f"  probing {base_url}{list_path}...")
-        model = _probe_endpoint(base_url, list_path, model_field, _cfg.SCRAPE_LLM_PROBE_TIMEOUT)
-        if not model:
+        # v1.29.0+: for Ollama, list ALL installed models and pick the
+        # highest-ranked recommended chat model. For other providers we
+        # still take the first listed name (the provider's own ordering).
+        if provider == "ollama":
+            installed = _probe_ollama_all_models(base_url, _cfg.SCRAPE_LLM_PROBE_TIMEOUT)
+            if not installed:
+                if verbose:
+                    sys.stderr.write(" ✗\n")
+                continue
+            model = pick_best_chat_model(installed)
+            if not model:
+                if verbose:
+                    sys.stderr.write(f" ∘ only embedding models installed at {base_url}\n")
+                continue
+            ranked_against = next(
+                (rec for rec in RECOMMENDED_NAMES if _model_name_matches(model, rec)),
+                None,
+            )
             if verbose:
-                sys.stderr.write(" ✗\n")
-            continue
-        # v1.25.0+: distinguish chat vs embed models by name pattern.
-        # An embedding model can't satisfy SmartScraperGraph's chat needs.
-        kind = "embed" if _embed.is_embedding_model_name(model) else "chat"
-        if kind == "embed":
+                tag = f" (✓ recommended: {ranked_against})" if ranked_against else " (no recommended chat model installed; using first available)"
+                sys.stderr.write(f" ✓ {provider}/{model}{tag}\n")
+        else:
+            model = _probe_endpoint(base_url, list_path, model_field, _cfg.SCRAPE_LLM_PROBE_TIMEOUT)
+            if not model:
+                if verbose:
+                    sys.stderr.write(" ✗\n")
+                continue
+            if _embed.is_embedding_model_name(model):
+                if verbose:
+                    sys.stderr.write(f" ∘ {provider}/{model} (embedding-only — skipping for chat)\n")
+                continue
             if verbose:
-                sys.stderr.write(f" ∘ {provider}/{model} (embedding-only — skipping for chat)\n")
-            continue
-        if verbose:
-            sys.stderr.write(f" ✓ {provider}/{model}\n")
+                sys.stderr.write(f" ✓ {provider}/{model}\n")
+        kind = "chat"
         result = {"provider": provider, "model": model, "base_url": base_url, "kind": kind}
         try:
             _LLM_CACHE_PATH.parent.mkdir(parents=True, exist_ok=True)
@@ -674,6 +805,37 @@ def cmd_clear(args):
         print("kaizen-scrape: no index to clear", file=sys.stderr)
 
 
+def cmd_recommend(args):
+    """List the Ollama-hosted chat-model picks for ScrapeGraphAI's
+    JSON-extraction workload. Read-only — does not pull anything. To
+    install, copy the `ollama pull` line OR run /kaizen:models pull <name>."""
+    if args.json:
+        print(json.dumps(OLLAMA_SCRAPE_RECOMMENDATIONS, indent=2))
+        return
+
+    # Detect what's already installed so we can mark them ✓.
+    base_url = _cfg.SCRAPE_LLM_BASE_URL or "http://localhost:11434"
+    installed = set(_probe_ollama_all_models(base_url, _cfg.SCRAPE_LLM_PROBE_TIMEOUT))
+
+    print(f"Ollama chat-model picks for ScrapeGraphAI ({base_url})\n")
+    print(f"{'STATUS':<8} {'NAME':<22} {'SIZE':>7}  {'CTX':>6}  TIER")
+    print(f"{'-'*8} {'-'*22} {'-'*7}  {'-'*6}  ----")
+    for rec in OLLAMA_SCRAPE_RECOMMENDATIONS:
+        has_it = any(_model_name_matches(inst, rec["name"]) for inst in installed)
+        status = "✓ pulled" if has_it else "·"
+        print(f"{status:<8} {rec['name']:<22} {rec['size_gb']:>5.1f}GB  "
+              f"{rec['ctx_k']:>4}K   {rec['tier']}")
+    print()
+    print("Install the winner:")
+    print("  /kaizen:models pull qwen2.5:7b")
+    print("  /kaizen:models pin-chat  qwen2.5:7b")
+    print("  source ~/.claude/.kaizen/profile.env")
+    print()
+    print("Why each pick:")
+    for rec in OLLAMA_SCRAPE_RECOMMENDATIONS:
+        print(f"  • {rec['name']:<18} — {rec['why']}")
+
+
 def cmd_detect_llm(args):
     """Zero-config probe of common local-LLM endpoints."""
     det = detect_llm(refresh=args.refresh, verbose=True)
@@ -746,6 +908,13 @@ def build_parser() -> argparse.ArgumentParser:
     pdl.add_argument("--refresh", action="store_true", help="ignore the cached endpoint, probe afresh")
     pdl.add_argument("--json", action="store_true")
     pdl.set_defaults(func=cmd_detect_llm)
+
+    pre = sub.add_parser(
+        "recommend",
+        help="list curated Ollama chat-model picks for ScrapeGraphAI (qwen2.5:7b wins)",
+    )
+    pre.add_argument("--json", action="store_true")
+    pre.set_defaults(func=cmd_recommend)
 
     return p
 

@@ -3,6 +3,55 @@
 All notable changes to the `kaizen` plugin documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [SemVer](https://semver.org/).
 
+## [1.29.0] — 2026-05-12
+
+### Added — curated Ollama chat-model picks for ScrapeGraphAI + smart `detect-llm`
+
+Picking a local chat model for ScrapeGraphAI used to require external research; v1.29.0 ships a curated, ranked list inside the plugin and makes auto-detection prefer them.
+
+**Survey provenance.** Kaizen agent surveyed `ollama.com/search`, `ollama.com/search?c=tools`, ScrapeGraphAI's README, and individual model pages (qwen3, qwen2.5, llama3.1, granite3.3, llama3.2) on 2026-05-12. Criteria: reliable JSON under Ollama's `format=json` flag, ≥32K context (full-page scrapes hit 5K–50K HTML tokens), tool-style structured-output discipline, local-friendly size.
+
+**Winner: `qwen2.5:7b`** — Apache 2.0, 128K context, "improved JSON structured output" called out on the model card; defacto pick in ScrapeGraphAI examples in the wild.
+
+| Pick | Pull | Size | Ctx | Tier |
+|---|---|---|---|---|
+| **qwen2.5:7b** | `ollama pull qwen2.5:7b` | 4.7 GB | 128K | **winner** |
+| llama3.1:8b | `ollama pull llama3.1:8b` | 4.9 GB | 128K | fallback |
+| qwen3:8b | `ollama pull qwen3:8b` | 5.2 GB | 40K | newer (note ctx) |
+| granite3.3:8b | `ollama pull granite3.3:8b` | 4.9 GB | 128K | alt (IBM) |
+| llama3.2:3b | `ollama pull llama3.2:3b` | 2.0 GB | 128K | laptop |
+| qwen2.5:32b | `ollama pull qwen2.5:32b` | 20 GB | 128K | quality |
+| qwen3:30b-a3b | `ollama pull qwen3:30b-a3b` | 19 GB | 256K | best MoE |
+
+**New subcommand: `/kaizen:scrape recommend`** — prints the table with installed-status marks (`✓ pulled` vs `·`) computed from a live `/api/tags` probe of the local Ollama. Read-only; pointers to `/kaizen:models pull X` + `/kaizen:models pin-chat X` for installation. `--json` for machine-readable output.
+
+**Smart `detect-llm` (Ollama branch only)**. Previously took the first model `/api/tags` returned. v1.29.0+ now:
+
+1. Lists **all** installed Ollama models via `_probe_ollama_all_models()`.
+2. Picks the highest-ranked recommendation among them via `pick_best_chat_model()`.
+3. Falls back to the first non-embed model if no recommendation is installed.
+4. Surfaces a `(✓ recommended: <name>)` note in `--verbose` output so users see the smart pick happened.
+
+`_model_name_matches()` does loose matching so `qwen2.5:7b-instruct-q4_0` correctly maps to the `qwen2.5:7b` recommendation. Other provider branches (llama.cpp `:8080`, LM Studio, vLLM, text-gen-webui) keep their existing "first listed model" behavior — none of them give us ranked metadata to pick from.
+
+**Docs**. `scrape_index.py` module docstring updated (the old `ollama pull llama3` recommendation is dated). `commands/scrape.md` lists `detect-llm` + `recommend` in the subcommand table.
+
+**Tests**. 16 new in `tests/test_scrape_recommend.py`:
+- Recommendations list is well-formed (required keys, unique names, ranked winner first)
+- `_model_name_matches`: exact, `:tag-suffix`, no-match, family-only doesn't loose-match
+- `pick_best_chat_model`: empty → None, only-embed → None, winner wins regardless of install order, falls back to lower rank when winner missing, falls back to arbitrary chat when no rec installed, skips embed in fallback, loose-match on quant suffix
+
+Plugin unit-test count: 121 → 137. Pipeline: 30/30.
+
+### Files
+
+```
+skills/kaizen/scripts/scrape_index.py    (+135 LOC: recommendations + smart picker + recommend subcommand)
+bin/kaizen-scrape                         (recommend added to stdlib-only fast path)
+commands/scrape.md                        (subcommand table)
+tests/test_scrape_recommend.py            (new, 16 tests)
+```
+
 ## [1.28.0] — 2026-05-12
 
 ### Changed — `/kaizen:onboard` switches to RAG-grade hybrid search (chunked + BM25 + dense)
