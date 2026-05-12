@@ -13,7 +13,7 @@ Cron-driven background worker. Each tick:
 
 Default interval: every 30 minutes. State + log at `~/.claude/.kaizen-daemon/{state.json,log}`.
 
-!`bash ${CLAUDE_PLUGIN_ROOT}/skills/kaizen/scripts/daemon.py ${ARGUMENTS:-status}`
+!`python3 ${CLAUDE_PLUGIN_ROOT}/skills/kaizen/scripts/daemon.py ${ARGUMENTS:-status}`
 
 ## Subcommands
 

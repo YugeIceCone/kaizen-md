@@ -29,8 +29,8 @@ Run a systematic diagnostic over the plugin's install state. Useful after upgrad
 ```
 [ config ]
 ✓ .kaizen.toml present
-✓ backlog source: .workflow/backlog.json
-✓ architecture log: .workflow/progress.md
+✓ backlog source: .kaizen/workflow/backlog.json
+✓ architecture log: .kaizen/workflow/progress.md
 ∘ verify_cmd: (none)
 
 [ hook ]

@@ -3,6 +3,24 @@
 All notable changes to the `kaizen` plugin documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [SemVer](https://semver.org/).
 
+## [1.25.5] — 2026-05-12
+
+### Fixed — `/kaizen:daemon` was running `bash daemon.py`
+
+`commands/daemon.md` invoked `daemon.py` with the wrong interpreter (`bash` instead of `python3`). bash tried to parse the Python file and either errored on syntax or no-op'd depending on the first executable line. Fixed to `python3` like every other Python-backed slash command.
+
+### Fixed — command files drifted from v1.22 unified `.kaizen/` layout
+
+Five `commands/*.md` files still documented the pre-v1.22 `.workflow/` location for state + schemas. Updated to reflect what the code actually does (post-v1.22 canonical is `.kaizen/workflow/`):
+
+| File | What was wrong |
+|---|---|
+| `health.md` | example output showed `.workflow/backlog.json` + `.workflow/progress.md` |
+| `install.md` | step #3 listed `.workflow/` as primary detection target; #5 seeded `.workflow/backlog.json`; #6 still claimed root `.gitignore` mutation (now per-dir `.kaizen/.gitignore`); also missing v1.25.1 commit-msg hook |
+| `backup.md` | description + body listed `.workflow/` ahead of `.kaizen/` (actual priority reversed) |
+| `schema.md` | three drifts — description, "initializes …" example, and "Author your own schema" path |
+| `daemon.md` | interpreter bug above |
+
 ## [1.25.4] — 2026-05-12
 
 ### Fixed — missing `numpy` now surfaces an actionable error instead of a stack trace

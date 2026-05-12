@@ -1,6 +1,6 @@
 ---
 name: schema
-description: Inspect declarative workflow schemas (v1.14.0+). Schemas live as yaml in `.workflow/schemas/<name>/` (project), `~/.claude/kaizen-schemas/<name>/` (user), or the plugin's built-ins (minimalist, kaizen-default, spec-driven). Pair with `/workflow schema=<name>` to run a schema-driven routine.
+description: Inspect declarative workflow schemas (v1.14.0+). Schemas live as yaml in `.kaizen/workflow/schemas/<name>/` (project, post-v1.22), `~/.claude/.kaizen/schemas/<name>/` (user), or the plugin's built-ins (minimalist, kaizen-default, spec-driven). Pair with `/workflow schema=<name>` to run a schema-driven routine.
 ---
 
 # kaizen schema
@@ -44,15 +44,15 @@ Validation: `branch <stage> <key>` requires (a) a schema-driven workflow (`schem
 
 ```bash
 /workflow schema=spec-driven add a CSV importer feature
-# initializes .workflow/state.json with routine=schema:spec-driven and
+# initializes .kaizen/workflow/state.json with routine=schema:spec-driven and
 # the 8 topo-ordered stages from spec-driven/schema.yaml.
 ```
 
 ## Author your own schema
 
 1. Pick a tier:
-   - Project-scoped (versioned with the repo): `.workflow/schemas/<name>/schema.yaml`
-   - User-scoped (across all projects):       `~/.claude/kaizen-schemas/<name>/schema.yaml`
+   - Project-scoped (versioned with the repo): `.kaizen/workflow/schemas/<name>/schema.yaml`
+   - User-scoped (across all projects):       `~/.claude/.kaizen/schemas/<name>/schema.yaml`
 2. Copy `<plugin>/schemas/minimalist/schema.yaml` as a starter.
 3. Validate: `/kaizen:schema validate <name>`
 4. Run: `/workflow schema=<name> <prompt>`
