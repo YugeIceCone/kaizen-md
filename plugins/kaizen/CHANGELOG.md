@@ -3,6 +3,46 @@
 All notable changes to the `kaizen` plugin documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [SemVer](https://semver.org/).
 
+## [1.21.0] — 2026-05-12
+
+### Added — `/kaizen:enable-all` one-shot setup
+
+Replaces the 6-step manual sequence with a single command:
+
+```
+/kaizen:enable-all
+```
+
+Default behavior — project scope (when in a git repo) + the curated best-default global stack:
+
+| Tier      | Steps                                                                    |
+|-----------|--------------------------------------------------------------------------|
+| Globals   | disable-dupes → statusline → env → knowledge index → trace-search index  |
+| Project   | install (pre-commit gate) → onboard index                                |
+
+Heavy / intrusive installers are opt-in via flags:
+
+| Flag                  | Adds                                                       |
+|-----------------------|------------------------------------------------------------|
+| `--with-browser`      | Playwright + Chromium (~200MB) for `kaizen-browser` MCP    |
+| `--with-daemon`       | Crontab entry for hygiene + cache-refresh                  |
+| `--with-trace-proxy`  | HTTP proxy wrapping the CC → Anthropic connection          |
+
+Skip-mode flags: `--no-globals` (project only), `--no-project` (globals only), `--dry-run` (print steps, don't execute).
+
+**Idempotency:** every underlying installer is safe to re-run — existing `.kaizen.toml` is preserved, statusline checks before adding, env appends only if marker is absent, all `*-index` runs are sha-deduped. So `/kaizen:enable-all` doubles as a "make sure everything is current" command after a plugin update.
+
+**New surface:**
+- `skills/kaizen/scripts/enable_all.sh` (190 LOC orchestrator with colored OK/skip/fail summary)
+- `commands/enable-all.md` (slash command)
+- `bin/kaizen-enable-all` (shim — count 22 → 23)
+
+Each step exec-fences with output capture; failures don't stop the chain (best-effort), but the summary reports the failed list with the last 5 lines from `/tmp/kaizen-enable-all.log`.
+
+### Why minor (1.20.0 → 1.21.0)
+
+New command + new orchestrator script + new shim. Pure-additive surface; the existing installers are unchanged.
+
 ## [1.20.0] — 2026-05-12
 
 Codebase semantic indexer — `/kaizen:onboard`. Third corpus alongside trace events (v1.10.0) and knowledge surface (v1.16.0). Project-scoped (db at `<repo>/.kaizen/onboard.db`, gitignorable).
