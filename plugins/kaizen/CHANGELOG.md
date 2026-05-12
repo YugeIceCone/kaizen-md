@@ -3,6 +3,56 @@
 All notable changes to the `kaizen` plugin documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [SemVer](https://semver.org/).
 
+## [1.27.0] — 2026-05-12
+
+### Added — RAG foundation: `_chunk.py` + `_search.py` (sentence-aware chunking + BM25/dense hybrid)
+
+Two new modules port the retrieval mechanics that survived Onyx's design retro (see `https://github.com/onyx-dot-app/onyx/tree/main/backend`). Indexers will switch onto them one at a time starting v1.28.0 (onboard first — biggest documents, biggest quality lift).
+
+**`_chunk.py`** — sentence-boundary chunker mirroring Onyx's `backend/onyx/indexing/chunker.py` discipline.
+
+- Token cap **512** (Onyx's `DOC_EMBEDDING_CONTEXT_SIZE`); overlap **0** ("we need a clean combination of chunks and it is unclear if overlaps actually help quality at all" — quoted from upstream).
+- Sentence boundaries via stdlib regex (`[.!?]\s+` + `\n{2,}`) with a curated abbreviation list to suppress false splits on `Dr.`, `Mr.`, `e.g.`, etc.
+- Each chunk carries `(char_start, char_end, chunk_idx)` for citation — Onyx calls this `source_links: dict[int, str]`; kaizen flattens to the start/end pair since we always have one source per chunk.
+- Asymmetric `search_query: ` / `search_document: ` prefixes (free quality bump for nomic-embed-v2 / bge-* / e5-*; benign overhead for MiniLM).
+- Char-based token approximation (1 token ≈ 4 chars for English) — same heuristic OpenAI's tokenizer uses for rough sizing. Stdlib-only; no `chonkie` / `tiktoken` deps.
+
+**`_search.py`** — hybrid retrieval: BM25 via SQLite FTS5 + dense cosine, linearly fused.
+
+- `ensure_fts_mirror(conn, base_table)` creates a contentless FTS5 virtual table + insert/update/delete triggers so the `_fts` shadow stays in sync without storage duplication. Mirrors the trigger pattern from `https://sqlite.org/fts5.html#external_content_tables`.
+- `bm25_search()` — sanitizes free-form queries (FTS5 chokes on bare punctuation), runs `bm25()` ranking, flips sign so larger = better.
+- `dense_search()` — cosine on stored `embedding BLOB` column; auto-prepends the asymmetric query prefix; surfaces dim-mismatch warnings.
+- `hybrid_search()` — min-max normalizes each pool, fuses via `score = alpha*dense + (1-alpha)*bm25`. Default `alpha=0.5` (Onyx's `HYBRID_ALPHA`).
+- `reciprocal_rank_fusion()` — for multi-query expansion (LLM-rephrased queries merged into one ranked list). Onyx uses `k=50` with weights `[1.3, 1.0, 0.7, 0.5]` for `[semantic, keyword, expansion_1, expansion_2]`.
+
+### What v1.27.0 does NOT do
+
+- **No indexer is rewired yet** — the libraries land in trunk for vetting before any indexer's schema changes.
+- **No cross-encoder reranker** — Onyx explicitly retired theirs (see `backend/alembic/versions/78ebc66946a0_remove_reranking_from_search_settings.py`): "We stopped using rerankers because the state of the art rerankers are not significantly better than the biencoders and much worse than LLMs which are also capable of acting on a small set of documents." Kaizen follows that lesson; if you want post-retrieval refinement, pipe top-K through an LLM filter.
+- **No alt-index migration helper yet** — Onyx's `__danswer_alt_index` pattern (swap embedding model without breaking running queries) is planned for v1.29.0 when more than one indexer is on the new path.
+
+### Tests
+
+26 new unit tests: `tests/test_chunk.py` (9) + `tests/test_search.py` (17). Verifies empty/tiny/long-doc chunking, abbreviation handling, char-offset reconstruction, FTS mirror trigger correctness, BM25 ordering, normalization edge cases, alpha=0 / alpha=1 / alpha=0.5 hybrid behavior, and RRF with default + weighted variants.
+
+Plugin unit-test count: 92 → 118.
+
+### Files
+
+```
+skills/kaizen/scripts/_chunk.py     (new, 132 LOC)
+skills/kaizen/scripts/_search.py    (new, 213 LOC)
+tests/test_chunk.py                 (new, 88 LOC)
+tests/test_search.py                (new, 174 LOC)
+```
+
+### Reference (worth reading before v1.28.0)
+
+- Onyx survey notes (kaizen-internal): the 5-port ROI ranking that drove this commit.
+- `backend/onyx/indexing/chunker.py` — the upstream we ported from.
+- `backend/onyx/context/search/retrieval/search_runner.py` — hybrid implementation.
+- `backend/onyx/configs/chat_configs.py:HYBRID_ALPHA` — the 0.5 default.
+
 ## [1.26.1] — 2026-05-12
 
 ### Fixed — README + workflow-routing skill drift after v1.22 unify
