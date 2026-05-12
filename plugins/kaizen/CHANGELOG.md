@@ -3,6 +3,83 @@
 All notable changes to the `kaizen` plugin documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [SemVer](https://semver.org/).
 
+## [1.20.0] — 2026-05-12
+
+Codebase semantic indexer — `/kaizen:onboard`. Third corpus alongside trace events (v1.10.0) and knowledge surface (v1.16.0). Project-scoped (db at `<repo>/.kaizen/onboard.db`, gitignorable).
+
+### Added — `onboard_index.py` (codebase RAG, 670 LOC)
+
+Mirrors the `trace_index` + `knowledge_index` pattern: SQLite + sentence-transformers (`all-MiniLM-L6-v2`, 384-dim) + PEP 723 inline metadata pinning CPU torch.
+
+**File discovery:**
+- `git ls-files --cached --others --exclude-standard` when in a git repo (honors `.gitignore` automatically).
+- Filesystem walk + built-in ignore list fallback (`--no-git` or non-git directories).
+- Extension allowlist over 22 languages (Rust / Python / JS+TS / Go / Java / Kotlin / Scala / C+C++ / C# / Swift / PHP / Ruby / Shell / Lua / Elixir / Haskell / OCaml / SQL / YAML / TOML).
+- Always-skipped dirs (`node_modules/`, `target/`, `dist/`, `build/`, `.git/`, `__pycache__/`, etc.).
+- Always-skipped files (lockfiles, `*.min.js`, `*.bundle.js`).
+- Privacy filter — paths matching `secret`, `credential`, `token` (case-insensitive) skipped unconditionally.
+- Per-file size cap via `KAIZEN_ONBOARD_MAX_BYTES` (default 1 MB).
+
+**Per-file parsing optimizations:**
+- **Comment stripping** — language-aware: C-family (`//` + `/* */`), Python (`#` + triple-quoted), hash-only (Shell / YAML / TOML / Elixir), Ruby (`#` + `=begin/=end`), Lua (`--` + `--[[ ]]`), Haskell (`--` + `{- -}`), OCaml (`(* *)`), SQL (`--` + `/* */`), PHP (C-family + hash).
+- **Whitespace normalization** — trailing whitespace trimmed per line; 3+ blank lines collapsed to 1; indentation preserved (significant for Python; helpful for embeddings everywhere).
+- The cleaned content is what gets embedded — semsearch matches on actual logic, not docstring noise.
+
+**SQLite schema** (`code_files` table):
+```
+id PK | path UNIQUE | language | bytes | sloc | snippet (first 2KB) |
+embedding BLOB (384 f32) | sha (16-hex) | updated_at
+```
+
+**CLI** (mirrors trace/knowledge): `index | reindex | search | stats | get | path | clear`.
+
+### Added — `kaizen-onboard-search` MCP server
+
+`skills/kaizen/scripts/onboard_mcp.py` — FastMCP server exposing 5 tools:
+
+- `onboard_search(query, top_k, language)` — semantic search with optional language filter.
+- `onboard_index_status()` — total files / sloc / bytes / model / counts by language.
+- `onboard_index_run(no_git)` — incremental index pass.
+- `onboard_get(file_id)` — fetch one record.
+- `onboard_recent(limit, language)` — latest N by mtime, no ranking.
+
+Registered in `.mcp.json` as `kaizen-onboard-search`. Resolves project root via `git rev-parse --show-toplevel` or cwd; overridable via `KAIZEN_ONBOARD_ROOT` env.
+
+### Added — `/kaizen:onboard` slash command + `bin/kaizen-onboard-{index,mcp}` shims
+
+`commands/onboard.md` documents subcommands + scope + the "pair with /init" onboarding flow. Two new shell shims (`install.sh` auto-symlinks them to `~/.local/bin/` — symlink count 20 → 22).
+
+### Added — `CodeFile` dataclass in `schemas.py` + `code-file.schema.json` mirror
+
+Extends the SSOT pattern from v1.19.0. `_self_test()` covers round-trip + negative cases (invalid language, missing path). JSON Schema mirror added to `assets/schemas/`; README inventory updated.
+
+### Onboarding flow
+
+```
+/init                            # Claude Code's built-in — writes CLAUDE.md
+/kaizen:onboard index            # builds .kaizen/onboard.db (first run downloads ~80MB model)
+/kaizen:onboard search "auth"    # top-K source files by semantic similarity
+```
+
+The two commands compose: `/init` produces durable prose pinned in CLAUDE.md; `/kaizen:onboard` produces a queryable code index. Together they give a fresh agent both context-on-load (CLAUDE.md) and retrieval-on-demand (semsearch).
+
+### Smoke-tested
+
+- Comment-stripping: round-tripped through Rust / Python / Go / Shell test inputs; cleaned SLOC counts match expected.
+- Source-file filter: positive (`src/main.rs`), three negative paths (`node_modules/foo.js`, `src/secrets.rs` privacy-filter, `build/output.js`), unsupported extension (`package.json`), lockfile (`Cargo.lock`) — all classify correctly.
+- `python3 schemas.py` — all round-trips green incl. the new `CodeFile.validate()` negative cases.
+- JSON Schema validates as JSON.
+
+End-to-end embedding test (model load + index loop + search loop) deferred to first user invocation via `uv run --script` — same pattern as `trace_index.py` and `knowledge_index.py` (model + venv download lazily).
+
+### Permissions
+
+`plugin.json` allowlists both `python3 onboard_index.py:*` and `uv run --script onboard_mcp.py:*`.
+
+### Why minor (1.19.0 → 1.20.0)
+
+New script + new MCP server + new slash command + two new shims + new dataclass + new JSON Schema. Pure-additive surface; no breaking changes to existing scripts / state files / commands.
+
 ## [1.19.0] — 2026-05-12
 
 Schema polish — extend the runtime SSOT (`schemas.py` dataclasses) to cover everything added since v1.9.0, ship matching JSON Schema files for IDE / editor / external-tool consumption, wire `yaml-language-server` directives into the workflow yaml files.

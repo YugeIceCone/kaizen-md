@@ -12,6 +12,7 @@ Formal JSON Schema (draft 2020-12) definitions for kaizen's main data shapes. Mi
 | `knowledge-item.schema.json`    | `KnowledgeItem`               | `~/.claude/.kaizen-knowledge/index.db` rows        |
 | `brain-rule.schema.json`        | `KaizenBrainRule`             | `~/.claude/brain/Notes/*.md` frontmatter           |
 | `agent-formatting.schema.json`  | `AgentFormattingSchema`       | `skills/agent-formatting/SKILL.md` embedded block  |
+| `code-file.schema.json`         | `CodeFile`                    | `<repo>/.kaizen/onboard.db` rows (v1.20.0+)        |
 
 ## Wiring into editors
 

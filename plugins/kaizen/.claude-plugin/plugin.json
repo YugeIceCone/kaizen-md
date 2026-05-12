@@ -1,6 +1,6 @@
 {
   "name": "kaizen",
-  "version": "1.19.0",
+  "version": "1.20.0",
   "description": "Consistent git commit discipline — pre-commit gate, micro-work backlog (JSON-sourced), sizing by trace+sem+grep, brain-sourced behaviour rules. Ships 3 agents (reviewer/curator/debt-auditor) with worktree isolation, hash-keyed cache, statusline, context-window awareness, language-agnostic docs generator, async Node+Flow demo, and non-blocking message inbox (UserPromptSubmit→PostToolUse) so Claude sees user input on every tool boundary. Self-contained: bundles 35 skills (tdd + 9 coding-skills + onion-ddd-workflow + 14 superpowers + workflow-routing + 5 remember/Second Brain + plugin-pitfalls + behaviour-config + publishing) plus all supporting scripts/refs/assets. No external plugin dependencies.",
   "author": {
     "name": "YugeIceCone",
@@ -35,6 +35,8 @@
       "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/kaizen/scripts/flow_demo.py:*)",
       "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/kaizen/scripts/knowledge_index.py:*)",
       "Bash(uv run --script ${CLAUDE_PLUGIN_ROOT}/skills/kaizen/scripts/knowledge_mcp.py:*)",
+      "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/kaizen/scripts/onboard_index.py:*)",
+      "Bash(uv run --script ${CLAUDE_PLUGIN_ROOT}/skills/kaizen/scripts/onboard_mcp.py:*)",
       "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow-routing/scripts/workflow_runner.py:*)",
       "Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/kaizen/scripts/*.sh:*)",
       "Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/workflow-routing/scripts/*.sh:*)",

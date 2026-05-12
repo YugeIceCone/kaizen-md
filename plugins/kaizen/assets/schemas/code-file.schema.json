@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/YugeIceCone/kaizen-md/assets/schemas/code-file.schema.json",
+  "title": "Kaizen codebase-index entry",
+  "description": "One row in the codebase semantic index at <repo>/.kaizen/onboard.db. Produced + consumed by skills/kaizen/scripts/onboard_index.py. One row per source file after comment-stripping + whitespace normalization.",
+  "type": "object",
+  "required": ["path", "language", "bytes", "sloc"],
+  "properties": {
+    "path": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Path relative to the project root."
+    },
+    "language": {
+      "enum": [
+        "rust", "python", "javascript", "typescript", "go", "java", "kotlin",
+        "scala", "c", "cpp", "csharp", "swift", "php", "ruby", "shell", "lua",
+        "elixir", "haskell", "ocaml", "sql", "yaml", "toml"
+      ]
+    },
+    "bytes": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Raw file size in bytes."
+    },
+    "sloc": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Source-line count after comment-strip + blank-line collapse."
+    },
+    "snippet": {
+      "type": "string",
+      "description": "First ~2KB of cleaned content for display. Embedding is computed over the full cleaned content (truncated by the model)."
+    },
+    "sha": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{16}$",
+      "description": "16-hex SHA1 prefix of raw file content. Used for change detection on re-index."
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "File mtime as ISO timestamp."
+    },
+    "id": {
+      "type": ["integer", "null"],
+      "description": "SQLite primary key. Null before insert."
+    },
+    "score": {
+      "type": "number",
+      "minimum": -1,
+      "maximum": 1,
+      "description": "Cosine similarity score. Only present in do_search results."
+    }
+  },
+  "additionalProperties": false
+}

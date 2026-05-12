@@ -27,6 +27,14 @@
         "--script",
         "${CLAUDE_PLUGIN_ROOT}/skills/kaizen/scripts/knowledge_mcp.py"
       ]
+    },
+    "kaizen-onboard-search": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--script",
+        "${CLAUDE_PLUGIN_ROOT}/skills/kaizen/scripts/onboard_mcp.py"
+      ]
     }
   }
 }
