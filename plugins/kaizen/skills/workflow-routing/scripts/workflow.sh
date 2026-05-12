@@ -258,6 +258,54 @@ _bash_advance_fallback() {
   sed -i.bak "s/\"current\"[[:space:]]*:[[:space:]]*[0-9]\\+/\"current\": $new_idx/" "$STATE_FILE" && rm -f "$STATE_FILE.bak"
 }
 
+cmd_branch() {
+  # v1.17.0: splice state.stages[current:] with the schema-declared branch_<key>.
+  # Promotes the advisory Confidence-Score branching (v1.15.0) to runtime state mutation.
+  local stage="$1" key="$2"
+  [ -f "$STATE_FILE" ] || { echo "[workflow] no active workflow"; exit 1; }
+  local runner="$(dirname "$0")/workflow_runner.py"
+  [ -f "$runner" ] || { echo "[workflow] workflow_runner.py not found at $runner"; exit 1; }
+  python3 - "$STATE_FILE" "$runner" "$stage" "$key" <<'PY'
+import json, sys, subprocess, datetime
+state_file, runner_path, stage, key = sys.argv[1:]
+with open(state_file) as f: state = json.load(f)
+schema_name = state.get('schema_name', '') or ''
+if not schema_name:
+    sys.exit(f"[workflow] branch only works for schema-driven workflows (current routine: {state.get('routine','?')})")
+completed = state.get('completed', [])
+if not completed or completed[-1].get('stage') != stage:
+    last = completed[-1].get('stage') if completed else '(none)'
+    sys.exit(f"[workflow] branch <stage> must match the just-completed stage; last completed: {last}")
+result = subprocess.run(
+    ['python3', runner_path, 'branches', schema_name, stage],
+    capture_output=True, text=True,
+)
+if result.returncode != 0:
+    sys.exit(f"[workflow] failed to load branches: {result.stderr.strip()}")
+branches = json.loads(result.stdout)
+if key not in branches:
+    sys.exit(f"[workflow] unknown branch '{key}'; available: {sorted(branches.keys())}")
+new_tail = branches[key]
+state['stages'] = state['stages'][:state['current']] + new_tail
+now = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+state['updated_at'] = now
+state.setdefault('branch_decisions', []).append({
+    'stage': stage,
+    'key': key,
+    'new_tail': new_tail,
+    'at': now,
+})
+with open(state_file, 'w') as f: json.dump(state, f, indent=2)
+nxt = state['stages'][state['current']] if state['current'] < len(state['stages']) else None
+print(f"[workflow] branch {stage} -> {key}: tail rewritten to [{', '.join(new_tail)}]")
+if nxt:
+    print(f"next: {nxt}")
+else:
+    print(f"[workflow] tail is empty — routine complete after {stage}")
+PY
+}
+
+
 cmd_artifact() {
   local key="$1" val="$2"
   python3 - "$STATE_FILE" "$key" "$val" <<'PY'
@@ -438,6 +486,7 @@ case "${1:-}" in
   next)          cmd_next ;;
   advance)       shift; cmd_advance "$@" ;;
   artifact)      shift; cmd_artifact "$@" ;;
+  branch)        shift; cmd_branch "$@" ;;
   dispatch)      shift; cmd_dispatch "$@" ;;
   status)        cmd_status ;;
   reset)         cmd_reset ;;
@@ -454,6 +503,11 @@ subcommands:
   next
   advance <stage> "<one-line result>"
   artifact <key> <value>
+  branch <stage> <key>            (v1.17.0+) splice state.stages[current:] with schema's
+                                  branch_<key> for the just-completed <stage>. Requires
+                                  schema-driven workflow (schema=NAME passed at init).
+                                  Inspect available keys via:
+                                    /kaizen:schema branches <name> <stage>
   dispatch <agent_id> <stage>     (record subagent assignment for SubagentStop auto-advance)
   status
   reset

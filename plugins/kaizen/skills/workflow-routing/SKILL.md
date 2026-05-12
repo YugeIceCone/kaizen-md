@@ -41,7 +41,20 @@ Schemas resolve in this order (first hit wins):
 2. `~/.claude/kaizen-schemas/<name>/schema.yaml` (user-wide)
 3. `<plugin>/schemas/<name>/schema.yaml` (built-in)
 
-Inspect schemas with `/kaizen:schema list|show|validate|stages|artifact`. The state machine treats schema-driven and hardcoded routines identically once initialized — `routine` is `schema:<name>` instead of `audit`/`build-feature`/etc., and `schema_name` is recorded in state.json. All `advance`, `dispatch`, `status`, `subagent-stop`, `pre-compact`, `post-compact` logic is unchanged.
+Inspect schemas with `/kaizen:schema list|show|validate|stages|artifact|branches`. The state machine treats schema-driven and hardcoded routines identically once initialized — `routine` is `schema:<name>` instead of `audit`/`build-feature`/etc., and `schema_name` is recorded in state.json. All `advance`, `dispatch`, `status`, `subagent-stop`, `pre-compact`, `post-compact` logic is unchanged.
+
+### Confidence-Score branching (v1.17.0+ runtime)
+
+Schemas may declare `branch_high` / `branch_medium` / `branch_low` lists on any artifact (advisory layer landed in v1.15.0; runtime splicing in v1.17.0). After completing such a stage:
+
+```bash
+workflow.sh advance design "design done; confidence=medium"
+workflow.sh branch  design medium
+# state.stages[current:] is replaced with branch_medium's stage list.
+# state.branch_decisions records {stage, key, new_tail, at} as audit trail.
+```
+
+Requires schema-driven workflow; rejects non-matching `<stage>` or unknown `<key>`. Each `branch` call appends to `state.branch_decisions[]` so the path history is preserved even after subsequent splices.
 
 ## When To Use
 

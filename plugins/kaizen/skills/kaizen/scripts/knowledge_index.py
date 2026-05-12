@@ -438,10 +438,11 @@ def embed_one(text: str):
     return vec.astype(np.float32).tobytes()
 
 
-# ─── Index command ───────────────────────────────────────────────────
+# ─── Data-returning helpers (also used by knowledge_mcp.py) ──────────
 
 
-def cmd_index(args):
+def do_index(embed_body: bool = False) -> dict:
+    """Run the incremental index pass. Returns {new, skipped, stale}."""
     conn = open_db(create=True)
     seen_sha: set[str] = set()
     new_count = 0
@@ -452,10 +453,10 @@ def cmd_index(args):
         existing = conn.execute(
             "SELECT id, body_embedded FROM knowledge_items WHERE sha = ?", (sha,)
         ).fetchone()
-        if existing and (existing["body_embedded"] == int(args.embed_body)):
+        if existing and (existing["body_embedded"] == int(embed_body)):
             skip_count += 1
             continue
-        emb = embed_one(item_to_text(item, args.embed_body))
+        emb = embed_one(item_to_text(item, embed_body))
         conn.execute(
             """INSERT OR REPLACE INTO knowledge_items
                (source, source_path, title, snippet, tags, body_embedded, embedding, updated_at, sha)
@@ -466,14 +467,13 @@ def cmd_index(args):
                 item["title"],
                 item.get("snippet", ""),
                 json.dumps(item.get("tags") or []),
-                int(args.embed_body),
+                int(embed_body),
                 emb,
                 item.get("updated_at", ""),
                 sha,
             ),
         )
         new_count += 1
-    # Remove stale items (in db but not seen this pass)
     all_in_db = conn.execute("SELECT sha FROM knowledge_items").fetchall()
     stale = [r["sha"] for r in all_in_db if r["sha"] not in seen_sha]
     if stale:
@@ -487,16 +487,118 @@ def cmd_index(args):
         "last_indexed_ts",
         dt.datetime.now(dt.timezone.utc).isoformat(),
     )
-    set_meta(
-        conn,
-        "total_items",
-        str(conn.execute("SELECT COUNT(*) FROM knowledge_items").fetchone()[0]),
-    )
+    total = conn.execute("SELECT COUNT(*) FROM knowledge_items").fetchone()[0]
+    set_meta(conn, "total_items", str(total))
     conn.commit()
     conn.close()
+    return {
+        "new": new_count,
+        "skipped": skip_count,
+        "stale_removed": len(stale),
+        "total": total,
+        "model": DEFAULT_MODEL,
+    }
+
+
+def do_search(
+    query: str,
+    top_k: int = 10,
+    source: str | None = None,
+) -> list[dict]:
+    """Cosine-similarity search. Returns [{score, id, source, source_path, title, snippet, tags, updated_at}, ...]."""
+    if not DB_PATH.is_file():
+        return []
+    conn = open_db(create=False)
+    model, np = _load_model()
+    qvec = model.encode(query, convert_to_numpy=True, show_progress_bar=False).astype(
+        np.float32
+    )
+    qnorm = qvec / (np.linalg.norm(qvec) + 1e-12)
+
+    where_sql = ""
+    params: list = []
+    if source:
+        where_sql = " WHERE source = ?"
+        params.append(source)
+    rows = conn.execute(
+        f"SELECT * FROM knowledge_items{where_sql}", params
+    ).fetchall()
+    scored = []
+    for r in rows:
+        if not r["embedding"]:
+            continue
+        evec = np.frombuffer(r["embedding"], dtype=np.float32)
+        if evec.shape[0] != DEFAULT_DIM:
+            continue
+        score = float(np.dot(qnorm, evec / (np.linalg.norm(evec) + 1e-12)))
+        scored.append((score, r))
+    scored.sort(key=lambda x: x[0], reverse=True)
+    out = []
+    for score, r in scored[:top_k]:
+        out.append(
+            {
+                "score": round(score, 4),
+                "id": r["id"],
+                "source": r["source"],
+                "source_path": r["source_path"],
+                "title": r["title"],
+                "snippet": r["snippet"],
+                "tags": json.loads(r["tags"] or "[]"),
+                "updated_at": r["updated_at"],
+            }
+        )
+    conn.close()
+    return out
+
+
+def do_stats() -> dict:
+    """Return index stats as a dict. Caller decides how to render."""
+    if not DB_PATH.is_file():
+        return {"indexed": False, "db_path": str(DB_PATH)}
+    conn = open_db(create=False)
+    out = {
+        "indexed": True,
+        "db_path": str(DB_PATH),
+        "model": get_meta(conn, "model", ""),
+        "dim": get_meta(conn, "dim", ""),
+        "last_indexed_ts": get_meta(conn, "last_indexed_ts", ""),
+        "total": conn.execute("SELECT COUNT(*) FROM knowledge_items").fetchone()[0],
+    }
+    by_source = {}
+    for r in conn.execute(
+        "SELECT source, COUNT(*) AS n FROM knowledge_items GROUP BY source"
+    ).fetchall():
+        by_source[r["source"]] = r["n"]
+    out["by_source"] = by_source
+    conn.close()
+    return out
+
+
+def do_get(item_id: int) -> dict | None:
+    """Return one item record by id (no embedding bytes), or None if missing."""
+    if not DB_PATH.is_file():
+        return None
+    conn = open_db(create=False)
+    r = conn.execute(
+        "SELECT * FROM knowledge_items WHERE id = ?", (item_id,)
+    ).fetchone()
+    conn.close()
+    if not r:
+        return None
+    out = {k: r[k] for k in r.keys() if k != "embedding"}
+    out["tags"] = json.loads(out.get("tags") or "[]")
+    return out
+
+
+# ─── Index command (CLI: thin wrapper around do_index) ───────────────
+
+
+def cmd_index(args):
+    result = do_index(embed_body=args.embed_body)
     print(
-        f"kaizen-knowledge: indexed {new_count} new, "
-        f"skipped {skip_count} unchanged, removed {len(stale)} stale",
+        f"kaizen-knowledge: indexed {result['new']} new, "
+        f"skipped {result['skipped']} unchanged, "
+        f"removed {result['stale_removed']} stale",
         file=sys.stderr,
     )
 
@@ -511,96 +613,43 @@ def cmd_reindex(args):
 
 
 def cmd_search(args):
-    conn = open_db(create=False)
-    model, np = _load_model()
-    qvec = model.encode(args.query, convert_to_numpy=True, show_progress_bar=False)
-    qvec = qvec.astype(np.float32)
-    qnorm = qvec / (np.linalg.norm(qvec) + 1e-12)
-
-    where = []
-    params: list = []
-    if args.source:
-        where.append("source = ?")
-        params.append(args.source)
-    where_sql = (" WHERE " + " AND ".join(where)) if where else ""
-    rows = conn.execute(
-        f"SELECT * FROM knowledge_items{where_sql}", params
-    ).fetchall()
-
-    scored = []
-    for r in rows:
-        if not r["embedding"]:
-            continue
-        evec = np.frombuffer(r["embedding"], dtype=np.float32)
-        if evec.shape[0] != DEFAULT_DIM:
-            continue
-        score = float(np.dot(qnorm, evec / (np.linalg.norm(evec) + 1e-12)))
-        scored.append((score, r))
-    scored.sort(key=lambda x: x[0], reverse=True)
-    top = scored[: args.top_k]
-
+    results = do_search(args.query, top_k=args.top_k, source=args.source)
     if args.json:
-        out = []
-        for score, r in top:
-            out.append(
-                {
-                    "score": round(score, 4),
-                    "id": r["id"],
-                    "source": r["source"],
-                    "source_path": r["source_path"],
-                    "title": r["title"],
-                    "snippet": r["snippet"],
-                    "tags": json.loads(r["tags"] or "[]"),
-                    "updated_at": r["updated_at"],
-                }
-            )
-        print(json.dumps(out, indent=2))
-    else:
-        for score, r in top:
-            tags = json.loads(r["tags"] or "[]")
-            tag_str = f" [{','.join(tags)}]" if tags else ""
-            print(
-                f"  {score:.3f}  {r['source']:<10} {r['title']}{tag_str}"
-            )
-            print(f"           → {r['source_path']}")
-            if r["snippet"]:
-                print(f"           {r['snippet'][:120]}")
-    conn.close()
+        print(json.dumps(results, indent=2))
+        return
+    for r in results:
+        tags = r.get("tags") or []
+        tag_str = f" [{','.join(tags)}]" if tags else ""
+        print(
+            f"  {r['score']:.3f}  {r['source']:<10} {r['title']}{tag_str}"
+        )
+        print(f"           → {r['source_path']}")
+        if r["snippet"]:
+            print(f"           {r['snippet'][:120]}")
 
 
 # ─── Other subcommands ───────────────────────────────────────────────
 
 
 def cmd_stats(args):
-    if not DB_PATH.is_file():
+    s = do_stats()
+    if not s.get("indexed"):
         print("kaizen-knowledge: no index yet — run `index` first")
         return
-    conn = open_db(create=False)
-    print(f"db:        {DB_PATH}")
-    print(f"model:     {get_meta(conn, 'model', '?')}")
-    print(f"dim:       {get_meta(conn, 'dim', '?')}")
-    print(f"indexed:   {get_meta(conn, 'last_indexed_ts', '?')}")
-    total = conn.execute("SELECT COUNT(*) FROM knowledge_items").fetchone()[0]
-    print(f"total:     {total}")
-    rows = conn.execute(
-        "SELECT source, COUNT(*) AS n FROM knowledge_items GROUP BY source ORDER BY n DESC"
-    ).fetchall()
-    for r in rows:
-        print(f"  {r['source']:<12} {r['n']}")
-    conn.close()
+    print(f"db:        {s['db_path']}")
+    print(f"model:     {s.get('model', '?') or '?'}")
+    print(f"dim:       {s.get('dim', '?') or '?'}")
+    print(f"indexed:   {s.get('last_indexed_ts', '?') or '?'}")
+    print(f"total:     {s['total']}")
+    for src, n in sorted(s["by_source"].items(), key=lambda kv: kv[1], reverse=True):
+        print(f"  {src:<12} {n}")
 
 
 def cmd_get(args):
-    conn = open_db(create=False)
-    r = conn.execute(
-        "SELECT * FROM knowledge_items WHERE id = ?", (args.id,)
-    ).fetchone()
-    if not r:
+    r = do_get(args.id)
+    if r is None:
         sys.exit(f"id {args.id} not found")
-    out = {k: r[k] for k in r.keys() if k != "embedding"}
-    out["tags"] = json.loads(out.get("tags") or "[]")
-    print(json.dumps(out, indent=2))
-    conn.close()
+    print(json.dumps(r, indent=2))
 
 
 def cmd_path(args):

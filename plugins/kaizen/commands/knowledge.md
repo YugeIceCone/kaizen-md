@@ -46,6 +46,18 @@ The matching agent-side discipline lives in the `self-rag` skill. The pattern:
 
 See `skills/self-rag/SKILL.md` for the full retrieval-discipline body.
 
+## MCP tools (v1.17.0+)
+
+The same index is also exposed as an MCP server (`kaizen-knowledge-search`) registered in the plugin's `.mcp.json`. Sibling of `kaizen-trace-search`. Tools available to Claude in any session:
+
+- `mcp__plugin_kaizen_kaizen-knowledge-search__knowledge_search(query, top_k, source)`
+- `mcp__plugin_kaizen_kaizen-knowledge-search__knowledge_index_status()`
+- `mcp__plugin_kaizen_kaizen-knowledge-search__knowledge_index_run(embed_body)`
+- `mcp__plugin_kaizen_kaizen-knowledge-search__knowledge_get(item_id)`
+- `mcp__plugin_kaizen_kaizen-knowledge-search__knowledge_recent(limit, source)`
+
+The MCP server spawns on-demand when the first tool fires. Same uv-managed venv as the CLI; SQLite DB is shared.
+
 ## First-time setup
 
 ```bash

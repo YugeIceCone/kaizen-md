@@ -16,7 +16,21 @@ Inspect / validate workflow schemas. A schema is a declarative yaml file declari
 - `validate <name>` → structural + DAG check (cycles, unknown `requires:` refs, bad `apply.gate`)
 - `stages <name>` → print topo-ordered stage ids, one per line (the same output `/workflow schema=<name>` consumes)
 - `artifact <name> <id>` → print one artifact's dict as JSON, including its description prose
-- `branches <name> <id>` (v1.15.0+) → print the artifact's `branch_high` / `branch_medium` / `branch_low` paths as JSON. Advisory: the agent reads these after completing a branching stage (e.g. `design` in `spec-driven`) and walks the matching tier; the workflow.sh state machine isn't modified.
+- `branches <name> <id>` (v1.15.0+) → print the artifact's `branch_high` / `branch_medium` / `branch_low` paths as JSON. As of **v1.17.0** this is also wired into the workflow.sh state machine — see below.
+
+## Runtime branching (v1.17.0+)
+
+After completing a stage that declares `branch_*` fields, the agent can splice the workflow's stage list to match the chosen path:
+
+```bash
+workflow.sh advance design "design done; confidence=medium"
+workflow.sh branch  design medium
+# → state.stages[current:] replaced with branch_medium's list
+# → next stage advances accordingly
+# → branch_decisions audit trail recorded in state.json
+```
+
+Validation: `branch <stage> <key>` requires (a) a schema-driven workflow (`schema=NAME` passed at init), (b) `<stage>` matches the most-recently-completed stage, (c) `<key>` exists in the schema's `branch_*` keys for that artifact. Invalid combinations exit non-zero with a clear message.
 
 ## Built-in schemas (v1.14.0)
 

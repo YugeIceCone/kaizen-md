@@ -3,6 +3,67 @@
 All notable changes to the `kaizen` plugin documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [SemVer](https://semver.org/).
 
+## [1.17.0] — 2026-05-12
+
+Closes the three v1.16.x follow-ups in one release: (1) MCP wrapper for `knowledge_index.py`, (2) real runtime state-machine branching for Confidence-Score (`workflow.sh branch <stage> <key>`), (3) `do_*` data-returning helpers in `knowledge_index.py` (refactor enabling the MCP wrapper).
+
+### Added — `kaizen-knowledge-search` MCP server
+
+`skills/kaizen/scripts/knowledge_mcp.py` — FastMCP server exposing 5 tools that wrap `knowledge_index.do_*` helpers (parallel to `trace_mcp.py`'s wrapping of `trace_index`):
+
+- `knowledge_search(query, top_k, source)` — cosine-similarity search; optional source filter.
+- `knowledge_index_status()` — totals, model, dim, last-indexed-ts, counts by source.
+- `knowledge_index_run(embed_body)` — incremental index pass; sha-deduped.
+- `knowledge_get(item_id)` — fetch one item by SQLite id.
+- `knowledge_recent(limit, source)` — latest N by `updated_at` (no semantic ranking).
+
+Registered in `.mcp.json` as `kaizen-knowledge-search`. Spawns on-demand when the first `mcp__plugin_kaizen_kaizen-knowledge-search__*` tool fires. Same uv-managed venv as the CLI; SQLite db shared.
+
+### Added — `bin/kaizen-knowledge-mcp` shim
+
+6-line wrapper that `exec uv run --script knowledge_mcp.py`. `/kaizen:install` auto-symlinks `bin/kaizen-*` into `~/.local/bin/` — next install picks up the new shim (count: 19 → 20).
+
+### Refactor — `knowledge_index.py` data-returning helpers (`do_*`)
+
+To enable the MCP wrapper without duplicating logic, added four pure-data helpers:
+
+- `do_index(embed_body=False) -> dict` — returns `{new, skipped, stale_removed, total, model}`.
+- `do_search(query, top_k, source) -> list[dict]` — returns scored result list.
+- `do_stats() -> dict` — returns `{indexed, db_path, model, dim, last_indexed_ts, total, by_source}`.
+- `do_get(item_id) -> dict | None` — returns one item or `None`.
+
+CLI `cmd_*` functions are now thin wrappers: they call `do_*` and handle stdout formatting. Same end-user behavior; internal pattern now matches `trace_index.py`. Backward-compatible on the CLI surface.
+
+### Added — `workflow.sh branch <stage> <key>` (runtime state splicing)
+
+Promotes v1.15.0's advisory Confidence-Score branching to real runtime state mutation. New `workflow.sh branch <stage> <key>` subcommand:
+
+1. Validates schema-driven workflow (`schema_name` in state.json).
+2. Validates `<stage>` matches the most-recently-completed stage.
+3. Loads the artifact's `branch_*` keys via `workflow_runner.py branches`.
+4. Validates `<key>` is one of the declared branches.
+5. Rewrites `state.stages[current:]` with the branch's stage list (preserves completed prefix).
+6. Records the decision in `state.branch_decisions[]` (audit trail: `{stage, key, new_tail, at}`).
+7. Prints the new next-stage.
+
+E2E smoke-tested:
+- happy path: `init schema=spec-driven` → advance analyze → advance design → `branch design medium` → stages spliced to `[analyze, design, ...branch_medium]`; `branch_decisions[]` populated.
+- negative: wrong stage rejected with last-completed-stage message.
+- negative: unknown branch key rejected with available-keys hint.
+- negative: non-schema-driven workflow rejected (hardcoded routines stay advisory-only).
+
+### Permissions
+
+`plugin.json` allowlists `uv run --script ${CLAUDE_PLUGIN_ROOT}/skills/kaizen/scripts/knowledge_mcp.py:*` for the new MCP spawn path.
+
+### Why minor (1.16.0 → 1.17.0)
+
+Three additive surfaces (MCP wrapper + helper layer + runtime branch subcommand). Existing CLI, slash commands, hardcoded routines, advance/status/dispatch/hooks all unchanged. No breaking changes.
+
+### Companion chore
+
+Separately landed: 10-file mode-bit cleanup (`plugins/kaizen/scripts/*.js` from `100644` → `100755`) in a sibling `chore` commit so the working tree is clean of stale drift carried since v1.13.x.
+
 ## [1.16.0] — 2026-05-12
 
 Knowledge RAG over the non-trace corpus + Self-RAG retrieval discipline skill. Second of two releases closing the four-track ask from v1.14.0; v1.15.0 shipped Python tooling + advisory Confidence-Score branching, this one ships the RAG / vectorized-data half.

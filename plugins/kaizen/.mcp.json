@@ -19,6 +19,14 @@
         "--script",
         "${CLAUDE_PLUGIN_ROOT}/skills/kaizen/scripts/trace_mcp.py"
       ]
+    },
+    "kaizen-knowledge-search": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--script",
+        "${CLAUDE_PLUGIN_ROOT}/skills/kaizen/scripts/knowledge_mcp.py"
+      ]
     }
   }
 }
