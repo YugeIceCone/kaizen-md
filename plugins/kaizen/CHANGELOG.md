@@ -3,6 +3,36 @@
 All notable changes to the `kaizen` plugin documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [SemVer](https://semver.org/).
 
+## [1.29.1] — 2026-05-12
+
+### Fixed — `OLLAMA_SCRAPE_RECOMMENDATIONS` refreshed against the current Ollama library
+
+v1.29.0's picks were sourced from a stale snapshot (qwen2.5, llama3.1, qwen3, granite3.3 generation). Front-page-trending models on `ollama.com/search` today are one or two generations newer; verified live via WebFetch:
+
+| Old (v1.29.0) | New (v1.29.1) | Why the swap |
+|---|---|---|
+| qwen2.5:7b | **qwen3.5:9b** | Successor — same family, +1 generation, **256K ctx** (up from 128K), unified vision-lang foundation |
+| granite3.3:8b | **granite4.1:8b** | Successor — model card now **explicitly cites "structured JSON output"** (the v1.29.0 entry made that claim without source) |
+| llama3.1:8b | **gemma4:e4b** | Multimodal upgrade — Apache 2.0, 128K ctx, native function-calling, text+image+audio. Llama3.1 dropped because it's no longer front-page-trending |
+| llama3.2:3b | **granite4.1:3b** | Apache 2.0 laptop pick with the same JSON+tools discipline as the 8B sibling |
+| qwen3:8b (40K ctx) | **qwen3.5:4b** (256K ctx) | Same tier, way more context for full-page scrapes |
+| qwen2.5:32b | **qwen3.6:27b** | Newest qwen (~2 weeks old at commit time), agentic + coding focus |
+| qwen3:30b-a3b | **qwen3.5:35b** | Heaviest reasonable pick with 256K ctx |
+
+Trigger for the refresh: the user pointed at `qwen3.5:9b` and `gemma4:e4b` directly. Audit confirmed via WebFetch on three model pages plus the front-page trending list — `qwen3.5` has 10M pulls (ranked 12th on the front page), `gemma4` has 8.2M pulls (ranked 11th), `granite4.1` has 65K pulls but the strongest documented JSON support of any pick.
+
+**Tests**. Updated to assert the new winner (`qwen3.5:9b`) + revised the fallback / loose-match cases to use the new tag names. 16/16 tests pass; total suite 137/137.
+
+**Note on selection criteria**. Ranking still prioritizes the same axes:
+
+1. JSON-mode reliability under Ollama's `format=json`
+2. ≥32K ctx (full-page HTML scrapes are 5K–50K tokens)
+3. Native tool-calling discipline
+4. Apache 2.0 license preferred for commercial use
+5. Local-friendly size tiers (laptop / sweet-spot / GPU-best)
+
+Provenance for current picks comes from the WebFetch round 2026-05-12 over the `ollama.com/library/<model>` pages. Re-run `kaizen-scrape recommend --json` for the structured list with `size_gb`, `ctx_k`, and `why` per entry.
+
 ## [1.29.0] — 2026-05-12
 
 ### Added — curated Ollama chat-model picks for ScrapeGraphAI + smart `detect-llm`

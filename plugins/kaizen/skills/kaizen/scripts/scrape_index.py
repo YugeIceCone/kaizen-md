@@ -40,7 +40,7 @@ Override via env:
   KAIZEN_SCRAPE_LLM_BASE_URL=http://localhost:11434
 
 Ollama setup (one-time):
-  /kaizen:models pull qwen2.5:7b          # the curated winner
+  /kaizen:models pull qwen3.5:9b          # the curated winner (2026-05-12)
   /kaizen:models pull nomic-embed-text    # for embedding (separate from scrape)
 
 ## SQLite schema (~/.claude/.kaizen/scrape/index.db)
@@ -224,34 +224,42 @@ _LLM_CACHE_PATH = _p.SCRAPE_DIR / "llm_endpoint.json"
 # Order = preference rank (best first).
 OLLAMA_SCRAPE_RECOMMENDATIONS = [
     {
-        "name": "qwen2.5:7b", "size_gb": 4.7, "ctx_k": 128, "tier": "winner",
-        "why": "Best JSON-mode reliability per pound. Apache 2.0, 128K ctx, "
-               "model card explicitly cites 'improved JSON structured output'. "
-               "ScrapeGraphAI community defacto pick.",
+        "name": "qwen3.5:9b", "size_gb": 6.6, "ctx_k": 256, "tier": "winner",
+        "why": "Apache 2.0, 256K ctx, unified vision-language foundation with "
+               "agentic + tools + thinking. Successor to qwen2.5 (which dominated "
+               "scrapegraphai examples). Default winner for full-page scrapes.",
     },
     {
-        "name": "llama3.1:8b", "size_gb": 4.9, "ctx_k": 128, "tier": "fallback",
-        "why": "Meta SOTA tool use; broad ecosystem. Slightly looser JSON adherence than qwen2.5.",
+        "name": "granite4.1:8b", "size_gb": 5.3, "ctx_k": 128, "tier": "json-best",
+        "why": "Apache 2.0, 128K ctx, model card explicitly cites 'structured JSON output' "
+               "+ tool-calling + RAG-tuned. Highest JSON reliability per pound for "
+               "ScrapeGraphAI's extraction workload.",
     },
     {
-        "name": "qwen3:8b", "size_gb": 5.2, "ctx_k": 40, "tier": "newer",
-        "why": "Reasoning + agentic-tool tuned. Note: only 40K ctx — borderline for full-page scrapes.",
+        "name": "gemma4:e4b", "size_gb": 9.6, "ctx_k": 128, "tier": "multimodal",
+        "why": "Apache 2.0, 128K ctx, 4.5B effective params (8B with embeddings), native "
+               "function-calling, multimodal (text + image + audio). Use when scraping "
+               "pages with significant image content.",
     },
     {
-        "name": "granite3.3:8b", "size_gb": 4.9, "ctx_k": 128, "tier": "alt",
-        "why": "IBM Granite — strong tool-calling, alternative to Llama/Qwen if you want vendor diversity.",
+        "name": "qwen3.5:4b", "size_gb": 3.4, "ctx_k": 256, "tier": "sweet-small",
+        "why": "Smaller qwen3.5 — same 256K ctx + vision/tools/thinking surface as :9b, "
+               "fits in 4GB RAM. Good for mid-range laptops.",
     },
     {
-        "name": "llama3.2:3b", "size_gb": 2.0, "ctx_k": 128, "tier": "laptop",
-        "why": "≤4GB tier. Acceptable JSON on short pages; struggles on dense HTML.",
+        "name": "granite4.1:3b", "size_gb": 2.1, "ctx_k": 128, "tier": "laptop",
+        "why": "≤4GB tier with the same JSON-output + tool-calling discipline as "
+               "granite4.1:8b. Slower / less accurate on dense HTML.",
     },
     {
-        "name": "qwen2.5:32b", "size_gb": 20.0, "ctx_k": 128, "tier": "quality",
-        "why": "Dense reasoning at 128K. For users with 24GB+ RAM.",
+        "name": "qwen3.6:27b", "size_gb": 17.0, "ctx_k": 256, "tier": "quality",
+        "why": "Newest qwen (~2 weeks old as of 2026-05-12), agentic + coding focus, "
+               "256K ctx. For users with 24GB+ RAM.",
     },
     {
-        "name": "qwen3:30b-a3b", "size_gb": 19.0, "ctx_k": 256, "tier": "best-moe",
-        "why": "MoE: 30B quality at ~7B speed (only 3B active params), 256K ctx. Sweet spot if RAM allows.",
+        "name": "qwen3.5:35b", "size_gb": 24.0, "ctx_k": 256, "tier": "best-moe",
+        "why": "Heaviest reasonable pick. 256K ctx + multimodal at 24GB. "
+               "Quality ceiling for local-only ScrapeGraphAI workloads.",
     },
 ]
 RECOMMENDED_NAMES = [r["name"] for r in OLLAMA_SCRAPE_RECOMMENDATIONS]
@@ -826,9 +834,10 @@ def cmd_recommend(args):
         print(f"{status:<8} {rec['name']:<22} {rec['size_gb']:>5.1f}GB  "
               f"{rec['ctx_k']:>4}K   {rec['tier']}")
     print()
+    winner = OLLAMA_SCRAPE_RECOMMENDATIONS[0]["name"]
     print("Install the winner:")
-    print("  /kaizen:models pull qwen2.5:7b")
-    print("  /kaizen:models pin-chat  qwen2.5:7b")
+    print(f"  /kaizen:models pull {winner}")
+    print(f"  /kaizen:models pin-chat  {winner}")
     print("  source ~/.claude/.kaizen/profile.env")
     print()
     print("Why each pick:")
