@@ -93,12 +93,13 @@ detect_routine() {
 # ---------- argparse (free-form prompt + key=value flags) ----------
 
 parse_args() {
-  # Sets globals: PROMPT, SKILL, SUBAGENT, AUTO
+  # Sets globals: PROMPT, SKILL, SUBAGENT, AUTO, TDD, SCHEMA
   PROMPT=""
   SKILL=""
   SUBAGENT="no"
   AUTO="no"
   TDD="no"
+  SCHEMA=""
   local raw="$1"
   local words=()
   # shellcheck disable=SC2206
@@ -110,6 +111,7 @@ parse_args() {
       subagent=*) SUBAGENT="${w#subagent=}" ;;
       auto=*)     AUTO="${w#auto=}" ;;
       tdd=*)      TDD="${w#tdd=}" ;;
+      schema=*)   SCHEMA="${w#schema=}" ;;
       *)          prompt_parts+=("$w") ;;
     esac
   done
@@ -124,9 +126,26 @@ parse_args() {
 cmd_init() {
   parse_args "${1:-}"
   local routine
-  routine="$(detect_routine "$PROMPT")"
   local stages_str
-  stages_str="$(routine_stages "$routine")"
+  if [ -n "$SCHEMA" ]; then
+    # Schema-driven: topo-order stages via workflow_runner.py (v1.14.0+).
+    local runner="$(dirname "$0")/workflow_runner.py"
+    if [ ! -f "$runner" ]; then
+      echo "[workflow] workflow_runner.py not found at $runner" >&2
+      exit 1
+    fi
+    local stages_lines
+    if ! stages_lines="$(python3 "$runner" stages "$SCHEMA" 2>&1)"; then
+      echo "[workflow] failed to load schema '$SCHEMA':" >&2
+      echo "$stages_lines" >&2
+      exit 1
+    fi
+    stages_str="$(printf '%s' "$stages_lines" | tr '\n' ' ' | sed 's/ *$//')"
+    routine="schema:$SCHEMA"
+  else
+    routine="$(detect_routine "$PROMPT")"
+    stages_str="$(routine_stages "$routine")"
+  fi
   if [ -n "$SKILL" ]; then
     # User pinned a starting stage — drop earlier stages from the sequence.
     local trimmed=""
@@ -160,6 +179,7 @@ cmd_init() {
   "id": "$id",
   "prompt": "$prompt_esc",
   "routine": "$routine",
+  "schema_name": "$SCHEMA",
   "stages": $stages_json,
   "current": 0,
   "completed": [],
@@ -374,6 +394,9 @@ cmd_status() {
   [ -f "$STATE_FILE" ] || { echo "[workflow] no active workflow"; exit 1; }
   echo "id:       $(json_get id)"
   echo "routine:  $(json_get routine)"
+  local schema
+  schema="$(json_get schema_name)"
+  [ -n "$schema" ] && echo "schema:   $schema"
   echo "subagent: $(json_get subagent_mode)"
   echo "auto:     $(json_get auto_mode)"
   echo "tdd:      $(json_get tdd_mode)"
@@ -427,13 +450,18 @@ case "${1:-}" in
 usage: workflow.sh <subcommand> [args]
 
 subcommands:
-  init "<prompt> [skill=NAME] [subagent=no|yes|full] [auto=no|yes] [tdd=no|yes]"
+  init "<prompt> [skill=NAME] [subagent=no|yes|full] [auto=no|yes] [tdd=no|yes] [schema=NAME]"
   next
   advance <stage> "<one-line result>"
   artifact <key> <value>
   dispatch <agent_id> <stage>     (record subagent assignment for SubagentStop auto-advance)
   status
   reset
+
+  schema=NAME (v1.14.0+)          opt-in to a declarative schema-driven routine.
+                                  Stages come from <plugin>/schemas/<name>/schema.yaml
+                                  (or .workflow/schemas/<name>/, or ~/.claude/kaizen-schemas/<name>/).
+                                  Inspect via: python3 workflow_runner.py list|show|validate|stages
 
 hook handlers (invoked from settings.json, read stdin, emit JSON):
   stop-hook                       (Stop event — drives auto=yes chaining)

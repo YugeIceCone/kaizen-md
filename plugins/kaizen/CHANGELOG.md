@@ -3,6 +3,70 @@
 All notable changes to the `kaizen` plugin documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [SemVer](https://semver.org/).
 
+## [1.14.0] — 2026-05-12
+
+Schemas runtime + spec-driven workflow. Closes the v1.13.0 deferred track and folds in the highest-signal ideas from [github/awesome-copilot/.../spec-driven-workflow-v1](https://github.com/github/awesome-copilot/blob/main/instructions/spec-driven-workflow-v1.instructions.md).
+
+### Added — `workflow_runner.py` (declarative schemas runtime)
+
+`skills/workflow-routing/scripts/workflow_runner.py` — stdlib-only loader for the OpenSpec-inspired yaml schemas that v1.13.0 scaffolded. Resolves `<name>` across project (`.workflow/schemas/`), user (`~/.claude/kaizen-schemas/`), and built-in tiers; parses the schema yaml with a regex-driven subset parser (no pip deps); runs Kahn's topo-sort over `requires:` edges with alphabetic tie-break; validates DAG + structural shape.
+
+Subcommands: `list | show <name> | validate <name> | stages <name> | artifact <name> <id>`.
+
+### Added — `workflow.sh schema=<name>` flag
+
+`workflow.sh init` now accepts `schema=<name>` alongside the existing `skill=` / `subagent=` / `auto=` / `tdd=` flags. When set:
+
+- `routine` becomes `schema:<name>` (instead of `audit`/`build-feature`/etc.)
+- stages come from `workflow_runner.py stages <name>` (topo order)
+- `schema_name` is recorded in `.workflow/state.json`
+
+Everything downstream — `advance`, `dispatch`, `status`, `subagent-stop`, `pre-compact`, `post-compact`, the Stop / SessionStart hooks — works **unchanged**. The state machine is generic; only the stage source differs. Strangler-fig: hardcoded routines continue to work exactly as before.
+
+### Added — `/kaizen:schema` slash command
+
+`commands/schema.md` wraps the runner CLI: `/kaizen:schema list|show|validate|stages|artifact`. Lets users inspect the available schemas, validate their own authored ones, and preview the topo-order before running `/workflow schema=<name>`.
+
+### Added — `schemas/spec-driven/` (third built-in)
+
+Adapted from awesome-copilot's `spec-driven-workflow-v1.instructions.md`. 6-phase loop expressed as 8 topo-ordered artifacts:
+
+```
+analyze → design → (decisions, tasks) → implement → validate → reflect → handoff
+```
+
+Per-phase templates:
+
+- `requirements.md` — EARS notation skeleton (WHEN / IF / WHERE / WHILE / Ubiquitous), Confidence Score field, functional + non-functional requirements, edge cases, dependencies, out-of-scope, open questions.
+- `design.md` — architecture overview, component diagram, sequence diagrams, data model, interface contracts, error matrix, unit-testing strategy, adaptive strategy table from the Confidence Score.
+- `tasks.md` — verb-first tasks with REQ refs + design refs + files + verify command + dependencies + size estimate; Definition-of-Done; Resume Protocol.
+- `decisions.md` — append-only Decision Records (decision / context / options / rationale / impact / review / cross-refs).
+
+### Added — EARS notation in `minimalist`
+
+`schemas/minimalist/templates/specs/spec.md` now surfaces EARS alongside Given/When/Then. Either form is acceptable for the minimalist schema (lowest-ceremony tier); `spec-driven` requires EARS throughout.
+
+### Permissions
+
+`plugin.json` extended to allow `python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow-routing/scripts/workflow_runner.py` and `bash ${CLAUDE_PLUGIN_ROOT}/skills/workflow-routing/scripts/*.sh` (`/kaizen:schema` and `workflow.sh` both run from within the plugin tree now that schema= is wired).
+
+### What was adopted from awesome-copilot vs deferred
+
+| Awesome-copilot idea                                                | Adopted in v1.14.0? |
+|---------------------------------------------------------------------|---------------------|
+| EARS notation for requirements                                      | ✅ (both schemas)    |
+| 6-phase loop (ANALYZE → DESIGN → IMPLEMENT → VALIDATE → REFLECT → HANDOFF) | ✅ (spec-driven)     |
+| Decision Record template                                            | ✅ (spec-driven)     |
+| Confidence Score → adaptive routing (high/medium/low)               | ⏳ v1.15.0 — needs runtime branching beyond pure topo-sort |
+| Phase-level gating ("do not proceed until X")                       | ✅ via `apply.gate` (schema-declared)   |
+| Action Documentation template (per-step log)                        | ❌ overlaps with kaizen-trace + plan checkboxes |
+| Auto-create technical-debt issues                                   | ❌ overlaps with BACKLOG.md (single source of truth) |
+| Per-stack `.instructions.md` files (100+ in upstream)               | ❌ wrong shape — kaizen's brain `custom-pattern` rules cover project guidance |
+
+### Why minor (1.13.2 → 1.14.0)
+
+New runtime surface (workflow_runner.py + `schema=` flag + `/kaizen:schema` command), new built-in schema, new template family. Additive only — every existing routine, hook, and state-machine command works identically. No breaking changes.
+
 ## [1.13.2] — 2026-05-12
 
 ### Added — `dependency-allowlist` brain-rule type

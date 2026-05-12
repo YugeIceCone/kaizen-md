@@ -13,6 +13,10 @@ This skill replaces the older one-shot routing model. It is invoked by the `/wor
 
 ## Routines
 
+Two ways to source the stage sequence: **hardcoded** (verb-detected from the prompt) and **schema-driven** (declarative yaml, opt-in via `schema=<name>`, added v1.14.0).
+
+### Hardcoded routines (default)
+
 The script maps the user's prompt to one of six curated routines (full sequences in `references/routines.md`):
 
 - **audit** — `explore → detect-stack → research → audit → analyze → review → create-plan → create-tasks` (ends with a plan; auto=yes also reports findings)
@@ -23,6 +27,21 @@ The script maps the user's prompt to one of six curated routines (full sequences
 - **harden** — `explore → audit → analyze → create-plan → create-tasks → execute-tasks → review → validate`
 
 The user may pin a starting stage with `skill=NAME` to skip earlier stages. Any unknown verb defaults to `build-feature`.
+
+### Schema-driven routines (v1.14.0+)
+
+Pass `schema=<name>` and the stage sequence comes from a declarative yaml file. Three built-ins ship:
+
+- **minimalist** — `specs → tasks` (low-ceremony; Given/When/Then or EARS acceptance)
+- **kaizen-default** — `explore → research → analyze → plan → tasks → execute → review → validate` (mirrors the hardcoded default)
+- **spec-driven** — `analyze → design → (decisions, tasks) → implement → validate → reflect → handoff` (EARS requirements + Decision Records, adapted from GitHub's awesome-copilot spec-driven-workflow-v1)
+
+Schemas resolve in this order (first hit wins):
+1. `<repo>/.workflow/schemas/<name>/schema.yaml` (project-versioned)
+2. `~/.claude/kaizen-schemas/<name>/schema.yaml` (user-wide)
+3. `<plugin>/schemas/<name>/schema.yaml` (built-in)
+
+Inspect schemas with `/kaizen:schema list|show|validate|stages|artifact`. The state machine treats schema-driven and hardcoded routines identically once initialized — `routine` is `schema:<name>` instead of `audit`/`build-feature`/etc., and `schema_name` is recorded in state.json. All `advance`, `dispatch`, `status`, `subagent-stop`, `pre-compact`, `post-compact` logic is unchanged.
 
 ## When To Use
 
@@ -43,6 +62,7 @@ From `/workflow` arguments (parsed by the script):
 - **skill=NAME** — optional starting stage (else auto-detect)
 - **subagent=no|yes|full** — delegation mode (default `no`)
 - **auto=no|yes** — autonomy (default `no`)
+- **schema=NAME** — optional (v1.14.0+) source stages from a declarative schema instead of a hardcoded routine. See "Schema-driven routines" above.
 
 Also reads `.workflow/state.json` if present (for resume).
 

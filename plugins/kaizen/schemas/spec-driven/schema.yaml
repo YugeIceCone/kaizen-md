@@ -1,0 +1,108 @@
+# Spec-driven workflow schema — 6-phase loop adapted from GitHub's
+# awesome-copilot/instructions/spec-driven-workflow-v1.instructions.md.
+#
+# Phases gate sequentially: ANALYZE → DESIGN → IMPLEMENT → VALIDATE →
+# REFLECT → HANDOFF. Each phase produces a durable artifact; the gate
+# blocks implementation until the design phase is complete.
+#
+# Requirements use EARS notation (Easy Approach to Requirements Syntax):
+#   - Ubiquitous:    THE SYSTEM SHALL <behavior>
+#   - Event-driven:  WHEN <trigger>, THE SYSTEM SHALL <behavior>
+#   - State-driven:  WHILE <state>, THE SYSTEM SHALL <behavior>
+#   - Unwanted:      IF <condition>, THEN THE SYSTEM SHALL <response>
+#   - Optional:      WHERE <feature>, THE SYSTEM SHALL <behavior>
+
+name: spec-driven
+version: 1
+description: |
+  Six-phase spec-driven workflow with EARS-formatted requirements +
+  Decision Records. Suitable for medium-to-high risk work where
+  traceability from requirement → design → code → validation matters.
+
+artifacts:
+  - id: analyze
+    generates: requirements.md
+    template: requirements.md
+    requires: []
+    description: |
+      Phase 1 — understand the problem. Produce requirements.md using
+      EARS notation. One requirement per line, testable. Catalog edge
+      cases, dependencies, and assign a Confidence Score (0–100%).
+      Gate: do not proceed until every requirement is unambiguous.
+
+  - id: design
+    generates: design.md
+    template: design.md
+    requires: [analyze]
+    description: |
+      Phase 2 — architect the solution. Produce design.md with
+      architecture overview, sequence diagrams, data models, interface
+      contracts, and an error matrix. Branch on the Confidence Score
+      from analyze.md: high (>85%) → full plan, medium (66–85%) → PoC
+      first, low (<66%) → research loop-back. Gate: design must be
+      complete before implementation.
+
+  - id: tasks
+    generates: tasks.md
+    template: tasks.md
+    requires: [design]
+    description: |
+      Phase 2.5 — decompose the design into trackable tasks. Each task
+      lists EARS requirement refs, files-to-touch, verify command,
+      and dependencies. Mirrors kaizen's create-tasks discipline.
+
+  - id: decisions
+    generates: decisions.md
+    template: decisions.md
+    requires: [design]
+    description: |
+      Decision Records — one entry per non-trivial choice made during
+      design or implementation. Format: timestamp, decision, context,
+      options, rationale, impact, review. Cross-references kaizen's
+      .workflow/progress.md architecture log.
+
+  - id: implement
+    generates: (in-place code changes)
+    template: null
+    requires: [tasks, decisions]
+    description: |
+      Phase 3 — write code one task at a time. Per kaizen Iron Laws:
+      compile-barrier per task, commit after each passing task, no
+      batch commits. Update tasks.md checkboxes in real time.
+
+  - id: validate
+    generates: validate.md
+    template: null
+    requires: [implement]
+    description: |
+      Phase 4 — verify the implementation meets every EARS requirement.
+      Run automated tests, edge-case suite, performance checks.
+      Document outputs + coverage. No proceeding with unresolved
+      failures.
+
+  - id: reflect
+    generates: reflect.md
+    template: null
+    requires: [validate]
+    description: |
+      Phase 5 — refactor for maintainability, update READMEs/diagrams,
+      log identified tech debt to kaizen BACKLOG.md. Meta-analyze
+      protocol adherence and tool efficiency.
+
+  - id: handoff
+    generates: handoff.md
+    template: null
+    requires: [reflect]
+    description: |
+      Phase 6 — package for review. Executive summary (Compressed
+      Decision Record format), PR body with links to requirements.md /
+      design.md / tasks.md / decisions.md, archive intermediate work
+      under .agent_work/. Final commit lands.
+
+apply:
+  gate: design
+  progress: tasks.md
+  description: |
+    Implementation gated on design.md being complete + validated.
+    Per-task progress tracked via tasks.md checkboxes (same `- [x]`
+    pattern as kaizen plans/). Final gate at handoff for PR readiness.

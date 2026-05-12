@@ -4,13 +4,27 @@
 > Owner: <handle>
 > Status: draft | review | accepted
 
-## Given / When / Then
+## Acceptance criteria (Given / When / Then OR EARS)
+
+Either form is fine for this schema — pick the one closer to how the feature
+reads. Bigger / higher-risk work should use the **spec-driven** schema instead,
+which requires EARS throughout.
+
+### Given / When / Then (low-ceremony)
 
 **Given** <pre-condition>
 **When** <action>
 **Then** <outcome>
 
-(Add more G/W/T blocks for additional acceptance criteria.)
+### EARS notation (Easy Approach to Requirements Syntax)
+
+- Ubiquitous:    THE SYSTEM SHALL <behavior>
+- Event-driven:  WHEN <trigger>, THE SYSTEM SHALL <behavior>
+- State-driven:  WHILE <state>, THE SYSTEM SHALL <behavior>
+- Unwanted:      IF <condition>, THEN THE SYSTEM SHALL <response>
+- Optional:      WHERE <feature is included>, THE SYSTEM SHALL <behavior>
+
+(Add more blocks for additional criteria.)
 
 ## Out of scope
 

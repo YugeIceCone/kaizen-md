@@ -1,6 +1,6 @@
 # Declarative workflow schemas — design discussion + migration path
 
-> Status: design only (2026-05-12). v1.13.0 ships the scaffold (`schemas/` dir + 2 examples + this doc). Wiring into the existing `workflow-routing` skill is **deferred** to v1.14.0+ and tracked as a follow-up.
+> Status: **runtime live as of v1.14.0** (2026-05-12). `scripts/workflow_runner.py` parses + topo-orders schemas; `workflow.sh` accepts `schema=<name>` to drive a schema-routine. Three built-in schemas: `minimalist`, `kaizen-default`, `spec-driven`. The hardcoded routine path is unchanged; schemas are opt-in.
 
 ## Source
 
@@ -70,49 +70,35 @@ A schema-aware workflow runner:
 
 `kaizen:agent-brief` would document this contract so fresh agents understand it without re-deriving from source.
 
-## What v1.13.0 ships (the scaffold)
+## What v1.13.0 shipped (the scaffold)
 
 - `schemas/minimalist/{schema.yaml,templates/specs/spec.md,templates/tasks/tasks.md}` — minimal example.
-- `schemas/kaizen-default/schema.yaml` — re-statement of the existing 8-stage routine as a declarative artifact list. NOT YET wired into the runtime.
+- `schemas/kaizen-default/schema.yaml` — re-statement of the existing 8-stage routine as a declarative artifact list.
 - This doc, explaining the migration plan.
 
-## What v1.14.0+ would add (the runtime)
+## What v1.14.0 shipped (the runtime)
 
-The actual loader + executor. Sketch:
+- `skills/workflow-routing/scripts/workflow_runner.py` — stdlib-only loader, regex-YAML subset parser, Kahn topo-sort, Schema → stages CLI. Subcommands: `list / show / validate / stages / artifact`.
+- `workflow.sh` accepts `schema=<name>` in `init`; when set, `routine` becomes `schema:<name>` and stages come from `workflow_runner.py stages`. State machine, hooks, advance, status all unchanged.
+- `commands/schema.md` — `/kaizen:schema` slash command (list / show / validate / stages / artifact).
+- `schemas/spec-driven/` — third built-in. Adapted from [github/awesome-copilot/.../spec-driven-workflow-v1](https://github.com/github/awesome-copilot/blob/main/instructions/spec-driven-workflow-v1.instructions.md). 8 stages (analyze → design → decisions/tasks → implement → validate → reflect → handoff) with EARS-formatted requirements template + Decision Record template.
+- `minimalist/templates/specs/spec.md` updated to surface EARS alongside Given/When/Then.
 
-```python
-# scripts/workflow_runner.py — proposed for v1.14.0
-import yaml
-from pathlib import Path
+### Schema → stages contract
 
-def resolve_schema(name: str) -> Path:
-    for base in [
-        Path.cwd() / ".workflow" / "schemas",
-        Path.home() / ".claude" / "kaizen-schemas",
-        plugin_schemas_dir(),
-    ]:
-        candidate = base / name / "schema.yaml"
-        if candidate.exists():
-            return candidate
-    raise FileNotFoundError(f"schema {name!r} not found")
-
-def load(name: str) -> dict:
-    return yaml.safe_load(resolve_schema(name).read_text())
-
-def topo_order(artifacts: list[dict]) -> list[dict]:
-    """Return artifacts in execution order respecting `requires`."""
-    # Kahn's algorithm, ~30 LOC
-    ...
-
-def run(schema_name: str, agent_loop: Callable):
-    schema = load(schema_name)
-    for artifact in topo_order(schema["artifacts"]):
-        if not output_complete(artifact):
-            template = (resolve_schema(schema_name).parent / artifact["template"]).read_text() if artifact.get("template") else ""
-            agent_loop(prompt=artifact["description"], template=template)
-        mark_done(artifact)
-    enforce_apply_gate(schema["apply"])
+```bash
+$ /kaizen:schema stages spec-driven
+analyze
+design
+decisions
+tasks
+implement
+validate
+reflect
+handoff
 ```
+
+`workflow.sh` reads that output and treats it as the stage list. Topo-sort is deterministic (alphabetic tie-break on ties).
 
 ## Migration risk
 
@@ -126,10 +112,10 @@ Approach: **strangler-fig migration**. Ship the loader as opt-in (`/workflow --s
 
 Multi-commit plan, conservatively:
 
-1. v1.13.0 — ship scaffold + research doc (THIS).
-2. v1.14.0 — ship loader, wire `--schema` flag, migrate `minimalist`.
-3. v1.15.0 — migrate `kaizen-default` (mirror of current `harden` etc.).
-4. v1.16.0 — migrate remaining 5 hardcoded routines to schema form.
+1. ✅ v1.13.0 — ship scaffold + research doc.
+2. ✅ v1.14.0 — ship loader, wire `schema=<name>` flag, add `spec-driven` built-in (EARS + Decision Records adapted from awesome-copilot).
+3. v1.15.0 — adaptive Confidence-Score routing inside the `design` artifact of `spec-driven` (high → direct, medium → PoC, low → research loop-back). The schema format will likely gain a `branches:` field for conditional successors.
+4. v1.16.0 — migrate remaining 5 hardcoded routines to schema form (one PR each), so all 6 hardcoded names become `schema:<name>` referrers.
 5. v1.17.0 — make schema-loader the default; deprecate the bash routine path.
 6. v2.0.0 — remove the legacy bash path.
 
