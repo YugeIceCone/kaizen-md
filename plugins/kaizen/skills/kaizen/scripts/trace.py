@@ -56,8 +56,14 @@ from pathlib import Path
 
 
 def _trace_dir() -> Path:
-    return Path(os.environ.get("KAIZEN_TRACE_DIR",
-                                os.path.expanduser("~/.claude/.kaizen-trace")))
+    # v1.22.0+: default moved to ~/.claude/.kaizen/trace/. KAIZEN_TRACE_DIR still wins.
+    env = os.environ.get("KAIZEN_TRACE_DIR")
+    if env:
+        return Path(env)
+    import sys
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    import _paths as _p  # noqa: E402
+    return _p.TRACE_DIR
 
 
 def _events_file() -> Path:

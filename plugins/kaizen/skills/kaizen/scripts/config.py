@@ -1,45 +1,39 @@
 #!/usr/bin/env python3
-"""kaizen config — SSOT parser for `.kaizen.toml`.
+"""kaizen config — single editable file for plugin-wide defaults + SSOT
+parser for per-project `.kaizen.toml`.
 
-Replaces the per-consumer `grep -E '^key' | sed` pattern that lived in
-pre-commit.sh, statusline.sh, install.sh. Every consumer (bash + Python)
-calls into this module so a new config key only changes one parse site.
+## Two responsibilities
 
-## Layout
+1. **Plugin defaults** — the `PLUGIN ▸ DEFAULTS` section at the top of
+   this file is the ONE place to edit the plugin's wide-reaching knobs:
+   path layout, embedding model, dimensions, size caps. Every kaizen
+   script imports from here so a tune-once surface is the convention.
 
-`.kaizen.toml` is a flat TOML file at repo root. Recognized keys:
+2. **Per-project `.kaizen.toml` parser** — the lower section retains the
+   v1.5.0+ contract: a flat TOML file at repo root holds per-repo gate
+   knobs (`compile_check_cmd`, `verify_cmd`, `backlog_path`,
+   `architecture_log`). The `load_config()` / `get()` / CLI surface is
+   unchanged.
 
-    compile_check_cmd  = "cargo check --workspace"
-    verify_cmd         = "cargo test --workspace --quiet"
-    backlog_path       = ".workflow/backlog.md"
-    architecture_log   = ".workflow/progress.md"
-
-Unknown keys are preserved but not used by the gate. Missing keys fall
-back to the `DEFAULTS` dict.
+Both surfaces ship in this file so users wanting to retune kaizen only
+have to read one place. The plugin defaults are environment-overridable;
+per-project keys override defaults at the repo level.
 
 ## CLI
 
-    config.py                 # print all key=value pairs (newline-separated)
-    config.py <key>           # print just that key's value (or empty string)
-    config.py <key> --default <fallback>  # print value, defaulting if missing
-    config.py --json          # full config as JSON
-
-## Library
-
-    from config import load_config
-    cfg = load_config()       # auto-finds repo root from cwd
-    cfg.get("backlog_path")   # → ".workflow/backlog.md"
-
-## Repo detection
-
-`repo_root()` walks up from cwd looking for `.git/` OR `.kaizen.toml`.
-If neither found, returns None and `load_config()` returns DEFAULTS.
+    config.py                 # print all per-project key=value pairs
+    config.py <key>           # print one per-project key value
+    config.py <key> --default <fallback>  # print with fallback
+    config.py --json          # full per-project config as JSON
+    config.py --defaults      # print the plugin-wide DEFAULTS (v1.22.0+)
+    config.py --validate      # schema + fs check
 """
 
 from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -49,11 +43,53 @@ except ImportError:  # pragma: no cover
     tomllib = None  # type: ignore[assignment]
 
 
+# ═══════════════════════════════════════════════════════════════════════
+# PLUGIN ▸ DEFAULTS — edit this one block to retune the plugin.
+# ═══════════════════════════════════════════════════════════════════════
+#
+# Each value can also be overridden at runtime via the matching env var
+# (shown in the comment). Setting an env var wins over the constant here.
+
+# Path layout — user-global root (v1.22.0+ unification).
+USER_DIR_NAME           = ".kaizen"              # env: -- (directory name under ~/.claude/)
+USER_TRACE_NAME         = "trace"                # env: -- (subdir name)
+USER_KNOWLEDGE_NAME     = "knowledge"
+USER_DAEMON_NAME        = "daemon"
+USER_INBOX_NAME         = "inbox"
+USER_BACKUPS_NAME       = "backups"
+USER_SCHEMAS_NAME       = "schemas"
+
+# Project-side layout (relative to repo root).
+PROJECT_KAIZEN_NAME     = ".kaizen"              # env: --
+PROJECT_WORKFLOW_NAME   = "workflow"             # under .kaizen/: state.json + backlog.json + ...
+
+# Semantic search (trace_index, knowledge_index, onboard_index).
+EMBED_MODEL             = "all-MiniLM-L6-v2"     # env: KAIZEN_EMBED_MODEL
+EMBED_DIM               = 384                    # env: -- (matches all-MiniLM-L6-v2)
+
+# Per-corpus knobs.
+ONBOARD_MAX_BYTES       = 1_000_000              # env: KAIZEN_ONBOARD_MAX_BYTES
+ONBOARD_SNIPPET_MAX     = 2048
+KNOWLEDGE_SNIPPET_MAX   = 400
+
+# Env-var resolution for the knobs that ARE env-overridable.
+EMBED_MODEL = os.environ.get("KAIZEN_EMBED_MODEL", EMBED_MODEL)
+try:
+    ONBOARD_MAX_BYTES = int(os.environ.get("KAIZEN_ONBOARD_MAX_BYTES", ONBOARD_MAX_BYTES))
+except ValueError:
+    pass  # keep the default if env var is malformed
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# Per-project .kaizen.toml parser (v1.5.0+ contract; unchanged).
+# ═══════════════════════════════════════════════════════════════════════
+
+
 DEFAULTS: dict = {
     "compile_check_cmd": "",
     "verify_cmd": "",
-    "backlog_path": ".workflow/backlog.md",
-    "architecture_log": ".workflow/progress.md",
+    "backlog_path": f"{PROJECT_KAIZEN_NAME}/{PROJECT_WORKFLOW_NAME}/backlog.md",
+    "architecture_log": f"{PROJECT_KAIZEN_NAME}/{PROJECT_WORKFLOW_NAME}/progress.md",
 }
 
 
@@ -180,6 +216,29 @@ def validate(repo: Path | None = None) -> dict:
     return out
 
 
+def plugin_defaults_dict() -> dict:
+    """Return the PLUGIN ▸ DEFAULTS section as a flat dict (v1.22.0+).
+
+    Used by CLI `--defaults` and by other scripts that want to inspect
+    the plugin's editable knobs without importing each constant by name."""
+    return {
+        "USER_DIR_NAME": USER_DIR_NAME,
+        "USER_TRACE_NAME": USER_TRACE_NAME,
+        "USER_KNOWLEDGE_NAME": USER_KNOWLEDGE_NAME,
+        "USER_DAEMON_NAME": USER_DAEMON_NAME,
+        "USER_INBOX_NAME": USER_INBOX_NAME,
+        "USER_BACKUPS_NAME": USER_BACKUPS_NAME,
+        "USER_SCHEMAS_NAME": USER_SCHEMAS_NAME,
+        "PROJECT_KAIZEN_NAME": PROJECT_KAIZEN_NAME,
+        "PROJECT_WORKFLOW_NAME": PROJECT_WORKFLOW_NAME,
+        "EMBED_MODEL": EMBED_MODEL,
+        "EMBED_DIM": EMBED_DIM,
+        "ONBOARD_MAX_BYTES": ONBOARD_MAX_BYTES,
+        "ONBOARD_SNIPPET_MAX": ONBOARD_SNIPPET_MAX,
+        "KNOWLEDGE_SNIPPET_MAX": KNOWLEDGE_SNIPPET_MAX,
+    }
+
+
 def main():
     p = argparse.ArgumentParser(prog="config.py", description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -193,7 +252,13 @@ def main():
                    help="print the config file's absolute path (empty if not found)")
     p.add_argument("--validate", action="store_true",
                    help="check schema + filesystem; exit 1 on errors, 0 with warnings ok")
+    p.add_argument("--defaults", action="store_true",
+                   help="print the plugin-wide DEFAULTS (v1.22.0+) as JSON")
     args = p.parse_args()
+
+    if args.defaults:
+        print(json.dumps(plugin_defaults_dict(), indent=2))
+        return
 
     if args.validate:
         v = validate()

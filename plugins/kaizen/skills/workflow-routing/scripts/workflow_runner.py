@@ -61,19 +61,16 @@ from pathlib import Path
 SCRIPT_DIR = Path(__file__).resolve().parent
 PLUGIN_ROOT = SCRIPT_DIR.parent.parent.parent  # skills/workflow-routing/scripts → plugin root
 
+# v1.22.0+: pull path defaults from the kaizen plugin's _paths SSOT.
+_KAIZEN_SCRIPTS = PLUGIN_ROOT / "skills" / "kaizen" / "scripts"
+sys.path.insert(0, str(_KAIZEN_SCRIPTS))
+import _paths as _p  # noqa: E402
+
 BUILTIN_DIR = Path(
-    os.environ.get(
-        "KAIZEN_PLUGIN_SCHEMAS",
-        PLUGIN_ROOT / "schemas",
-    )
+    os.environ.get("KAIZEN_PLUGIN_SCHEMAS", PLUGIN_ROOT / "schemas")
 )
-USER_DIR = Path(
-    os.environ.get(
-        "KAIZEN_USER_SCHEMAS",
-        Path.home() / ".claude" / "kaizen-schemas",
-    )
-)
-PROJECT_DIR = Path.cwd() / ".workflow" / "schemas"
+USER_DIR = _p.USER_SCHEMAS  # ~/.claude/.kaizen/schemas/ (was ~/.claude/kaizen-schemas/)
+PROJECT_DIR = _p.project_schemas_dir()  # <repo>/.kaizen/workflow/schemas/ (was .workflow/schemas/)
 
 
 # ─── Parser ───────────────────────────────────────────────────────────

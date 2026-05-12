@@ -89,21 +89,25 @@ import sys
 from pathlib import Path
 
 HOME = Path(os.path.expanduser("~"))
+
+# v1.22.0+: paths come from the shared _paths module (config.py is the SSOT).
+_SCRIPT_DIR = Path(__file__).resolve().parent
+sys.path.insert(0, str(_SCRIPT_DIR))
+import _paths as _p  # noqa: E402
+import config as _cfg  # noqa: E402
+
 BRAIN_PATH = Path(os.environ.get("KAIZEN_BRAIN", HOME / ".claude" / "brain"))
-DB_PATH = Path(
-    os.environ.get(
-        "KAIZEN_KNOWLEDGE_DB",
-        HOME / ".claude" / ".kaizen-knowledge" / "index.db",
-    )
-)
-DEFAULT_MODEL = os.environ.get("KAIZEN_KNOWLEDGE_EMBED_MODEL", "all-MiniLM-L6-v2")
-DEFAULT_DIM = 384
+DB_PATH = _p.KNOWLEDGE_DB
+DEFAULT_MODEL = os.environ.get("KAIZEN_KNOWLEDGE_EMBED_MODEL", _cfg.EMBED_MODEL)
+DEFAULT_DIM = _cfg.EMBED_DIM
 
 PLUGIN_BUILTIN_SCHEMAS = (
     Path(__file__).resolve().parent.parent.parent.parent / "schemas"
 )
-USER_SCHEMAS_DIR = HOME / ".claude" / "kaizen-schemas"
-PROJECT_SCHEMAS_DIR = Path.cwd() / ".workflow" / "schemas"
+USER_SCHEMAS_DIR = _p.USER_SCHEMAS
+# Resolved at call time (cwd-relative); iter_schemas re-evaluates each call.
+def _project_schemas_dir() -> Path:
+    return _p.project_schemas_dir()
 
 PRIVACY_SKIP_PATTERNS = (
     re.compile(r"secret", re.I),
@@ -297,7 +301,7 @@ def iter_plans():
 
 
 def iter_backlog_items():
-    bf = Path.cwd() / ".workflow" / "backlog.json"
+    bf = _p.project_workflow_dir() / "backlog.json"
     if not bf.is_file():
         return
     try:
@@ -331,7 +335,7 @@ def iter_backlog_items():
 
 
 def iter_schemas():
-    for base in (PROJECT_SCHEMAS_DIR, USER_SCHEMAS_DIR, PLUGIN_BUILTIN_SCHEMAS):
+    for base in (_project_schemas_dir(), USER_SCHEMAS_DIR, PLUGIN_BUILTIN_SCHEMAS):
         if not base.is_dir():
             continue
         for entry in sorted(base.iterdir()):

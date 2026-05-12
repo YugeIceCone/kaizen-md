@@ -126,6 +126,16 @@ echo "  project:  $([ "$SKIP_PROJECT" -eq 1 ] && echo "${DIM}skipped${RESET}" ||
 [ "$WITH_TRACE_PROXY" -eq 1 ] && echo "  opt-in:   ${YELLOW}+trace-proxy${RESET}"
 echo ""
 
+# ─── 0. Path migration (v1.22.0+) ────────────────────────────────────
+# Move legacy ~/.claude/{.kaizen-trace,.kaizen-knowledge,...,kaizen-inbox,
+# backups/kaizen,kaizen-schemas} into the unified ~/.claude/.kaizen/{trace,
+# knowledge,daemon,inbox,backups,schemas}/ layout. Also moves <repo>/.workflow/
+# → <repo>/.kaizen/workflow/ if applicable. Idempotent.
+echo "${BOLD}path migration (v1.22.0+)${RESET}"
+step "migrate legacy paths" \
+  "bash '$PLUGIN_ROOT/skills/kaizen/scripts/migrate_paths.sh'"
+echo ""
+
 # ─── 1. Globals (default stack) ──────────────────────────────────────
 
 if [ "$SKIP_GLOBALS" -eq 0 ]; then
@@ -133,7 +143,7 @@ if [ "$SKIP_GLOBALS" -eq 0 ]; then
 
   # disable-dupes — hide loose ~/.claude/skills/* that duplicate plugin
   step "disable duplicate loose skills" \
-    "bash '$PLUGIN_ROOT/skills/kaizen/scripts/disable-skill.sh' --execute 2>&1 || bash '$PLUGIN_ROOT/skills/kaizen/scripts/disable-skill.sh' execute 2>&1"
+    "bash '$PLUGIN_ROOT/skills/kaizen/scripts/disable-skill.sh' all-loose-dupes"
 
   # statusline — adds the kaizen one-line status bar to CC settings
   step "install kaizen statusline" \

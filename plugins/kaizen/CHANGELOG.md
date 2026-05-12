@@ -3,6 +3,117 @@
 All notable changes to the `kaizen` plugin documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [SemVer](https://semver.org/).
 
+## [1.22.0] — 2026-05-12
+
+Path unification + single-file config SSOT. Everything kaizen-owned now lives under one `.kaizen/` root (user-global) or `<repo>/.kaizen/` (project-side). `config.py` becomes the one file you edit to retune plugin-wide defaults.
+
+### Added — `config.py` plugin-defaults section (the single-edit surface)
+
+The top ~15 lines of `skills/kaizen/scripts/config.py` are now the canonical place to retune kaizen-wide defaults:
+
+```python
+USER_DIR_NAME           = ".kaizen"              # under ~/.claude/
+USER_TRACE_NAME         = "trace"
+USER_KNOWLEDGE_NAME     = "knowledge"
+USER_DAEMON_NAME        = "daemon"
+USER_INBOX_NAME         = "inbox"
+USER_BACKUPS_NAME       = "backups"
+USER_SCHEMAS_NAME       = "schemas"
+PROJECT_KAIZEN_NAME     = ".kaizen"
+PROJECT_WORKFLOW_NAME   = "workflow"
+EMBED_MODEL             = "all-MiniLM-L6-v2"
+EMBED_DIM               = 384
+ONBOARD_MAX_BYTES       = 1_000_000
+ONBOARD_SNIPPET_MAX     = 2048
+KNOWLEDGE_SNIPPET_MAX   = 400
+```
+
+Edit these once; every kaizen script picks up the change automatically via `_paths.py` (Python) or `_paths.sh` (shell). New CLI: `python3 config.py --defaults` prints the plugin-wide defaults as JSON.
+
+### Added — `_paths.py` + `_paths.sh` (path SSOT modules)
+
+`skills/kaizen/scripts/_paths.py` — Python module holding every kaizen-owned path constant. Imports the editable names from `config.py`, applies env overrides (`KAIZEN_DIR`, `KAIZEN_TRACE_DIR`, etc.), exposes `KAIZEN_USER_DIR`, `TRACE_DIR`, `TRACE_FILE`, `TRACE_DB`, `KNOWLEDGE_DB`, `DAEMON_STATE`, `INBOX_DIR`, `BACKUP_DIR`, `USER_SCHEMAS`. Project paths via `project_workflow_dir()` / `project_schemas_dir()` / `project_kaizen_dir()` (cwd-relative).
+
+`_paths.sh` — sibling shell module with the same constants as exported env vars + helper functions. Source from any kaizen `.sh` script.
+
+Both ship with a `LEGACY_PATHS` map for the migrator's consumption.
+
+### Path layout — unified
+
+**User-global** (`~/.claude/`):
+
+| Before                         | After                              |
+|--------------------------------|------------------------------------|
+| `.kaizen-trace/events.jsonl`   | `.kaizen/trace/events.jsonl`       |
+| `.kaizen-trace/index.db`       | `.kaizen/trace/index.db`           |
+| `.kaizen-knowledge/index.db`   | `.kaizen/knowledge/index.db`       |
+| `.kaizen-daemon/state.json`    | `.kaizen/daemon/state.json`        |
+| `kaizen-inbox/`                | `.kaizen/inbox/`                   |
+| `backups/kaizen/<slug>/`       | `.kaizen/backups/<slug>/`          |
+| `kaizen-schemas/<name>/`       | `.kaizen/schemas/<name>/`          |
+
+**Project-side** (`<repo>/`):
+
+| Before                         | After                              |
+|--------------------------------|------------------------------------|
+| `.workflow/state.json`         | `.kaizen/workflow/state.json`      |
+| `.workflow/backlog.json`       | `.kaizen/workflow/backlog.json`    |
+| `.workflow/snapshot.md`        | `.kaizen/workflow/snapshot.md`     |
+| `.workflow/progress.md`        | `.kaizen/workflow/progress.md`     |
+| `.workflow/schemas/<name>/`    | `.kaizen/workflow/schemas/<name>/` |
+
+The pre-commit gate + onboard.db keep their existing locations under `.kaizen/hooks/` and `.kaizen/onboard.db` respectively.
+
+### Added — `/kaizen:migrate-paths` (migrator)
+
+`skills/kaizen/scripts/migrate_paths.sh` + `commands/migrate-paths.md` + `bin/kaizen-migrate-paths` shim. Moves legacy paths to the new layout, idempotent. Flags: `--dry-run`, `--force` (overwrite non-empty new path), `--user-only`, `--project-only`, `--project-root <path>`.
+
+Also rewrites `<repo>/.kaizen.toml` if its `backlog_path` / `architecture_log` still reference `.workflow/`.
+
+### Wired — auto-migration on install + enable-all
+
+- `install.sh` invokes `migrate_paths.sh` before the gate is wired, so `/kaizen:install` is a one-shot upgrade path for existing repos.
+- `enable_all.sh` runs the migrator as step 0 before any other global setup.
+
+Users upgrading from v1.21 or earlier need only run `/kaizen:install` (or `/kaizen:enable-all`) once after `/reload-plugins` — the data moves automatically.
+
+### Updated — runtime scripts read from `_paths`
+
+- `trace.py` `_trace_dir()` — defaults to `_paths.TRACE_DIR`
+- `trace_index.py` — `TRACE_FILE`, `TRACE_DIR`, `DB_PATH`, `DEFAULT_MODEL`, `DEFAULT_DIM` all from `_paths` / `config`
+- `knowledge_index.py` — `DB_PATH`, `USER_SCHEMAS_DIR`, schema-iteration paths, backlog-iteration path, model/dim
+- `inbox.py` `inbox_dir()` — defaults to `_paths.INBOX_DIR`
+- `daemon.py` — `STATE_DIR` defaults to `_paths.DAEMON_DIR`
+- `workflow.sh` — `STATE_DIR` defaults to `<repo>/.kaizen/workflow/`
+- `workflow_runner.py` — `USER_DIR` + `PROJECT_DIR` from `_paths`
+
+Env-var overrides (`KAIZEN_TRACE_DIR`, `KAIZEN_INBOX_DIR`, `KAIZEN_DAEMON_STATE`, `WORKFLOW_STATE_DIR`, etc.) continue to win — set them to pin a custom location.
+
+### Bug fix — `enable_all.sh`'s `disable-dupes` subcommand
+
+v1.21.0 called `disable-skill.sh --execute` which doesn't exist. Fixed to `all-loose-dupes` (the correct subcommand). Bundled into v1.22.0 so users hitting the bug get both the fix + the unification.
+
+### Permissions
+
+`plugin.json` allowlists `python3 config.py:*` for the new `--defaults` and existing per-project lookups.
+
+### Smoke-tested
+
+- `python3 config.py --defaults` prints the 14-key JSON.
+- `python3 _paths.py` self-test (paths resolve correctly + project helper).
+- `_paths.sh` source + variable expansion + `kaizen_project_workflow_dir /tmp/x` helper.
+- `migrate_paths.sh --dry-run --project-root <shodan>` enumerates 5 user-global moves + project move + `.kaizen.toml` rewrite.
+- `workflow_runner.py validate spec-driven` still passes with `PROJECT_DIR` now derived from `_paths`.
+- `inbox.inbox_dir()` honors env override; falls back to `~/.claude/.kaizen/inbox/`.
+
+### Why minor (1.21.0 → 1.22.0)
+
+New shared modules (`config.py` plugin-defaults + `_paths.py` + `_paths.sh`), new migrator command, new path layout. Migration is automatic on `kaizen:install` / `kaizen:enable-all`. Env-var overrides preserve full backward-compat for users with custom path pins. No new tool surface beyond the migrator command.
+
+### Migration note
+
+Existing data is **moved** by the migrator (not copied) — once the migrator runs, the legacy paths are gone. The migrator refuses to overwrite a non-empty new path unless `--force` is passed, so dual-write scenarios are surfaced as warnings.
+
 ## [1.21.0] — 2026-05-12
 
 ### Added — `/kaizen:enable-all` one-shot setup

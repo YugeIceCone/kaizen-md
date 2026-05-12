@@ -48,10 +48,14 @@ from pathlib import Path
 
 
 def inbox_dir() -> Path:
+    # v1.22.0+: default location moved to ~/.claude/.kaizen/inbox/.
+    # KAIZEN_INBOX_DIR still wins if set.
     override = os.environ.get("KAIZEN_INBOX_DIR")
     if override:
         return Path(override)
-    return Path(os.path.expanduser("~/.claude/kaizen-inbox"))
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    import _paths as _p  # noqa: E402
+    return _p.INBOX_DIR
 
 
 def _ensure() -> Path:

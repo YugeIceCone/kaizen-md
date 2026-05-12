@@ -43,7 +43,12 @@ from pathlib import Path
 
 HOME = Path(os.path.expanduser("~"))
 DEFAULT_MARKET = HOME / ".claude" / "local-marketplaces" / "kaizen-md"
-STATE_DIR = Path(os.environ.get("KAIZEN_DAEMON_STATE", HOME / ".claude" / ".kaizen-daemon"))
+
+# v1.22.0+: state lives at ~/.claude/.kaizen/daemon/. KAIZEN_DAEMON_STATE still wins.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _paths as _p  # noqa: E402
+
+STATE_DIR = Path(os.environ.get("KAIZEN_DAEMON_STATE", _p.DAEMON_DIR))
 STATE_FILE = STATE_DIR / "state.json"
 LOG_FILE = STATE_DIR / "log"
 

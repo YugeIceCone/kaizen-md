@@ -17,7 +17,10 @@
 
 set -euo pipefail
 
-STATE_DIR="${WORKFLOW_STATE_DIR:-${CLAUDE_PROJECT_DIR:-.}/.workflow}"
+# v1.22.0+: state lives at <repo>/.kaizen/workflow/ (was <repo>/.workflow/).
+# WORKFLOW_STATE_DIR override still wins. The migrator (migrate_paths.sh)
+# moves legacy .workflow/ → .kaizen/workflow/ on plugin upgrade.
+STATE_DIR="${WORKFLOW_STATE_DIR:-${CLAUDE_PROJECT_DIR:-.}/.kaizen/workflow}"
 STATE_FILE="$STATE_DIR/state.json"
 mkdir -p "$STATE_DIR"
 

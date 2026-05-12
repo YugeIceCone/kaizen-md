@@ -82,12 +82,19 @@ from pathlib import Path
 from typing import Optional
 
 HOME = Path(os.path.expanduser("~"))
-TRACE_FILE = HOME / ".claude" / ".kaizen-trace" / "events.jsonl"
-TRACE_DIR = HOME / ".claude" / ".kaizen-trace"
-DB_PATH = TRACE_DIR / "index.db"
 
-DEFAULT_MODEL = os.environ.get("KAIZEN_TRACE_EMBED_MODEL", "all-MiniLM-L6-v2")
-DEFAULT_DIM = 384  # all-MiniLM-L6-v2's output dim
+# v1.22.0+: paths come from the shared _paths module (config.py is the SSOT).
+_SCRIPT_DIR = Path(__file__).resolve().parent
+sys.path.insert(0, str(_SCRIPT_DIR))
+import _paths as _p  # noqa: E402
+import config as _cfg  # noqa: E402
+
+TRACE_FILE = _p.TRACE_FILE
+TRACE_DIR = _p.TRACE_DIR
+DB_PATH = _p.TRACE_DB
+
+DEFAULT_MODEL = os.environ.get("KAIZEN_TRACE_EMBED_MODEL", _cfg.EMBED_MODEL)
+DEFAULT_DIM = _cfg.EMBED_DIM
 
 # Lazy imports — only load model when needed
 _model = None

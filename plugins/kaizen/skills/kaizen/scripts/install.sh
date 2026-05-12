@@ -71,6 +71,17 @@ HOOKS_DIR="$REPO_ROOT/.kaizen/hooks"
 CONFIG_PATH="$REPO_ROOT/.kaizen.toml"
 GITIGNORE="$REPO_ROOT/.gitignore"
 
+# ─── v1.22.0+: auto-migrate legacy paths before wiring ───────────────
+# Moves ~/.claude/.kaizen-*, kaizen-inbox, backups/kaizen, kaizen-schemas
+# under the unified ~/.claude/.kaizen/ tree, and <repo>/.workflow/ →
+# <repo>/.kaizen/workflow/. Idempotent.
+MIGRATOR="$SKILL_DIR/scripts/migrate_paths.sh"
+if [ -x "$MIGRATOR" ]; then
+    echo "  ▸ running path migrator (v1.22.0+ layout)..." >&2
+    bash "$MIGRATOR" --project-root "$REPO_ROOT" 2>&1 | sed 's/^/    /' >&2 || true
+    echo "" >&2
+fi
+
 mkdir -p "$HOOKS_DIR"
 
 # Symlink the hook
