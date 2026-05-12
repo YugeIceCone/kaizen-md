@@ -3,6 +3,12 @@
 All notable changes to the `kaizen` plugin documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [SemVer](https://semver.org/).
 
+## [1.13.1] — 2026-05-12
+
+### Added — `bin/kaizen-vibe-check` shell wrapper
+
+v1.13.0 shipped the script + slash command but forgot the `bin/` shim. Adding it so `/kaizen:install` symlinks `kaizen-vibe-check` into `~/.local/bin/` (next install brings the symlink count to 18). Trivial — 6-line self-locating bash wrapper that execs `skills/kaizen/scripts/vibe_check.sh`.
+
 ## [1.13.0] — 2026-05-12
 
 Research → implement based on two external sources:
