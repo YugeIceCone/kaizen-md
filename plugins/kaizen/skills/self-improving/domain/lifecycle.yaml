@@ -1,0 +1,83 @@
+# yaml-language-server: $schema=./schemas/lifecycle.schema.json
+#
+# Promotion lifecycle for the kaizen brain / memory system.
+# 5 stages: auto-memory entry → recurs → user-approves → graduate to durable
+# rule/belief/skill → archive source.
+#
+# Consumed by:
+#   - kaizen:self-improving skill (sub-flows orchestrate these stages)
+#   - kaizen-memory-analyst agent (review flow reads this)
+#   - kaizen-skill-extractor agent (extract flow reads pattern_recurs_3x)
+
+lifecycle:
+  - id: discover
+    actor: claude
+    output: "auto-memory MEMORY.md entry"
+    description: |
+      Claude observes a pattern during a session and writes it to
+      `~/.claude/projects/<slug>/memory/MEMORY.md` or a topic file via the
+      auto-memory subsystem.
+
+  - id: recurs
+    threshold: 2_sessions
+    detector: review_flow
+    description: |
+      The pattern appears across ≥2 distinct sessions. The `review` sub-flow
+      flags it as a promotion candidate. One-off captures DO NOT advance.
+
+  - id: approve
+    actor: user
+    blocking: true
+    description: |
+      User explicitly confirms the pattern should graduate. No silent
+      promotion — this stage is a HUMAN gate per the pre-deletion-belief
+      / pre-promotion discipline.
+
+  - id: graduate
+    description: |
+      The pattern moves up the priority chain. The routing table picks
+      the destination by pattern shape.
+    routing_table:
+      project_correction: "<project>/CLAUDE.md"
+      project_scoped_rule: ".claude/rules/<topic>.md"
+      cross_project_belief: "~/.claude/brain/Notes/pref-<slug>.md"
+      enforceable_rule: "kaizen:workflow::git-discipline.yaml::pre_commit_gates"
+
+  - id: archive
+    actions:
+      - "remove or move source entry to Archive/"
+      - "update Persona.md ## Top Beliefs if cross-project belief"
+      - "append Evidence Log entry with dated quote"
+    description: |
+      Free space in MEMORY.md for new learnings. The promoted entry is
+      preserved at its new home (CLAUDE.md / rules/ / Notes/).
+
+sub_flows:
+  - id: review
+    description: "Scan MEMORY.md + brain Notes for promotion candidates"
+    inputs:
+      - "~/.claude/projects/<slug>/memory/*.md"
+      - "~/.claude/brain/Notes/pref-*.md"
+    output_format: markdown_report
+    side_effects: none
+
+  - id: promote
+    description: "Graduate a learning to its destination via routing_table"
+    requires: [review]
+    side_effects:
+      - "writes destination file with frontmatter"
+      - "archives source"
+      - "updates Persona.md if cross-project belief"
+
+  - id: extract
+    description: "Turn a proven pattern into a kaizen skill"
+    requires: [pattern_recurs_3x]
+    side_effects:
+      - "creates skills/<name>/SKILL.md"
+      - "wires into routines.yaml if it becomes a routine stage"
+      - "cross-links from related skills"
+
+# Sub-flows intentionally NOT included (delegate to existing kaizen skills):
+delegates_to:
+  remember: kaizen:remember
+  status: kaizen:status

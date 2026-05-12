@@ -1,0 +1,351 @@
+# yaml-language-server: $schema=./schemas/git-rules.schema.json
+#
+# Project-agnostic git workflow discipline. Single source of truth for:
+#   - skills/workflow/scripts/pre-commit.sh    (gate enforcement)
+#   - skills/workflow/scripts/backlog.py       (sizing thresholds)
+#   - skills/workflow/scripts/commit-msg.sh    (commit-format validation)
+#   - skills/workflow/application/codegen.py   (regenerates references/git-discipline.md)
+#
+# Rules here are derived from the kaizen plugin's pre-merge workflow SKILL.md
+# plus the project-agnostic sections of host project CLAUDE.md files. Project-
+# specific paths and crate-naming rules stay in the project's own CLAUDE.md.
+
+commit_format:
+  style: conventional         # conventional | gitmoji | plain
+  subject_max_chars: 72
+  body_wrap_chars: 76
+  allowed_prefixes:
+    - feat
+    - fix
+    - refactor
+    - docs
+    - chore
+    - test
+    - perf
+    - style
+    - ci
+    - build
+    - revert
+  scope_required: true        # feat(server) not just feat:
+  body_required_for:
+    - feat                    # business-relevant changes need a body
+    - refactor                # explain the why
+    - perf                    # explain the measurement
+
+sizing_thresholds:
+  # Sizing by trace + sem + grep, NEVER by clock-time.
+  # (See [[Notes/pref-sizing-by-trace-not-hours]] in the user brain.)
+  micro:
+    max_files: 3
+    max_manifest_edits: 0     # Cargo.toml / package.json / go.mod / pyproject.toml
+    max_trait_moves: 0
+    destination: backlog.json # stays a checkbox in .kaizen/workflow/backlog.json
+  split_into_siblings:        # 4-15 files OR 1 manifest OR 1 trait move
+    max_files: 15
+    max_manifest_edits: 1
+    max_trait_moves: 1
+    action: "Split into sibling micro entries on backlog.json"
+  plan_file:                  # 16+ files OR ≥2 manifests OR cross-context OR carve-out trigger
+    min_files: 16
+    min_manifest_edits: 2
+    cross_context: true
+    carve_out_trigger: true
+    destination: "plans/<date>-<slug>.md"
+    requires_status_block: true
+  architecture_log_row:
+    triggers:
+      - "new crate created or retired"
+      - "file-set carved between crates"
+      - "locked rule added/changed in CLAUDE.md"
+      - "plan executed end-to-end"
+      - "dep-direction reversal or cycle break"
+    excludes:
+      - "doc-only edits, typo fixes, lint cleanups"
+      - "test additions or test-only refactors"
+      - "Cargo.lock / package-lock.json updates from dep bumps"
+      - "commit-message body details"
+    destination: ".kaizen/workflow/progress.md"
+    format:
+      columns: [date, scope, "Δ LOC", summary]
+      summary_max_chars: 95
+      date_format: "ISO YYYY-MM-DD"
+      omit_sha_column: true   # git log --grep resolves rows to commits
+
+pre_commit_gates:
+  # Each gate is a check that runs before allowing a commit. The pre-commit.sh
+  # script iterates this list. Order matters: cheaper gates first.
+  - id: compile_barrier
+    severity: error
+    description: "Project-defined compile check (cargo check / tsc / mypy / go build)"
+    cache_key_components: [compile_cmd, staged_sha]
+    bypass_env: KAIZEN_SKIP_COMPILE
+    default_cmd:
+      rust: "cargo check --workspace --offline"
+      typescript: "npx tsc --noEmit"
+      python: "ruff check && mypy ."
+      go: "go build ./..."
+
+  - id: backlog_schema_valid
+    severity: error
+    description: "backlog.json validates against schema_version:1 + kind:kaizen.backlog"
+    probe: "python3 ${SCRIPTS}/backlog.py verify"
+
+  - id: backlog_md_in_sync
+    severity: error
+    description: "backlog.md regenerated from backlog.json (no hand-edit drift)"
+    probe: "python3 ${SCRIPTS}/backlog.py verify"
+
+  - id: structural_change_logs_to_progress
+    severity: error
+    description: "If diff is structural (new crate / carve / locked-rule), progress.md row appended"
+    probe_logic: |
+      Detect structural change via: new Cargo.toml, deleted Cargo.toml, new
+      crate dir, locked-rule keyword in CLAUDE.md diff. If any, require a
+      progress.md row in the same staged diff.
+
+  - id: plan_phase_tick
+    severity: error
+    description: "If a plan-file phase landed, the plan's checkbox is ticked in the same commit"
+    probe_logic: |
+      Scan staged diff for files matching plans/*.md or plans/archive/**/*.md.
+      If any, require at least one `- [x]` change in the staged plan file.
+
+  - id: no_deletion_without_auth
+    severity: error
+    description: "Pre-deletion belief — no `git rm` without explicit user authorization"
+    probe: "git diff --cached --diff-filter=D --name-only"
+    threshold_files: 0
+    bypass_env: KAIZEN_ALLOW_DELETE
+    error_message: |
+      Pre-deletion belief gate. Files staged for deletion require explicit
+      user authorization. Set KAIZEN_ALLOW_DELETE=1 for this commit only,
+      or unstage the deletion with `git restore --staged <file>`.
+
+  - id: no_amend_published
+    severity: error
+    description: "Never amend a commit that's been pushed"
+    probe_logic: "If HEAD has been pushed (git branch --contains HEAD shows remote refs), block --amend"
+
+  - id: no_skip_hooks
+    severity: warn
+    description: "--no-verify usage flagged (hook skipping is a code smell)"
+    probe_logic: "Check for KAIZEN_NO_VERIFY env var or --no-verify in invocation"
+
+  - id: paired_test_for_new_code
+    severity: warn
+    description: "New public function/class should have a paired test in the same commit"
+    probe_logic: "ast-grep for new pub fn / new test fn; warn on mismatch"
+    bypass_env: KAIZEN_SKIP_TDD_CHECK
+
+  - id: no_volatile_data_in_claude_md
+    severity: error
+    description: "CLAUDE.md must not contain SHAs, dates, or LOC numbers (volatile)"
+    probe_logic: |
+      grep staged CLAUDE.md for: \b[a-f0-9]{7,40}\b (sha), \d{4}-\d{2}-\d{2}
+      (date), \d+\s+LOC. Allow in code-fence examples.
+
+  - id: conventional_commit_subject
+    severity: error
+    description: "Commit message subject matches Conventional Commits format"
+    probe: "${SCRIPTS}/commit-msg.sh"
+
+  - id: read_after_mv
+    severity: warn
+    description: "Every `git mv` should be followed by a Read of the new path before editing"
+    probe_logic: "Audit-trail check — skip unless mv detected in staged"
+
+pre_deletion_belief:
+  enabled: true
+  description: |
+    Read → analyze → dedup → migrate → consolidate. Never `git rm` until
+    the user has explicitly approved that specific deletion.
+  scan_sources:
+    - "~/.claude/brain/Persona.md ## Top Beliefs"
+    - "<project>/.claude/projects/<slug>/memory/MEMORY.md"
+  bypass_env: KAIZEN_ALLOW_DELETE
+  error_action: confirm_or_abort
+  audit_log: ".kaizen/workflow/deletions.jsonl"
+  audit_log_format: jsonl
+  audit_log_fields:
+    - ts                # ISO UTC
+    - mechanism         # allowlist | bypass-env | no-belief
+    - files_count
+    - files             # array
+    - bypass_env        # null unless bypass-env mechanism
+    - reason
+    - branch
+    - pre_commit_head
+    - post_commit_head  # null in pre-commit; backfilled by post-commit hook (future)
+
+plan_files:
+  location: "plans/"
+  archive_location: "plans/archive/<YYYY-MM>/"
+  preserve_filename_through_archive: true  # so git log --follow works
+  triggers_for_new_plan:
+    - "≥3 phases"
+    - "carve-out trigger"
+    - "work needing a risk register"
+    - "cross-context migration"
+  status_block_format: |
+    ## Status
+    **DRAFT|IN-PROGRESS|COMPLETE|SUPERSEDED <YYYY-MM-DD>** — <one-line context>
+  status_values: [DRAFT, IN-PROGRESS, COMPLETE, SUPERSEDED]
+  required_sections:
+    - Status
+    - Goal
+    - "Current state"
+    - Invariants
+    - Phases
+    - "Verification commands"
+    - Rollback
+    - "Resume protocol"
+  phase_completion_rules:
+    - "When a phase lands, the plan file updates in the SAME commit"
+    - "Tick the phase's `- [x]` checkbox"
+    - "Update Status block if narrative changed"
+    - "No separate 'tick the boxes' commit afterwards"
+
+task_list_discipline:
+  # Applies to TodoWrite / TaskCreate session-scoped working memory.
+  scope: session_only
+  immutability:
+    completed: true   # Once moved to completed, never re-edit description/status
+  stale_task_handling:
+    resolved_this_session: mark_completed
+    blocked: "mark_completed with reason; new task tracks unfinished work"
+    abandoned: mark_deleted
+    in_progress_across_sessions: forbidden
+  single_in_progress: true   # Only one in_progress task at a time
+  long_horizon_belongs_in_plan_file: true  # ≥2-week trajectory → plans/ not TaskCreate
+
+backlog:
+  storage: ".kaizen/workflow/backlog.json"
+  rendered_view: ".kaizen/workflow/backlog.md"
+  schema_version: 1
+  kind: "kaizen.backlog"
+  edit_via: "scripts/backlog.py"   # NEVER hand-edit the .md
+  sections: [next_up, in_flight, done, parked, decisions]
+  transitions:
+    add: next_up
+    start: "next_up → in_flight"
+    tick: "in_flight → done"
+    park: "* → parked"
+  pre_commit_drift_check: true
+
+architecture_log:
+  path: ".kaizen/workflow/progress.md"
+  format: append_only_markdown_table
+  one_change_per_commit: true
+  recovery_for_missed_row:
+    pattern: "Follow-up `docs(progress)` commit referencing the missed sha"
+    forbidden: amend_previous
+
+recovery_patterns:
+  wrong_edit: "git diff <file> → git checkout -- <file>"
+  wrong_staged_file: "git restore --staged <file>"
+  before_commit: "git diff --staged"
+  mid_task_detour: "git stash → fix → git stash pop"
+  multi_file_op: "git status before + after"
+  failed_edit: "git diff first, diagnose before adding code"
+
+forbidden_without_explicit_permission:
+  - "git push --force"
+  - "git reset --hard"
+  - "git clean -fd"
+  - "git rebase against published branch"
+  - "git commit --no-verify"
+  - "git commit --no-gpg-sign"
+  - "cross-project commits"
+
+bash_invocation_discipline:
+  # Authoring rules for agents issuing Bash tool calls. CC's permission
+  # matcher reprompts on certain compound shapes even when Bash(*) is
+  # globally allowed. Following these rules minimises reprompts and keeps
+  # destructive ops auditable in their own tool-call frames.
+  description: |
+    How to author Bash tool calls so they don't trigger unnecessary
+    permission reprompts on a Bash(*)-allowlisted setup, AND so destructive
+    operations are isolated in their own call frames for clearer audit.
+  rules:
+    - id: rm_in_isolation
+      severity: hard
+      rule: "Never combine `rm` / `rm -rf` with other operations in one Bash call"
+      reason: "Destructive-op heuristic reprompts even when Bash(*) is allowed; isolation also makes audit trails clearer."
+      good: |
+        # Call 1 (setup): cd /tmp && mkdir test && cd test && git init -q
+        # Call 2 (test):  ...
+        # Call 3 (cleanup, separate): rm -rf "$TMPDIR"
+      bad: |
+        # ONE call: cd /tmp && rm -rf test && mkdir test && ...  ← reprompts
+
+    - id: export_over_envprefix
+      severity: soft
+      rule: "Prefer `export VAR=value; cmd` over `VAR=value cmd` inline"
+      reason: "CC's matcher parses first-word-as-binary; env-prefix can hide the actual command from Bash(*) matching."
+      good: "export KAIZEN_ALLOW_DELETE=1; git commit -m '...'"
+      bad: "KAIZEN_ALLOW_DELETE=1 git commit -m '...'"
+
+    - id: split_compound_when_destructive
+      severity: hard
+      rule: "Split multi-line `&&` chains into discrete Bash tool calls when any step is destructive"
+      reason: "Compound commands evaluated as one unit; one risky token pollutes the whole and triggers a single prompt for everything."
+      good: "Issue setup, test, cleanup as 3 separate Bash tool calls"
+      bad: "All-in-one: `setup && test && rm -rf cleanup` in one tool call"
+
+    - id: mktemp_for_scaffolds
+      severity: soft
+      rule: "Use `mktemp -d -t prefix-XXXX` for test scaffold dirs"
+      reason: "Avoids hardcoded /tmp/<name> paths that race with prior runs and forces unique-per-invocation cleanup."
+      good: "TMPDIR=$(mktemp -d -t deltest-XXXX)"
+      bad: "rm -rf /tmp/deltest && mkdir /tmp/deltest"
+
+    - id: find_delete_for_dir_empty
+      severity: soft
+      rule: "`find <path> -mindepth 1 -delete` is a quieter alternative to `rm -rf <path>/*` for emptying a dir"
+      reason: "Some heuristics flag rm -rf but allow find -delete (less broad blast radius pattern)."
+      good: "find ./.kaizen/cache -mindepth 1 -delete"
+      bad: "rm -rf ./.kaizen/cache/*"
+
+    - id: scope_tool_calls_narrowly
+      severity: soft
+      rule: "One logical operation per Bash tool call; avoid 5+ chained && commands"
+      reason: "Better debuggability + per-call permission decisions. Compound calls hide errors mid-chain."
+      good: "Three separate calls: build, test, package"
+      bad: "build && test && package && deploy && tag && push"
+  enforcement:
+    advisory_via_pretooluse_hook: true  # see references/orchestration.md for hook recipe
+    blocking: false                      # rules are guidance, not gates
+    consult_when_authoring: SKILL.md
+
+memory_hooks:
+  # Optional integration with the brain / project memory system.
+  pre_deletion_gate:
+    scan: ["brain/Persona.md", "projects/<slug>/memory/MEMORY.md"]
+    action: confirm_or_abort
+  pre_commit_capture:
+    description: "If commit codifies a new user rule, write to memory FIRST"
+    sequence:
+      - capture_to_memory
+      - stage_memory_write_alongside_code
+      - run_commit
+  post_commit_reflection:
+    description: "If commit landed an architectural decision, verify progress.md row + consider promoting to brain world-fact"
+
+claude_md_invariants:
+  # Rules about what belongs in CLAUDE.md vs elsewhere.
+  durable_only: true
+  forbidden_content:
+    - "specific commit SHAs"
+    - "specific dates (use progress.md)"
+    - "specific LOC numbers"
+    - "changelog entries"
+    - "point-in-time inventories"
+    - "todo lists"
+    - "handoff docs"
+    - "status reports"
+  tests_for_belonging:
+    - "Will this still be true in 6 months?"
+    - "Does this prescribe behavior, or describe state?"
+    - "Does this reference a specific commit, date, or LOC number?"
+  project_agnostic_meta_path: "skills/workflow/domain/git-discipline.yaml"
+  project_specific_path: "<project>/CLAUDE.md"

@@ -7,7 +7,7 @@ description: Install the kaizen pre-commit gate in the current git repo (local-o
 
 Activate the kaizen pre-commit gate in this repo. **Local-only** (per-clone `core.hooksPath`); never touches global git config.
 
-!`bash ${CLAUDE_PLUGIN_ROOT}/skills/kaizen/scripts/install.sh`
+!`bash ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/install.sh`
 
 ## What the installer does
 

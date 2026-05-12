@@ -1,39 +1,81 @@
 {
   "mcpServers": {
-    "kaizen-backlog": {
+    "backlog": {
       "command": "python3",
-      "args": ["${CLAUDE_PLUGIN_ROOT}/skills/kaizen/scripts/mcp_server.py"]
-    },
-    "kaizen-browser": {
-      "command": "uv",
       "args": [
-        "run",
-        "--script",
-        "${CLAUDE_PLUGIN_ROOT}/skills/kaizen/scripts/browser_mcp.py"
+        "${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/mcp_server.py"
       ]
     },
-    "kaizen-trace-search": {
+    "browser": {
       "command": "uv",
       "args": [
         "run",
         "--script",
-        "${CLAUDE_PLUGIN_ROOT}/skills/kaizen/scripts/trace_mcp.py"
+        "${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/browser_mcp.py"
       ]
     },
-    "kaizen-knowledge-search": {
+    "trace-search": {
       "command": "uv",
       "args": [
         "run",
         "--script",
-        "${CLAUDE_PLUGIN_ROOT}/skills/kaizen/scripts/knowledge_mcp.py"
+        "${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/trace_mcp.py"
       ]
     },
-    "kaizen-onboard-search": {
+    "knowledge-search": {
       "command": "uv",
       "args": [
         "run",
         "--script",
-        "${CLAUDE_PLUGIN_ROOT}/skills/kaizen/scripts/onboard_mcp.py"
+        "${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/knowledge_mcp.py"
+      ]
+    },
+    "onboard-search": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--script",
+        "${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/onboard_mcp.py"
+      ]
+    },
+    "claude-docs": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--script",
+        "${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/claude_docs_mcp.py"
+      ]
+    },
+    "scrape": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--script",
+        "${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/scrape_mcp.py"
+      ]
+    },
+    "state": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--script",
+        "${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/state_mcp.py"
+      ]
+    },
+    "lint": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--script",
+        "${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/lint_mcp.py"
+      ]
+    },
+    "workflow": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--script",
+        "${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/workflow_mcp.py"
       ]
     }
   }

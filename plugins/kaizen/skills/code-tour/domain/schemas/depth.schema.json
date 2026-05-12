@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kaizen.invalid/code-tour/schemas/depth.schema.json",
+  "title": "Code-tour depth tiers",
+  "type": "object",
+  "required": ["depths"],
+  "properties": {
+    "depths": {
+      "type": "object",
+      "patternProperties": {
+        "^(quick|standard|deep)$": {
+          "type": "object",
+          "required": ["min_steps", "max_steps"],
+          "properties": {
+            "min_steps": { "type": "integer", "minimum": 1 },
+            "max_steps": { "type": "integer", "minimum": 1 },
+            "use_for": { "type": "array", "items": { "type": "string" } },
+            "notes": { "type": "string" }
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

@@ -144,7 +144,7 @@ The kaizen plugin touches roughly 15 distinct data shapes. For each, two questio
 ```bash
 SCRIPT=$(python3 -c "import os, sys; print(os.path.realpath(sys.argv[1]))" "${BASH_SOURCE[0]}")
 PLUGIN_ROOT=$(cd "$(dirname "$SCRIPT")/.." && pwd)
-exec python3 "$PLUGIN_ROOT/skills/kaizen/scripts/<name>.py" "$@"
+exec python3 "$PLUGIN_ROOT/skills/workflow/scripts/<name>.py" "$@"
 ```
 
 14 wrappers × 3 lines = 42 lines of identical boilerplate. Same DRY violation that v1.6.2 fixed for hooks via `hooks/_trace.sh`.

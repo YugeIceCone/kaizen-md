@@ -31,7 +31,7 @@ If neither: this skill doesn't apply — kaizen isn't here.
 
 ### 1. Pre-commit gate (12 checks)
 
-Path: `<plugin>/skills/kaizen/scripts/pre-commit.sh` symlinked to `<repo>/.kaizen/hooks/pre-commit`.
+Path: `<plugin>/skills/workflow/scripts/pre-commit.sh` symlinked to `<repo>/.kaizen/hooks/pre-commit`.
 
 | # | Check | Block / Warn / Skip |
 |---|---|---|
@@ -228,7 +228,7 @@ When a task crosses your default knowledge, load these (via `Skill` tool):
 
 | Trigger | Skill |
 |---|---|
-| About to commit / cadence question / sizing dispute | `kaizen:kaizen` (the git-workflow Iron Laws) |
+| About to commit / cadence question / sizing dispute | `kaizen:workflow` (the git-workflow Iron Laws) |
 | Structural change touching layer boundaries | `kaizen:onion-ddd-workflow` |
 | Net-new code (no existing tests yet) | `kaizen:tdd` |
 | Code-quality dimension is named (DRY/KISS/SOLID/...) | `kaizen:<principle>` |
@@ -251,4 +251,4 @@ When a task crosses your default knowledge, load these (via `Skill` tool):
 
 `<plugin>/.claude-plugin/plugin.json` + `<plugin>/CHANGELOG.md`. Check the latter for the most recent fixes when something feels off; the gate's check list, hook tracing schema, and tool surface evolve.
 
-This skill is the index, not the truth — when in doubt, read the actual `<plugin>/skills/kaizen/SKILL.md` (the canonical git-workflow rulebook) or the specific tool's `--help` output.
+This skill is the index, not the truth — when in doubt, read the actual `<plugin>/skills/workflow/SKILL.md` (the canonical git-workflow rulebook) or the specific tool's `--help` output.

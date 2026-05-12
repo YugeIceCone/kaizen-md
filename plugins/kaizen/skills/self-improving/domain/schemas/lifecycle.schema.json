@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kaizen.invalid/self-improving/schemas/lifecycle.schema.json",
+  "title": "Self-improving promotion lifecycle",
+  "type": "object",
+  "required": ["lifecycle", "sub_flows"],
+  "additionalProperties": true,
+  "properties": {
+    "lifecycle": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id"],
+        "additionalProperties": true,
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" },
+          "actor": { "enum": ["claude", "user", "system"] },
+          "threshold": { "type": "string" },
+          "detector": { "type": "string" },
+          "blocking": { "type": "boolean" },
+          "description": { "type": "string" },
+          "output": { "type": "string" },
+          "routing_table": { "type": "object", "additionalProperties": { "type": "string" } },
+          "actions": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "sub_flows": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "description"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z][a-z0-9_-]*$" },
+          "description": { "type": "string" },
+          "inputs": { "type": "array", "items": { "type": "string" } },
+          "output_format": { "type": "string" },
+          "side_effects": {
+            "oneOf": [
+              { "type": "array", "items": { "type": "string" } },
+              { "const": "none" }
+            ]
+          },
+          "requires": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "delegates_to": { "type": "object", "additionalProperties": { "type": "string" } }
+  }
+}

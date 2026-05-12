@@ -7,4 +7,4 @@
 set -uo pipefail
 SCRIPT=$(python3 -c "import os, sys; print(os.path.realpath(sys.argv[1]))" "${BASH_SOURCE[0]}")
 PLUGIN_ROOT=$(cd "$(dirname "$SCRIPT")/.." && pwd)
-exec uv run --script "$PLUGIN_ROOT/skills/kaizen/scripts/models.py" "$@"
+exec uv run --script "$PLUGIN_ROOT/skills/workflow/scripts/models.py" "$@"

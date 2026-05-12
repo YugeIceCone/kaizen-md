@@ -1,6 +1,6 @@
 # Kaizen JSON Schemas
 
-Formal JSON Schema (draft 2020-12) definitions for kaizen's main data shapes. Mirrors of the dataclasses in `skills/kaizen/scripts/schemas.py` (the runtime SSOT). Consumed by editors / IDEs / external validators (`ajv`, `jsonschema`, yaml-language-server).
+Formal JSON Schema (draft 2020-12) definitions for kaizen's main data shapes. Mirrors of the dataclasses in `skills/workflow/scripts/schemas.py` (the runtime SSOT). Consumed by editors / IDEs / external validators (`ajv`, `jsonschema`, yaml-language-server).
 
 ## Inventory
 
@@ -56,7 +56,7 @@ jsonschema.validate(doc, schema)
 
 ## Keeping in sync with `schemas.py`
 
-The dataclasses in `skills/kaizen/scripts/schemas.py` are the **runtime** SSOT — scripts construct + validate via them. The JSON Schemas here are the **tooling** SSOT — IDE validation + external linters. Keep both up to date when adding fields:
+The dataclasses in `skills/workflow/scripts/schemas.py` are the **runtime** SSOT — scripts construct + validate via them. The JSON Schemas here are the **tooling** SSOT — IDE validation + external linters. Keep both up to date when adding fields:
 
 1. Add the field to the dataclass + `_self_test()` round-trip.
 2. Add the field to the matching JSON Schema (mind required vs optional).

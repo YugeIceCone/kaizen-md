@@ -11,7 +11,7 @@ cd kaizen-md
 bash plugins/kaizen/scripts/install.sh
 
 # 2. Run the test pipeline before changing anything
-bash plugins/kaizen/skills/kaizen/scripts/test-pipeline.sh
+bash plugins/kaizen/skills/workflow/scripts/test-pipeline.sh
 # Should: 29/29 pass
 
 # 3. Make changes, re-run test
@@ -44,7 +44,7 @@ The plugin's own pre-commit gate enforces:
 
 ## Pull-request checklist
 
-- [ ] `bash plugins/kaizen/skills/kaizen/scripts/test-pipeline.sh` → all green
+- [ ] `bash plugins/kaizen/skills/workflow/scripts/test-pipeline.sh` → all green
 - [ ] New scripts pass `bash -n` syntax check
 - [ ] New commands have proper YAML frontmatter (`name:` + `description:`)
 - [ ] `/kaizen:doctor` reports healthy
@@ -56,7 +56,7 @@ The plugin's own pre-commit gate enforces:
 
 - **Bundled skills are vendored, not modified.** If a bundled skill needs a change, send the patch upstream first (Jordan Coin Jackson for coding-skills; Jesse Vincent for superpowers; Gabi Fratica for remember); the bundle here is a refresh of upstream.
 - **Plugin-original code** lives in:
-  - `skills/kaizen/` (the discipline itself)
+  - `skills/workflow/` (the discipline itself)
   - `scripts/`, `commands/`, `hooks/` (plugin entry points)
   - `LICENSE`, `README.md`, `ATTRIBUTIONS.md`, `CHANGELOG.md`, `CONTRIBUTING.md`
 - **Cross-platform first.** Linux GNU + macOS BSD both supported. `python3` is the only hard dependency beyond `bash` + `git`.
@@ -100,7 +100,7 @@ cp -rp ~/.claude/plugins/cache/codingskills/coding-skills/*/skills/kiss/. \
        plugins/kaizen/skills/kiss/
 
 # 4. Test pipeline regression (must stay 29/29+ green)
-bash plugins/kaizen/skills/kaizen/scripts/test-pipeline.sh
+bash plugins/kaizen/skills/workflow/scripts/test-pipeline.sh
 
 # 5. Update ATTRIBUTIONS.md if upstream versioning shifted (rare)
 #    Update CHANGELOG.md with the refresh entry under [Unreleased]

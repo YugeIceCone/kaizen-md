@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "kind": "kaizen.backlog",
+  "metadata": {
+    "created": "2026-05-12",
+    "updated": "2026-05-12",
+    "active_workflow_ref": null
+  },
+  "items": [],
+  "decisions": []
+}

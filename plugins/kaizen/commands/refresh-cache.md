@@ -7,7 +7,7 @@ description: Force Claude Code's plugin cache to match the kaizen source. Solves
 
 Forces Claude Code's plugin cache to match the source on disk.
 
-!`bash ${CLAUDE_PLUGIN_ROOT}/skills/kaizen/scripts/refresh-cache.sh ${ARGUMENTS:-}`
+!`bash ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/refresh-cache.sh ${ARGUMENTS:-}`
 
 ## Why this exists
 

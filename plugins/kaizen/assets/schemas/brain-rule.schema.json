@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/YugeIceCone/kaizen-md/assets/schemas/brain-rule.schema.json",
   "title": "Kaizen brain-sourced behaviour rule",
-  "description": "The `kaizen:` block in the YAML frontmatter of `~/.claude/brain/Notes/*.md`. Parsed by skills/kaizen/scripts/rules.py. Each note becomes one runtime rule the pre-commit gate + vibe-check consult.",
+  "description": "The `kaizen:` block in the YAML frontmatter of `~/.claude/brain/Notes/*.md`. Parsed by skills/workflow/scripts/rules.py. Each note becomes one runtime rule the pre-commit gate + vibe-check consult.",
   "oneOf": [
     { "$ref": "#/$defs/DeletionAllow" },
     { "$ref": "#/$defs/CheckSeverity" },

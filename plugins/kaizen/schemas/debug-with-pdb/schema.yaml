@@ -1,0 +1,201 @@
+# yaml-language-server: $schema=../../assets/schemas/workflow.schema.json
+# Debug-with-pdb workflow — 8-phase loop for Python bug investigation using
+# `breakpoint()` / `pdb`. Pairs with the kaizen `systematic-debugging` skill;
+# this schema codifies the *artifact-producing* discipline (vs. the skill's
+# prose guidance).
+#
+# Reference: https://www.geeksforgeeks.org/python/debugging-python-code-using-breakpoint-and-pdb/
+#
+# Phase ordering enforces "verify-cause-before-fix" — the canonical TDD-for-
+# bugs cycle. You write a failing test FOR THE BUG before writing the fix.
+# That test then becomes the regression guard. Skipping verify-cause is the
+# most common debugging anti-pattern; the gate blocks fix until cause_test
+# is RED.
+#
+# pdb command crib-sheet (most-used 8):
+#   n  next line (same fn)            l  list source around cursor
+#   s  step into called fn             p <expr>  print expression value
+#   c  continue to next breakpoint    pp <expr> pretty-print
+#   b <file>:<line>  set breakpoint    w  where: print stack trace
+#   q  quit debugger                   u/d  up/down a stack frame
+
+name: debug-with-pdb
+version: 1
+description: |
+  Eight-phase Python-debugging workflow gated by verify-cause-before-fix.
+  Each phase produces a durable artifact under `.kaizen/workflow/debug/`
+  so the bug investigation is reproducible from the audit trail alone.
+
+  Suitable for: non-trivial bugs (production failures, intermittent test
+  flakes, "works on my machine" mysteries) where you need a paper trail
+  + a regression test in the suite.
+
+  Skip this schema for: one-line typos, trivially-reproducible errors
+  caught by the type checker, or anything where the fix is obvious
+  from the stack trace.
+
+artifacts:
+  - id: reproduce
+    generates: repro.md
+    template: repro.md
+    requires: []
+    description: |
+      Phase 1 — capture a minimal reproducible failure. Without this,
+      every later phase is debugging-by-guess. Produce repro.md with:
+        - exact failing command + env
+        - inputs that trigger the failure (smallest possible)
+        - observed stderr / exit code / stack trace
+        - expected behavior
+      Gate: do not proceed until the failure is reproducible at will
+      from this artifact alone. If reproduction is flaky, document
+      flake rate (e.g. "fails 3/10 runs") and continue with that
+      caveat — partial repro is better than guess-debugging.
+
+  - id: isolate
+    generates: breakpoints.md
+    template: breakpoints.md
+    requires: [reproduce]
+    description: |
+      Phase 2 — choose where to set `breakpoint()` calls. List each
+      `file:line` location with the hypothesis it tests
+      ("am I getting here?", "what's the value of X here?",
+      "is this branch taken?"). 2-5 breakpoints; more is shotgunning.
+
+      Pattern: bisect the suspect code path. If the failure manifests
+      at line 200, set one near line 50 (entry-ish) and one near
+      line 150 (mid-path). Step through between them with `n` / `s`.
+
+      Use Python 3.7+ `breakpoint()` form, not legacy
+      `import pdb; pdb.set_trace()`. Set `PYTHONBREAKPOINT=0` in CI
+      to silently no-op these in production.
+
+  - id: inspect
+    generates: inspection.md
+    template: inspection.md
+    requires: [isolate]
+    description: |
+      Phase 3 — run the repro with `breakpoint()` calls in place.
+      At each breakpoint capture:
+        - local variable values (via `p` / `pp`)
+        - relevant stack frame state (`w` for trace, `u`/`d` to walk)
+        - types where polymorphism might matter (`p type(x)`)
+        - actual vs. expected at this point
+      Write findings to inspection.md keyed by breakpoint id.
+
+      The artifact's value is in being able to re-read the captured
+      state weeks later without re-running pdb.
+
+  - id: hypothesize
+    generates: hypothesis.md
+    template: hypothesis.md
+    requires: [inspect]
+    description: |
+      Phase 4 — formulate ONE testable hypothesis about the root cause.
+      Format: "The bug occurs because <causal mechanism>; specifically,
+      when <condition>, <observed behavior> instead of <expected>."
+
+      One sentence. If you can't compress to one sentence, the
+      inspect/isolate phases need another round.
+
+      Gate: hypothesis must be falsifiable — i.e. expressible as
+      "if I make change X, observable Y will result." Vague "something
+      with caching" doesn't pass.
+
+  - id: verify-cause
+    generates: cause_test.py
+    template: cause_test.py
+    requires: [hypothesize]
+    description: |
+      Phase 5 (the canonical RED step) — write a test that exercises
+      the hypothesis. The test MUST fail with the current code in
+      the way the hypothesis predicts. If it passes, hypothesis is
+      wrong → return to inspect.
+
+      The test goes in the project's test suite (not under .kaizen/),
+      named to flag the bug being verified
+      (e.g. `test_user_lookup_with_unicode_name__bug123`).
+
+      Gate: fix may not begin until cause_test is RED for the
+      hypothesized reason. RED-for-other-reason (import error,
+      fixture missing) is not a valid pass of this gate.
+
+  - id: fix
+    generates: fix.md
+    template: fix.md
+    requires: [verify-cause]
+    description: |
+      Phase 6 (GREEN) — minimal code change that flips cause_test to
+      green. Resist scope creep — fix this bug, not adjacent code
+      smells. Adjacent smells get filed to BACKLOG.md.
+
+      Produce fix.md with:
+        - diff summary (which lines changed; why)
+        - cause_test now passing (paste output)
+        - regression suite still green (full test run output)
+        - any breakpoint() calls REMOVED from the source
+
+      Pre-commit gate's pre-deletion belief still applies — if the
+      fix removes code, get explicit user authorization.
+
+  - id: regression
+    generates: regression.md
+    template: regression.md
+    requires: [fix]
+    description: |
+      Phase 7 — promote cause_test to a permanent regression guard.
+      Either: leave it in its current location with a docstring
+      explaining the bug it guards against (and link to repro.md);
+      or: move it to a project-specific `tests/regression/` if the
+      project has that convention.
+
+      Record in regression.md: test path, the commit that introduced
+      the test, the commit that contained the fix.
+
+  - id: postmortem
+    generates: postmortem.md
+    template: postmortem.md
+    requires: [regression]
+    description: |
+      Phase 8 — extract learnings. What made the bug hard to find?
+      What earlier signal could have caught it (a type hint, a
+      linter rule, an assertion, a property test, a logging line)?
+      File any concrete next-action as a BACKLOG.md entry.
+
+      This is the phase most often skipped under time pressure;
+      it's also the phase that compounds. Skip it and you debug
+      the same class of bug forever.
+
+  # ─── Branching policy (advisory) ─────────────────────────────────
+  - id: investigate-deeper
+    generates: investigation.md
+    template: investigation.md
+    requires: [reproduce]
+    branch_low: [reproduce, isolate, inspect, hypothesize, verify-cause, fix, regression, postmortem]
+    description: |
+      Optional branch — fires when reproduce.md ends with
+      "Confidence < 50%" (intermittent / not-reliably-reproducible
+      bug). Add deeper instrumentation: logging timestamps,
+      `sys.settrace` tracing, `faulthandler.dump_traceback_later`,
+      tracemalloc for memory growth, etc. Re-run until repro stabilises,
+      then loop back to isolate.
+
+apply:
+  gate: verify-cause
+  progress: regression.md
+  description: |
+    The hard gate is verify-cause: fix may not begin until a RED
+    test pins the hypothesised cause. This enforces the TDD-for-bugs
+    cycle that distinguishes systematic debugging from
+    print-statement archaeology.
+
+# ─── Composition notes ────────────────────────────────────────────────
+#
+# Pairs with these existing skills:
+#   - systematic-debugging        prose guidance for the same shape
+#   - test-driven-development     RED-GREEN-REFACTOR discipline
+#   - executing-plans             phase-by-phase execution rigour
+#
+# Invoke this schema via:
+#   /workflow schema=debug-with-pdb
+# or inspect via:
+#   /kaizen:schema branches debug-with-pdb verify-cause

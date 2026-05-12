@@ -85,13 +85,13 @@ Measure: track via `kaizen-trace query --evt PostToolUse-bash --since 7d | grep 
 
 ## What this skill ≠
 
-- ≠ `kaizen:kaizen` (the git-workflow rulebook). This is upstream — applied BEFORE staging. Kaizen-gate is the enforcement layer.
+- ≠ `kaizen:workflow` (the git-workflow rulebook). This is upstream — applied BEFORE staging. Kaizen-gate is the enforcement layer.
 - ≠ `kaizen:tdd` (test-first discipline for net-new). This is the discipline AFTER an AI produces a draft; tdd is for new code you write deliberately.
 - ≠ a replacement for code review. It's the agent's self-review pass that precedes human review.
 
 ## Related skills
 
-- `kaizen:kaizen` — the gate that enforces the checklist
+- `kaizen:workflow` — the gate that enforces the checklist
 - `kaizen:plugin-pitfalls` — concrete anti-pattern catalogue
 - `kaizen:behaviour-config` — how to author brain rules (incl. `dependency-allowlist`)
 - `kaizen:writing-plans` — when a vibe-coded change grows beyond micro size

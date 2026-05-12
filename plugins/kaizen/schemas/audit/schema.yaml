@@ -1,0 +1,118 @@
+# yaml-language-server: $schema=../../assets/schemas/workflow.schema.json
+# Audit workflow schema — declarative form of the v1.0+ hardcoded
+# `audit` routine. Multi-phase comprehensive review producing a
+# severity-classified formal report + a remediation plan.
+
+name: audit
+version: 1
+description: |
+  Eight-phase comprehensive audit. Produces a severity-classified
+  formal report (Critical/High/Medium/Low/Info) across security,
+  architecture, tech-debt, dependencies, coverage, documentation,
+  compliance — plus a phased remediation plan for the top findings.
+
+  Suitable for: pre-release audits, quarterly/monthly cadence checks,
+  post-incident systemic-gap analysis, entering an unfamiliar codebase.
+
+  Pair with /kaizen:review for per-change checks (audit is periodic +
+  comprehensive; review is diff-time + fast).
+
+artifacts:
+  - id: explore
+    generates: explore.md
+    template: null
+    requires: []
+    description: |
+      Phase 1 — map the codebase. Entry points, modules, dependency
+      direction, layering (Onion / Clean / Hexagonal). Output: file
+      tree + LOC by language + module dependency graph.
+
+  - id: detect-stack
+    generates: stack.md
+    template: null
+    requires: [explore]
+    description: |
+      Phase 2 — identify languages, frameworks, build tools, test
+      runners, linters in use. Affects which audit dimensions apply
+      (e.g. Rust → clippy; TS → ESLint; Python → mypy/ruff).
+
+  - id: research
+    generates: research.md
+    template: null
+    requires: [detect-stack]
+    description: |
+      Phase 3 — gather external context. Recent CVEs for detected
+      deps. Best-practice changes for the framework. Standards
+      relevant to the domain (OWASP, GDPR, HIPAA, etc).
+
+  - id: audit
+    generates: audits/<UTC>-<scope>.md
+    template: null
+    requires: [research]
+    description: |
+      Phase 4 (THE CORE) — run the audit across 7 dimensions:
+        - security    (secrets, unsafe code, eval/exec/shell, deps)
+        - architecture (layer violations, dep direction, cycles)
+        - tech-debt   (TODO/FIXME/XXX/HACK density, dead code)
+        - dependencies (outdated, vulnerable, license issues)
+        - coverage    (test/src ratio, untested critical paths)
+        - documentation (README, CLAUDE.md, architecture log)
+        - compliance  (LICENSE, attribution, policy docs)
+
+      Each finding: severity + file:line + rule broken + fix shape.
+      Output goes to `<repo>/.kaizen/workflow/audits/<UTC>-<scope>.md`.
+
+  - id: analyze
+    generates: analyze.md
+    template: null
+    requires: [audit]
+    description: |
+      Phase 5 — synthesize. Group findings by root cause. Identify
+      systemic gaps vs one-off bugs. Confidence-score each finding
+      (high/medium/low) to drive remediation priority.
+
+  - id: review
+    generates: review.md
+    template: null
+    requires: [analyze]
+    description: |
+      Phase 6 — second pass with `agent-aegis` (security) and
+      `kaizen-debt-auditor` (architecture/principles) if available.
+      Their findings augment the script's. Reconcile conflicts.
+
+  - id: create-plan
+    generates: plans/<date>-audit-remediation.md
+    template: null
+    requires: [review]
+    description: |
+      Phase 7 — phased remediation plan for the top Critical + High
+      findings. Per kaizen Iron Laws: ≥3 phases → plan file; smaller
+      remediations → BACKLOG.md micros with `tag=from-audit`.
+
+  - id: create-tasks
+    generates: tasks.md
+    template: null
+    requires: [create-plan]
+    description: |
+      Phase 8 — task briefs for the top-3 highest-severity items.
+      Each task: files, verify command, gate before next task. Lower-
+      severity findings stay in BACKLOG.md until pulled into a sprint.
+
+apply:
+  gate: audit
+  progress: audits/<UTC>-<scope>.md
+  description: |
+    Hard gate is audit: the formal report must be written before
+    analyze/review begins. The report is the durable artifact even
+    if remediation never lands; it's the audit-trail for compliance
+    and a future-audit comparison baseline.
+
+# Composition notes:
+#   - skills used: code-router (review category routing), agent-aegis
+#     (security), kaizen-debt-auditor (architecture + 8-principles)
+#   - agent dispatch: --agent flag fires agent-aegis + kaizen-debt-auditor
+#     in parallel as part of phase 6
+#   - pair with structural lint rules (rules/lints/onion-*.yml) for
+#     ast-grep-driven architectural findings
+#
+# Invoke: /workflow schema=audit  OR  /kaizen:audit (the slash form)

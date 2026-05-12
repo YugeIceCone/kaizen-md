@@ -1,0 +1,4 @@
+interface:
+  display_name: "Synthesize"
+  short_description: "Merge parallel outputs coherently"
+  default_prompt: "Use $synthesize to merge these parallel findings into one coherent result."

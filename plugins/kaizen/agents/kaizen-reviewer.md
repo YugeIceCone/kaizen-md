@@ -36,7 +36,7 @@ You are spawned with `isolation: "worktree"` so you read an isolated copy of the
 1. `git diff --cached --stat` — files staged
 2. `git diff --cached` — full staged diff
 3. `${REPO_ROOT}/.kaizen.toml` — project config (`compile_check_cmd`, `verify_cmd`, `architecture_log`, `backlog_path`)
-4. `python3 ${CLAUDE_PLUGIN_ROOT}/skills/kaizen/scripts/rules.py list` — active brain-sourced rules
+4. `python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/rules.py list` — active brain-sourced rules
 5. `git log -1 --format=%s%n%b HEAD` — recent commit style for Conventional Commits regex match
 6. `${REPO_ROOT}/.kaizen/cache/agent-reviewer-<diff-sha1>.json` — if cached, read and return immediately
 
@@ -55,7 +55,7 @@ You are spawned with `isolation: "worktree"` so you read an isolated copy of the
 | 9 | `secret-detection` | grep diff for `AKIA[0-9A-Z]{16}`, `-----BEGIN .* PRIVATE KEY-----`, `password\s*=\s*['"]` |
 | 10 | `backlog-drift` | If `backlog.md` is in the diff but `.json` isn't, or vice versa → drift |
 
-Each check has a severity from `rules.py severity <check_id>` (default: see table in `kaizen:kaizen` PART 3). Severity values: `skip`, `warn`, `block`.
+Each check has a severity from `rules.py severity <check_id>` (default: see table in `kaizen:workflow` PART 3). Severity values: `skip`, `warn`, `block`.
 
 ## Output schema (strict JSON, write to stdout)
 

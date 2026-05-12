@@ -1,0 +1,107 @@
+# yaml-language-server: $schema=./schemas/principle.schema.json
+#
+# Karpathy's 4 coding principles — canonical declarative form.
+# Consumed by:
+#   - skills/karpathy/scripts/{complexity_checker,diff_surgeon,assumption_linter,goal_verifier}.py
+#     (each scanner targets one principle by id)
+#   - skills/karpathy/application/codegen.py (regenerates the SKILL.md
+#     "## The four principles" section from this yaml)
+#   - kaizen:workflow `coding_skills: [karpathy]` cross-link
+#
+# DO NOT hand-edit the regenerated SKILL.md section. Edit this yaml, then
+# run application/codegen.py.
+
+principles:
+  - id: think_before_coding
+    number: 1
+    title: "Think Before Coding"
+    rule: "Don't assume. Don't hide confusion. Surface tradeoffs."
+    scanner: assumption_linter.py
+    duties:
+      - "State assumptions explicitly. If uncertain, ask."
+      - "If multiple interpretations exist, present them — don't pick silently."
+      - "If a simpler approach exists, say so. Push back when warranted."
+      - "If something is unclear, stop. Name what's confusing. Ask."
+    test: "Does the work surface every load-bearing assumption?"
+    anti_patterns:
+      - silent_interpretation
+      - hidden_assumption
+      - skipped_clarification
+      - no_tradeoff_surfacing
+
+  - id: simplicity_first
+    number: 2
+    title: "Simplicity First"
+    rule: "Minimum code that solves the problem. Nothing speculative."
+    scanner: complexity_checker.py
+    duties:
+      - "No features beyond what was asked."
+      - "No abstractions for single-use code."
+      - "No 'flexibility' or 'configurability' that wasn't requested."
+      - "No error handling for impossible scenarios."
+      - "If you write 200 lines and it could be 50, rewrite it."
+    test: "Would a senior engineer say this is overcomplicated? If yes, simplify."
+    anti_patterns:
+      - premature_abstraction
+      - speculative_flexibility
+      - impossible_branch_handling
+      - over_long_functions
+      - deep_nesting
+      - excessive_class_count
+    pairs_with: [kaizen:kiss, kaizen:yagni]
+
+  - id: surgical_changes
+    number: 3
+    title: "Surgical Changes"
+    rule: "Touch only what you must. Clean up only your own mess."
+    scanner: diff_surgeon.py
+    duties:
+      - "Don't 'improve' adjacent code, comments, or formatting."
+      - "Don't refactor things that aren't broken."
+      - "Match existing style, even if you'd do it differently."
+      - "If you notice unrelated dead code, mention it — don't delete it."
+      - "Remove imports/variables/functions that YOUR changes made unused."
+      - "Don't remove pre-existing dead code unless asked."
+    test: "Every changed line should trace directly to the user's request."
+    anti_patterns:
+      - drive_by_refactor
+      - comment_only_noise
+      - whitespace_drift
+      - style_drift
+      - opportunistic_dead_code_removal
+    pairs_with: [kaizen:dry, kaizen:boy-scout-rule]
+
+  - id: goal_driven_execution
+    number: 4
+    title: "Goal-Driven Execution"
+    rule: "Define success criteria. Loop until verified."
+    scanner: goal_verifier.py
+    duties:
+      - "State a brief plan with verification per step for multi-step tasks."
+      - "Replace vague goals ('add validation') with verifiable goals ('write tests for invalid inputs, then make them pass')."
+      - "Pair every step with a check that fires when the step is done."
+    test: "Is there a machine-checkable signal that the step is complete?"
+    transforms:
+      - from: "Add validation"
+        to: "Write tests for invalid inputs, then make them pass"
+      - from: "Fix the bug"
+        to: "Write a test that reproduces it, then make it pass"
+      - from: "Refactor X"
+        to: "Ensure tests pass before and after"
+    anti_patterns:
+      - vague_success_criteria
+      - missing_test_assertion
+      - unverifiable_step
+    pairs_with: [kaizen:tdd, kaizen:test-driven-development]
+
+# When to relax (carry-over from upstream — applies to all 4 principles).
+relax_when:
+  - "Trivial tasks (typo fixes, obvious one-liners)"
+  - "Throwaway prototypes the user has explicitly marked as such"
+
+# Enforcement matters most on:
+enforce_when:
+  - "Non-trivial implementations (>20 lines changed)"
+  - "Code you don't fully understand"
+  - "Multi-step tasks with unclear requirements"
+  - "Anything that will be reviewed by humans"

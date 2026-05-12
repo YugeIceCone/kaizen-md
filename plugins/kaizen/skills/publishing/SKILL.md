@@ -164,7 +164,7 @@ A failed CI run on the initial commit usually means a path issue from sed-rename
 This skill ships with `scripts/publish.sh` — wraps the standard sequence + failure-mode handling as subcommands. See:
 
 ```bash
-bash ${CLAUDE_PLUGIN_ROOT}/skills/kaizen/scripts/publish.sh --help
+bash ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/publish.sh --help
 ```
 
 Slash command: `/kaizen:publish`.

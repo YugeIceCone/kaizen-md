@@ -7,7 +7,7 @@ description: Migrate kaizen's pre-v1.22 scattered state into the unified ~/.clau
 
 One-shot mover from the v1.21-and-earlier scatter to the v1.22.0+ unified layout.
 
-!`bash ${CLAUDE_PLUGIN_ROOT}/skills/kaizen/scripts/migrate_paths.sh ${ARGUMENTS}`
+!`bash ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/migrate_paths.sh ${ARGUMENTS}`
 
 ## What it moves
 

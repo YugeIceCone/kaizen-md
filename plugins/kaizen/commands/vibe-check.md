@@ -7,7 +7,7 @@ description: Run the vibe-coding discipline checklist against the currently stag
 
 Runs the discipline gate over the staged diff with AI-coding specific augmentations on top of `/kaizen:gate`'s 12 checks.
 
-!`bash ${CLAUDE_PLUGIN_ROOT}/skills/kaizen/scripts/vibe_check.sh`
+!`bash ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/vibe_check.sh`
 
 ## What it adds on top of `/kaizen:gate`
 

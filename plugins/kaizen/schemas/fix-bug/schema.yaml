@@ -1,0 +1,128 @@
+# yaml-language-server: $schema=../../assets/schemas/workflow.schema.json
+# Fix-bug workflow schema — declarative form of the v1.0+ hardcoded
+# `fix-bug` routine, with verify-cause-before-fix as the hard gate.
+#
+# Generalises `debug-with-pdb` (Python-specific) to any language. Use
+# `debug-with-pdb` for Python-specific pdb command crib-sheets; use
+# this schema for the general TDD-for-bugs cycle.
+#
+# Phase ordering enforces: reproduce → debug → analyze → verify-cause
+# (RED) → fix (GREEN) → review → validate → report. Skipping
+# verify-cause is the most common debugging anti-pattern — the gate
+# blocks fix until cause_test is RED.
+
+name: fix-bug
+version: 1
+description: |
+  Seven-phase bug-fix workflow gated by verify-cause-before-fix.
+  Each phase produces a durable artifact under `.kaizen/workflow/<routine>/`
+  so the investigation is reproducible from the audit trail alone.
+
+  Suitable for: production bugs, intermittent failures, "works on my
+  machine" mysteries — anywhere you need a paper trail + a regression
+  test landed in the suite.
+
+  Skip for: trivial typos, errors the type checker catches at edit time,
+  any fix obvious from the stack trace.
+
+artifacts:
+  - id: reproduce
+    generates: repro.md
+    template: null
+    requires: []
+    description: |
+      Phase 1 — minimal reproducible failure. Inputs that trigger it,
+      observed stderr/exit code, expected behavior. Without repro,
+      every later phase is guess-debugging. Flaky repro: document
+      flake rate ("fails 3/10 runs") and continue.
+
+  - id: debug
+    generates: debug-notes.md
+    template: null
+    requires: [reproduce]
+    description: |
+      Phase 2 — observe + instrument. Set breakpoints (Python:
+      `breakpoint()`; JS: `debugger;`; Rust: `dbg!`; Go: `Delve`).
+      Capture local state, types, stack frames. Use trace/log
+      instrumentation for prod-only or intermittent bugs.
+
+  - id: analyze
+    generates: analyze.md
+    template: null
+    requires: [debug]
+    description: |
+      Phase 3 — formulate ONE testable hypothesis about the root
+      cause. Format: "The bug occurs because <causal mechanism>;
+      specifically, when <condition>, <observed> instead of <expected>."
+      One sentence. If you can't compress, return to debug.
+
+  - id: verify-cause
+    generates: cause_test (in project test suite)
+    template: null
+    requires: [analyze]
+    description: |
+      Phase 4 (THE GATE — canonical RED step) — write a test that
+      exercises the hypothesis. The test MUST fail with current code
+      in the way the hypothesis predicts. If it passes, hypothesis
+      is wrong → return to debug.
+
+      Test goes in the project's test suite, named to flag the bug
+      (e.g. `test_user_lookup_with_unicode_name__bug123`).
+
+      Gate: fix may not begin until cause_test is RED for the
+      hypothesized reason.
+
+  - id: fix
+    generates: fix.md
+    template: null
+    requires: [verify-cause]
+    description: |
+      Phase 5 (GREEN) — minimal code change that flips cause_test to
+      green. Resist scope creep — fix THIS bug, not adjacent smells.
+      Adjacent smells → BACKLOG.md.
+
+      Output: diff summary, cause_test now passing, full suite green,
+      breakpoint() calls removed. Pre-deletion belief still applies.
+
+  - id: review
+    generates: review.md
+    template: null
+    requires: [fix]
+    description: |
+      Phase 6 — self-review + (optional) kaizen-reviewer agent
+      dispatch. Check: cause_test promoted as regression guard;
+      no debug noise left; commit-message includes "fixes <issue>".
+
+  - id: validate
+    generates: validate.md
+    template: null
+    requires: [review]
+    description: |
+      Phase 7 — full test suite + integration checks + (if applicable)
+      smoke against prod-like environment. All gates green.
+
+  - id: report
+    generates: report.md
+    template: null
+    requires: [validate]
+    description: |
+      Phase 8 — postmortem-lite. What signal could have caught this
+      earlier (linter, assertion, type hint, property test)? File
+      next-actions as BACKLOG.md entries. Skipping this is how the
+      same class of bug recurs.
+
+apply:
+  gate: verify-cause
+  progress: fix.md
+  description: |
+    Hard gate is verify-cause: fix may not begin until a RED test
+    pins the hypothesised cause. This enforces TDD-for-bugs and
+    distinguishes systematic debugging from print-statement
+    archaeology.
+
+# Composition notes:
+#   - language-specific: pair with `debug-with-pdb` (Python)
+#   - skills used: systematic-debugging, test-driven-development,
+#     verification-before-completion, finishing-a-development-branch
+#
+# Invoke: /workflow schema=fix-bug

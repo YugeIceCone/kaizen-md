@@ -7,7 +7,7 @@ description: Run kaizen hygiene checks + safe auto-cleanups. Five checks: prune 
 
 On-demand hygiene checks + auto-applicable safe cleanups.
 
-!`python3 ${CLAUDE_PLUGIN_ROOT}/skills/kaizen/scripts/hygiene.py ${ARGUMENTS:-check}`
+!`python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/hygiene.py ${ARGUMENTS:-check}`
 
 ## Checks
 

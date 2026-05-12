@@ -1,0 +1,12 @@
+# kaizen — per-dir gitignore.
+#
+# Ignores ephemeral kaizen state (cache/, hooks/, trace/, daemon
+# socket, etc.). Durable workflow artifacts under workflow/ stay
+# tracked: progress.md (architecture log), backlog.{json,md},
+# audits/ (durable reports). This keeps the rule local to .kaizen/
+# so the repo root's .gitignore stays project-focused.
+
+*
+!.gitignore
+!workflow/
+!workflow/**

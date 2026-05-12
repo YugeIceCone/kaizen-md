@@ -3,4 +3,4 @@
 set -uo pipefail
 SCRIPT=$(python3 -c "import os, sys; print(os.path.realpath(sys.argv[1]))" "${BASH_SOURCE[0]}")
 PLUGIN_ROOT=$(cd "$(dirname "$SCRIPT")/.." && pwd)
-exec bash "$PLUGIN_ROOT/skills/kaizen/scripts/vibe_check.sh" "$@"
+exec bash "$PLUGIN_ROOT/skills/workflow/scripts/vibe_check.sh" "$@"

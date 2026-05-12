@@ -1,0 +1,128 @@
+# yaml-language-server: $schema=../../assets/schemas/workflow.schema.json
+# Harden workflow schema — declarative form of the v1.0+ hardcoded
+# `harden` routine. Security + quality-debt sweep producing a
+# prioritised remediation pipeline.
+#
+# Distinct from `audit` (which is comprehensive + reports) and from
+# `fix-bug` (which is reactive to a specific failure). Harden is
+# proactive: take a known-shippable codebase and raise the floor.
+
+name: harden
+version: 1
+description: |
+  Eight-phase hardening workflow. Raises the security + quality floor
+  of a working codebase. Distinguishing trait: the code already works;
+  the goal is to make it harder to break, harder to attack, easier to
+  observe.
+
+  Suitable for: pre-launch security review, post-incident hardening
+  sprints, before opening source, before a SOC-2 / pen-test cycle,
+  when shifting from prototype to production.
+
+  Skip for: code that doesn't ship (use audit + plan); active bugs
+  (use fix-bug first); active feature work (interleaving causes
+  regressions).
+
+artifacts:
+  - id: explore
+    generates: explore.md
+    template: null
+    requires: []
+    description: |
+      Phase 1 — map the attack surface + quality-debt surface.
+        - external entry points (HTTP, RPC, IPC, file upload, signals)
+        - authn/authz code paths (who decides who can do what)
+        - data egress (logs, telemetry, network calls)
+        - dependency tree depth + lockfile freshness
+        - test-coverage gaps + lint-pass status
+
+  - id: audit
+    generates: audits/<UTC>-harden.md
+    template: null
+    requires: [explore]
+    description: |
+      Phase 2 — security + quality audit. Run agent-aegis for threat
+      modeling. Run kaizen-debt-auditor for architecture + 8-principle
+      findings. Augment with SAST (Semgrep, Bandit, cargo-audit, npm
+      audit) — these often catch what the scripts miss.
+
+      Categorize findings as:
+        - exploitable now (Critical) — fix this sprint, blocking
+        - latent + likely (High) — fix this quarter
+        - defense-in-depth (Medium) — fix next quarter
+        - hygiene (Low) — backlog
+
+  - id: analyze
+    generates: analyze.md
+    template: null
+    requires: [audit]
+    description: |
+      Phase 3 — sort + sequence. For each Critical/High, identify:
+        - the simplest fix (often a stricter validator, not a rewrite)
+        - the regression test that proves the fix
+        - the metric/alert that detects re-introduction
+      Confidence-score the remediation (high/medium/low).
+
+  - id: create-plan
+    generates: plans/<date>-harden-<scope>.md
+    template: null
+    requires: [analyze]
+    description: |
+      Phase 4 — phased remediation. Per kaizen Iron Laws: ≥3 phases
+      → plan file. Order Critical-first, then High. Defense-in-depth
+      items get bundled where they share a touch zone (DRY).
+
+  - id: create-tasks
+    generates: tasks.md
+    template: null
+    requires: [create-plan]
+    description: |
+      Phase 5 — task briefs. Each task: the specific finding it
+      remediates, the test that proves the fix, the verify command,
+      a one-line PR description (security fixes need clear comms).
+
+  - id: execute-tasks
+    generates: (in-place code changes + commits)
+    template: null
+    requires: [create-tasks]
+    description: |
+      Phase 6 — one task at a time. Per kaizen Iron Laws: compile
+      barrier + tests green per task; commit after each passing
+      task. Security fixes are commit-after-each — never batch.
+
+  - id: review
+    generates: review.md
+    template: null
+    requires: [execute-tasks]
+    description: |
+      Phase 7 — second-pass security review. agent-aegis re-runs
+      against the changed code. New findings → BACKLOG.md unless
+      they're Critical (then loop back to plan).
+
+  - id: validate
+    generates: validate.md
+    template: null
+    requires: [review]
+    description: |
+      Phase 8 — verify hardening landed: regression tests green,
+      SAST scan clean, dep tree audit clean, structural lint clean.
+      Confirm metrics/alerts for each remediated finding are live
+      (a fix without an alert is a fix that silently regresses).
+
+apply:
+  gate: analyze
+  progress: plans/<date>-harden-<scope>.md
+  description: |
+    Hard gate is analyze: remediation may not start until each
+    finding has a confidence-scored fix shape + a regression test
+    design + a detection metric. Hardening sprints fail when teams
+    skip the design step and chase symptoms.
+
+# Composition notes:
+#   - skills used: agent-aegis (security threat-model), kaizen-debt-
+#     auditor (architecture + 8-principle audit), writing-plans,
+#     executing-plans
+#   - tooling: pair with SAST (Semgrep / Bandit / cargo-audit) in CI
+#     to prevent regression
+#
+# Invoke: /workflow schema=harden

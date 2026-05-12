@@ -1,0 +1,4 @@
+interface:
+  display_name: "Handoff"
+  short_description: "Create or resume session handoff documents"
+  default_prompt: "Use $handoff to create or resume a handoff document for transferring work between sessions."

@@ -1,0 +1,121 @@
+# yaml-language-server: $schema=../../assets/schemas/workflow.schema.json
+# Refactor workflow schema — declarative form of the v1.0+ hardcoded
+# `refactor` routine, with tests-first as the hard gate.
+#
+# Refactor != redesign. Behavior MUST be preserved. The schema enforces
+# this by gating the actual restructuring on a green test run that
+# pinned current behavior BEFORE any structural change.
+
+name: refactor
+version: 1
+description: |
+  Seven-phase refactor workflow gated by characterize-before-restructure.
+  Behavior must be preserved; the gate ensures the existing test suite
+  captures current behavior before any code moves.
+
+  Suitable for: extracting modules, renaming, dependency direction
+  flips, layering corrections, breaking up god-classes, Boy-Scout
+  cleanup of touched code.
+
+  Skip for: behavioral changes (use build-feature), bug fixes (use
+  fix-bug), pure deletion of dead code (use a backlog item + audit).
+
+artifacts:
+  - id: explore
+    generates: explore.md
+    template: null
+    requires: []
+    description: |
+      Phase 1 — map the area to refactor. File list + entry points +
+      who calls what. ast-grep / llm-tldr / grep are your friends.
+      Output: dependency graph + LOC + test-coverage snapshot.
+
+  - id: analyze
+    generates: analyze.md
+    template: null
+    requires: [explore]
+    description: |
+      Phase 2 — blast radius. Affected files + interfaces + invariants.
+      Identify the core principle the refactor serves: DRY, SoC, SOLID
+      (DIP for layer corrections), Boy-Scout. State the BEFORE and
+      AFTER shape in one sentence each.
+
+  - id: characterize
+    generates: characterization-tests.md
+    template: null
+    requires: [analyze]
+    description: |
+      Phase 3 (THE GATE) — characterization tests. Pin the current
+      observable behavior of every touched interface BEFORE moving
+      code. If existing tests don't cover, write them now.
+
+      These tests are tossed (or kept as regression) after the
+      refactor lands; their job is to detect any behavior drift
+      during restructuring.
+
+      Gate: every public surface that will move/rename must have a
+      green test pinning its current behavior. No characterize, no
+      refactor.
+
+  - id: create-plan
+    generates: plans/<date>-<slug>.md
+    template: null
+    requires: [characterize]
+    description: |
+      Phase 4 — phased plan. Each phase: one rename, one extract,
+      one move. Per kaizen Iron Laws: ≥3 phases → plan file; smaller
+      → BACKLOG.md micro. Phase boundary = test suite green.
+
+  - id: create-tasks
+    generates: tasks.md
+    template: null
+    requires: [create-plan]
+    description: |
+      Phase 5 — task briefs. Each task: files-to-touch, verify
+      command, dependency on previous tasks. One task per atomic
+      structural move.
+
+  - id: execute-tasks
+    generates: (in-place code changes + commits)
+    template: null
+    requires: [create-tasks]
+    description: |
+      Phase 6 — one task at a time. Per kaizen Iron Laws: compile
+      barrier per task; tests green per task; commit after each
+      passing task. Characterize-suite green = green-light to proceed.
+
+  - id: review
+    generates: review.md
+    template: null
+    requires: [execute-tasks]
+    description: |
+      Phase 7 — Boy-Scout pass: while you're in the file, fix tiny
+      adjacent smells (NOT new features). Self-review or dispatch
+      `kaizen-reviewer`. Verify dep direction matches plan.
+
+  - id: validate
+    generates: validate.md
+    template: null
+    requires: [review]
+    description: |
+      Phase 8 — full suite green; clippy/tsc/lint clean; structural
+      lint rules (ast-grep) clean; performance baseline unchanged.
+      Characterization tests still green confirms zero behavior drift.
+
+apply:
+  gate: characterize
+  progress: plans/<date>-<slug>.md
+  description: |
+    Hard gate is characterize: refactor cannot start until the touched
+    interfaces have green tests pinning current behavior. This is the
+    Michael-Feathers discipline ("Working Effectively with Legacy Code"):
+    you cannot safely change code you don't have tests for.
+
+# Composition notes:
+#   - skills used: writing-plans, executing-plans, test-driven-development,
+#     boy-scout-rule, dry, kiss, yagni, solid, separation-of-concerns,
+#     law-of-demeter, onion-ddd-workflow (for layer-related refactors)
+#   - pair with `onion-tdd-strict` schema when the refactor is a
+#     bounded-context carve-out
+#
+# Invoke: /workflow schema=refactor

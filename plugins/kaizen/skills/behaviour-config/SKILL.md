@@ -6,7 +6,7 @@ version: 1.0.0
 
 # kaizen behaviour-config — brain-sourced runtime rules
 
-The kaizen pre-commit gate has a fixed surface (10 checks documented in the `kaizen:kaizen` skill PART 3). Users customize that behaviour via **brain-sourced rules** — Markdown notes in `~/.claude/brain/Notes/` with a `kaizen:` block in their YAML frontmatter. The Remember plugin owns the storage; kaizen scripts read the rules at runtime.
+The kaizen pre-commit gate has a fixed surface (10 checks documented in the `kaizen:workflow` skill PART 3). Users customize that behaviour via **brain-sourced rules** — Markdown notes in `~/.claude/brain/Notes/` with a `kaizen:` block in their YAML frontmatter. The Remember plugin owns the storage; kaizen scripts read the rules at runtime.
 
 ## Why brain-sourced?
 

@@ -1,0 +1,129 @@
+# yaml-language-server: $schema=../../assets/schemas/workflow.schema.json
+# kaizen mcp-build schema — codified pattern for building a kaizen MCP server.
+# Distilled from the kaizen-lint (ruff/ty) + kaizen-workflow (workflow.sh
+# wrapper) builds. Use when a new MCP needs to be added to plugins/kaizen.
+#
+# Trigger: /workflow init "build MCP for <thing> schema=mcp-build"
+
+name: mcp-build
+version: 1
+description: |
+  Build a kaizen MCP server end-to-end: detect what's being wrapped, research
+  any external API/tool, plan stages → tasks → write the FastMCP skeleton →
+  add tools one at a time → register in .mcp.json + plugin.json permissions →
+  smoke-test handshake + tools/list → validate against existing test suite →
+  refresh plugin cache. Mirrors the kaizen-lint build's 5-phase trajectory.
+
+artifacts:
+  - id: detect-stack
+    generates: .kaizen/workflow/mcp-build/detect.md
+    template: null
+    requires: []
+    description: |
+      What is being wrapped? CLI tool (ruff, ty, semgrep) or internal script
+      (workflow.sh, backlog.py)? CLI tools need a uv-run-with helper if
+      snap-confined; internal scripts use list-form subprocess directly.
+
+  - id: research
+    generates: .kaizen/workflow/mcp-build/research.md
+    template: null
+    requires: [detect-stack]
+    description: |
+      Read existing *_mcp.py exemplars (state_mcp.py for CLI-wrapping,
+      lint_mcp.py for curated-output, knowledge_mcp.py for embed-backed).
+      Note: PEP 723 header, FastMCP instantiation, `@mcp.tool()` async fns,
+      list-form subprocess only, no shell=True ever.
+
+  - id: create-plan
+    generates: plans/<date>-mcp-<name>.md
+    template: null
+    requires: [detect-stack, research]
+    description: |
+      Phased plan: skeleton → tool batch 1 → tool batch 2 → composite tools
+      → register → smoke. Each phase has its own verification command.
+
+  - id: create-tasks
+    generates: plans/<date>-mcp-<name>-tasks.md
+    template: null
+    requires: [create-plan]
+    description: |
+      One task per tool family. Each task lists: file edits, the MCP
+      handshake verification command, and the python -m py_compile gate.
+
+  - id: write-server-skeleton
+    generates: plugins/kaizen/skills/workflow/scripts/<name>_mcp.py
+    template: null
+    requires: [create-tasks]
+    description: |
+      PEP 723 header with `mcp>=1.0`. `FastMCP("kaizen-<name>")`. `_repo_root()`
+      + `_run(cmd, timeout)` helpers. NO tools yet — just handshake. Verify:
+      init → tools/list returns 0 tools, server name matches.
+
+  - id: write-tools
+    generates: (appended to <name>_mcp.py)
+    template: null
+    requires: [write-server-skeleton]
+    description: |
+      Add `@mcp.tool()` async fns one at a time. Each tool runs the underlying
+      subprocess via _run(). Curate large outputs via `from _curate import
+      curate` (no inline duplication). uv-run-with via `from _uv import uv_cmd`
+      for snap-confined CLI tools.
+
+  - id: register-mcp-json
+    generates: plugins/kaizen/.mcp.json (modified)
+    template: null
+    requires: [write-tools]
+    apply:
+      gate:
+        requires: [write-tools]
+    description: |
+      Append entry to `mcpServers` block. Use `command: "uv"` + args list
+      ending in `"--script", "${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/<name>_mcp.py"`.
+      Verify JSON parses: `python3 -c "import json; json.load(open('plugins/kaizen/.mcp.json'))"`.
+
+  - id: register-permissions
+    generates: plugins/kaizen/.claude-plugin/plugin.json (modified)
+    template: null
+    requires: [register-mcp-json]
+    apply:
+      gate:
+        requires: [register-mcp-json]
+    description: |
+      Append `Bash(uv run --script ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/<name>_mcp.py:*)`
+      to `permissions.allow[]`. Verify JSON parses.
+
+  - id: smoke-handshake
+    generates: .kaizen/workflow/mcp-build/smoke.log
+    template: null
+    requires: [register-permissions]
+    description: |
+      Send `initialize → notifications/initialized → tools/list` JSON-RPC
+      via stdin. Confirm response includes the right server name +
+      the expected count of tools. Reference: see verify block of
+      plans/2026-05-12-kaizen-lint-mcp-tasks.md T5.
+
+  - id: validate-cache
+    generates: (cache refresh log)
+    template: null
+    requires: [smoke-handshake]
+    description: |
+      Run `bash plugins/kaizen/skills/workflow/scripts/refresh-cache.sh`.
+      Confirm "refreshed cache to v<X.Y.Z>" or "already in sync".
+      Then `bash health.sh` returns "healthy (no issues)".
+
+  - id: report
+    generates: .kaizen/workflow/mcp-build/report.md
+    template: null
+    requires: [validate-cache]
+    description: |
+      One-paragraph summary: server name, tool count, what it wraps,
+      verification result. Add CHANGELOG line for the next release.
+
+apply:
+  gate: smoke-handshake
+  progress: plans/<date>-mcp-<name>.md
+  description: |
+    Build is gated on smoke-handshake passing — a server that doesn't return
+    its tools list is broken regardless of code-quality. Register-stages are
+    gated on write-tools to ensure no half-registered MCP appears in
+    .mcp.json before the underlying tools exist.

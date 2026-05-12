@@ -7,7 +7,7 @@ description: Reverse /kaizen:install for this repo. Unsets core.hooksPath, remov
 
 Cleanly remove the plugin's activation from this repo. **Default is dry-run.** Pass `--execute` to apply.
 
-!`bash ${CLAUDE_PLUGIN_ROOT}/skills/kaizen/scripts/uninstall.sh $ARGUMENTS`
+!`bash ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/uninstall.sh $ARGUMENTS`
 
 ## Flags
 

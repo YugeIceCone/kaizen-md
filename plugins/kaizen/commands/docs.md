@@ -7,7 +7,7 @@ description: Generate per-package documentation for any workspace — Rust (Carg
 
 Generate workspace documentation. Drop-in replacement for `cargo xtask docs --json` that also handles JS / Go / Python workspaces.
 
-!`python3 ${CLAUDE_PLUGIN_ROOT}/skills/kaizen/scripts/docs_gen.py ${ARGUMENTS:-detect}`
+!`python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/docs_gen.py $ARGUMENTS`
 
 ## Subcommands
 
@@ -53,4 +53,4 @@ Per package:
 
 Shodan's CLAUDE.md says: "regenerate via `cargo xtask docs --json` after every workspace shape change." This generator emits the same `.md` + `.json` shape (one of each per crate) into `docs/crates/`. The schema (`kaizen.docs` v1) is portable across non-Rust workspaces, so a multi-language monorepo can use the same tool.
 
-Run from shodan root: `python3 ${CLAUDE_PLUGIN_ROOT}/skills/kaizen/scripts/docs_gen.py scan` — emits 24 records (one per crate) plus the workspace root.
+Run from shodan root: `python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/docs_gen.py scan` — emits 24 records (one per crate) plus the workspace root.

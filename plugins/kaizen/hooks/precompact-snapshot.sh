@@ -20,15 +20,15 @@ if [ ! -f ".kaizen.toml" ] && [ ! -d ".workflow" ]; then
 fi
 
 # Resolve backup.sh — three search paths, in order:
-#   1. ${CLAUDE_PLUGIN_ROOT}/skills/kaizen/scripts/backup.sh (plugin install)
-#   2. via readlink-f of this script's location → sibling ../skills/kaizen/scripts/
-#   3. ~/.claude/skills/kaizen/scripts/backup.sh (standalone install)
+#   1. ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/backup.sh (plugin install)
+#   2. via readlink-f of this script's location → sibling ../skills/workflow/scripts/
+#   3. ~/.claude/skills/workflow/scripts/backup.sh (standalone install)
 _HOOK_DIR="$(cd "$(dirname "$(python3 -c "import os,sys; print(os.path.realpath(sys.argv[1]))" "${BASH_SOURCE[0]}")")" && pwd)"
 BACKUP_SH=""
 for candidate in \
-    "${CLAUDE_PLUGIN_ROOT:-/__unset__}/skills/kaizen/scripts/backup.sh" \
-    "$_HOOK_DIR/../skills/kaizen/scripts/backup.sh" \
-    "$HOME/.claude/skills/kaizen/scripts/backup.sh"; do
+    "${CLAUDE_PLUGIN_ROOT:-/__unset__}/skills/workflow/scripts/backup.sh" \
+    "$_HOOK_DIR/../skills/workflow/scripts/backup.sh" \
+    "$HOME/.claude/skills/workflow/scripts/backup.sh"; do
     if [ -x "$candidate" ]; then
         BACKUP_SH="$candidate"
         break

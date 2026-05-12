@@ -1,0 +1,130 @@
+# yaml-language-server: $schema=../../assets/schemas/workflow.schema.json
+# Migrate workflow schema — declarative form of the v1.0+ hardcoded
+# `migrate` routine. For framework, version, API, and infrastructure
+# migrations with explicit rollback design.
+
+name: migrate
+version: 1
+description: |
+  Eight-phase migration workflow gated by rollback-plan-before-execute.
+  Suitable for framework upgrades (React 17→19, Django 4→5), database
+  migrations (Postgres major-version, schema breaking changes), API
+  contract changes, infra (Terraform module upgrades, k8s manifest
+  rewrites), language-version bumps (Python 3.9→3.12, Node 18→20).
+
+  Migration distinguishing trait: the change is mandated externally
+  (security, deprecation, compatibility) and reversibility matters.
+
+  Skip for: pure feature additions (use build-feature), internal
+  refactors that don't change dependency versions (use refactor),
+  bug fixes (use fix-bug).
+
+artifacts:
+  - id: research
+    generates: research.md
+    template: null
+    requires: []
+    description: |
+      Phase 1 — read the upstream migration guide cover-to-cover.
+      Capture: breaking changes (every one — not just the common
+      ones), deprecation list, removed APIs, new requirements
+      (Node version, RAM, etc), required intermediate versions
+      (often N → N+1 → N+2 not N → N+2 directly).
+
+  - id: explore
+    generates: explore.md
+    template: null
+    requires: [research]
+    description: |
+      Phase 2 — inventory the current codebase against the breaking-
+      change list. Grep / ast-grep for every deprecated API usage.
+      Output: usage-of-deprecated-API report with file:line counts.
+
+  - id: analyze
+    generates: analyze.md
+    template: null
+    requires: [explore]
+    description: |
+      Phase 3 — blast radius + sequencing. Some breaking changes must
+      land together (atomic); others can be incremental. Identify
+      compatibility shims that let new + old coexist during the
+      transition. Confidence-score each affected area.
+
+  - id: rollback-plan
+    generates: rollback.md
+    template: null
+    requires: [analyze]
+    description: |
+      Phase 4 (THE GATE) — explicit rollback design BEFORE execute.
+      Required:
+        - branch/tag to revert to
+        - data-migration reversal steps (if any)
+        - feature-flag for runtime toggle (preferred over redeploy)
+        - "how do we tell something's broken" — what alerts/metrics
+        - go/no-go criteria per phase
+
+      Without a rollback plan, the migration is a one-way door. Gate
+      blocks execute until rollback.md exists + passes review.
+
+  - id: create-plan
+    generates: plans/<date>-migrate-<from>-to-<to>.md
+    template: null
+    requires: [rollback-plan]
+    description: |
+      Phase 5 — phased migration plan. Per kaizen Iron Laws: ≥3 phases
+      → plan file. Each phase = a deployable, individually-rollback-
+      able unit. Prefer many small phases over one big bang.
+
+  - id: create-tasks
+    generates: tasks.md
+    template: null
+    requires: [create-plan]
+    description: |
+      Phase 6 — task briefs per phase. Each task: files, verify
+      command, post-deploy smoke check, rollback-trigger threshold.
+
+  - id: execute-tasks
+    generates: (in-place code changes + commits + deploys)
+    template: null
+    requires: [create-tasks]
+    description: |
+      Phase 7 — one phase at a time with deploy-and-bake between.
+      Per kaizen Iron Laws: compile barrier + tests green per task.
+      For prod-touching migrations: deploy each phase to staging,
+      bake for a defined window, then prod.
+
+  - id: review
+    generates: review.md
+    template: null
+    requires: [execute-tasks]
+    description: |
+      Phase 8 — review every breaking-change item is addressed.
+      Confirm no deprecated-API usage remains (grep again). Confirm
+      compatibility shims removed (now that old version is gone).
+
+  - id: validate
+    generates: validate.md
+    template: null
+    requires: [review]
+    description: |
+      Phase 9 — full test + integration suite at the new version
+      level. Smoke against staging. Performance baseline check
+      (migrations sometimes silently regress perf). Sign off.
+
+apply:
+  gate: rollback-plan
+  progress: plans/<date>-migrate-<from>-to-<to>.md
+  description: |
+    Hard gate is rollback-plan: execute may not begin until a
+    rollback design exists + passes review. Migrations are uniquely
+    high-stakes because the "fix" usually means deploy-time, not
+    compile-time, and partial-fail states can corrupt data.
+
+# Composition notes:
+#   - skills used: research, writing-plans, executing-plans, validate,
+#     verification-before-completion
+#   - kaizen has `kaizen:migrate` slash for retiring loose-skill dupes
+#     and converting hand-written BACKLOG.md — that's a SPECIFIC kind
+#     of migration; this schema is the general form
+#
+# Invoke: /workflow schema=migrate

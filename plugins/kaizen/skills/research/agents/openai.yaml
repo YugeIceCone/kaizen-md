@@ -1,0 +1,4 @@
+interface:
+  display_name: "Research"
+  short_description: "Gather current sourced evidence"
+  default_prompt: "Use $research to gather current docs, facts, and comparable examples for this topic."

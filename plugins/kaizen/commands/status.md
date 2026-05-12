@@ -7,6 +7,6 @@ description: Show the kaizen setup for this repo at a glance — config, gate st
 
 Quick health-check / summary for this repo.
 
-Run:
+!`bash ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/status.sh`
 
-!`bash ${CLAUDE_PLUGIN_ROOT}/skills/kaizen/scripts/status.sh`
+Programmatic access (no slash command): `state_status()` on the `kaizen-state` MCP server returns the same raw output as a string.

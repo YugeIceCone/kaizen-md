@@ -83,6 +83,38 @@ print(json.dumps({
     }
 }))
 "
-else
-    echo '{}'
+    exit 0
 fi
+
+# ─── Advisory: bash-invocation-discipline scan ───────────────────────
+# When no destructive-op decision fired, scan for the 6 discipline rules.
+# Emit systemMessage on warnings — Claude sees + self-corrects; never blocks.
+
+SCANNER="${CLAUDE_PLUGIN_ROOT}/hooks/_bash_discipline_scan.py"
+if [ -x "$SCANNER" ] || [ -f "$SCANNER" ]; then
+    SCAN_OUT=$(python3 "$SCANNER" --command "$COMMAND" 2>/dev/null)
+    HAS_WARNINGS=$(printf '%s' "$SCAN_OUT" | python3 -c "
+import json, sys
+try:
+    d = json.loads(sys.stdin.read() or '{}')
+    print('yes' if d.get('warnings') else 'no')
+except Exception:
+    print('no')
+" 2>/dev/null)
+    if [ "$HAS_WARNINGS" = "yes" ]; then
+        printf '%s' "$SCAN_OUT" | python3 -c "
+import json, sys
+d = json.loads(sys.stdin.read())
+ws = d.get('warnings', [])
+lines = ['kaizen bash-discipline advisory ({} warning{}):'.format(len(ws), '' if len(ws) == 1 else 's')]
+for w in ws:
+    sev = w.get('severity', 'soft').upper()
+    lines.append('  [{}] {}: {}'.format(sev, w.get('rule', '?'), w.get('message', '')))
+print(json.dumps({'systemMessage': '\n'.join(lines)}))
+"
+        exit 0
+    fi
+fi
+
+# Clean — no decision, no advisory.
+echo '{}'

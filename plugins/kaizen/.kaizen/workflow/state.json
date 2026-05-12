@@ -1,0 +1,82 @@
+{
+  "id": "wf-20260512-154746",
+  "prompt": "build mcp tools feature end to end for ruff and ty use context7",
+  "routine": "build-feature",
+  "schema_name": "",
+  "stages": [
+    "explore",
+    "detect-stack",
+    "research",
+    "analyze",
+    "create-plan",
+    "create-tasks",
+    "execute-tasks",
+    "simplify",
+    "review",
+    "report"
+  ],
+  "current": 10,
+  "completed": [
+    {
+      "stage": "explore",
+      "msg": "pattern=state_mcp; target=skills/workflow/scripts/lint_mcp.py; server=kaizen-lint; ruff on PATH; ty needs uv-run --with",
+      "at": "2026-05-12T15:48:12Z"
+    },
+    {
+      "stage": "detect-stack",
+      "msg": "Python 3.14, uv 0.11, FastMCP via PEP 723; ruff on PATH; ty installable via 'uv run --with ty'",
+      "at": "2026-05-12T15:48:29Z"
+    },
+    {
+      "stage": "research",
+      "msg": "ruff has --output-format=json (native); ty has concise/gitlab/github/junit (no json) + explain --output-format=json for rules; both expose --fix and exit-code conventions",
+      "at": "2026-05-12T15:49:27Z"
+    },
+    {
+      "stage": "analyze",
+      "msg": "new file lint_mcp.py ~250 LOC; pattern=state_mcp; risks=ty-non-json+uv-cold-start; injection-safe via list-form subprocess; next=create-plan",
+      "at": "2026-05-12T15:50:04Z"
+    },
+    {
+      "stage": "create-plan",
+      "msg": "5-phase plan: skeleton+ruff-check \u2192 ruff format/rules \u2192 ty check/explain \u2192 composite lint_path/changed \u2192 wire+smoke. Rollback = rm new file + revert 2 manifests. Invariants: no shell=True, list-form subprocess, additive.",
+      "at": "2026-05-12T15:50:45Z"
+    },
+    {
+      "stage": "create-tasks",
+      "msg": "5 task briefs (T1 skeleton+ruff_check, T2 ruff_format+rules, T3 ty_check+explain, T4 composites, T5 register+smoke); each with verify cmd; iron-law per-task discipline declared",
+      "at": "2026-05-12T15:51:33Z"
+    },
+    {
+      "stage": "execute-tasks",
+      "msg": "lint_mcp.py 432 LOC; 7 tools (ruff_check/format/rules, ty_check/explain, lint_path, lint_changed_files); curator returns ~600-char compact summary by default (verbose=True for full); ty regex fixed after concise format discovery; .mcp.json + plugin.json updated; 48 existing tests still pass",
+      "at": "2026-05-12T15:57:43Z"
+    },
+    {
+      "stage": "simplify",
+      "msg": "self-lint identified 2 false-positives: ruff E902 from snap confinement (fixed: route via uv run --with ruff), ty unresolved-import for mcp dep (suppressed with ty: ignore comment, root cause: uv-script PEP 723 deps invisible to ty static analysis)",
+      "at": "2026-05-12T16:00:30Z"
+    },
+    {
+      "stage": "review",
+      "msg": "lint_mcp.py is now ruff-clean + ty-clean (with documented ignore); 7 tools registered; 9 MCP servers total in .mcp.json; 48 existing tests still green; rollback = rm new file + git checkout 2 manifests",
+      "at": "2026-05-12T16:00:30Z"
+    },
+    {
+      "stage": "report",
+      "msg": "build-feature workflow complete: kaizen-lint MCP server adds ruff+ty as Claude-callable tools with token-efficient curator (default returns ~600-char summary; verbose=True for full); composites lint_path + lint_changed_files fan out via asyncio.gather",
+      "at": "2026-05-12T16:00:30Z"
+    }
+  ],
+  "subagent_mode": "no",
+  "auto_mode": "no",
+  "tdd_mode": "no",
+  "artifacts": {
+    "plan_file": "../../plans/2026-05-12-kaizen-lint-mcp.md",
+    "tasks_file": "../../plans/2026-05-12-kaizen-lint-mcp-tasks.md",
+    "mcp_server": "skills/workflow/scripts/lint_mcp.py"
+  },
+  "started_at": "2026-05-12T15:47:46Z",
+  "updated_at": "2026-05-12T16:00:30Z",
+  "auto": "yes"
+}

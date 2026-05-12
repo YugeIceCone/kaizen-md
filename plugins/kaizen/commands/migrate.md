@@ -7,7 +7,7 @@ description: Migrate from loose skills / separate plugins / non-canonical layout
 
 Safe transitions between layouts. **Default is dry-run.** Pass `--execute` to apply. Every destructive op auto-backs up first.
 
-!`bash ${CLAUDE_PLUGIN_ROOT}/skills/kaizen/scripts/migrate.sh ${ARGUMENTS:-scan}`
+!`bash ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/migrate.sh ${ARGUMENTS:-scan}`
 
 ## Subcommands
 

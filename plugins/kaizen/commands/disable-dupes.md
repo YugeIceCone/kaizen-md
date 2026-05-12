@@ -7,7 +7,7 @@ description: Find and reversibly disable duplicate skills (loose ~/.claude/skill
 
 Reversibly hide loose-side duplicates so plugin's bundled version wins. Mechanism: rename `SKILL.md` ↔ `SKILL.md.disabled` in place. Files stay; one rename restores.
 
-!`bash ${CLAUDE_PLUGIN_ROOT}/skills/kaizen/scripts/disable-skill.sh ${ARGUMENTS:-scan}`
+!`bash ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/disable-skill.sh ${ARGUMENTS:-scan}`
 
 ## Subcommands
 

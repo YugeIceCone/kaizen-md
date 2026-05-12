@@ -7,7 +7,7 @@ description: Snapshot workflow state (.kaizen/, legacy .workflow/, .kaizen.toml,
 
 Snapshot the gate-managed state so destructive ops are reversible. Repo-slugged + UTC-timestamped.
 
-!`bash ${CLAUDE_PLUGIN_ROOT}/skills/kaizen/scripts/backup.sh ${ARGUMENTS:-list}`
+!`bash ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/backup.sh ${ARGUMENTS:-list}`
 
 ## Subcommands
 

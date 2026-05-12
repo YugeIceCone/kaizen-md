@@ -1,0 +1,20 @@
+# yaml-language-server: $schema=./schemas/depth.schema.json
+#
+# Tour depth tiers. Step-count ranges control narrative pacing.
+
+depths:
+  quick:
+    min_steps: 5
+    max_steps: 8
+    use_for: [vibecoder]
+    notes: "Fast exploration; cut steps aggressively if over budget."
+  standard:
+    min_steps: 9
+    max_steps: 13
+    use_for: [new-joiner, bug-fixer, feature-explainer, pr-reviewer, security-reviewer, refactorer, external-contributor]
+    notes: "Most personas. Default depth when intent is ambiguous."
+  deep:
+    min_steps: 14
+    max_steps: 18
+    use_for: [architect, rca-investigator]
+    notes: "Deep dives. Reserve for personas with explicit need for full causality / boundary mapping."

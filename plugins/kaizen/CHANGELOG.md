@@ -3,6 +3,250 @@
 All notable changes to the `kaizen` plugin documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [SemVer](https://semver.org/).
 
+## [1.33.0] — 2026-05-12
+
+### Changed — v1.32.0 absorbed plugins refactored to schema-driven (yaml + JSON Schema)
+
+The three skills absorbed in v1.32.0 (`karpathy`, `code-tour`, `self-improving`) inherited their upstream's prose-only shape. v1.33.0 brings them in line with the v1.31.0 native discipline (yaml in `domain/`, JSON Schema in `domain/schemas/`, TDD-tested loaders).
+
+**`skills/karpathy/domain/principles.yaml`** — 4 principles + scanner mapping + duties + anti-patterns + transforms + relax/enforce-when rules. Each principle's scanner script field links back to `scripts/<scanner>.py` for cross-reference. Validated by `domain/schemas/principle.schema.json`.
+
+**`skills/code-tour/domain/{personas,depths,step-types}.yaml`** — 10 personas (with default_depth + trigger_phrases), 3 depth tiers (min/max step counts + which personas use them), 6 step types (with shape examples). Three JSON Schemas. TDD-tested (15/15 green).
+
+**`skills/self-improving/domain/lifecycle.yaml`** — 5-stage promotion lifecycle (discover → recurs → approve → graduate → archive) with routing_table for destination selection + 3 sub-flows (review / promote / extract). Delegates `remember` + `status` to existing kaizen skills explicitly. JSON Schema validated. TDD-tested (8/8 green).
+
+### Added — brain automation (TDD-driven)
+
+`skills/self-improving/brain/` introduces machine-checkable brain hygiene:
+
+- **`domain/schemas/note.schema.json`** — JSON Schema for `~/.claude/brain/Notes/*.md` frontmatter. Validates `type` enum (belief / feedback / audit / project / session / world-fact / reference / user / system / persona / observation / behaviour), `confidence` range, `freshness` enum (fresh / stable / hardened / stale / archived), `sources_count`, `tags`, `evidence` array.
+- **`brain/validator.py`** — 3 subcommands: `validate` (schema-checks all Notes), `links` (cross-reference health), `belief-stats` (freshness / sources / confidence distribution). All-in-one: `validator.py all`.
+- **`brain/codegen.py`** — regenerates Persona.md `## Top Beliefs` section from Notes/. Sort key: `-confidence × sources_count`, freshness tie-break. `preview` mode for dry-run; `write` for in-place; `--check` for CI drift detection.
+
+### Validated on live brain
+
+- 14 Notes validate against schema (after extending the `type` enum to include real values `observation` + `behaviour` found in production)
+- 26 wiki `[[Notes/...]]` cross-references all resolve (0 broken)
+- Belief distribution: hardened=1, stable=9, unknown=3; sources 1×6, 2×3, 3×1, 4×1, 5×2; confidence min=0.90, avg=0.94, max=0.98
+
+### TDD discipline this release
+
+All new code (4 yamls + 4 schemas + validator + codegen) followed RED → GREEN:
+
+- code-tour: 15 tests RED → wrote yaml + schema → 15 tests GREEN
+- self-improving: 8 tests RED → wrote yaml + schema → 8 tests GREEN
+- brain automation: 6 tests RED → wrote schema + validator + codegen → 6 tests GREEN
+
+Tests live under `skills/<skill>/application/_tests.py` and `_brain_tests.py`.
+
+### Fixed in this release
+
+- PyYAML auto-parses `created: 2026-05-10` into `datetime.date` objects; the validator now coerces dates to ISO strings before JSON Schema validation. Tracks the date-vs-string class mismatch that surfaced when validating real Notes.
+- Notes `type` enum extended to cover `observation` + `behaviour` values found in production.
+
+## [1.32.0] — 2026-05-12
+
+### Added — three high-ROI skills absorbed from `alirezarezvani/claude-skills`
+
+Three plugins were copied, rebranded under the `kaizen:` namespace, and refactored into the kaizen workflow surface.
+
+**`kaizen:code-tour`** — persona-targeted, step-by-step CodeTour `.tour` file authoring. Pairs with `kaizen:explore` (initial mapping) and `kaizen:handoff` (durable session handoff). 10 personas (new-joiner, vibecoder, pr-reviewer, rca-investigator, architect, security-reviewer, refactorer, etc.) + SMIG description formula + step-count discipline by depth. Source: `claude-code-skills/engineering/code-tour`.
+
+**`kaizen:karpathy`** — active coding discipline based on Andrej Karpathy's 4 principles (surface assumptions / simplicity first / surgical changes / goal-driven execution). Ships 4 stdlib-only Python scanners (`complexity_checker.py`, `diff_surgeon.py`, `assumption_linter.py`, `goal_verifier.py`), a `/kaizen:karpathy-check` slash command, a `kaizen-karpathy-reviewer` sub-agent, and a `karpathy-gate.sh` PostToolUse hook (non-blocking). Cross-linked from `routines.yaml::build-feature.coding_skills` + `refactor.coding_skills`. Sibling to the 8 classic coding-skills principles — same family, different angle (enforces *what NOT to do* with diff-level scanners). Source: `claude-code-skills/engineering/karpathy-coder`.
+
+**`kaizen:self-improving`** — auto-memory curator. Closes the loop: session learnings → brain Notes promotion → CLAUDE.md rule injection → skill extraction. Five named sub-flows (review / promote / extract / status / remember). Two dispatched sub-agents (`kaizen-memory-analyst`, `kaizen-skill-extractor`). Wired to consume the existing kaizen brain structure (`~/.claude/brain/`) + project memory (`~/.claude/projects/<slug>/memory/`) without duplicating `kaizen:remember` / `kaizen:status` (those skills retain ownership of their flows). Source: `claude-code-skills/engineering-team/self-improving-agent`.
+
+### Added — `karpathy` as a 9th cross-linkable coding-skill
+
+`routines.yaml` schema now allows `coding_skills: [karpathy]` alongside the 8 classic principles. Wired into `build-feature` and `refactor` routines by default. Surfaced during `execute-tasks` stage.
+
+### Workflow integration touchpoints
+
+- `domain/routines.yaml::build-feature.coding_skills` += `karpathy`
+- `domain/routines.yaml::refactor.coding_skills` += `karpathy`
+- `domain/schemas/routine.schema.json` extended enum
+- `skills/workflow/SKILL.md` cross-link section updated
+- New skill dirs: `skills/{code-tour,karpathy,self-improving}/`
+- New agent files: `agents/kaizen-karpathy-reviewer.md`, `agents/kaizen-memory-analyst.md`, `agents/kaizen-skill-extractor.md`
+- New command: `commands/karpathy-check.md`
+- New hook: `hooks/karpathy-gate.sh` (PostToolUse, non-blocking — wire optionally)
+
+### Notes
+
+- All three source plugins remain installable from their upstream marketplace if you want them standalone. The kaizen-rebranded versions are independent copies with kaizen-specific cross-links + namespacing.
+- No conflicts with existing kaizen skills. `kaizen:remember` and `kaizen:status` retain their existing meaning; `kaizen:self-improving` is the umbrella that orchestrates them.
+- Total addition: 3 skills + 3 agents + 1 command + 1 hook + 4 Python scanners + 3 references.
+
+## [1.31.0] — 2026-05-12
+
+### Changed — `workflow` + `workflow-routing` merged into a single schema-driven skill
+
+The two-skill confusion (`kaizen:workflow` = git commit discipline; `kaizen:workflow-routing` = routine orchestration) is collapsed into a single `kaizen:workflow` skill backed by canonical yaml schemas. The 14 routines (8 hardcoded + 6 schema-driven) are unified under `domain/routines.yaml` — eliminating the four-way duplication that existed between the bash case statement, `references/routines.md` prose, the schema yamls, and the SKILL.md narrative.
+
+**Onion-DDD layered:** `domain/` holds pure data (routines.yaml + git-discipline.yaml + JSON Schemas). `application/` holds the loader + codegen + tests (17 tests, all passing). `scripts/` adapters (workflow.sh + workflow_mcp.py + pre-commit.sh) read through the loader. `references/` mixes hand-written (orchestration.md, gates.md) with generated (routines.md, git-discipline.md).
+
+**Behavioral parity verified:** all 7 prompt buckets produce byte-identical stage chains pre/post merge. The `simplify` splicing in `build-feature` between `execute-tasks` and `review` is preserved.
+
+**File migrations** (no deletions; pre-deletion belief preserved):
+- `skills/workflow-routing/scripts/workflow.sh` → `skills/workflow/scripts/workflow.sh`
+- `skills/workflow-routing/scripts/workflow_runner.py` → `skills/workflow/scripts/workflow_runner.py`
+- `skills/workflow-routing/agents/openai.yaml` → `skills/workflow/agents/openai.yaml`
+- `skills/workflow-routing/references/hooks-config.md` → `skills/workflow/references/hooks-config.md`
+- `skills/workflow-routing/SKILL.md` → `.disabled` (reversible)
+
+### Added — `domain/routines.yaml` (single source of truth)
+
+14 routines indexed in one yaml. Each entry has `name`, `kind` (hardcoded/schema), `trigger_words`, `stages`, `end_state`, `coding_skills` (cross-link to the 8 principles), `description`. Validated by `domain/schemas/routine.schema.json`.
+
+### Added — `domain/git-discipline.yaml`
+
+12 pre-commit gates declaratively defined. Sizing thresholds (micro/split/plan-file/architecture-log) machine-readable. Plan-file required sections, task-list discipline, backlog conventions, recovery patterns — all in yaml. Validated by `domain/schemas/git-rules.schema.json`.
+
+### Added — `application/_loader.py` + `codegen.py`
+
+`_loader.py` exposes `load_routines()`, `load_git_discipline()`, `get_stages(name)`, `detect_routine(prompt)`, `verb_matched_explicitly(prompt)` for Python consumers and a CLI for shell consumers. `codegen.py` regenerates `references/{routines,git-discipline}.md` from yaml — idempotent, byte-stable. Refresh-cache runs codegen before sync.
+
+### Added — `coding_skills:` cross-link per routine
+
+Each routine in `routines.yaml` declares which of the 8 coding-skills principles apply during its mutating stages (e.g., `refactor.coding_skills = [dry, boy-scout-rule, kiss, separation-of-concerns]`). The 8 skills remain independent — this is a data link, not absorption.
+
+## [1.30.0] — 2026-05-12
+
+### Added — `kaizen-workflow` MCP server (9 tools)
+
+`plugins/kaizen/skills/workflow/scripts/workflow_mcp.py`. Wraps `workflow.sh` +
+`workflow_runner.py` so Claude can drive a multi-stage workflow without
+slash-command typing.
+
+Tools: `workflow_init`, `workflow_advance`, `workflow_artifact`,
+`workflow_branch`, `workflow_status`, `workflow_reset` (gated by `confirm=True`
+per pre-deletion belief), `workflow_list_schemas`, `workflow_show_schema`,
+`workflow_validate_schema`.
+
+Same FastMCP + subprocess pattern as `kaizen-state` and `kaizen-lint`.
+No embed-model dependency; pure stdlib + `mcp>=1.0`.
+
+### Added — `kaizen-lint` MCP server (7 tools)
+
+`plugins/kaizen/skills/workflow/scripts/lint_mcp.py`. Wraps ruff (lint +
+format) and ty (typecheck + explain) so linters run mid-conversation
+without slash commands.
+
+Tools: `ruff_check`, `ruff_format`, `ruff_rules`, `ty_check`, `ty_explain`,
+`lint_path` (composite ruff+ty), `lint_changed_files` (git-diff-aware).
+
+Token-efficient by default — large findings lists compress to
+`{total, by_severity, by_rule_top5, by_file_top5, findings_top_n, truncated}`.
+Pass `verbose=True` for full output. Curator extracted to a shared
+`_curate.py` module (see below).
+
+Routes through `uv run --with <tool> -- <tool>` to bypass snap-confined
+binaries (`/snap/bin/ruff` can't read `~/.claude/`). Helper extracted as
+`_uv.py::uv_cmd`.
+
+### Added — shared `_curate.py` + `_uv.py` modules
+
+`_curate.curate(findings, top_n, severity_min, rule_key)` and
+`_curate.SEVERITY_RANK` are now the single source of truth for token-efficient
+result compression across MCPs. lint_mcp.py refactored to import; future
+trace_mcp / knowledge_mcp work should follow.
+
+`_uv.uv_cmd(tool, args)` builds the canonical `uv run --with <tool> --
+<tool> <args...>` command list. 5 call sites in lint_mcp.py consolidated.
+
+### Added — 5 new built-in schemas
+
+- `fix-bug` — reproduce → debug → analyze → verify-cause → fix → review → validate → report
+- `refactor` — explore → analyze → characterize → create-plan → create-tasks → execute-tasks → review → validate
+- `audit` — explore → detect-stack → research → audit → analyze → review → create-plan → create-tasks
+- `migrate` — research → explore → analyze → rollback-plan → create-plan → create-tasks → execute-tasks → review → validate
+- `harden` — explore → audit → analyze → create-plan → create-tasks → execute-tasks → review → validate
+
+Each mirrors its hardcoded routine counterpart. Schema-driven gives access to
+declarative `apply.gate.requires`, branch_high/medium/low, and per-stage
+descriptions that the hardcoded routines lack.
+
+### Added — `debug-with-pdb` schema
+
+Python pdb-driven debugging with explicit `verify-cause` gate. Stages:
+reproduce → isolate → inspect → hypothesize → verify-cause → fix → regression →
+postmortem → investigate-deeper.
+
+### Added — `mcp-build` schema
+
+Codifies the kaizen-lint + kaizen-workflow build pattern for future MCP
+authors. Stages: detect-stack → research → create-plan → create-tasks →
+write-server-skeleton → write-tools → register-mcp-json (gated) →
+register-permissions (gated) → smoke-handshake → validate-cache → report.
+
+### Added — gate enforcement at `workflow.sh advance` time
+
+`advance <stage>` now consults the schema's `apply.gate.requires` list (or
+top-level `requires:` per artifact). When required artifacts aren't recorded
+in `state.artifacts`, the advance blocks with a missing-artifact message
+(exit 4 → return 1). Bypass with `workflow.sh advance --force <stage>` —
+audit trail goes to `state.gate_overrides[]`.
+
+Hardcoded routines (audit / build-feature / fix-bug / etc) are unaffected —
+gate enforcement is schema-driven only.
+
+### Added — artifact-key validation at `workflow.sh artifact` time
+
+For schema-driven workflows, `workflow.sh artifact <key> <value>` now warns
+when `<key>` isn't in the schema's declared artifact-id list. Use
+`workflow.sh artifact --strict <key>` to reject unknown keys (exit 3 →
+return 1).
+
+### Added — schema-suggest hint at `workflow.sh init`
+
+When the user's prompt verb doesn't match any hardcoded routine AND no
+`schema=` flag was passed, init prints a one-shot stderr hint listing
+available schemas. Default routing behavior (fall through to build-feature)
+is preserved — informational only.
+
+### Added — JSON schema loading with fail-fast validation
+
+`workflow_runner.py` now reads `.json` schemas in addition to `.yaml`/`.yml`.
+On load failure, the runner prints itemized validation errors and exits
+non-zero instead of silently producing a broken stages list.
+
+### Added — `kaizen-claude-docs`, `kaizen-scrape`, `kaizen-state` MCP servers
+
+Three new servers covering Claude Code docs (semantic search over
+ericbuess/claude-code-docs mirror), web scrape indexing, and read-only
+workflow/state introspection. Total of 9 MCP servers shipped now.
+
+### Changed — `kaizen:kaizen` skill → `kaizen:workflow`
+
+The skill formerly invoked as `/kaizen:kaizen` is now `/kaizen:workflow`.
+Matches the directory naming inside `plugins/kaizen/skills/workflow/`. Older
+`/kaizen:kaizen` invocations no longer route — use the new name.
+
+### Changed — `doctor.sh` → `health.sh`
+
+Per user correction, the diagnostic script is now `health.sh` invoked as
+`/kaizen:health`. Internal script renamed accordingly.
+
+### Changed — 26-command body trim
+
+Aggressive cleanup of `plugins/kaizen/commands/*.md` removed multi-paragraph
+prose now duplicated by the underlying script's `--help` output. Each command
+file is now ~10–30 lines: frontmatter + one-line description + bash
+invocation. 80%+ LOC reduction across the command surface.
+
+### Changed — `/kaizen:enable-all` defaults to fast-only setup
+
+The default run no longer triggers the semantic indexers (which can take
+>2 minutes on first run, exceeding CC's bash timeout). Opt-in via
+`--with-index`. Same for `--with-browser`, `--with-daemon`,
+`--with-trace-proxy`.
+
+### Fixed — `references/routines.md` syncs with schemas
+
+The routines reference now includes a schema-index section linking to
+`schemas/*/schema.yaml` rather than re-listing stage transitions inline.
+Single source of truth for the stage chain is the yaml.
+
 ## [1.29.4] — 2026-05-12
 
 ### Fixed — `model_tokens` warning silenced + full context honored (Context7-verified)
@@ -209,7 +453,7 @@ Plugin unit-test count: 121 → 137. Pipeline: 30/30.
 ### Files
 
 ```
-skills/kaizen/scripts/scrape_index.py    (+135 LOC: recommendations + smart picker + recommend subcommand)
+skills/workflow/scripts/scrape_index.py    (+135 LOC: recommendations + smart picker + recommend subcommand)
 bin/kaizen-scrape                         (recommend added to stdlib-only fast path)
 commands/scrape.md                        (subcommand table)
 tests/test_scrape_recommend.py            (new, 16 tests)
@@ -332,8 +576,8 @@ Plugin unit-test count: 92 → 118.
 ### Files
 
 ```
-skills/kaizen/scripts/_chunk.py     (new, 132 LOC)
-skills/kaizen/scripts/_search.py    (new, 213 LOC)
+skills/workflow/scripts/_chunk.py     (new, 132 LOC)
+skills/workflow/scripts/_search.py    (new, 213 LOC)
 tests/test_chunk.py                 (new, 88 LOC)
 tests/test_search.py                (new, 174 LOC)
 ```
@@ -413,7 +657,7 @@ Before v1.26.0 the local-model story was llama-server + manual env-var edits + a
 ```
 commands/models.md                          (new)
 bin/kaizen-models                           (new, uv-wrapper)
-skills/kaizen/scripts/models.py             (new, ~350 LOC, PEP723: ollama>=0.4)
+skills/workflow/scripts/models.py             (new, ~350 LOC, PEP723: ollama>=0.4)
 ```
 
 ## [1.25.5] — 2026-05-12
@@ -515,7 +759,7 @@ When the legacy `.workflow/` was filesystem-renamed to `.kaizen/workflow/` and c
 
 ### Added — `_embed.py` shared embedding backend (HTTP-first)
 
-All four kaizen indexers (trace / knowledge / onboard / scrape) now route embeddings through `skills/kaizen/scripts/_embed.py`. Resolution order:
+All four kaizen indexers (trace / knowledge / onboard / scrape) now route embeddings through `skills/workflow/scripts/_embed.py`. Resolution order:
 
 1. **`KAIZEN_EMBED_BACKEND=local`** → force sentence-transformers.
 2. **`KAIZEN_EMBED_BACKEND=http`** + `KAIZEN_EMBED_HTTP_BASE_URL` + `KAIZEN_EMBED_HTTP_MODEL` → force HTTP, no probe.
@@ -708,7 +952,7 @@ Three kaizen patterns composed into one command:
 2. **[ScrapeGraphAI](https://github.com/scrapegraphai/scrapegraph-ai)** — `SmartScraperGraph(prompt, source, config).run()` for LLM-driven extraction.
 3. **Kaizen indexer** — same SQLite + `sentence-transformers` (`all-MiniLM-L6-v2`, 384-dim) shape as trace / knowledge / onboard.
 
-**Pipeline** (`skills/kaizen/scripts/scrape_index.py`, ~530 LOC):
+**Pipeline** (`skills/workflow/scripts/scrape_index.py`, ~530 LOC):
 
 ```
 FetchURLs → ScrapeFanOut → Synthesize → EmbedAndPersist
@@ -783,7 +1027,7 @@ Single-edit principle preserved — change the model in one place to retune ever
 ### Surface — new files
 
 - `commands/scrape.md` — slash command + LLM provider docs + pipeline diagram.
-- `skills/kaizen/scripts/scrape_index.py` — pipeline + indexer (530 LOC, PEP 723 inline metadata).
+- `skills/workflow/scripts/scrape_index.py` — pipeline + indexer (530 LOC, PEP 723 inline metadata).
 - `bin/kaizen-scrape` — shell shim (count 25 → 26).
 - `assets/schemas/scrape-item.schema.json` — JSON Schema mirror.
 
@@ -848,7 +1092,7 @@ All three use the same draft 2020-12 + `$defs` pattern as the v1.19.0 schemas. R
 ### Surface — new files
 
 - `commands/review.md`, `commands/audit.md`
-- `skills/kaizen/scripts/review.sh` (~190 LOC), `skills/kaizen/scripts/audit.sh` (~280 LOC)
+- `skills/workflow/scripts/review.sh` (~190 LOC), `skills/workflow/scripts/audit.sh` (~280 LOC)
 - `bin/kaizen-review`, `bin/kaizen-audit` — shims (count 23 → 25)
 - `assets/schemas/trace-event.schema.json`, `inbox-message.schema.json`, `daemon-state.schema.json`
 
@@ -862,7 +1106,7 @@ Path unification + single-file config SSOT. Everything kaizen-owned now lives un
 
 ### Added — `config.py` plugin-defaults section (the single-edit surface)
 
-The top ~15 lines of `skills/kaizen/scripts/config.py` are now the canonical place to retune kaizen-wide defaults:
+The top ~15 lines of `skills/workflow/scripts/config.py` are now the canonical place to retune kaizen-wide defaults:
 
 ```python
 USER_DIR_NAME           = ".kaizen"              # under ~/.claude/
@@ -885,7 +1129,7 @@ Edit these once; every kaizen script picks up the change automatically via `_pat
 
 ### Added — `_paths.py` + `_paths.sh` (path SSOT modules)
 
-`skills/kaizen/scripts/_paths.py` — Python module holding every kaizen-owned path constant. Imports the editable names from `config.py`, applies env overrides (`KAIZEN_DIR`, `KAIZEN_TRACE_DIR`, etc.), exposes `KAIZEN_USER_DIR`, `TRACE_DIR`, `TRACE_FILE`, `TRACE_DB`, `KNOWLEDGE_DB`, `DAEMON_STATE`, `INBOX_DIR`, `BACKUP_DIR`, `USER_SCHEMAS`. Project paths via `project_workflow_dir()` / `project_schemas_dir()` / `project_kaizen_dir()` (cwd-relative).
+`skills/workflow/scripts/_paths.py` — Python module holding every kaizen-owned path constant. Imports the editable names from `config.py`, applies env overrides (`KAIZEN_DIR`, `KAIZEN_TRACE_DIR`, etc.), exposes `KAIZEN_USER_DIR`, `TRACE_DIR`, `TRACE_FILE`, `TRACE_DB`, `KNOWLEDGE_DB`, `DAEMON_STATE`, `INBOX_DIR`, `BACKUP_DIR`, `USER_SCHEMAS`. Project paths via `project_workflow_dir()` / `project_schemas_dir()` / `project_kaizen_dir()` (cwd-relative).
 
 `_paths.sh` — sibling shell module with the same constants as exported env vars + helper functions. Source from any kaizen `.sh` script.
 
@@ -919,7 +1163,7 @@ The pre-commit gate + onboard.db keep their existing locations under `.kaizen/ho
 
 ### Added — `/kaizen:migrate-paths` (migrator)
 
-`skills/kaizen/scripts/migrate_paths.sh` + `commands/migrate-paths.md` + `bin/kaizen-migrate-paths` shim. Moves legacy paths to the new layout, idempotent. Flags: `--dry-run`, `--force` (overwrite non-empty new path), `--user-only`, `--project-only`, `--project-root <path>`.
+`skills/workflow/scripts/migrate_paths.sh` + `commands/migrate-paths.md` + `bin/kaizen-migrate-paths` shim. Moves legacy paths to the new layout, idempotent. Flags: `--dry-run`, `--force` (overwrite non-empty new path), `--user-only`, `--project-only`, `--project-root <path>`.
 
 Also rewrites `<repo>/.kaizen.toml` if its `backlog_path` / `architecture_log` still reference `.workflow/`.
 
@@ -997,7 +1241,7 @@ Skip-mode flags: `--no-globals` (project only), `--no-project` (globals only), `
 **Idempotency:** every underlying installer is safe to re-run — existing `.kaizen.toml` is preserved, statusline checks before adding, env appends only if marker is absent, all `*-index` runs are sha-deduped. So `/kaizen:enable-all` doubles as a "make sure everything is current" command after a plugin update.
 
 **New surface:**
-- `skills/kaizen/scripts/enable_all.sh` (190 LOC orchestrator with colored OK/skip/fail summary)
+- `skills/workflow/scripts/enable_all.sh` (190 LOC orchestrator with colored OK/skip/fail summary)
 - `commands/enable-all.md` (slash command)
 - `bin/kaizen-enable-all` (shim — count 22 → 23)
 
@@ -1039,7 +1283,7 @@ embedding BLOB (384 f32) | sha (16-hex) | updated_at
 
 ### Added — `kaizen-onboard-search` MCP server
 
-`skills/kaizen/scripts/onboard_mcp.py` — FastMCP server exposing 5 tools:
+`skills/workflow/scripts/onboard_mcp.py` — FastMCP server exposing 5 tools:
 
 - `onboard_search(query, top_k, language)` — semantic search with optional language filter.
 - `onboard_index_status()` — total files / sloc / bytes / model / counts by language.
@@ -1090,7 +1334,7 @@ Schema polish — extend the runtime SSOT (`schemas.py` dataclasses) to cover ev
 
 ### Added — dataclass coverage for v1.14–v1.18 surfaces
 
-`skills/kaizen/scripts/schemas.py` previously covered 4 shapes (`TraceEvent`, `InboxMessage`, `DaemonState`, `BacklogItem`/`Decision`/`Store`). v1.19.0 adds 8 more dataclasses:
+`skills/workflow/scripts/schemas.py` previously covered 4 shapes (`TraceEvent`, `InboxMessage`, `DaemonState`, `BacklogItem`/`Decision`/`Store`). v1.19.0 adds 8 more dataclasses:
 
 | Dataclass                | Shape it documents                                        |
 |--------------------------|-----------------------------------------------------------|
@@ -1174,7 +1418,7 @@ Closes the three v1.16.x follow-ups in one release: (1) MCP wrapper for `knowled
 
 ### Added — `kaizen-knowledge-search` MCP server
 
-`skills/kaizen/scripts/knowledge_mcp.py` — FastMCP server exposing 5 tools that wrap `knowledge_index.do_*` helpers (parallel to `trace_mcp.py`'s wrapping of `trace_index`):
+`skills/workflow/scripts/knowledge_mcp.py` — FastMCP server exposing 5 tools that wrap `knowledge_index.do_*` helpers (parallel to `trace_mcp.py`'s wrapping of `trace_index`):
 
 - `knowledge_search(query, top_k, source)` — cosine-similarity search; optional source filter.
 - `knowledge_index_status()` — totals, model, dim, last-indexed-ts, counts by source.
@@ -1219,7 +1463,7 @@ E2E smoke-tested:
 
 ### Permissions
 
-`plugin.json` allowlists `uv run --script ${CLAUDE_PLUGIN_ROOT}/skills/kaizen/scripts/knowledge_mcp.py:*` for the new MCP spawn path.
+`plugin.json` allowlists `uv run --script ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/knowledge_mcp.py:*` for the new MCP spawn path.
 
 ### Why minor (1.16.0 → 1.17.0)
 
@@ -1235,7 +1479,7 @@ Knowledge RAG over the non-trace corpus + Self-RAG retrieval discipline skill. S
 
 ### Added — `knowledge_index.py` (semantic search over brain / plans / backlog / schemas / persona)
 
-`skills/kaizen/scripts/knowledge_index.py` — sibling of `trace_index.py`. Same architecture (SQLite + sentence-transformers + 384-dim cosine), same model (`all-MiniLM-L6-v2`), same privacy defaults (signature embedding only; body opt-in via `--embed-body`). PEP 723 inline metadata pins CPU torch, mirroring the v1.12.0 trace-index pattern — uv-managed venv, no system-pip pollution.
+`skills/workflow/scripts/knowledge_index.py` — sibling of `trace_index.py`. Same architecture (SQLite + sentence-transformers + 384-dim cosine), same model (`all-MiniLM-L6-v2`), same privacy defaults (signature embedding only; body opt-in via `--embed-body`). PEP 723 inline metadata pins CPU torch, mirroring the v1.12.0 trace-index pattern — uv-managed venv, no system-pip pollution.
 
 **Five source iterators:**
 
@@ -1276,7 +1520,7 @@ Iron Laws: never retrieve and then ignore; never claim a convention you didn't v
 
 ### Permissions
 
-`plugin.json` allows `python3 ${CLAUDE_PLUGIN_ROOT}/skills/kaizen/scripts/knowledge_index.py:*` for the slash command's embedded `!` invocation.
+`plugin.json` allows `python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/knowledge_index.py:*` for the slash command's embedded `!` invocation.
 
 ### First-time setup
 
@@ -1302,7 +1546,7 @@ Python tooling depth + Confidence-Score branching (advisory). First of two relea
 
 ### Changed — pre-commit gate Python detection
 
-`skills/kaizen/scripts/pre-commit.sh` compile-barrier heuristic for Python projects:
+`skills/workflow/scripts/pre-commit.sh` compile-barrier heuristic for Python projects:
 
 **Before (v1.14.0):** Detected `pyproject.toml` only; ran `ruff check .` if `ruff` on PATH; silently disabled the gate otherwise.
 
@@ -1408,7 +1652,7 @@ New runtime surface (workflow_runner.py + `schema=` flag + `/kaizen:schema` comm
 
 Closes the v1.13.0 follow-up. Vibe-check's orphan-import check (Rust `use` not in any `Cargo.toml`) now consults brain-sourced `dependency-allowlist` rules and demotes listed crates from `! orphan` to `∘ allowlisted` — advisory only, no behaviour change for unlisted crates.
 
-**`skills/kaizen/scripts/rules.py`** — fourth rule_type added:
+**`skills/workflow/scripts/rules.py`** — fourth rule_type added:
 
 - `VALID_RULE_TYPES` extended with `dependency-allowlist`.
 - `dependency_allowed(name) -> (bool, rule_name)` — union lookup across all loaded rules; first hit wins.
@@ -1416,13 +1660,13 @@ Closes the v1.13.0 follow-up. Vibe-check's orphan-import check (Rust `use` not i
 - New template: `template dependency-allowlist` emits a ready-to-edit brain note with a starter `serde,tokio,reqwest,anyhow,thiserror,clap,tracing` allowlist.
 - Validation: requires non-empty `allowlist` (comma-separated).
 
-**`skills/kaizen/scripts/vibe_check.sh`** — orphan-import section now partitions detected orphans through `rules.py dependency-allowed`. Listed crates print as `∘ allowlisted deps (brain rule): <names>`; unlisted continue to print as `! orphan imports`. The composed `/kaizen:vibe-check` skill body and `kaizen:rule` command surface already documented this rule type (referenced as a forward declaration in v1.13.0) — wiring now matches the documentation.
+**`skills/workflow/scripts/vibe_check.sh`** — orphan-import section now partitions detected orphans through `rules.py dependency-allowed`. Listed crates print as `∘ allowlisted deps (brain rule): <names>`; unlisted continue to print as `! orphan imports`. The composed `/kaizen:vibe-check` skill body and `kaizen:rule` command surface already documented this rule type (referenced as a forward declaration in v1.13.0) — wiring now matches the documentation.
 
 ### Author a `dependency-allowlist` rule
 
 ```bash
 # 1. Get a template:
-python3 ${CLAUDE_PLUGIN_ROOT}/skills/kaizen/scripts/rules.py template dependency-allowlist > ~/.claude/brain/Notes/kaizen-allow-core-deps.md
+python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/rules.py template dependency-allowlist > ~/.claude/brain/Notes/kaizen-allow-core-deps.md
 # 2. Edit the allowlist line in the YAML frontmatter:
 #    allowlist: "serde,tokio,my-internal-crate,..."
 # 3. Validate:
@@ -1440,7 +1684,7 @@ Bug-fix-shaped: vibe-check's SKILL.md and `commands/vibe-check.md` already adver
 
 ### Added — `bin/kaizen-vibe-check` shell wrapper
 
-v1.13.0 shipped the script + slash command but forgot the `bin/` shim. Adding it so `/kaizen:install` symlinks `kaizen-vibe-check` into `~/.local/bin/` (next install brings the symlink count to 18). Trivial — 6-line self-locating bash wrapper that execs `skills/kaizen/scripts/vibe_check.sh`.
+v1.13.0 shipped the script + slash command but forgot the `bin/` shim. Adding it so `/kaizen:install` symlinks `kaizen-vibe-check` into `~/.local/bin/` (next install brings the symlink count to 18). Trivial — 6-line self-locating bash wrapper that execs `skills/workflow/scripts/vibe_check.sh`.
 
 ## [1.13.0] — 2026-05-12
 
@@ -1875,7 +2119,7 @@ Zero false positives, zero bash errors. Real-world repos exercise the trigger su
 ```bash
 # Old: 3 lines × 7 hooks = 21 lines of duplicated boilerplate
 KZ_SID=$(printf '%s' "$EVENT" | python3 -c "..." 2>/dev/null)
-python3 "${CLAUDE_PLUGIN_ROOT}/skills/kaizen/scripts/trace.py" event \
+python3 "${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/trace.py" event \
     --src hook --evt X [--tool Y] ${KZ_SID:+--sid "$KZ_SID"} >/dev/null 2>&1 || true
 
 # New: 1 line × 7 hooks = 7 lines total
@@ -2259,7 +2503,7 @@ Subcommands: (none = refresh) / `--dry-run` / `--force`.
 
 | Before | After |
 |---|---|
-| `python3 ${CLAUDE_PLUGIN_ROOT}/skills/kaizen/scripts/flow_demo.py .` (failed outside CC) | `kaizen flow .` |
+| `python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/flow_demo.py .` (failed outside CC) | `kaizen flow .` |
 | `source <path>/kaizen-env.sh && kaizen-flow .` | `kaizen-flow .` (after `/kaizen:install`) |
 | `/plugin update + /reload-plugins` + hope cache refreshed | `/kaizen:refresh-cache + /reload-plugins` deterministic |
 
@@ -2419,7 +2663,7 @@ Gate integrations:
 
 ### Fixed
 
-- **Documentation drifts in `skills/kaizen/SKILL.md`** (surfaced by re-reading the loaded skill in-session):
+- **Documentation drifts in `skills/workflow/SKILL.md`** (surfaced by re-reading the loaded skill in-session):
   - Bundled-skill count: 32 → **34** (now reflects `publishing` + `plugin-pitfalls` added in 1.1.0/1.1.3).
   - Gate header: "8-item" → **"10-check"** pre-commit gate.
   - PART 3 table extended with the 2 newer checks:

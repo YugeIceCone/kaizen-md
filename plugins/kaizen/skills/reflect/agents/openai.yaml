@@ -1,0 +1,4 @@
+interface:
+  display_name: "Reflect"
+  short_description: "Critique output before continuing"
+  default_prompt: "Use $reflect to critique this result and decide whether to continue or replan."

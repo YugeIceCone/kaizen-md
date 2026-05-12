@@ -1,0 +1,117 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kaizen.invalid/schemas/git-rules.schema.json",
+  "title": "Kaizen git workflow discipline",
+  "description": "Validates skills/workflow/domain/git-discipline.yaml — project-agnostic git workflow rules consumed by pre-commit.sh + commit-msg.sh + backlog.py.",
+  "type": "object",
+  "required": ["commit_format", "sizing_thresholds", "pre_commit_gates", "pre_deletion_belief"],
+  "additionalProperties": true,
+  "properties": {
+    "commit_format": {
+      "type": "object",
+      "required": ["style"],
+      "properties": {
+        "style": { "enum": ["conventional", "gitmoji", "plain"] },
+        "subject_max_chars": { "type": "integer", "minimum": 20, "maximum": 200 },
+        "body_wrap_chars": { "type": "integer", "minimum": 40, "maximum": 200 },
+        "allowed_prefixes": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^[a-z]+$" }
+        },
+        "scope_required": { "type": "boolean" },
+        "body_required_for": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "sizing_thresholds": {
+      "type": "object",
+      "required": ["micro", "plan_file"],
+      "properties": {
+        "micro": {
+          "type": "object",
+          "properties": {
+            "max_files": { "type": "integer", "minimum": 1 },
+            "max_manifest_edits": { "type": "integer", "minimum": 0 },
+            "max_trait_moves": { "type": "integer", "minimum": 0 },
+            "destination": { "type": "string" }
+          }
+        },
+        "split_into_siblings": { "type": "object" },
+        "plan_file": {
+          "type": "object",
+          "properties": {
+            "min_files": { "type": "integer" },
+            "min_manifest_edits": { "type": "integer" },
+            "cross_context": { "type": "boolean" },
+            "carve_out_trigger": { "type": "boolean" },
+            "destination": { "type": "string" },
+            "requires_status_block": { "type": "boolean" }
+          }
+        },
+        "architecture_log_row": { "type": "object" }
+      }
+    },
+    "pre_commit_gates": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "severity", "description"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" },
+          "severity": { "enum": ["error", "warn", "info"] },
+          "description": { "type": "string" },
+          "probe": { "type": "string" },
+          "probe_logic": { "type": "string" },
+          "cache_key_components": { "type": "array", "items": { "type": "string" } },
+          "bypass_env": { "type": "string" },
+          "default_cmd": { "type": "object" },
+          "threshold_files": { "type": "integer" },
+          "error_message": { "type": "string" }
+        }
+      }
+    },
+    "pre_deletion_belief": {
+      "type": "object",
+      "required": ["enabled"],
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "description": { "type": "string" },
+        "scan_sources": { "type": "array", "items": { "type": "string" } },
+        "bypass_env": { "type": "string" },
+        "error_action": { "type": "string" }
+      }
+    },
+    "plan_files": { "type": "object" },
+    "task_list_discipline": { "type": "object" },
+    "backlog": { "type": "object" },
+    "architecture_log": { "type": "object" },
+    "recovery_patterns": { "type": "object" },
+    "forbidden_without_explicit_permission": { "type": "array", "items": { "type": "string" } },
+    "memory_hooks": { "type": "object" },
+    "claude_md_invariants": { "type": "object" },
+    "bash_invocation_discipline": {
+      "type": "object",
+      "properties": {
+        "description": { "type": "string" },
+        "rules": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "severity", "rule", "reason"],
+            "properties": {
+              "id": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" },
+              "severity": { "enum": ["hard", "soft"] },
+              "rule": { "type": "string" },
+              "reason": { "type": "string" },
+              "good": { "type": "string" },
+              "bad": { "type": "string" }
+            }
+          }
+        },
+        "enforcement": { "type": "object" }
+      }
+    }
+  }
+}

@@ -35,7 +35,7 @@ except Exception:
 " 2>/dev/null)
 
 if [ -n "${PROMPT:-}" ]; then
-    INBOX="${CLAUDE_PLUGIN_ROOT}/skills/kaizen/scripts/inbox.py"
+    INBOX="${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/inbox.py"
     # Capture prints the absolute path of the new message file
     CAPTURED=$(python3 "$INBOX" capture --session "$SESSION" "$PROMPT" 2>/dev/null) || true
     # Mark this as the turn-starter ONLY if no sentinel exists. Mid-turn

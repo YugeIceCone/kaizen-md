@@ -1,0 +1,30 @@
+# yaml-language-server: $schema=./schemas/step-type.schema.json
+#
+# Tour step types. Each step in a .tour file is one of these.
+
+step_types:
+  - id: content
+    when_to_use: "Intro/closing only"
+    max_per_tour: 2
+    shape: '{ "title": "...", "description": "..." }'
+    note: "Never use as first step — appears blank in VS Code."
+
+  - id: directory
+    when_to_use: "Orient to a module"
+    shape: '{ "directory": "src/services", "title": "..." }'
+
+  - id: file_line
+    when_to_use: "The workhorse — link to a specific line"
+    shape: '{ "file": "src/auth.ts", "line": 42, "title": "..." }'
+
+  - id: selection
+    when_to_use: "Highlight a code block"
+    shape: '{ "file": "...", "selection": {...}, "title": "..." }'
+
+  - id: pattern
+    when_to_use: "Regex match (volatile files)"
+    shape: '{ "file": "...", "pattern": "class App", "title": "..." }'
+
+  - id: uri
+    when_to_use: "Link to PR, issue, doc"
+    shape: '{ "uri": "https://...", "title": "..." }'

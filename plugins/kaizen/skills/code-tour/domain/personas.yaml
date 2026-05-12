@@ -1,0 +1,70 @@
+# yaml-language-server: $schema=./schemas/persona.schema.json
+#
+# CodeTour personas — declarative form. Each persona is a goal-shaped audience
+# for tour authoring. Personas drive the depth defaults + the "must cover" hints.
+#
+# Consumed by:
+#   - skills/code-tour/SKILL.md (persona inference table generated from this)
+#   - tour-authoring agents that need to look up coverage hints by persona id
+
+personas:
+  - id: vibecoder
+    goal: "Get the vibe fast"
+    must_cover: [entry_point, main_modules]
+    default_depth: quick
+    trigger_phrases: ["quick tour", "vibe check"]
+
+  - id: new-joiner
+    goal: "Structured ramp-up"
+    must_cover: [directories, setup, business_context]
+    default_depth: standard
+    trigger_phrases: ["onboarding", "new joiner"]
+    is_default: true
+
+  - id: bug-fixer
+    goal: "Root cause fast"
+    must_cover: [trigger, fault_points, tests]
+    default_depth: standard
+    trigger_phrases: ["bug fix tour"]
+
+  - id: rca-investigator
+    goal: "Why did it fail"
+    must_cover: [causality_chain, observability_anchors]
+    default_depth: deep
+    trigger_phrases: ["why did X break", "RCA", "RCA tour"]
+
+  - id: feature-explainer
+    goal: "End-to-end"
+    must_cover: [ui, api, backend, storage]
+    default_depth: standard
+    trigger_phrases: ["explain how X works"]
+
+  - id: pr-reviewer
+    goal: "Review correctly"
+    must_cover: [change_story, invariants, risky_areas]
+    default_depth: standard
+    trigger_phrases: ["tour for this PR", "PR review tour"]
+
+  - id: architect
+    goal: "Shape and rationale"
+    must_cover: [boundaries, tradeoffs, extension_points]
+    default_depth: deep
+    trigger_phrases: ["architecture"]
+
+  - id: security-reviewer
+    goal: "Trust boundaries"
+    must_cover: [auth_flow, validation, secret_handling]
+    default_depth: standard
+    trigger_phrases: ["security", "auth review"]
+
+  - id: refactorer
+    goal: "Safe restructuring"
+    must_cover: [seams, hidden_deps, extraction_order]
+    default_depth: standard
+    trigger_phrases: ["refactor tour"]
+
+  - id: external-contributor
+    goal: "Contribute safely"
+    must_cover: [safe_areas, conventions, landmines]
+    default_depth: standard
+    trigger_phrases: ["contributor guide"]

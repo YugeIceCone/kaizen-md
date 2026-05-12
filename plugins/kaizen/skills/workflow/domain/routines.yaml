@@ -1,0 +1,181 @@
+# yaml-language-server: $schema=./schemas/routine.schema.json
+#
+# Single source of truth for kaizen workflow routines.
+# Consumed by:
+#   - skills/workflow/scripts/workflow.sh::routine_stages() (via _loader.py)
+#   - skills/workflow/scripts/workflow.sh::verb_matched_explicitly() (trigger_words)
+#   - skills/workflow/application/codegen.py (regenerates references/routines.md)
+#   - skills/workflow/scripts/workflow_mcp.py (workflow_list_schemas tool)
+#
+# DO NOT hand-edit the regenerated references/routines.md. Edit this yaml,
+# then run `application/codegen.py` (or refresh-cache.sh, which calls it).
+
+routines:
+  # ─── Hardcoded routines (curated defaults) ─────────────────────────
+  # These are the verb-detected built-ins. Stage chains preserved verbatim
+  # from skills/workflow-routing/scripts/workflow.sh::routine_stages() as of
+  # 2026-05-12 (pre-merge baseline). Behavioral parity invariant of the
+  # workflow-merge plan: any change to these arrays is a behavior change.
+
+  - name: audit
+    kind: hardcoded
+    trigger_words: [audit, "health check", "find issues", "what needs work"]
+    stages: [explore, detect-stack, research, audit, analyze, review, create-plan, create-tasks]
+    end_state: "Durable plan at plans/<date>-<topic>.md with audit findings encoded as phases"
+    coding_skills: []
+    description: |
+      Periodic comprehensive audit (per the synavos article: severity-classified,
+      formal-report-producing). Use before major releases, after critical
+      incidents, or when entering a new project.
+
+  - name: build-feature
+    kind: hardcoded
+    trigger_words: [build, add, implement, create, new]
+    stages: [explore, detect-stack, research, analyze, create-plan, create-tasks, execute-tasks, simplify, review, report]
+    end_state: "Feature implemented + tested + reviewed + reported (auto=yes); plan + tasks ready for approval (auto=no)"
+    coding_skills: [solid, kiss, yagni, karpathy]
+    description: |
+      End-to-end feature build. Default routine when no other verb matches.
+      The `simplify` stage between execute-tasks and review applies the
+      bundled /simplify command to trim over-engineering before review.
+      `karpathy` adds diff-level scanners (complexity / surgical / assumption /
+      goal) before commit.
+
+  - name: fix-bug
+    kind: hardcoded
+    trigger_words: ["fix ", bug, broken, "flaky test", regression]
+    stages: [debug, analyze, fix, simplify, review, validate, report]
+    end_state: "Bug repaired with a regression test that fails before the fix and passes after"
+    coding_skills: [kiss, dry]
+    description: |
+      Bug-fix loop with minimal-change discipline. Regression test is mandatory.
+
+  - name: refactor
+    kind: hardcoded
+    trigger_words: [refactor, "clean up", restructure, extract, rename]
+    stages: [explore, analyze, create-plan, create-tasks, execute-tasks, simplify, review, validate]
+    end_state: "Behavior preserved, structure improved. Each phase verifiable independently."
+    coding_skills: [dry, boy-scout-rule, kiss, separation-of-concerns, karpathy]
+    description: |
+      Restructure code without changing behavior. Plan is agent-reusable so
+      the refactor can pause and resume across sessions. `karpathy` enforces
+      surgical-changes discipline during execute-tasks.
+
+  # NB: batch-migrate MUST come BEFORE migrate so its trigger words
+  # ("batch migrate", "across all", ...) are checked first by the
+  # verb-detection loop. Otherwise "batch migrate all files" matches
+  # migrate's "migrate" substring first.
+  - name: batch-migrate
+    kind: hardcoded
+    trigger_words: ["batch migrate", "batch refactor", "across all", "every file", "sweep "]
+    stages: [research, explore, detect-stack, analyze, batch-fanout, report]
+    end_state: "N pull requests opened by parallel worktree agents (one per independent unit)"
+    coding_skills: []
+    description: |
+      Sweeping change (≥5 independent units) where each unit can land as
+      its own PR. Hands off to bundled /batch which spawns worker subagents.
+
+  - name: migrate
+    kind: hardcoded
+    trigger_words: [migrate, upgrade, "port to", "switch from"]
+    stages: [research, explore, analyze, create-plan, create-tasks, execute-tasks, simplify, review, validate]
+    end_state: "Migration landed in slices, each slice green-build-safe"
+    coding_skills: [convention-over-configuration, dry]
+    description: |
+      Framework, version, API, or infrastructure migration. Research stage
+      front-loads version-specific gotchas.
+
+  - name: harden
+    kind: hardcoded
+    trigger_words: [harden, secure, "threat model", "lock down"]
+    stages: [explore, audit, analyze, create-plan, create-tasks, execute-tasks, simplify, review, validate]
+    end_state: "Prioritized hardening fixes landed with security regression tests"
+    coding_skills: [law-of-demeter, separation-of-concerns]
+    description: |
+      Security / reliability hardening. Audit stage uses the `agent-aegis`
+      framing for threat modeling.
+
+  - name: custom
+    kind: hardcoded
+    trigger_words: []
+    stages: []
+    end_state: "User-specified stage chain via repeated skill=NAME advance calls"
+    coding_skills: []
+    description: |
+      Escape hatch — no verb match. User pins each stage explicitly with
+      `skill=NAME`. The script does not auto-detect; the agent calls
+      `advance` with each next stage manually.
+
+  # ─── Schema-driven routines (declarative, opt-in via schema=NAME) ──
+  # These point at schemas/<name>/schema.yaml for the full artifact /
+  # gate / branch declaration. The `stages` field here is a cached copy
+  # for fast routine_stages() lookup; the canonical detail lives in the
+  # schema file.
+
+  - name: kaizen-default
+    kind: schema
+    trigger_words: []
+    schema_path: schemas/kaizen-default/schema.yaml
+    stages: [research, explore, analyze, plan, tasks, execute, review, validate]
+    end_state: "8-stage generic workflow with per-stage requires gates"
+    coding_skills: [kiss, dry, solid]
+    description: |
+      Mirrors the hardcoded default flow but adds declarative gates and
+      requires-tracking. Use when you want the structure of build-feature
+      with stronger gate enforcement.
+
+  - name: debug-with-pdb
+    kind: schema
+    trigger_words: []
+    schema_path: schemas/debug-with-pdb/schema.yaml
+    stages: [reproduce, isolate, inspect, hypothesize, verify-cause, fix, regression, postmortem, investigate-deeper]
+    end_state: "Bug reproduced, verified, fixed with regression. Postmortem optional."
+    coding_skills: [kiss]
+    description: |
+      Python pdb-driven debugging with an explicit verify-cause gate. The
+      gate forces hypothesis verification before fixing.
+
+  - name: mcp-build
+    kind: schema
+    trigger_words: []
+    schema_path: schemas/mcp-build/schema.yaml
+    stages: [detect-stack, research, create-plan, create-tasks, write-server-skeleton, write-tools, register-mcp-json, register-permissions, smoke-handshake, validate-cache, report]
+    end_state: "New kaizen MCP server registered + smoke-tested + cached"
+    coding_skills: [dry, kiss]
+    description: |
+      Codifies the kaizen-lint + kaizen-workflow build pattern. Use when
+      adding a new MCP server to the kaizen plugin.
+
+  - name: minimalist
+    kind: schema
+    trigger_words: []
+    schema_path: schemas/minimalist/schema.yaml
+    stages: [specs, tasks]
+    end_state: "Spec written (Given/When/Then or EARS) + tasks decomposed"
+    coding_skills: [kiss, yagni]
+    description: |
+      Low-ceremony 2-stage flow for small features where full kaizen-default
+      is overkill.
+
+  - name: spec-driven
+    kind: schema
+    trigger_words: []
+    schema_path: schemas/spec-driven/schema.yaml
+    stages: [analyze, design, tasks, decisions, implement, validate, reflect, handoff]
+    end_state: "EARS requirements + Decision Records + implementation + handoff doc"
+    coding_skills: [solid, dry]
+    description: |
+      EARS requirements + Decision Records (adapted from GitHub
+      awesome-copilot spec-driven-workflow-v1).
+
+  - name: onion-tdd-strict
+    kind: schema
+    tier: user
+    trigger_words: []
+    schema_path: ~/.claude/.kaizen/schemas/onion-tdd-strict/schema.yaml
+    stages: [audit, design-layers, red-test, green-impl, refactor, adapters, composition, supervisor, trace-wire, verify]
+    end_state: "Layered code with RED→GREEN→REFACTOR + cookbook supervisor + full trace"
+    coding_skills: [solid, dry, kiss, separation-of-concerns]
+    description: |
+      Onion-DDD layering + TDD + cookbook supervisor + full trace. Strictest
+      schema; gate on every stage. User-tier (lives in ~/.claude/.kaizen/).

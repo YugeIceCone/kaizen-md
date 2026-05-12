@@ -1,0 +1,4 @@
+interface:
+  display_name: "Explore"
+  short_description: "Map code structure before changes"
+  default_prompt: "Use $explore to map this codebase area before making changes."

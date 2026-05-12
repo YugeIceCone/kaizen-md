@@ -21,7 +21,7 @@ TOOL="${2:-}"
 INPUT=$(cat 2>/dev/null || echo "{}")
 SID=$(printf '%s' "$INPUT" | python3 -c "import json,sys; print(json.loads(sys.stdin.read() or '{}').get('session_id',''))" 2>/dev/null)
 
-python3 "${CLAUDE_PLUGIN_ROOT}/skills/kaizen/scripts/trace.py" event \
+python3 "${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/trace.py" event \
     --src hook --evt "$EVT" \
     ${TOOL:+--tool "$TOOL"} ${SID:+--sid "$SID"} \
     >/dev/null 2>&1 || true

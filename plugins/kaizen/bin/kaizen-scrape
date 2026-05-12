@@ -10,7 +10,7 @@
 set -uo pipefail
 SCRIPT=$(python3 -c "import os, sys; print(os.path.realpath(sys.argv[1]))" "${BASH_SOURCE[0]}")
 PLUGIN_ROOT=$(cd "$(dirname "$SCRIPT")/.." && pwd)
-TARGET="$PLUGIN_ROOT/skills/kaizen/scripts/scrape_index.py"
+TARGET="$PLUGIN_ROOT/skills/workflow/scripts/scrape_index.py"
 
 case "${1:-stats}" in
   stats|path|clear|list|get|detect-llm|-h|--help|"")

@@ -1,0 +1,217 @@
+#!/usr/bin/env python3
+"""Kaizen workflow — yaml domain loader.
+
+Loads + validates skills/workflow/domain/{routines.yaml, git-discipline.yaml}
+against their JSON Schemas. Exposes a small CLI for shell consumers (workflow.sh,
+pre-commit.sh) and a Python API for codegen.py + tests.
+
+## CLI
+
+    python3 _loader.py validate           # validate both yamls; exit non-zero on error
+    python3 _loader.py list               # list routine names (one per line)
+    python3 _loader.py stages <name>      # print stage chain (space-separated, one line)
+    python3 _loader.py routine <name>     # print full routine entry as JSON
+    python3 _loader.py triggers           # print "name\\tword1,word2" for each routine
+    python3 _loader.py gates              # print gate ids (one per line)
+    python3 _loader.py gate <id>          # print gate definition as JSON
+
+## Stdlib + minimal deps
+
+Requires pyyaml. The jsonschema lib is optional — if absent, validation is
+skipped with a warning (no fatal error). This keeps the loader runnable in
+constrained environments (e.g. snap-confined ruff/ty contexts).
+"""
+from __future__ import annotations
+
+import json
+import os
+import sys
+from pathlib import Path
+from typing import Any
+
+try:
+    import yaml
+except ImportError:
+    sys.stderr.write("kaizen workflow loader: PyYAML required (pip install pyyaml)\n")
+    sys.exit(1)
+
+try:
+    from jsonschema import validate as _validate, ValidationError as _ValidationError
+    _HAS_JSONSCHEMA = True
+except ImportError:
+    _HAS_JSONSCHEMA = False
+
+DOMAIN_DIR = Path(__file__).resolve().parent.parent / "domain"
+ROUTINES_YAML = DOMAIN_DIR / "routines.yaml"
+GIT_DISCIPLINE_YAML = DOMAIN_DIR / "git-discipline.yaml"
+ROUTINE_SCHEMA = DOMAIN_DIR / "schemas" / "routine.schema.json"
+GIT_RULES_SCHEMA = DOMAIN_DIR / "schemas" / "git-rules.schema.json"
+
+
+def _load_yaml(path: Path) -> dict:
+    with path.open("r", encoding="utf-8") as f:
+        return yaml.safe_load(f) or {}
+
+
+def _load_json(path: Path) -> dict:
+    with path.open("r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+def _check(data: dict, schema_path: Path, source: str) -> None:
+    if not _HAS_JSONSCHEMA:
+        sys.stderr.write(f"[loader] jsonschema not installed; skipping validation of {source}\n")
+        return
+    schema = _load_json(schema_path)
+    try:
+        _validate(data, schema)
+    except _ValidationError as e:
+        sys.stderr.write(f"[loader] {source} failed schema validation:\n  {e.message}\n  at: {list(e.absolute_path)}\n")
+        sys.exit(2)
+
+
+def load_routines() -> dict[str, dict]:
+    """Return routines indexed by name. Validates against routine.schema.json."""
+    data = _load_yaml(ROUTINES_YAML)
+    _check(data, ROUTINE_SCHEMA, "routines.yaml")
+    return {r["name"]: r for r in data.get("routines", [])}
+
+
+def load_git_discipline() -> dict:
+    """Return git-discipline yaml as a plain dict. Validates against git-rules.schema.json."""
+    data = _load_yaml(GIT_DISCIPLINE_YAML)
+    _check(data, GIT_RULES_SCHEMA, "git-discipline.yaml")
+    return data
+
+
+def get_routine(name: str) -> dict | None:
+    return load_routines().get(name)
+
+
+def get_stages(name: str) -> list[str]:
+    r = get_routine(name)
+    if r is None:
+        return []
+    return r.get("stages", []) or []
+
+
+def detect_routine(prompt: str) -> str:
+    """Mirror workflow.sh::detect_routine — pick a routine by verb match.
+
+    Iterates routines in yaml order, returning the first routine whose
+    trigger_words substring-match the lowercased prompt. Falls back to
+    'build-feature' (matching the legacy bash behavior).
+    """
+    p = (prompt or "").lower()
+    for name, r in load_routines().items():
+        if r.get("kind") != "hardcoded":
+            continue
+        for word in r.get("trigger_words") or []:
+            if word.lower() in p:
+                return name
+    return "build-feature"
+
+
+def verb_matched_explicitly(prompt: str) -> bool:
+    """True iff some hardcoded routine's trigger_words substring-match the prompt."""
+    p = (prompt or "").lower()
+    for r in load_routines().values():
+        if r.get("kind") != "hardcoded":
+            continue
+        for word in r.get("trigger_words") or []:
+            if word.lower() in p:
+                return True
+    return False
+
+
+# ─── CLI ─────────────────────────────────────────────────────────────────
+
+def _cli() -> int:
+    argv = sys.argv[1:]
+    if not argv or argv[0] in ("-h", "--help"):
+        sys.stderr.write(__doc__ or "")
+        return 0
+
+    cmd = argv[0]
+    args = argv[1:]
+
+    if cmd == "validate":
+        load_routines()
+        load_git_discipline()
+        print("ok")
+        return 0
+
+    if cmd == "list":
+        for name in load_routines():
+            print(name)
+        return 0
+
+    if cmd == "stages":
+        if not args:
+            sys.stderr.write("usage: _loader.py stages <routine-name>\n")
+            return 2
+        stages = get_stages(args[0])
+        if not stages and args[0] != "custom":
+            sys.stderr.write(f"[loader] routine '{args[0]}' not found or has empty stages\n")
+            return 1
+        print(" ".join(stages))
+        return 0
+
+    if cmd == "routine":
+        if not args:
+            sys.stderr.write("usage: _loader.py routine <name>\n")
+            return 2
+        r = get_routine(args[0])
+        if r is None:
+            sys.stderr.write(f"[loader] routine '{args[0]}' not found\n")
+            return 1
+        json.dump(r, sys.stdout, indent=2)
+        sys.stdout.write("\n")
+        return 0
+
+    if cmd == "triggers":
+        for name, r in load_routines().items():
+            if r.get("kind") != "hardcoded":
+                continue
+            words = r.get("trigger_words") or []
+            print(f"{name}\t{','.join(words)}")
+        return 0
+
+    if cmd == "detect":
+        if not args:
+            sys.stderr.write("usage: _loader.py detect '<prompt>'\n")
+            return 2
+        print(detect_routine(" ".join(args)))
+        return 0
+
+    if cmd == "matched":
+        if not args:
+            sys.stderr.write("usage: _loader.py matched '<prompt>'\n")
+            return 2
+        return 0 if verb_matched_explicitly(" ".join(args)) else 1
+
+    if cmd == "gates":
+        g = load_git_discipline()
+        for gate in g.get("pre_commit_gates", []):
+            print(gate["id"])
+        return 0
+
+    if cmd == "gate":
+        if not args:
+            sys.stderr.write("usage: _loader.py gate <id>\n")
+            return 2
+        g = load_git_discipline()
+        for gate in g.get("pre_commit_gates", []):
+            if gate["id"] == args[0]:
+                json.dump(gate, sys.stdout, indent=2)
+                sys.stdout.write("\n")
+                return 0
+        sys.stderr.write(f"[loader] gate '{args[0]}' not found\n")
+        return 1
+
+    sys.stderr.write(f"[loader] unknown command: {cmd}\n")
+    return 2
+
+
+if __name__ == "__main__":
+    sys.exit(_cli())

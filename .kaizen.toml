@@ -1,0 +1,14 @@
+# kaizen config — generated 2026-05-12 by skill installer.
+# See ~/.claude/skills/kaizen/SKILL.md PART 4 for full schema.
+
+compile_check_cmd = ""
+architecture_log  = ".kaizen/workflow/progress.md"
+plan_dir          = "plans"
+backlog_path      = ".kaizen/workflow/backlog.md"
+verify_cmd        = ""
+
+allow_deletion_env = "KAIZEN_ALLOW_DELETE"
+skip_tdd_check_env = "KAIZEN_SKIP_TDD_CHECK"
+
+brain_path           = "/home/cherry86/.claude/brain"
+project_memory_path  = "/home/cherry86/.claude/projects/home-cherry86-.claude-local-marketplaces-kaizen-md/memory"

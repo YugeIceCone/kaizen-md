@@ -83,7 +83,7 @@ Thresholds:
 - 4–15 files OR 1 manifest/trait → split into sibling micros
 - ≥16 files OR ≥2 manifest OR cross-context OR carve-out → promote to `plans/<date>-<slug>.md`
 
-See `skills/kaizen/SKILL.md` PART 1 for the full schema.
+See `skills/workflow/SKILL.md` PART 1 for the full schema.
 
 ## `.kaizen/workflow/` namespace (post-v1.22 canonical)
 
