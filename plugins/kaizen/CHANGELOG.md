@@ -3,6 +3,59 @@
 All notable changes to the `kaizen` plugin documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [SemVer](https://semver.org/).
 
+## [1.26.0] — 2026-05-12
+
+### Added — `/kaizen:models` Ollama-backed model lifecycle + capability surface
+
+Single slash command replaces the manual `ollama` CLI / env-var two-step. Wraps the official `ollama` Python client; declared as a `uv`-managed PEP 723 dep so the package (~5MB, no torch) installs on-demand at first call.
+
+**Lifecycle**
+
+| Form | Effect |
+|---|---|
+| `models` or `models list` | table of locally-installed models |
+| `models ps` | currently-loaded (in-memory) models |
+| `models pull <name>` | download a model; streams progress to stderr |
+| `models show <name>` | metadata, family, params, quant level |
+| `models delete <name> [--force]` | remove from local cache |
+| `models cp <src> <dst>` | clone a model under a new name |
+| `models host` | print the active Ollama host |
+
+**Ollama capability coverage**
+
+- **Embeddings**: `models embed <model> "<text>"` (with `--truncate`, `--keep-alive`, `--json`)
+- **Chat streaming**: `models chat <model> "<prompt>" --stream` — tokens land on stdout as they arrive; thinking chunks (if any) go to stderr in dim grey
+- **Thinking**: `--think` for qwen3 / deepseek-r1 / o1-style reasoning models
+- **Structured outputs**: `--format json` | `--format @schema.json` | inline JSON schema
+- **Vision/multimodal**: `--image PATH` (repeatable for multi-image)
+- **Web search (Ollama Cloud)**: `models web-search "<query>"` — gracefully detects missing `ollama signin` / `OLLAMA_API_KEY` and reports actionably
+
+**Bridge to kaizen's HTTP-first embed/chat config**
+
+- `models pin-embed <model>` writes `KAIZEN_EMBED_BACKEND=http` + `KAIZEN_EMBED_HTTP_BASE_URL=http://localhost:11434/v1` + `KAIZEN_EMBED_HTTP_MODEL=<model>` to `~/.claude/.kaizen/profile.env` (idempotent — replaces existing lines, preserves the rest of the file).
+- `models pin-chat <model>` does the same for `KAIZEN_SCRAPE_LLM_*`.
+
+After pinning + `source ~/.claude/.kaizen/profile.env`, kaizen's existing `_embed.py` HTTP path routes through Ollama's OpenAI-compat endpoint with zero code changes.
+
+### Why this exists
+
+Before v1.26.0 the local-model story was llama-server + manual env-var edits + a custom orchestrator per user. Ollama bundles model download / lifecycle / serving into one daemon; this command surfaces that lifecycle inside Claude Code and auto-bridges the active model into kaizen's config.
+
+### Env
+
+- `KAIZEN_OLLAMA_HOST` — kaizen-side override of Ollama base URL
+- `OLLAMA_HOST` — Ollama's standard env var; honored as fallback (default `http://localhost:11434`)
+- `OLLAMA_API_KEY` — Ollama Cloud (web-search) credential
+- `KAIZEN_PROFILE_ENV` — override path the `pin-*` subcommands write to
+
+### Files
+
+```
+commands/models.md                          (new)
+bin/kaizen-models                           (new, uv-wrapper)
+skills/kaizen/scripts/models.py             (new, ~350 LOC, PEP723: ollama>=0.4)
+```
+
 ## [1.25.5] — 2026-05-12
 
 ### Fixed — `/kaizen:daemon` was running `bash daemon.py`

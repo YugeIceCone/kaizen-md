@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# kaizen-models — Ollama-backed model lifecycle.
+#
+# Always routes through `uv run --script` so PEP 723 inline metadata
+# resolves the `ollama` dep on first call (cached afterwards). The
+# package is small (~5MB, no torch) so cold-start is fast.
+set -uo pipefail
+SCRIPT=$(python3 -c "import os, sys; print(os.path.realpath(sys.argv[1]))" "${BASH_SOURCE[0]}")
+PLUGIN_ROOT=$(cd "$(dirname "$SCRIPT")/.." && pwd)
+exec uv run --script "$PLUGIN_ROOT/skills/kaizen/scripts/models.py" "$@"
