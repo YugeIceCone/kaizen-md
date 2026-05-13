@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+# kaizen-shim — operate on a shim-and-sweep refactor.
+# Symlinked to ~/.local/bin/kaizen-shim by /kaizen:install.
+#
+# Backed by ${PLUGIN_ROOT}/skills/workflow/scripts/shim.py. See
+# `kaizen-shim --help` for subcommands.
+#
+# Pairs with the shim-and-sweep routine + skill:
+#   /workflow schema=shim-and-sweep
+#   kaizen:shim-and-sweep skill
+
+set -euo pipefail
+
+_BIN_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=../skills/workflow/scripts/_plugin_root.sh
+source "$_BIN_DIR/../skills/workflow/scripts/_plugin_root.sh"
+PLUGIN_ROOT="$(kaizen_plugin_root)" || {
+    echo "kaizen-shim: plugin root unresolved — set CLAUDE_PLUGIN_ROOT or KAIZEN_PLUGIN_ROOT" >&2
+    exit 1
+}
+
+exec python3 "$PLUGIN_ROOT/skills/workflow/scripts/shim.py" "$@"
