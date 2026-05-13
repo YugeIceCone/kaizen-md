@@ -22,3 +22,13 @@ yarn global add typescript-language-server typescript
 ## More Information
 - [typescript-language-server on npm](https://www.npmjs.com/package/typescript-language-server)
 - [GitHub Repository](https://github.com/typescript-language-server/typescript-language-server)
+
+
+## Credits
+
+- **Upstream binary:** [typescript-language-server/typescript-language-server](https://github.com/typescript-language-server/typescript-language-server)
+- **Upstream license:** Apache-2.0
+- **Plugin manifest:** Anthropic (Apache-2.0) — see [LICENSE](LICENSE).
+
+Full marketplace-wide attribution table:
+[`../../ATTRIBUTIONS.md`](../../ATTRIBUTIONS.md).

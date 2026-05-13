@@ -28,11 +28,11 @@ Everything else is **bundled from upstream projects**, redistributed here under 
 - **License:** MIT (© 2026 Gabi Fratica)
 - **Notes:** Extended Second Brain — knowledge capture, session processing, belief evolution, brain stats, initialization. The plugin's `scripts/*.js` (build-index, extract, schema, promote, append-evidence, evolution-log, session_start, user_prompt, config, build-context), `references/{structure.md, workflows.md}`, `assets/templates/{daily, note, person, project, remember, resource}.md`, and `config.defaults.json` are bundled alongside so the skills' `${CLAUDE_PLUGIN_ROOT}/scripts/...` references resolve without the upstream plugin installed.
 
-### `skills/workflow-routing/` (incl. `scripts/workflow.sh`)
+### `skills/workflow/` (incl. `scripts/workflow.sh`, `domain/`, `application/`)
 
 - **Source:** The user's local `~/.claude/skills/workflow/` (the `/workflow` engine). No upstream attribution was discoverable in the source files (no LICENSE / no author header).
 - **License:** Assumed MIT under the user's authorship until the original is identified.
-- **Notes:** Multi-stage routine engine driving `.workflow/state.json` + `.workflow/snapshot.md`. If you are the original author and want different attribution, please open an issue against this plugin.
+- **Notes:** Multi-stage routine engine + 12-check pre-commit gate + backlog CLI + semantic indexers. Drives `.kaizen/workflow/state.json` + `.kaizen/workflow/snapshot.md`. Absorbed the prior `workflow-routing` skill in the 2026-05-12 consolidation pass (routing data lives in `domain/routines.yaml::stage_skill_map`). If you are the original author and want different attribution, please open an issue against this plugin.
 
 ### `skills/onion-ddd-workflow/` + `skills/tdd/`
 
@@ -42,7 +42,7 @@ Everything else is **bundled from upstream projects**, redistributed here under 
 
 ## Why bundle?
 
-The kaizen plugin's design goal is **session and project agnostic** operation. The gate's skill-weaving table routes to ~30 skills when their domain is touched; users would otherwise need to install 3 separate plugins (coding-skills, superpowers, remember) plus a loose workflow-routing skill just for the routing to resolve.
+The kaizen plugin's design goal is **session and project agnostic** operation. The gate's skill-weaving table routes to ~30 skills when their domain is touched; users would otherwise need to install 3 separate plugins (coding-skills, superpowers, remember) for the routing to resolve.
 
 Bundling makes installation a single `/plugin install` command. The trade-off is potential namespace duplication (skills appear under both `coding-skills:dry` AND `kaizen:dry` if both plugins are installed) — see `/kaizen:disable-dupes` for the canonical resolution.
 

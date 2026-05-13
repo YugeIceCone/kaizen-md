@@ -30,3 +30,13 @@ Download pre-built binaries from the [releases page](https://github.com/LuaLS/lu
 ## More Information
 - [Lua Language Server GitHub](https://github.com/LuaLS/lua-language-server)
 - [Documentation](https://luals.github.io/)
+
+
+## Credits
+
+- **Upstream binary:** [LuaLS/lua-language-server](https://github.com/LuaLS/lua-language-server)
+- **Upstream license:** MIT
+- **Plugin manifest:** Anthropic (Apache-2.0) — see [LICENSE](LICENSE).
+
+Full marketplace-wide attribution table:
+[`../../ATTRIBUTIONS.md`](../../ATTRIBUTIONS.md).

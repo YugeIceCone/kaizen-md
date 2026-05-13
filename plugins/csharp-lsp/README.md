@@ -23,3 +23,13 @@ brew install csharp-ls
 ## More Information
 - [csharp-ls GitHub](https://github.com/razzmatazz/csharp-language-server)
 - [.NET SDK Download](https://dotnet.microsoft.com/download)
+
+
+## Credits
+
+- **Upstream binary:** [razzmatazz/csharp-language-server](https://github.com/razzmatazz/csharp-language-server)
+- **Upstream license:** MIT
+- **Plugin manifest:** Anthropic (Apache-2.0) — see [LICENSE](LICENSE).
+
+Full marketplace-wide attribution table:
+[`../../ATTRIBUTIONS.md`](../../ATTRIBUTIONS.md).

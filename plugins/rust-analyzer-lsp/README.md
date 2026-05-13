@@ -32,3 +32,13 @@ Download pre-built binaries from the [releases page](https://github.com/rust-lan
 ## More Information
 - [rust-analyzer Website](https://rust-analyzer.github.io/)
 - [GitHub Repository](https://github.com/rust-lang/rust-analyzer)
+
+
+## Credits
+
+- **Upstream binary:** [rust-lang/rust-analyzer](https://github.com/rust-lang/rust-analyzer)
+- **Upstream license:** MIT OR Apache-2.0 (dual)
+- **Plugin manifest:** Anthropic (Apache-2.0) — see [LICENSE](LICENSE).
+
+Full marketplace-wide attribution table:
+[`../../ATTRIBUTIONS.md`](../../ATTRIBUTIONS.md).

@@ -29,3 +29,13 @@ pipx install pyright
 - [Pyright on npm](https://www.npmjs.com/package/pyright)
 - [Pyright on PyPI](https://pypi.org/project/pyright/)
 - [GitHub Repository](https://github.com/microsoft/pyright)
+
+
+## Credits
+
+- **Upstream binary:** [microsoft/pyright](https://github.com/microsoft/pyright) (Microsoft)
+- **Upstream license:** MIT
+- **Plugin manifest:** Anthropic (Apache-2.0) — see [LICENSE](LICENSE).
+
+Full marketplace-wide attribution table:
+[`../../ATTRIBUTIONS.md`](../../ATTRIBUTIONS.md).

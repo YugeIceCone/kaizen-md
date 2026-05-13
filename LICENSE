@@ -22,11 +22,20 @@ SOFTWARE.
 
 ────────────────────────────────────────────────────────────────────────────
 
-This plugin bundles content from several upstream projects, each redistributed
-here under its own original license (all MIT). See ATTRIBUTIONS.md for full
-author credits, source URLs, and bundled-file inventory:
+The MIT license above covers the marketplace metadata and tooling
+(`marketplace.json`, this LICENSE, README.md, ATTRIBUTIONS.md). The
+plugins inside `plugins/` carry their own licenses; see each plugin's
+`LICENSE` file and the canonical attribution table in `ATTRIBUTIONS.md`.
 
-- coding-skills      © 2026 Jordan Coin Jackson    (github.com/JordanCoin/codingskills)
-- superpowers        © 2025 Jesse Vincent           (github.com/obra/superpowers)
-- remember           © 2026 Gabi Fratica            (github.com/remember-md/remember)
-- workflow-routing, onion-ddd-workflow, tdd  — see ATTRIBUTIONS.md (origin unconfirmed; assumed MIT)
+Summary of bundled licenses:
+
+- `plugins/kaizen/`           MIT          (© 2026 YugeIceCone)
+  └ in-plugin bundles: coding-skills (MIT, Jordan Coin Jackson),
+    superpowers (MIT, Jesse Vincent), remember (MIT, Gabi Fratica),
+    workflow + onion-ddd-workflow + tdd (origin unconfirmed, assumed MIT)
+    — see `plugins/kaizen/ATTRIBUTIONS.md` for full details.
+- `plugins/*-lsp/`            Apache-2.0   (Anthropic — 12 plugins)
+  └ each wraps a separately licensed upstream binary; see
+    ATTRIBUTIONS.md "Upstream language-server binaries" for the
+    per-plugin upstream license (MIT, Apache-2.0, BSD-3-Clause,
+    EPL-2.0, or proprietary in php-lsp's case).

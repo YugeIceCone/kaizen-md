@@ -31,3 +31,13 @@ yay -S jdtls
 ## More Information
 - [Eclipse JDT.LS GitHub](https://github.com/eclipse-jdtls/eclipse.jdt.ls)
 - [VSCode Java Extension](https://github.com/redhat-developer/vscode-java) (uses JDT.LS)
+
+
+## Credits
+
+- **Upstream binary:** [eclipse-jdtls/eclipse.jdt.ls](https://github.com/eclipse-jdtls/eclipse.jdt.ls)
+- **Upstream license:** EPL-2.0
+- **Plugin manifest:** Anthropic (Apache-2.0) — see [LICENSE](LICENSE).
+
+Full marketplace-wide attribution table:
+[`../../ATTRIBUTIONS.md`](../../ATTRIBUTIONS.md).

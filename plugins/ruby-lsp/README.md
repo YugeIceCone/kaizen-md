@@ -29,3 +29,13 @@ bundle install
 ## More Information
 - [Ruby LSP Website](https://shopify.github.io/ruby-lsp/)
 - [GitHub Repository](https://github.com/Shopify/ruby-lsp)
+
+
+## Credits
+
+- **Upstream binary:** [Shopify/ruby-lsp](https://github.com/Shopify/ruby-lsp)
+- **Upstream license:** MIT
+- **Plugin manifest:** Anthropic (Apache-2.0) — see [LICENSE](LICENSE).
+
+Full marketplace-wide attribution table:
+[`../../ATTRIBUTIONS.md`](../../ATTRIBUTIONS.md).

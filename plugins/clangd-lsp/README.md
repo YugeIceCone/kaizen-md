@@ -34,3 +34,13 @@ winget install LLVM.LLVM
 ## More Information
 - [clangd Website](https://clangd.llvm.org/)
 - [Getting Started Guide](https://clangd.llvm.org/installation)
+
+
+## Credits
+
+- **Upstream binary:** [llvm/llvm-project — clang-tools-extra/clangd](https://github.com/llvm/llvm-project/tree/main/clang-tools-extra/clangd)
+- **Upstream license:** Apache-2.0 WITH LLVM-exception
+- **Plugin manifest:** Anthropic (Apache-2.0) — see [LICENSE](LICENSE).
+
+Full marketplace-wide attribution table:
+[`../../ATTRIBUTIONS.md`](../../ATTRIBUTIONS.md).
