@@ -133,30 +133,46 @@ build_ledger_body() {
     if [[ ! -f "$LEDGER_FILE" ]]; then
       die "--ledger file does not exist: $LEDGER_FILE"
     fi
-    # Validate it parses as JSON and contains the required pending array.
-    if ! python3 -c "import json,sys; d=json.load(open('$LEDGER_FILE')); assert isinstance(d.get('pending'),list)" 2>/dev/null; then
-      die "--ledger file is not valid JSON or lacks a 'pending' array: $LEDGER_FILE"
-    fi
-    # Ensure `completed` field exists (empty); preserve other keys.
-    python3 -c "
-import json
-d = json.load(open('$LEDGER_FILE'))
-d.setdefault('completed', [])
+    # Validate it parses as JSON and contains the required pending array;
+    # also auto-assign IDs to items that lack them (so loop_state.add_item's
+    # _next_id can track them, and `kaizen-loop complete i3` works).
+    python3 - "$LEDGER_FILE" <<'PY'
+import json, sys
+path = sys.argv[1]
+try:
+    d = json.load(open(path))
+except (OSError, json.JSONDecodeError) as e:
+    sys.exit(f"--ledger file is not valid JSON: {e}")
+if not isinstance(d.get("pending"), list):
+    sys.exit("--ledger file lacks a 'pending' array")
+d.setdefault("completed", [])
+# Auto-ID pending items that lack one. Pick i<N> avoiding existing IDs.
+used = {it.get("id") for it in d["pending"] if isinstance(it, dict) and it.get("id")}
+n = 1
+for it in d["pending"]:
+    if not isinstance(it, dict) or it.get("id"):
+        continue
+    while f"i{n}" in used:
+        n += 1
+    it["id"] = f"i{n}"
+    used.add(f"i{n}")
+    n += 1
 print(json.dumps(d, indent=2))
-"
+PY
     return
   fi
   if [[ ${#ITEMS[@]} -gt 0 ]]; then
     # Build JSON from --item arguments. Each arg is "desc|verify" or just "desc".
+    # IDs are auto-assigned as i1, i2, ... so `kaizen-loop complete <id>` works.
     python3 - "${ITEMS[@]}" <<'PY'
 import json, sys
 items = []
-for raw in sys.argv[1:]:
+for i, raw in enumerate(sys.argv[1:], 1):
     if "|" in raw:
         desc, verify = raw.split("|", 1)
-        items.append({"desc": desc.strip(), "verify": verify.strip() or None})
+        items.append({"id": f"i{i}", "desc": desc.strip(), "verify": verify.strip() or None})
     else:
-        items.append({"desc": raw.strip(), "verify": None})
+        items.append({"id": f"i{i}", "desc": raw.strip(), "verify": None})
 print(json.dumps({"pending": items, "completed": []}, indent=2))
 PY
     return

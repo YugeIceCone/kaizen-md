@@ -91,18 +91,40 @@ Each iteration the Stop hook:
 6. When `pending: []` is empty, the loop ends and the state file is
    removed.
 
-### The agent's contract
+### The agent's contract — USE THE TOOLS
 
-- **MAY append new items** to `pending` mid-loop (work discovered during
-  iteration). Just JSON-edit the file.
-- **MAY edit item descriptions** (clarify scope as you learn).
-- **MAY remove `verify: null` items** by deleting them from `pending`
-  (trust-based — these are tracked but un-gated).
-- **MUST NOT add entries to `completed` directly** — the hook is the
-  authoritative writer. Forged entries are obvious in the audit trail
-  (missing `iteration` / `completed_at`).
-- Setting `verify` on an item means *the hook will check it*. If you
-  want trust-based completion, omit `verify` (or set it to `null`).
+Direct file edits are possible but discouraged — they bypass schema
+validation and can break the loop. Use the controlled surface instead:
+
+| Operation | MCP tool | CLI |
+|---|---|---|
+| Append a new pending item | `mcp__plugin_kaizen_loop__loop_add_item(desc, verify)` | `kaizen-loop add "desc" [--verify "cmd"]` |
+| List pending items | `mcp__plugin_kaizen_loop__loop_list_pending()` | `kaizen-loop list` |
+| List completed (audit log) | `mcp__plugin_kaizen_loop__loop_list_completed()` | `kaizen-loop list --completed` |
+| Loop status / counts | `mcp__plugin_kaizen_loop__loop_status()` | `kaizen-loop status` |
+| Manually complete a `verify: null` item | `mcp__plugin_kaizen_loop__loop_complete_item(id, note)` | `kaizen-loop complete <id> [--note "..."]` |
+| Cancel the loop | `mcp__plugin_kaizen_loop__loop_cancel()` | `kaizen-loop cancel` |
+
+The tools enforce three guarantees the agent could otherwise circumvent
+via raw file edits:
+
+1. **Schema validation.** Every mutation re-validates the JSON body
+   against the `{pending, completed}` schema before writing.
+2. **`completed` is hook/tool-only.** `loop_complete_item` records
+   `manual: true` + iteration + completed_at; the Stop hook records its
+   own without `manual`. Direct edits adding entries are visibly forged
+   (no iteration / no completed_at).
+3. **Verify-bearing items are gate-locked.** `loop_complete_item` refuses
+   any item with a non-null `verify` command — those MUST pass the hook's
+   `bash -c "$verify"` exit-0 check. Cannot be manually skipped.
+
+Behavior overrides via raw file edits:
+- **MAY** append to pending via raw edit (same effect as `loop_add_item`,
+  but no auto-ID; future tool calls may produce duplicate IDs).
+- **MUST NOT** edit `completed` directly. Forged entries are visible.
+- **MUST NOT** remove `verify`-bearing items without their verify
+  passing. The audit log catches this — the user can `kaizen-loop list
+  --completed` and see the missing entry.
 
 ## Iron Laws
 

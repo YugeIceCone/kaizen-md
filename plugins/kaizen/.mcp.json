@@ -85,6 +85,14 @@
         "--script",
         "${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/loc_mcp.py"
       ]
+    },
+    "loop": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--script",
+        "${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/loop_mcp.py"
+      ]
     }
   }
 }
