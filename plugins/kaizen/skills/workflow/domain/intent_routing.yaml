@@ -1,0 +1,202 @@
+# yaml-language-server: $schema=./schemas/intent_routing.schema.json
+#
+# Single source of truth for kaizen's code-principle intent routing
+# (formerly the `code-router` skill).
+#
+# Consumed by:
+#   - skills/workflow/application/route_intent.py (lookup + CLI + match)
+#   - skills/workflow/application/codegen.py (regenerates the user-facing
+#     references/code-router.md from this yaml + the disambiguation /
+#     composition tables below)
+#
+# DO NOT hand-edit references/code-router.md. Edit this yaml, then run
+# `application/codegen.py` (or refresh-cache.sh, which calls it).
+
+routes:
+  - id: yagni
+    skill: coding-skills:yagni
+    intent: Over-engineering / speculative "might-need-later" features
+    cues:
+      - "do we need this"
+      - "just in case"
+      - "future-proof this"
+      - "is this over-engineered"
+      - "should I add an abstraction for"
+      - "we might want to"
+
+  - id: kiss
+    skill: coding-skills:kiss
+    intent: Readability / simplicity on existing code
+    cues:
+      - "simplify this"
+      - "too complex"
+      - "hard to read"
+      - "what does this do"
+      - "can't follow this"
+      - "clean up this function"
+
+  - id: law-of-demeter
+    skill: coding-skills:law-of-demeter
+    intent: Coupling via deep object chains
+    cues:
+      - "too coupled"
+      - "train wreck"
+      - "chained calls"
+      - "reaches too deep"
+      - "mocking is painful"
+      - "feature envy"
+      - "a.b().c().d()"
+
+  - id: separation-of-concerns
+    skill: coding-skills:separation-of-concerns
+    intent: Layering / where-does-this-belong
+    cues:
+      - "this function does too much"
+      - "fat controller"
+      - "fat model"
+      - "fat service"
+      - "mixed concerns"
+      - "where should this logic go"
+      - "separate the layers"
+
+  - id: solid
+    skill: coding-skills:solid
+    intent: Class / interface / module shape
+    cues:
+      - "how should I structure this class"
+      - "interface design"
+      - "dependency injection"
+      - "single responsibility"
+      - "hard to test because of coupling"
+      - "swap the backend"
+
+  - id: dry
+    skill: coding-skills:dry
+    intent: Duplicated knowledge / single source of truth
+    cues:
+      - "this is duplicated"
+      - "we have this in two places"
+      - "shotgun surgery"
+      - "single source of truth"
+      - "DRY this up"
+
+  - id: detect-stack
+    skill: coding-skills:detect-stack
+    intent: First-time orientation in an unfamiliar repo (precedes any other principle skill on a fresh repo)
+    cues:
+      - "what's this codebase using"
+      - "what's the stack"
+      - "detect stack"
+      - "first time in this project"
+      - "what conventions"
+
+  - id: boy-scout-rule
+    skill: coding-skills:boy-scout-rule
+    intent: Incremental improvement while in a file
+    cues:
+      - "clean this up while I'm here"
+      - "tech debt"
+      - "should I fix this too"
+      - "incremental improvement"
+      - "while I'm in this file"
+      - "small cleanup"
+
+  - id: convention-over-configuration
+    skill: coding-skills:convention-over-configuration
+    intent: Project structure, naming, reducing config overhead
+    cues:
+      - "how should I organize this"
+      - "what's the convention"
+      - "too much config"
+      - "project structure"
+      - "naming pattern"
+      - "standardize this"
+
+# Pair-wise disambiguation table. When two skills both match, this picks the
+# winner. Order independent — store as a set; resolver looks up by pair.
+disambiguation:
+  - pair: [separation-of-concerns, solid]
+    rule: "SoC draws the LINE (auth here, db there); SOLID shapes the TYPES (what the auth interface looks like)."
+    examples:
+      separation-of-concerns: ["fat controller"]
+      solid: ["interface has 12 methods"]
+
+  - pair: [kiss, yagni]
+    rule: "KISS is about code you ALREADY have (strip it down); YAGNI is about code you're ABOUT TO write (don't add the speculative layer)."
+    examples:
+      kiss: ["simplify this"]
+      yagni: ["should I add a plugin system?"]
+
+  - pair: [dry, separation-of-concerns]
+    rule: "DRY = one source of truth for this KNOWLEDGE; SoC = each CONCERN lives in one place."
+    examples:
+      dry: ["tax calculation copy-pasted across UI and API"]
+      separation-of-concerns: ["tax calculation baked into a View controller"]
+
+  - pair: [law-of-demeter, solid]
+    rule: "LoD = the specific call chains the code is taking RIGHT NOW; SOLID = TYPE relationships."
+    examples:
+      law-of-demeter: ["mocking chains of 5"]
+      solid: ["mock setup is huge because one trait has too many methods"]
+
+  - pair: [boy-scout-rule, yagni]
+    rule: "Boy Scout asks 'while I'm here, should I improve this bit?'; YAGNI asks 'before I start, should I add this speculative feature?'"
+    examples:
+      boy-scout-rule: ["fix a broken comment while bug-hunting"]
+      yagni: ["resist adding a plugin system 'because maybe later'"]
+
+  - pair: [convention-over-configuration, separation-of-concerns]
+    rule: "Convention-over-config = SAMENESS across the project (all routes in routes/); SoC = SEPARATION within the code."
+    examples:
+      convention-over-configuration: ["where do new controllers go?"]
+      separation-of-concerns: ["why is there a DB query inside this controller?"]
+
+# Composition cases — prompts that genuinely span two routes.
+# Sequence is ordered; never invoke simultaneously.
+composition:
+  - prompt_shape: Unfamiliar repo + "fix this messy thing"
+    sequence: [detect-stack, kiss]      # or kiss → separation-of-concerns
+    fallback_second: [separation-of-concerns]
+    notes: "Stack first, then the relevant principle once context is clear."
+
+  - prompt_shape: "This is a mess + I'm editing it anyway"
+    sequence: [boy-scout-rule, kiss]    # primary may also be dry / solid
+    fallback_second: [dry, solid]
+    notes: "Boy-Scout governs SCOPE; the second skill is the technique. Load incremental-code-cleaning first."
+
+  - prompt_shape: "Should I refactor this into X pattern"
+    sequence: [yagni, solid]
+    notes: "YAGNI gates (does the problem warrant the pattern?); SOLID shapes (if yes, what's the interface?). Only proceed to SOLID if YAGNI says the abstraction is justified."
+
+# Hard caps on the routing loop.
+limits:
+  max_skills_per_turn: 2
+  notes: "If code is deeply flawed, focus on one structural concern (SoC or SOLID) before any micro-cleanup (KISS, Boy-Scout)."
+
+# When NOT to route here — escape valves to other routers / no skill at all.
+elsewhere:
+  - intent: Structural find / rewrite (ast-grep)
+    route_to: ast-grep-router
+
+  - intent: Code-graph questions (callers, dead code, blast radius, imports)
+    route_to: llm-tldr-router
+
+  - intent: Running or debugging business logic
+    route_to: null
+    notes: "Just help them. No principle skill is load-bearing."
+
+  - intent: Style / formatting (rustfmt / prettier / black)
+    route_to: null
+    notes: "The formatter is authoritative."
+
+  - intent: Writing fresh unrelated code from scratch
+    route_to: null
+    notes: "No principle skill is load-bearing here. Skip this router."
+
+invocation_protocol: |
+  1. Match the user's phrasing against the `routes[].cues` list (most prompts fit one cleanly).
+  2. If two routes overlap, consult `disambiguation` for the tiebreaker.
+  3. Invoke the matched skill and stop. Don't also answer the question directly from the router.
+  4. For composition cases (`composition` entries), invoke the FIRST skill now;
+     queue the SECOND only if the user's next turn needs it.
+  5. Cap at `limits.max_skills_per_turn` per turn.
