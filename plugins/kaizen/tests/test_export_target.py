@@ -308,11 +308,98 @@ class TestCodexExporter(unittest.TestCase):
 # ─── CLI ─────────────────────────────────────────────────────────────
 
 
+class TestValidateBundle(unittest.TestCase):
+    """Re-parse the emitted bundle to catch encoder bugs."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.root = Path(self.tmp.name)
+        self.plugin = _make_plugin(self.root)
+        self.out = self.root / "out"
+        et.CodexExporter(self.plugin, self.out).run()
+
+    def test_reports_ok_on_well_formed_export(self):
+        report = et.validate_bundle(self.out)
+        self.assertTrue(report.ok, msg=report.render(self.out))
+        self.assertEqual(report.toml_errors, [])
+        self.assertEqual(report.md_frontmatter_warnings, [])
+        self.assertGreater(report.toml_files, 0)
+        self.assertGreater(report.md_files, 0)
+
+    def test_reports_failure_on_corrupted_toml(self):
+        broken = self.out / "agents" / "broken.toml"
+        broken.write_text('nickname = "x\n')  # unterminated string
+        report = et.validate_bundle(self.out)
+        self.assertFalse(report.ok)
+        self.assertEqual(len(report.toml_errors), 1)
+        self.assertIn("broken.toml", str(report.toml_errors[0][0]))
+
+    def test_reports_warning_on_corrupted_frontmatter(self):
+        # Write a .md that starts with --- but has unparseable YAML.
+        # This is a source-quality issue (kaizen source files do this
+        # with unquoted colons in descriptions), not an encoder bug —
+        # so it's a warning, not an error.
+        bad = self.out / "skills" / "bad.md"
+        bad.write_text("---\n: ; this is not yaml ::\n---\nbody")
+        report = et.validate_bundle(self.out)
+        # Warnings don't flip ok → False.
+        self.assertTrue(report.ok)
+        self.assertTrue(any("bad.md" in str(p) for p, _ in report.md_frontmatter_warnings))
+
+    def test_render_includes_summary_lines(self):
+        text = et.validate_bundle(self.out).render(self.out)
+        self.assertIn("toml files", text)
+        self.assertIn("md  files", text)
+        self.assertIn("PASS", text)
+
+
 class TestCli(unittest.TestCase):
     def test_main_exits_2_when_plugin_root_invalid(self):
         with tempfile.TemporaryDirectory() as td:
             rc = et.main(["--target", "codex", "--out", td, "--plugin-root", td])
             self.assertEqual(rc, 2)
+
+    def test_main_exits_2_when_out_missing(self):
+        with tempfile.TemporaryDirectory() as td:
+            plugin = _make_plugin(Path(td))
+            rc = et.main(["--target", "codex", "--plugin-root", str(plugin)])
+            self.assertEqual(rc, 2)
+
+    def test_main_validate_flag_returns_zero_on_clean_export(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            plugin = _make_plugin(root)
+            out = root / "out"
+            rc = et.main([
+                "--target", "codex",
+                "--out", str(out),
+                "--plugin-root", str(plugin),
+                "--validate",
+            ])
+            self.assertEqual(rc, 0)
+
+    def test_main_validate_flag_returns_one_on_broken_export(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            plugin = _make_plugin(root)
+            out = root / "out"
+            # Run the export, then write a corrupted file to a path the
+            # re-export won't overwrite (the exporter writes per-source,
+            # so an unrelated file in the same dir survives).
+            et.main([
+                "--target", "codex",
+                "--out", str(out),
+                "--plugin-root", str(plugin),
+            ])
+            (out / "agents" / "broken.toml").write_text('nickname = "broken\n')
+            rc = et.main([
+                "--target", "codex",
+                "--out", str(out),
+                "--plugin-root", str(plugin),
+                "--validate",
+            ])
+            self.assertEqual(rc, 1)
 
     def test_main_runs_codex_export(self):
         with tempfile.TemporaryDirectory() as td:

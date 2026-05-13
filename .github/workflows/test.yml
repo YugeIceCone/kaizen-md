@@ -17,18 +17,25 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Verify scripts pass bash syntax check
+      - name: Install PyYAML
+        run: python3 -m pip install --user pyyaml
+
+      - name: Verify shell scripts pass bash syntax check
         run: |
-          for f in plugins/kaizen/skills/kaizen/scripts/*.sh \
-                   plugins/kaizen/hooks/*.sh; do
+          for f in plugins/kaizen/skills/workflow/scripts/*.sh \
+                   plugins/kaizen/hooks/*.sh \
+                   plugins/kaizen/bin/kaizen \
+                   plugins/kaizen/bin/kaizen-*; do
+            [ -f "$f" ] || continue
             bash -n "$f" || { echo "syntax fail: $f"; exit 1; }
           done
 
       - name: Verify Python scripts parse
         run: |
-          python3 -c "import ast; ast.parse(open('plugins/kaizen/skills/kaizen/scripts/backlog.py').read())"
-          python3 -c "import ast; ast.parse(open('plugins/kaizen/skills/kaizen/scripts/mcp_server.py').read())"
-          python3 -c "import ast; ast.parse(open('plugins/kaizen/skills/kaizen/scripts/flow_demo.py').read())"
+          for f in plugins/kaizen/skills/workflow/scripts/*.py; do
+            python3 -c "import ast,sys; ast.parse(open(sys.argv[1]).read())" "$f" \
+              || { echo "parse fail: $f"; exit 1; }
+          done
 
       - name: Verify all JSON manifests valid
         run: |
@@ -37,7 +44,8 @@ jobs:
                    plugins/kaizen/hooks/hooks.json \
                    plugins/kaizen/.mcp.json \
                    plugins/kaizen/config.defaults.json; do
-            python3 -c "import json; json.load(open('$f'))" || exit 1
+            python3 -c "import json,sys; json.load(open(sys.argv[1]))" "$f" \
+              || { echo "json fail: $f"; exit 1; }
           done
 
       - name: Verify all SKILL.md files have name + description frontmatter
@@ -49,23 +57,42 @@ jobs:
           done
           [ "$missing" = "0" ]
 
-      - name: Run pipeline test
+      - name: Run unittest suite
+        # Runs every tests/test_*.py — locks the R1/R2/R3 invariants:
+        # - test_hooks_invariant : no settings.json injection
+        # - test_plugin_root     : env-var precedence + script-derived fallback
+        # - test_export_target   : Codex export + --validate parse check
+        # plus all pre-existing tests under plugins/kaizen/tests/.
         run: |
-          chmod +x plugins/kaizen/skills/kaizen/scripts/*.sh
-          chmod +x plugins/kaizen/hooks/*.sh
-          bash plugins/kaizen/skills/kaizen/scripts/test-pipeline.sh
+          cd plugins/kaizen
+          python3 -m unittest discover -s tests -p "test_*.py" -v
+
+      - name: Run bash unit tests
+        run: |
+          bash plugins/kaizen/tests/test_plugin_root.sh
+
+      - name: Smoke — kaizen-export --target codex --dry-run
+        # End-to-end: walk the full plugin and produce the Codex bundle.
+        # --validate re-parses every emitted .toml + frontmatter so a
+        # broken encoder fails the build.
+        run: |
+          plugins/kaizen/bin/kaizen-export \
+            --target codex \
+            --out /tmp/kaizen-codex-export \
+            --clean \
+            --validate
 
       - name: No GNU-only utilities
         run: |
-          # Cross-platform discipline: scripts must work on macOS BSD too
-          if grep -rE '\breadlink -f\b' \
-               plugins/kaizen/skills/kaizen/scripts/ \
+          # Cross-platform discipline: scripts must work on macOS BSD too.
+          if grep -rEn '\breadlink -f\b' \
+               plugins/kaizen/skills/workflow/scripts/ \
                plugins/kaizen/hooks/; then
             echo "GNU-only readlink -f found — use python3-based realpath_f instead"
             exit 1
           fi
-          if grep -rE 'find .* -printf' \
-               plugins/kaizen/skills/kaizen/scripts/ \
+          if grep -rEn 'find .* -printf' \
+               plugins/kaizen/skills/workflow/scripts/ \
                plugins/kaizen/hooks/; then
             echo "GNU-only find -printf found — use shell glob instead"
             exit 1

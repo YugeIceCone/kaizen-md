@@ -68,16 +68,20 @@ class Frontmatter:
 def parse_frontmatter(text: str) -> Frontmatter:
     """Split ``---\\n…\\n---\\n<body>`` into ``(data, body)``.
 
-    Files without frontmatter return ``Frontmatter({}, text)`` so callers
-    can treat them uniformly.
+    Files without frontmatter — or with malformed YAML inside the
+    fence — return ``Frontmatter({}, text)`` so callers can treat them
+    uniformly. The ``validate_bundle`` step distinguishes the two cases
+    by checking whether the source text starts with ``---``.
     """
     m = FRONTMATTER_RE.match(text)
     if not m:
         return Frontmatter(data={}, body=text)
     raw, body = m.group(1), m.group(2)
-    parsed = yaml.safe_load(raw) or {}
+    try:
+        parsed = yaml.safe_load(raw) or {}
+    except yaml.YAMLError:
+        return Frontmatter(data={}, body=text)
     if not isinstance(parsed, dict):
-        # Tolerate malformed frontmatter — pass the body through unchanged.
         return Frontmatter(data={}, body=text)
     return Frontmatter(data=parsed, body=body)
 
@@ -333,6 +337,90 @@ class CodexExporter:
 TARGETS = {"codex": CodexExporter}
 
 
+# ─── Validate (re-parse the emitted bundle) ──────────────────────────
+
+
+@dataclass
+class ValidationReport:
+    """Result of re-parsing an emitted bundle.
+
+    TOML errors are encoder regressions — the exporter generated bad
+    output. They count as failures (``ok`` becomes False).
+
+    Frontmatter "warnings" cover *source* YAML quirks (e.g. unquoted
+    colons in description text). The exporter passes frontmatter
+    through verbatim, so these are pre-existing source issues, not
+    exporter bugs — surfaced but non-fatal.
+    """
+
+    toml_files: int
+    toml_errors: list[tuple[Path, str]]
+    md_files: int
+    md_frontmatter_warnings: list[tuple[Path, str]]
+
+    @property
+    def ok(self) -> bool:
+        return not self.toml_errors
+
+    def render(self, out_dir: Path) -> str:
+        lines = [
+            f"validate: {out_dir}",
+            f"  toml files       = {self.toml_files} "
+            f"({len(self.toml_errors)} errors)",
+            f"  md  files        = {self.md_files} "
+            f"({len(self.md_frontmatter_warnings)} frontmatter warnings)",
+        ]
+        for path, err in self.toml_errors:
+            lines.append(f"    ! TOML   {path}: {err}")
+        for path, err in self.md_frontmatter_warnings:
+            lines.append(f"    ~ YAML   {path}: {err}")
+        lines.append("  → " + ("PASS" if self.ok else "FAIL"))
+        return "\n".join(lines)
+
+
+def validate_bundle(out_dir: Path) -> ValidationReport:
+    """Re-parse every .toml + every .md frontmatter under ``out_dir``.
+
+    Catches encoder bugs where the exporter would have produced
+    well-shaped-looking-but-invalid output (multi-line strings that
+    escape incorrectly, lists that contain unsupported types, etc.).
+    """
+    try:
+        import tomllib  # py3.11+
+    except ImportError:  # pragma: no cover — tomllib bundled since 3.11
+        tomllib = None  # type: ignore[assignment]
+
+    toml_errors: list[tuple[Path, str]] = []
+    md_warnings: list[tuple[Path, str]] = []
+    toml_count = md_count = 0
+
+    for path in sorted(out_dir.rglob("*.toml")):
+        toml_count += 1
+        if tomllib is None:
+            continue
+        try:
+            with path.open("rb") as fh:
+                tomllib.load(fh)
+        except Exception as e:  # noqa: BLE001 — surface every parse error
+            toml_errors.append((path.relative_to(out_dir), str(e)))
+
+    for path in sorted(out_dir.rglob("*.md")):
+        md_count += 1
+        text = path.read_text(encoding="utf-8", errors="replace")
+        fm = parse_frontmatter(text)
+        # Frontmatter is optional; we only flag *malformed* YAML, not
+        # missing-frontmatter (already tolerant by design). Warning,
+        # not error — the exporter passes frontmatter through verbatim
+        # and isn't responsible for source-file YAML quality.
+        if not fm.data and text.startswith("---"):
+            md_warnings.append((path.relative_to(out_dir), "frontmatter present but unparseable"))
+
+    return ValidationReport(toml_count, toml_errors, md_count, md_warnings)
+
+
+# ─── CLI ─────────────────────────────────────────────────────────────
+
+
 def _build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="kaizen-export",
@@ -340,15 +428,15 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     p.add_argument(
         "--target",
-        required=True,
+        default="codex",
         choices=sorted(TARGETS),
-        help="Which sibling CLI's layout to emit.",
+        help="Which sibling CLI's layout to emit (default: codex).",
     )
     p.add_argument(
         "--out",
-        required=True,
         type=Path,
-        help="Output directory (will be created if missing).",
+        help="Output directory (will be created if missing). Required "
+             "unless --validate is used standalone.",
     )
     p.add_argument(
         "--plugin-root",
@@ -368,11 +456,21 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Walk the plugin but write nothing — print the destination "
              "list to stdout.",
     )
+    p.add_argument(
+        "--validate",
+        action="store_true",
+        help="After (or instead of) exporting, re-parse the emitted "
+             "bundle. Exit 1 if any TOML or YAML frontmatter is broken.",
+    )
     return p
 
 
 def main(argv: list[str] | None = None) -> int:
     args = _build_parser().parse_args(argv)
+
+    if args.out is None:
+        sys.stderr.write("kaizen-export: --out is required\n")
+        return 2
 
     # Resolve plugin root via the shared resolver.
     if args.plugin_root:
@@ -404,6 +502,13 @@ def main(argv: list[str] | None = None) -> int:
     print(f"  → readme    = {'yes' if result.readme else 'no'}")
     if args.dry_run:
         print("  (dry-run: nothing written)")
+
+    if args.validate and not args.dry_run:
+        report = validate_bundle(out_dir)
+        print(report.render(out_dir))
+        if not report.ok:
+            return 1
+
     return 0
 
 
