@@ -4,7 +4,12 @@
 # Source this file at the top of any kaizen .sh script that needs to
 # reference the plugin's own files (hooks, MCP entrypoints, scripts):
 #
-#     _SCRIPT_REAL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+#     # IMPORTANT: resolve BASH_SOURCE[0] through any symlinks first.
+#     # /kaizen:install symlinks bins into ~/.local/bin/; without realpath
+#     # resolution the source line fails with "No such file or directory".
+#     _SCRIPT_REAL="$(readlink -f "${BASH_SOURCE[0]}" 2>/dev/null \
+#       || python3 -c 'import os,sys; print(os.path.realpath(sys.argv[1]))' "${BASH_SOURCE[0]}")"
+#     _SCRIPT_REAL_DIR="$(cd "$(dirname "$_SCRIPT_REAL")" && pwd)"
 #     source "$_SCRIPT_REAL_DIR/_plugin_root.sh"
 #     ROOT="$(kaizen_plugin_root)"
 #

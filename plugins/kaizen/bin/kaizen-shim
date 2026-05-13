@@ -11,7 +11,12 @@
 
 set -euo pipefail
 
-_BIN_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Resolve real script location through any symlinks so $_BIN_DIR points at
+# the actual plugin bin dir, not ~/.local/bin/ (where /kaizen:install drops
+# the symlink). Without realpath resolution, the ../skills/... source fails.
+_SCRIPT_REAL="$(readlink -f "${BASH_SOURCE[0]}" 2>/dev/null \
+  || python3 -c 'import os,sys; print(os.path.realpath(sys.argv[1]))' "${BASH_SOURCE[0]}")"
+_BIN_DIR="$(cd "$(dirname "$_SCRIPT_REAL")" && pwd)"
 # shellcheck source=../skills/workflow/scripts/_plugin_root.sh
 source "$_BIN_DIR/../skills/workflow/scripts/_plugin_root.sh"
 PLUGIN_ROOT="$(kaizen_plugin_root)" || {
