@@ -93,6 +93,14 @@
         "--script",
         "${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/loop_mcp.py"
       ]
+    },
+    "shim": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--script",
+        "${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/shim_mcp.py"
+      ]
     }
   }
 }
