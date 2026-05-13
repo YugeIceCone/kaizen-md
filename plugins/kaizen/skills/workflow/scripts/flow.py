@@ -1,32 +1,89 @@
 #!/usr/bin/env python3
-"""kaizen pocketflow demo v2 — async Node+Flow over real workspace.
+"""kaizen flow — async Node+Flow primitives + the canonical example pipeline.
 
-Demonstrates the Node+Flow discipline from PocketFlow / shodan's
-"Engine + Modes + Nodes" rule, applied to a real artifact: this
-plugin's backlog + the surrounding workspace's docs.
+This module IS the kaizen pocketflow runtime — `AsyncNode` and
+`AsyncFlow` below are the public primitives that every Node+Flow
+pipeline in the plugin imports. The four concrete nodes
+(ReadBacklog → DetectPackages → GenerateDocs → WriteReport) are the
+canonical reference example: a real workspace pipeline that exercises
+each phase + an asyncio.gather fan-out. Reading this file end-to-end
+is the recommended way to learn the convention.
 
-Pipeline (4 async nodes, shared store):
+## Architecture (Node + Flow + shared store)
 
-    ReadBacklog → DetectPackages → GenerateDocs → WriteReport
-                                   (fan-out via      (terminal)
-                                    asyncio.gather)
+Mirrors PocketFlow's API verbatim — `pip install pocketflow` would
+let you swap the imports and nothing else. Three-phase nodes; a flow
+walks `(node, action) → next` edges until no edge fires.
 
-Each node has prep_async / exec_async / post_async phases:
-    prep — pull from shared store, validate inputs
-    exec — do the real work (possibly I/O-bound)
-    post — write results back to store, return action key
+```text
+        ┌─────────────────────────────────────────────────┐
+        │             AsyncFlow (orchestrator)            │
+        │   self.start ── action_str ──▶ next AsyncNode   │
+        └───────────────────┬─────────────────────────────┘
+                            │
+              ┌─────────────┴─────────────┐
+              │       AsyncNode           │
+              │  prep_async(store)        │  ① pull inputs
+              │       │                   │
+              │       ▼                   │
+              │  exec_async(prep_res)     │  ② do work
+              │       │                   │
+              │       ▼                   │
+              │  post_async(store, …)     │  ③ write outputs
+              │       │                   │     return action_str
+              └───────┴───────────────────┘
+```
 
-GenerateDocs is the interesting one: it fans out per-package doc
-scans in parallel — N packages → N concurrent tasks → 1 await.
+Shared store = a plain `dict`. Nodes read from it in `prep_async` and
+write back in `post_async`. No queues, no message-passing rituals.
+Action keys are routing labels returned by `post_async`; the default
+is `"default"`.
 
-Run:
-    python3 flow_demo.py [workspace_root]
+## The reference example pipeline
 
-Default: cwd. Output: JSON summary to stdout, with per-node timing.
+The four-node pipeline at the bottom of this file is intentionally
+non-trivial. It exercises:
 
-This file vendors a minimal AsyncNode + AsyncFlow so it has zero
-runtime dependencies. The shape mirrors PocketFlow's API exactly; if
-you `pip install pocketflow`, swap the imports and nothing else.
+- **ReadBacklog** — synchronous-ish file I/O wrapped in
+  `asyncio.to_thread` to keep the loop unblocked. Demonstrates the
+  read-from-store pattern.
+- **DetectPackages** — calls into a sibling helper module
+  (`docs_gen.detect_packages`). Demonstrates cross-module reuse.
+- **GenerateDocs** — the headline async pattern: `asyncio.gather` over
+  N packages. Demonstrates parallel fan-out.
+- **WriteReport** — terminal node; demonstrates returning `None` to
+  end the flow.
+
+To build your own pipeline (e.g. the upcoming `search_flow.py`):
+
+1. Define each step as an `AsyncNode` subclass with three methods.
+2. Instantiate the nodes.
+3. Build an `AsyncFlow(start=first_node)` and call
+   `flow.add_successor(node, action, next_node)` per edge.
+4. Call `await flow.run_async(store)` with the initial shared dict.
+
+## Running the reference example
+
+```bash
+python3 flow.py [workspace_root]   # default: cwd
+```
+
+Output: JSON summary to stdout with per-node timing (under `_timing`).
+
+## Performance notes
+
+- Each node's wall time is captured under `store["_timing"][NodeClass]`.
+- `prep`/`post` should be cheap; `exec` is where the work lives.
+- For CPU-bound `exec`, wrap with `asyncio.to_thread(...)` so the
+  loop doesn't block. For I/O-bound work, use native awaitables.
+- For fan-out, build the task list in `exec_async` and gather.
+
+## Naming history
+
+v1 was `flow_demo.py`. Renamed to `flow.py` in v1.31.0 — once the
+search-pipeline port started importing AsyncNode/AsyncFlow from it,
+calling it "demo" was misleading. The four reference nodes stay in
+this file so new contributors have one place to read end-to-end.
 """
 
 from __future__ import annotations
@@ -133,11 +190,11 @@ class GenerateDocs(AsyncNode):
         packages, root = prep
         if not packages:
             return []
-        from docs_gen import scan_package
+        from docs_gen import analyze_package
         # The headline async pattern: N packages → N parallel tasks.
         # asyncio.to_thread pushes the blocking file I/O off the loop.
         tasks = [
-            asyncio.to_thread(scan_package, pkg_dir, lang, root)
+            asyncio.to_thread(analyze_package, pkg_dir, lang, root)
             for pkg_dir, lang in packages
         ]
         return await asyncio.gather(*tasks)

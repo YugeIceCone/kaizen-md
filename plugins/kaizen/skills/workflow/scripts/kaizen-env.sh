@@ -53,7 +53,7 @@ export PATH
 
 # Interactive aliases — guarded so non-interactive shells stay quiet
 if [ -n "${PS1:-}" ] || [ -n "${ZSH_VERSION:-}" ]; then
-    alias kaizen-flow='python3 "$KAIZEN_SCRIPTS/flow_demo.py"'
+    alias kaizen-flow='python3 "$KAIZEN_SCRIPTS/flow.py"'
     alias kaizen-docs='python3 "$KAIZEN_SCRIPTS/docs_gen.py"'
     alias kaizen-backlog='python3 "$KAIZEN_SCRIPTS/backlog.py"'
     alias kaizen-cache='python3 "$KAIZEN_SCRIPTS/cache.py"'

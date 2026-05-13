@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Run the async Node+Flow demo on a workspace.
+# Run the async Node+Flow reference pipeline on a workspace.
+# See skills/workflow/references/node-flow.md for the API + extension recipe.
 set -uo pipefail
 SCRIPT=$(python3 -c "import os, sys; print(os.path.realpath(sys.argv[1]))" "${BASH_SOURCE[0]}")
 PLUGIN_ROOT=$(cd "$(dirname "$SCRIPT")/.." && pwd)
-exec python3 "$PLUGIN_ROOT/skills/workflow/scripts/flow_demo.py" "$@"
+exec python3 "$PLUGIN_ROOT/skills/workflow/scripts/flow.py" "$@"

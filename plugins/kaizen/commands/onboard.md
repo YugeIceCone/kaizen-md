@@ -6,4 +6,4 @@ argument-hint: [index|reindex|search "<query>"|stats|get <id>|path|clear]
 
 # kaizen onboard
 
-!`python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/onboard_index.py ${ARGUMENTS:-stats}`
+!`uv run --script ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/onboard_index.py ${ARGUMENTS:-stats}`

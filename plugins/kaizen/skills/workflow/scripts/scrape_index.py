@@ -20,7 +20,7 @@
 
 Combines three kaizen patterns:
 
-  1. PocketFlow async Node+Flow (from flow_demo.py) — pipeline of
+  1. PocketFlow async Node+Flow (from flow.py) — pipeline of
      FetchURLs → ScrapeFanOut → Synthesize → Embed → Persist.
   2. ScrapeGraphAI SmartScraperGraph — LLM-driven extraction.
   3. trace/knowledge/onboard indexer shape — SQLite + sentence-transformers

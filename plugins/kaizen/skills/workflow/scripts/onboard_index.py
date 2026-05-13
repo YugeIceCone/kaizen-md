@@ -5,6 +5,7 @@
 #     "sentence-transformers>=2.7",
 #     "numpy>=1.24",
 #     "torch>=2.0",
+#     "sqlite-vec>=0.1.6",
 # ]
 #
 # [[tool.uv.index]]
@@ -231,6 +232,20 @@ def open_db(root: Path, create: bool = True) -> sqlite3.Connection:
         path.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(str(path))
     conn.row_factory = sqlite3.Row
+    # v1.31.0+ performance pragmas. WAL gives concurrent reader+writer;
+    # synchronous=NORMAL is safe with WAL; 64MB page cache + 256MB
+    # mmap region cover the entire onboard.db at shodan-scale (~50MB)
+    # with room to grow. temp_store=MEMORY keeps FTS5 merges in RAM.
+    conn.executescript(
+        """
+        PRAGMA journal_mode = WAL;
+        PRAGMA synchronous = NORMAL;
+        PRAGMA cache_size = -65536;
+        PRAGMA mmap_size = 268435456;
+        PRAGMA temp_store = MEMORY;
+        PRAGMA foreign_keys = ON;
+        """
+    )
     if create:
         conn.executescript(
             """
@@ -247,6 +262,24 @@ def open_db(root: Path, create: bool = True) -> sqlite3.Connection:
             );
             CREATE INDEX IF NOT EXISTS idx_code_lang ON code_files(language);
             CREATE INDEX IF NOT EXISTS idx_code_path ON code_files(path);
+            -- v1.31.0+: lossless capture layer. One row per source file
+            -- (including failures: `error IS NOT NULL`, `text IS NULL`).
+            -- do_dump writes here; do_filter reads here. Re-running the
+            -- clean/chunk/embed stage does NOT re-read the filesystem
+            -- — it reads this table. Errors surface as queryable rows
+            -- instead of a counter.
+            CREATE TABLE IF NOT EXISTS code_files_raw (
+                path TEXT PRIMARY KEY,
+                sha TEXT,
+                language TEXT,
+                bytes INTEGER,
+                sloc_raw INTEGER,
+                mtime TEXT,
+                text TEXT,
+                error TEXT,
+                captured_at TEXT NOT NULL
+            );
+            CREATE INDEX IF NOT EXISTS idx_raw_error ON code_files_raw(error);
             CREATE TABLE IF NOT EXISTS code_meta (
                 key TEXT PRIMARY KEY,
                 value TEXT
@@ -264,6 +297,7 @@ def open_db(root: Path, create: bool = True) -> sqlite3.Connection:
                 char_end INTEGER NOT NULL,
                 text TEXT NOT NULL,
                 embedding BLOB NOT NULL,
+                embedding_q8 BLOB,
                 language TEXT NOT NULL,
                 UNIQUE(file_id, chunk_idx)
             );
@@ -416,24 +450,33 @@ def _file_sha(content: bytes) -> str:
     return hashlib.sha1(content).hexdigest()[:16]
 
 
-def process_file(path: Path, root: Path) -> dict | None:
-    """Read + strip + normalize. Returns the record dict or None on error."""
+def _rel_path(path: Path, root: Path) -> str:
+    try:
+        return path.relative_to(root).as_posix()
+    except ValueError:
+        return path.as_posix()
+
+
+def read_raw_file(path: Path, root: Path) -> dict:
+    """Stage 1 — lossless capture. Always returns a dict; on failure the
+    record carries an `error` field (read or decode failure) and omits
+    `text`/`sha`/etc. so the row is still queryable in `code_files_raw`."""
+    rel = _rel_path(path, root)
+    ext = path.suffix.lower()
+    language = LANG_TABLE.get(ext, ("unknown", ""))[0]
     try:
         raw_bytes = path.read_bytes()
-    except OSError:
-        return None
+    except OSError as e:
+        return {"path": rel, "language": language, "error": f"read failed: {e.__class__.__name__}: {e}"}
     try:
         raw_text = raw_bytes.decode("utf-8")
-    except UnicodeDecodeError:
-        return None  # binary or non-UTF-8 — skip
-    ext = path.suffix.lower()
-    language, strategy = LANG_TABLE[ext]
-    cleaned = normalize_whitespace(strip_comments(raw_text, strategy))
-    snippet = cleaned[:SNIPPET_MAX]
-    try:
-        rel_path = path.relative_to(root).as_posix()
-    except ValueError:
-        rel_path = path.as_posix()
+    except UnicodeDecodeError as e:
+        return {
+            "path": rel,
+            "language": language,
+            "bytes": len(raw_bytes),
+            "error": f"utf-8 decode failed at offset {e.start}: {e.reason}",
+        }
     try:
         mtime = dt.datetime.fromtimestamp(
             path.stat().st_mtime, dt.timezone.utc
@@ -441,20 +484,136 @@ def process_file(path: Path, root: Path) -> dict | None:
     except OSError:
         mtime = ""
     return {
-        "path": rel_path,
+        "path": rel,
         "language": language,
         "bytes": len(raw_bytes),
-        "sloc": count_sloc(cleaned),
-        "snippet": snippet,
-        "cleaned_for_embed": cleaned,  # passed to embedder; not stored verbatim
+        "sloc_raw": sum(1 for line in raw_text.split("\n") if line.strip()),
+        "mtime": mtime,
+        "text": raw_text,
         "sha": _file_sha(raw_bytes),
-        "updated_at": mtime,
+    }
+
+
+def _strategy_for_language(language: str) -> str:
+    for _ext, (lang, strat) in LANG_TABLE.items():
+        if lang == language:
+            return strat
+    return "c-family"
+
+
+def clean_for_embed(raw_rec: dict) -> dict:
+    """Stage 2a — comment-strip + whitespace-normalize. Error rows pass
+    through unchanged (preserved into the chunk stage so they keep
+    surfacing in stats)."""
+    if raw_rec.get("error") or "text" not in raw_rec:
+        return dict(raw_rec)
+    strategy = _strategy_for_language(raw_rec.get("language", ""))
+    cleaned = normalize_whitespace(strip_comments(raw_rec["text"], strategy))
+    out = dict(raw_rec)
+    out["cleaned"] = cleaned
+    out["snippet"] = cleaned[:SNIPPET_MAX]
+    out["sloc"] = count_sloc(cleaned)
+    return out
+
+
+def chunk_record(cleaned_rec: dict) -> list[dict]:
+    """Stage 2b — split a cleaned record into per-chunk records. Returns
+    one dropped row (`kept: False`) for empty-after-clean files or error
+    rows so do_filter can surface them in stats without losing them."""
+    if cleaned_rec.get("error"):
+        return [{
+            "path": cleaned_rec["path"],
+            "sha": cleaned_rec.get("sha"),
+            "language": cleaned_rec.get("language"),
+            "kept": False,
+            "kept_reason": "raw_error",
+            "error": cleaned_rec["error"],
+        }]
+    cleaned = cleaned_rec.get("cleaned", "")
+    if not cleaned.strip():
+        return [{
+            "path": cleaned_rec["path"],
+            "sha": cleaned_rec.get("sha"),
+            "language": cleaned_rec.get("language"),
+            "kept": False,
+            "kept_reason": "empty_after_clean",
+        }]
+    chunks = _kz_chunk.chunk_text(cleaned)
+    out: list[dict] = []
+    for c in chunks:
+        out.append({
+            "path": cleaned_rec["path"],
+            "sha": cleaned_rec.get("sha"),
+            "language": cleaned_rec.get("language"),
+            "chunk_idx": c.chunk_idx,
+            "char_start": c.char_start,
+            "char_end": c.char_end,
+            "text": c.text,
+            "kept": True,
+        })
+    if not out:
+        return [{
+            "path": cleaned_rec["path"],
+            "sha": cleaned_rec.get("sha"),
+            "language": cleaned_rec.get("language"),
+            "kept": False,
+            "kept_reason": "no_chunks_produced",
+        }]
+    return out
+
+
+def process_file(path: Path, root: Path) -> dict | None:
+    """Back-compat wrapper around read_raw_file + clean_for_embed.
+
+    Returns the legacy dict shape (`cleaned_for_embed`, `updated_at`,
+    etc.) or None on error — preserved so callers outside this module
+    keep working. New code should call the stage functions directly."""
+    raw = read_raw_file(path, root)
+    if raw.get("error"):
+        return None
+    cleaned = clean_for_embed(raw)
+    return {
+        "path": cleaned["path"],
+        "language": cleaned["language"],
+        "bytes": cleaned["bytes"],
+        "sloc": cleaned["sloc"],
+        "snippet": cleaned["snippet"],
+        "cleaned_for_embed": cleaned["cleaned"],
+        "sha": cleaned["sha"],
+        "updated_at": cleaned.get("mtime", ""),
     }
 
 
 import _embed as _kz_embed  # v1.25.0+: HTTP-first embedding backend
 import _chunk as _kz_chunk  # v1.27.0+: sentence-boundary chunker
 import _search as _kz_search  # v1.27.0+: BM25+dense hybrid search
+import _quant as _kz_quant  # v1.31.0+: int8 quantization helpers
+
+
+def _has_embedding_q8_column(conn: sqlite3.Connection) -> bool:
+    """Pre-v1.31 dbs lack `embedding_q8`. Cheap probe via PRAGMA so we
+    can write quantized blobs only when the column exists."""
+    cols = {row[1] for row in conn.execute("PRAGMA table_info(code_chunks)")}
+    return "embedding_q8" in cols
+
+
+def _maybe_quantize_batch(
+    conn: sqlite3.Connection, chunk_blobs: list[bytes], dim: int
+) -> list[bytes] | None:
+    """Return per-row int8 blobs when the embedding_q8 column exists
+    AND numpy is importable; else None. Lazy + side-effect-free: dbs
+    that haven't been migrated (or environments without numpy — the
+    test harness running under bare python3) keep getting float32-only
+    writes. A later `clear` + reindex under uv backfills the q8 column."""
+    if not _has_embedding_q8_column(conn):
+        return None
+    try:
+        import numpy as np
+    except ImportError:
+        return None
+    mat = np.stack([np.frombuffer(b, dtype=np.float32) for b in chunk_blobs])
+    blobs, _ = _kz_quant.quantize_batch(mat)
+    return blobs
 from _progress import Progress as _Progress  # v1.30.0+: live stderr progress
 
 
@@ -467,110 +626,237 @@ def embed_one(text: str):
 # ─── do_* helpers (data-returning; mirrored by onboard_mcp.py) ───────
 
 
-def do_index(root: Path, use_git: bool = True) -> dict:
-    """Run incremental indexing. Returns {new, skipped, stale_removed, total, total_chunks}.
+def do_dump(root: Path, use_git: bool = True) -> dict:
+    """Stage 1 — lossless capture into `code_files_raw`.
 
-    v1.28.0+: each updated file is chunked via `_chunk.chunk_text`, all
-    chunks embedded in a single batch via `_embed.embed_batch`, and
-    written to `code_chunks` (with a FK back to `code_files`). The file
-    row's `embedding` column gets the FIRST chunk's vector — preserves
-    the legacy whole-file search path while RAG-grade hybrid search uses
-    the per-chunk table."""
+    Walks the source tree, calls `read_raw_file` per file, INSERT OR
+    REPLACEs into the raw table. Errors are stored as rows (text=NULL,
+    error=<reason>) so `SELECT path, error FROM code_files_raw WHERE
+    error IS NOT NULL` surfaces every failure with a concrete reason
+    — fixes the pre-v1.31 "3 errors but no details" debuggability gap.
+
+    Returns {total, captured, errors, db}.
+    """
     conn = open_db(root, create=True)
-    seen_paths: set[str] = set()
-    new_count = 0
-    skip_count = 0
-    error_count = 0
-    chunk_count = 0
-    # Materialise the file list so we have a total for the progress bar.
     all_files = list(iter_source_files(root, use_git=use_git))
-    bar = _Progress("onboard", total=len(all_files))
+    bar = _Progress("onboard-dump", total=len(all_files))
+    captured = 0
+    errors = 0
+    now = dt.datetime.now(dt.timezone.utc).isoformat()
     for path in all_files:
-        rec = process_file(path, root)
-        if not rec:
-            error_count += 1
-            bar.tick(f"err {path.name}")
+        rec = read_raw_file(path, root)
+        is_err = bool(rec.get("error"))
+        conn.execute(
+            """INSERT OR REPLACE INTO code_files_raw
+               (path, sha, language, bytes, sloc_raw, mtime, text, error, captured_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (
+                rec.get("path"),
+                rec.get("sha"),
+                rec.get("language"),
+                rec.get("bytes"),
+                rec.get("sloc_raw"),
+                rec.get("mtime"),
+                rec.get("text"),
+                rec.get("error"),
+                now,
+            ),
+        )
+        if is_err:
+            errors += 1
+            bar.tick(f"err {rec.get('path')}: {rec.get('error', '')[:60]}")
+        else:
+            captured += 1
+            bar.tick(f"+ {rec['path']} ({rec.get('bytes', 0)}b)")
+    set_meta(conn, "last_dump_ts", now)
+    conn.commit()
+    conn.close()
+    bar.done(f"{captured} captured, {errors} errors")
+    return {
+        "total": len(all_files),
+        "captured": captured,
+        "errors": errors,
+        "db": str(db_path(root)),
+    }
+
+
+def do_filter(root: Path) -> dict:
+    """Stage 2 — clean + chunk + embed from `code_files_raw` into
+    `code_files` + `code_chunks`.
+
+    Does NOT touch the filesystem. The raw table is the single source
+    of truth for "what we saw on disk" — re-running this stage after a
+    new comment-strip rule lands re-uses captured text. Error rows
+    (raw_rec.error IS NOT NULL) are counted into `errors_skipped` and
+    excluded from the chunked tables.
+
+    Returns {files_indexed, chunks, errors_skipped, dropped, db}.
+    """
+    conn = open_db(root, create=True)
+    raw_rows = conn.execute(
+        "SELECT path, sha, language, bytes, sloc_raw, mtime, text, error "
+        "FROM code_files_raw ORDER BY path"
+    ).fetchall()
+    bar = _Progress("onboard-filter", total=len(raw_rows))
+    seen_paths: set[str] = set()
+    files_indexed = 0
+    chunks_written = 0
+    errors_skipped = 0
+    dropped = 0
+    for r in raw_rows:
+        raw_rec = {k: r[k] for k in r.keys()}
+        seen_paths.add(raw_rec["path"])
+        if raw_rec.get("error"):
+            errors_skipped += 1
+            bar.tick(f"skip-err {raw_rec['path']}")
             continue
-        seen_paths.add(rec["path"])
+        # Skip rows whose sha matches an already-indexed file_row (incremental path).
         existing = conn.execute(
-            "SELECT sha FROM code_files WHERE path = ?", (rec["path"],)
+            "SELECT sha FROM code_files WHERE path = ?", (raw_rec["path"],)
         ).fetchone()
-        if existing and existing["sha"] == rec["sha"]:
-            skip_count += 1
-            bar.tick(f"skip {rec['path']}")
+        if existing and existing["sha"] == raw_rec.get("sha"):
+            bar.tick(f"skip-unchanged {raw_rec['path']}")
             continue
-        # Chunk the cleaned content. Empty doc after cleaning → skip.
-        chunks = _kz_chunk.chunk_text(rec["cleaned_for_embed"])
-        if not chunks:
-            error_count += 1
-            bar.tick(f"empty {rec['path']}")
+        cleaned_rec = clean_for_embed(raw_rec)
+        chunk_records = chunk_record(cleaned_rec)
+        kept = [c for c in chunk_records if c.get("kept")]
+        if not kept:
+            dropped += 1
+            reason = chunk_records[0].get("kept_reason", "?") if chunk_records else "?"
+            bar.tick(f"drop {raw_rec['path']} ({reason})")
             continue
-        # Embed all chunks in one batch (HTTP roundtrip amortized).
-        chunk_texts = _kz_chunk.apply_passage_prefix_batch([c.text for c in chunks])
+        # Embed all kept chunks in a single batch.
+        chunk_texts = _kz_chunk.apply_passage_prefix_batch([c["text"] for c in kept])
         chunk_blobs, _dim = _kz_embed.embed_batch(chunk_texts)
-        file_emb = chunk_blobs[0]  # first chunk = whole-file "representative"
+        file_emb = chunk_blobs[0]
+        # v1.31.0+: also write the int8-quantized form for storage-efficient
+        # search paths. `_quant.quantize_batch` returns one blob per row
+        # (4-byte scale + D-byte int8 array). Lazy: only computes when the
+        # embedding_q8 column exists (back-compat with pre-v1.31 dbs).
+        chunk_q8_blobs = _maybe_quantize_batch(conn, chunk_blobs, _dim)
         # Upsert the file row.
         conn.execute(
             """INSERT OR REPLACE INTO code_files
                (path, language, bytes, sloc, snippet, embedding, sha, updated_at)
                VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
             (
-                rec["path"], rec["language"], rec["bytes"], rec["sloc"],
-                rec["snippet"], file_emb, rec["sha"], rec["updated_at"],
+                cleaned_rec["path"],
+                cleaned_rec["language"],
+                cleaned_rec["bytes"],
+                cleaned_rec["sloc"],
+                cleaned_rec["snippet"],
+                file_emb,
+                cleaned_rec["sha"],
+                cleaned_rec.get("mtime", ""),
             ),
         )
-        # Fetch the (possibly newly assigned) file_id.
         file_id = conn.execute(
-            "SELECT id FROM code_files WHERE path = ?", (rec["path"],)
+            "SELECT id FROM code_files WHERE path = ?", (cleaned_rec["path"],)
         ).fetchone()["id"]
-        # Replace this file's chunks atomically.
         conn.execute("DELETE FROM code_chunks WHERE file_id = ?", (file_id,))
-        conn.executemany(
-            """INSERT INTO code_chunks
-               (file_id, chunk_idx, char_start, char_end, text, embedding, language)
-               VALUES (?, ?, ?, ?, ?, ?, ?)""",
-            [
-                (file_id, c.chunk_idx, c.char_start, c.char_end,
-                 c.text, blob, rec["language"])
-                for c, blob in zip(chunks, chunk_blobs)
-            ],
-        )
-        chunk_count += len(chunks)
-        new_count += 1
-        bar.tick(f"+ {rec['path']} ({len(chunks)} chunks)")
-    bar.done(f"{new_count} new, {skip_count} skipped, {error_count} errors")
-    # Remove stale entries (in db but no longer in tree). FK cascade
-    # drops dependent chunks automatically (we declared ON DELETE CASCADE).
+        if chunk_q8_blobs is not None:
+            conn.executemany(
+                """INSERT INTO code_chunks
+                   (file_id, chunk_idx, char_start, char_end, text, embedding, embedding_q8, language)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                [
+                    (file_id, c["chunk_idx"], c["char_start"], c["char_end"],
+                     c["text"], blob, q8, cleaned_rec["language"])
+                    for c, blob, q8 in zip(kept, chunk_blobs, chunk_q8_blobs)
+                ],
+            )
+        else:
+            conn.executemany(
+                """INSERT INTO code_chunks
+                   (file_id, chunk_idx, char_start, char_end, text, embedding, language)
+                   VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                [
+                    (file_id, c["chunk_idx"], c["char_start"], c["char_end"],
+                     c["text"], blob, cleaned_rec["language"])
+                    for c, blob in zip(kept, chunk_blobs)
+                ],
+            )
+        chunks_written += len(kept)
+        files_indexed += 1
+        bar.tick(f"+ {cleaned_rec['path']} ({len(kept)} chunks)")
+    # Remove stale entries (in db but not in raw table). The raw table
+    # is the source of truth for what currently exists on disk.
     all_in_db = conn.execute("SELECT path FROM code_files").fetchall()
     stale = [r["path"] for r in all_in_db if r["path"] not in seen_paths]
-    if stale:
-        # SQLite default does NOT enforce FK cascades unless PRAGMA enables it.
-        # Manual delete for portability.
-        for p in stale:
-            row = conn.execute("SELECT id FROM code_files WHERE path = ?", (p,)).fetchone()
-            if row:
-                conn.execute("DELETE FROM code_chunks WHERE file_id = ?", (row["id"],))
-                conn.execute("DELETE FROM code_files WHERE path = ?", (p,))
+    for p in stale:
+        row = conn.execute("SELECT id FROM code_files WHERE path = ?", (p,)).fetchone()
+        if row:
+            conn.execute("DELETE FROM code_chunks WHERE file_id = ?", (row["id"],))
+            conn.execute("DELETE FROM code_files WHERE path = ?", (p,))
     set_meta(conn, "model", DEFAULT_MODEL)
     set_meta(conn, "dim", str(DEFAULT_DIM))
     set_meta(conn, "last_indexed_ts", dt.datetime.now(dt.timezone.utc).isoformat())
-    total = conn.execute("SELECT COUNT(*) FROM code_files").fetchone()[0]
-    total_chunks = conn.execute("SELECT COUNT(*) FROM code_chunks").fetchone()[0]
-    set_meta(conn, "total_files", str(total))
-    set_meta(conn, "total_chunks", str(total_chunks))
+    set_meta(conn, "total_files", str(
+        conn.execute("SELECT COUNT(*) FROM code_files").fetchone()[0]
+    ))
+    set_meta(conn, "total_chunks", str(
+        conn.execute("SELECT COUNT(*) FROM code_chunks").fetchone()[0]
+    ))
     set_meta(conn, "root", str(root))
     conn.commit()
+    # v1.31.0+: compact the index after every filter run.
+    # `PRAGMA optimize` updates query-planner statistics; FTS5
+    # `optimize` merges segments into one B-tree (large recall win on
+    # the BM25 path; recall already correct, but the merged form
+    # answers queries in fewer page reads).
+    try:
+        conn.executescript(
+            """
+            INSERT INTO code_chunks_fts(code_chunks_fts) VALUES('optimize');
+            PRAGMA optimize;
+            """
+        )
+        conn.commit()
+    except sqlite3.OperationalError:
+        # FTS5 mirror absent (pre-v1.28 db): skip.
+        pass
     conn.close()
+    bar.done(f"{files_indexed} indexed, {chunks_written} chunks, {errors_skipped} skipped, {dropped} dropped")
     return {
-        "new": new_count,
-        "skipped": skip_count,
+        "files_indexed": files_indexed,
+        "chunks": chunks_written,
+        "errors_skipped": errors_skipped,
+        "dropped": dropped,
         "stale_removed": len(stale),
-        "errors": error_count,
+        "db": str(db_path(root)),
+    }
+
+
+def do_index(root: Path, use_git: bool = True) -> dict:
+    """End-to-end incremental indexing — dump → filter (v1.31.0+).
+
+    Stage 1 (`do_dump`) writes every source file's raw contents into
+    `code_files_raw` (lossless; errors preserved as queryable rows).
+    Stage 2 (`do_filter`) reads the raw table, applies clean + chunk +
+    embed, writes into `code_files` + `code_chunks`. Re-running stage
+    2 alone (e.g. after a comment-strip rule change) does NOT re-read
+    the filesystem.
+
+    Return shape preserved for back-compat with onboard_mcp.py and
+    cmd_index/cmd_reindex output: {new, skipped, stale_removed, errors,
+    total, total_chunks, new_chunks, model, db}.
+    """
+    dump = do_dump(root, use_git=use_git)
+    filt = do_filter(root)
+    total = dump["captured"] + dump["errors"]  # rows in code_files_raw
+    return {
+        "new": filt["files_indexed"],
+        "skipped": dump["captured"] - filt["files_indexed"] - filt["dropped"],
+        "stale_removed": filt["stale_removed"],
+        "errors": dump["errors"] + filt["dropped"],
         "total": total,
-        "total_chunks": total_chunks,
-        "new_chunks": chunk_count,
+        "total_chunks": filt["chunks"],
+        "new_chunks": filt["chunks"],
         "model": DEFAULT_MODEL,
         "db": str(db_path(root)),
+        # v1.31.0+ adds the per-stage breakdown for callers that want it.
+        "dump": dump,
+        "filter": filt,
     }
 
 
@@ -722,6 +1008,44 @@ def _do_search_legacy(
         })
     conn.close()
     return out
+
+
+def do_raw_errors(root: Path) -> list[dict]:
+    """Stage-1 diagnostic — rows in `code_files_raw` where read or decode
+    failed. Returns [{path, language, error, bytes}]; empty list if all
+    files captured cleanly."""
+    p = db_path(root)
+    if not p.is_file():
+        return []
+    conn = open_db(root, create=False)
+    rows = conn.execute(
+        "SELECT path, language, error, bytes FROM code_files_raw "
+        "WHERE error IS NOT NULL ORDER BY path"
+    ).fetchall()
+    conn.close()
+    return [{k: r[k] for k in r.keys()} for r in rows]
+
+
+def do_dropped(root: Path) -> list[dict]:
+    """Stage-2 diagnostic — files present in `code_files_raw` but absent
+    from `code_files` (chunker produced nothing kept). Common cause:
+    file is 100% comments; comment-strip empties it. Returns
+    [{path, language, bytes, sloc_raw, reason}]."""
+    p = db_path(root)
+    if not p.is_file():
+        return []
+    conn = open_db(root, create=False)
+    rows = conn.execute(
+        "SELECT r.path, r.language, r.bytes, r.sloc_raw "
+        "FROM code_files_raw r LEFT JOIN code_files f ON f.path = r.path "
+        "WHERE r.error IS NULL AND f.id IS NULL "
+        "ORDER BY r.path"
+    ).fetchall()
+    conn.close()
+    return [
+        {**{k: r[k] for k in r.keys()}, "reason": "empty_after_clean_or_no_chunks"}
+        for r in rows
+    ]
 
 
 def do_stats(root: Path) -> dict:
@@ -877,6 +1201,70 @@ def cmd_clear(args):
         print("kaizen-onboard: no index to clear", file=sys.stderr)
 
 
+def cmd_dump(args):
+    """v1.31.0+: stage 1 only — populate code_files_raw with lossless capture."""
+    root = _resolve_root(args)
+    result = do_dump(root, use_git=not args.no_git)
+    print(
+        f"kaizen-onboard: dumped {result['captured']} captured, "
+        f"{result['errors']} errors → {result['db']}",
+        file=sys.stderr,
+    )
+
+
+def cmd_filter(args):
+    """v1.31.0+: stage 2 only — clean + chunk + embed from code_files_raw.
+    Re-runnable without re-reading the filesystem."""
+    root = _resolve_root(args)
+    result = do_filter(root)
+    print(
+        f"kaizen-onboard: filtered {result['files_indexed']} indexed, "
+        f"{result['chunks']} chunks, {result['errors_skipped']} skipped, "
+        f"{result['dropped']} dropped, {result['stale_removed']} stale removed",
+        file=sys.stderr,
+    )
+
+
+def cmd_raw(args):
+    """v1.31.0+: query the lossless capture table — list, show one, or
+    surface errors. Useful when stats reports 'N errors' and you need
+    the concrete failure reasons."""
+    root = _resolve_root(args)
+    conn = open_db(root, create=False)
+    if args.errors:
+        rows = conn.execute(
+            "SELECT path, error FROM code_files_raw "
+            "WHERE error IS NOT NULL ORDER BY path"
+        ).fetchall()
+        if not rows:
+            print("kaizen-onboard: no errors in code_files_raw", file=sys.stderr)
+            return
+        for r in rows:
+            print(f"  {r['path']}\t{r['error']}")
+        return
+    if args.show:
+        row = conn.execute(
+            "SELECT * FROM code_files_raw WHERE path = ?", (args.show,)
+        ).fetchone()
+        if not row:
+            sys.exit(f"path not found in code_files_raw: {args.show}")
+        d = {k: row[k] for k in row.keys()}
+        # Truncate `text` in stdout for readability; full content via --full.
+        if d.get("text") and not args.full:
+            d["text"] = d["text"][:500] + ("…" if len(d["text"]) > 500 else "")
+        print(json.dumps(d, indent=2, default=str))
+        return
+    # Default: list paths + status (ok | error).
+    rows = conn.execute(
+        "SELECT path, language, bytes, sloc_raw, "
+        "       CASE WHEN error IS NULL THEN 'ok' ELSE 'error' END AS status "
+        "FROM code_files_raw ORDER BY path"
+    ).fetchall()
+    for r in rows:
+        print(f"  {r['status']:<6} {r['language']:<10} {r['bytes']:>8}b  {r['path']}")
+    print(f"  ({len(rows)} rows)", file=sys.stderr)
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="kaizen-onboard-index",
@@ -922,6 +1310,35 @@ def build_parser() -> argparse.ArgumentParser:
     pc = sub.add_parser("clear")
     pc.add_argument("--root")
     pc.set_defaults(func=cmd_clear)
+
+    # v1.31.0+: pipeline stages exposed individually.
+    pd = sub.add_parser(
+        "dump",
+        help="stage 1 — capture raw file contents into code_files_raw (lossless)",
+    )
+    pd.add_argument("--root")
+    pd.add_argument("--no-git", action="store_true")
+    pd.set_defaults(func=cmd_dump)
+
+    pf = sub.add_parser(
+        "filter",
+        help="stage 2 — clean + chunk + embed from code_files_raw (no fs read)",
+    )
+    pf.add_argument("--root")
+    pf.set_defaults(func=cmd_filter)
+
+    pw = sub.add_parser(
+        "raw",
+        help="inspect code_files_raw: list rows, show one, or surface errors",
+    )
+    pw.add_argument("--root")
+    pw.add_argument("--errors", action="store_true",
+                    help="list rows where error IS NOT NULL")
+    pw.add_argument("--show", metavar="PATH",
+                    help="show the full raw row for one path (text truncated)")
+    pw.add_argument("--full", action="store_true",
+                    help="when used with --show, emit full untruncated text")
+    pw.set_defaults(func=cmd_raw)
 
     return p
 

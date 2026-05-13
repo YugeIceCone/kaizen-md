@@ -43,6 +43,16 @@ Tools:
 
   onboard_recent(limit=20, language="")
     Latest N files by mtime — no semantic ranking.
+
+  onboard_raw_errors()
+    v1.31.0+ — files that failed at the lossless capture stage
+    (unreadable / non-UTF-8). Each row carries a concrete `error`
+    reason, replacing the pre-v1.31 opaque error counter.
+
+  onboard_dropped()
+    v1.31.0+ — files captured cleanly but the chunker produced no
+    kept chunks (e.g. comment-only files). Surfaces the chunk-stage
+    counterpart of onboard_raw_errors.
 """
 
 from __future__ import annotations
@@ -124,6 +134,30 @@ async def onboard_get(file_id: int) -> dict:
     """Fetch one indexed file record by SQLite id (snippet included)."""
     r = oi.do_get(_root(), file_id)
     return r if r else {"error": f"id={file_id} not found"}
+
+
+@mcp.tool()
+async def onboard_raw_errors() -> list[dict]:
+    """List files that failed at the lossless capture stage (read or
+    UTF-8 decode failures). v1.31.0+ — replaces the opaque "N errors"
+    counter from `onboard_index_status` with concrete reasons.
+
+    Returns [{path, language, error, bytes}]. Empty list when all files
+    captured cleanly. Use this BEFORE reasoning about "why isn't this
+    file searchable?" — if it's here, it never made it past stage 1."""
+    return oi.do_raw_errors(_root())
+
+
+@mcp.tool()
+async def onboard_dropped() -> list[dict]:
+    """List files captured cleanly but dropped at chunk stage (no kept
+    chunks after comment-strip + normalization). v1.31.0+ — the chunk-
+    stage counterpart of `onboard_raw_errors`.
+
+    Returns [{path, language, bytes, sloc_raw, reason}]. Common cause:
+    file is 100% comments. Use this to decide whether a missing file
+    is genuinely empty-after-clean or a chunker bug worth fixing."""
+    return oi.do_dropped(_root())
 
 
 @mcp.tool()
