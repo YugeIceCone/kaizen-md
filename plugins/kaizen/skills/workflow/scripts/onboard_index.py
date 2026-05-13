@@ -1264,87 +1264,128 @@ def cmd_raw(args):
     print(f"  ({len(rows)} rows)", file=sys.stderr)
 
 
+# ─── CLI (M7: thin IndexerCLI subclass) ──────────────────────────────
+
+
+from _indexer_cli import IndexerCLI  # noqa: E402
+
+
+class OnboardCLI(IndexerCLI):
+    PROG = "kaizen-onboard-index"
+    DESCRIPTION = (
+        "Semantic search over a codebase. Source files only, comments "
+        "stripped, whitespace normalized."
+    )
+
+    def db_path_for(self, args):
+        return db_path(_resolve_root(args))
+
+    # Existing module-level cmd_* already print; delegate to preserve
+    # their human-facing output verbatim.
+    def cmd_stats(self, args): cmd_stats(args)
+    def cmd_get(self, args): cmd_get(args)
+    def cmd_search(self, args): cmd_search(args)
+    def cmd_index(self, args): cmd_index(args)
+    def cmd_reindex(self, args): cmd_reindex(args)
+    def cmd_path(self, args): cmd_path(args)
+    def cmd_clear(self, args): cmd_clear(args)
+
+    # do_* surface — wraps existing module helpers for IndexerCLI contract
+    # (not used directly because each cmd_* override delegates to the
+    # existing module-level cmd_* which itself calls the do_* helpers).
+    def do_stats(self, args):
+        return do_stats(_resolve_root(args))
+
+    def do_get(self, args):
+        return do_get(_resolve_root(args), args.id)
+
+    def do_search(self, args):
+        return do_search(
+            _resolve_root(args), args.query,
+            top_k=args.top_k, language=args.lang,
+            alpha=args.alpha, legacy=args.legacy,
+        )
+
+    def do_index(self, args):
+        return do_index(_resolve_root(args), use_git=not args.no_git)
+
+    def do_reindex(self, args):
+        root = _resolve_root(args)
+        p = db_path(root)
+        if p.is_file():
+            p.unlink()
+        return self.do_index(args)
+
+    def extra_index_args(self, p):
+        p.add_argument("--root",
+                       help="project root (default: git toplevel or cwd)")
+        p.add_argument("--no-git", action="store_true",
+                       help="skip git ls-files; walk filesystem with "
+                            "ignore-list")
+
+    def extra_reindex_args(self, p):
+        p.add_argument("--root", help="project root")
+        p.add_argument("--no-git", action="store_true")
+
+    def extra_search_args(self, p):
+        p.add_argument("--lang",
+                       help="filter by language (rust|python|typescript|...)")
+        p.add_argument("--alpha", type=float, default=0.5,
+                       help="hybrid weight: 1.0=dense only, 0.0=BM25 only, "
+                            "0.5=balanced (default)")
+        p.add_argument("--legacy", action="store_true",
+                       help="use pre-v1.28 whole-file cosine instead of "
+                            "chunked hybrid")
+        p.add_argument("--root")
+
+    def extra_stats_args(self, p): p.add_argument("--root")
+    def extra_get_args(self, p): p.add_argument("--root")
+    def extra_path_args(self, p): p.add_argument("--root")
+    def extra_clear_args(self, p): p.add_argument("--root")
+
+    def register_extra_subcommands(self, sub):
+        # v1.31.0+: pipeline stages exposed individually.
+        pd = sub.add_parser(
+            "dump",
+            help="stage 1 — capture raw file contents into "
+                 "code_files_raw (lossless)",
+        )
+        pd.add_argument("--root")
+        pd.add_argument("--no-git", action="store_true")
+        pd.set_defaults(func=cmd_dump)
+
+        pf = sub.add_parser(
+            "filter",
+            help="stage 2 — clean + chunk + embed from code_files_raw "
+                 "(no fs read)",
+        )
+        pf.add_argument("--root")
+        pf.set_defaults(func=cmd_filter)
+
+        pw = sub.add_parser(
+            "raw",
+            help="inspect code_files_raw: list rows, show one, or "
+                 "surface errors",
+        )
+        pw.add_argument("--root")
+        pw.add_argument("--errors", action="store_true",
+                        help="list rows where error IS NOT NULL")
+        pw.add_argument("--show", metavar="PATH",
+                        help="show the full raw row for one path "
+                             "(text truncated)")
+        pw.add_argument("--full", action="store_true",
+                        help="when used with --show, emit full untruncated "
+                             "text")
+        pw.set_defaults(func=cmd_raw)
+
+
 def build_parser() -> argparse.ArgumentParser:
-    p = argparse.ArgumentParser(
-        prog="kaizen-onboard-index",
-        description="Semantic search over a codebase. Source files only, comments stripped, whitespace normalized.",
-    )
-    sub = p.add_subparsers(dest="cmd", required=True)
-
-    pi = sub.add_parser("index", help="incremental index of source files")
-    pi.add_argument("--root", help="project root (default: git toplevel or cwd)")
-    pi.add_argument("--no-git", action="store_true", help="skip git ls-files; walk filesystem with ignore-list")
-    pi.set_defaults(func=cmd_index)
-
-    pr = sub.add_parser("reindex", help="wipe + full reindex")
-    pr.add_argument("--root", help="project root")
-    pr.add_argument("--no-git", action="store_true")
-    pr.set_defaults(func=cmd_reindex)
-
-    ps = sub.add_parser("search", help="semantic search (default: BM25+dense hybrid on chunks)")
-    ps.add_argument("query")
-    ps.add_argument("--top-k", type=int, default=10)
-    ps.add_argument("--lang", help="filter by language (rust|python|typescript|...)")
-    ps.add_argument("--alpha", type=float, default=0.5,
-                    help="hybrid weight: 1.0=dense only, 0.0=BM25 only, 0.5=balanced (default)")
-    ps.add_argument("--legacy", action="store_true",
-                    help="use pre-v1.28 whole-file cosine instead of chunked hybrid")
-    ps.add_argument("--root")
-    ps.add_argument("--json", action="store_true")
-    ps.set_defaults(func=cmd_search)
-
-    pt = sub.add_parser("stats")
-    pt.add_argument("--root")
-    pt.set_defaults(func=cmd_stats)
-
-    pg = sub.add_parser("get")
-    pg.add_argument("id", type=int)
-    pg.add_argument("--root")
-    pg.set_defaults(func=cmd_get)
-
-    pp = sub.add_parser("path")
-    pp.add_argument("--root")
-    pp.set_defaults(func=cmd_path)
-
-    pc = sub.add_parser("clear")
-    pc.add_argument("--root")
-    pc.set_defaults(func=cmd_clear)
-
-    # v1.31.0+: pipeline stages exposed individually.
-    pd = sub.add_parser(
-        "dump",
-        help="stage 1 — capture raw file contents into code_files_raw (lossless)",
-    )
-    pd.add_argument("--root")
-    pd.add_argument("--no-git", action="store_true")
-    pd.set_defaults(func=cmd_dump)
-
-    pf = sub.add_parser(
-        "filter",
-        help="stage 2 — clean + chunk + embed from code_files_raw (no fs read)",
-    )
-    pf.add_argument("--root")
-    pf.set_defaults(func=cmd_filter)
-
-    pw = sub.add_parser(
-        "raw",
-        help="inspect code_files_raw: list rows, show one, or surface errors",
-    )
-    pw.add_argument("--root")
-    pw.add_argument("--errors", action="store_true",
-                    help="list rows where error IS NOT NULL")
-    pw.add_argument("--show", metavar="PATH",
-                    help="show the full raw row for one path (text truncated)")
-    pw.add_argument("--full", action="store_true",
-                    help="when used with --show, emit full untruncated text")
-    pw.set_defaults(func=cmd_raw)
-
-    return p
+    """Back-compat shim."""
+    return OnboardCLI().build_parser()
 
 
 def main():
-    args = build_parser().parse_args()
-    args.func(args)
+    OnboardCLI().run()
 
 
 if __name__ == "__main__":

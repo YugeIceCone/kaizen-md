@@ -582,133 +582,109 @@ def do_get(item_id: int) -> dict | None:
     return out
 
 
-# ─── Index command (CLI: thin wrapper around do_index) ───────────────
+# ─── CLI (M7: thin IndexerCLI subclass) ──────────────────────────────
 
 
-def cmd_index(args):
-    result = do_index(embed_body=args.embed_body)
-    print(
-        f"kaizen-knowledge: indexed {result['new']} new, "
-        f"skipped {result['skipped']} unchanged, "
-        f"removed {result['stale_removed']} stale",
-        file=sys.stderr,
+from _indexer_cli import IndexerCLI  # noqa: E402
+
+
+class KnowledgeCLI(IndexerCLI):
+    PROG = "kaizen-knowledge-index"
+    DESCRIPTION = (
+        "Semantic search over brain notes, plans, backlog, schemas, persona."
     )
+    DB_PATH = DB_PATH
 
+    def do_stats(self, args):
+        return do_stats()
 
-def cmd_reindex(args):
-    if DB_PATH.exists():
-        DB_PATH.unlink()
-    cmd_index(args)
+    def do_get(self, args):
+        return do_get(args.id)
 
+    def do_search(self, args):
+        return do_search(args.query, top_k=args.top_k, source=args.source)
 
-# ─── Search command ──────────────────────────────────────────────────
+    def do_index(self, args):
+        result = do_index(embed_body=args.embed_body)
+        return result
 
+    def do_clear(self, args):
+        if DB_PATH.is_file():
+            DB_PATH.unlink()
+            print(f"kaizen-knowledge: cleared {DB_PATH}", file=sys.stderr)
+        else:
+            print("kaizen-knowledge: no index to clear", file=sys.stderr)
+        return {"removed": str(DB_PATH) if not DB_PATH.exists() else None}
 
-def cmd_search(args):
-    results = do_search(args.query, top_k=args.top_k, source=args.source)
-    if args.json:
-        print(json.dumps(results, indent=2))
-        return
-    for r in results:
-        tags = r.get("tags") or []
-        tag_str = f" [{','.join(tags)}]" if tags else ""
-        print(
-            f"  {r['score']:.3f}  {r['source']:<10} {r['title']}{tag_str}"
+    def extra_index_args(self, p):
+        p.add_argument(
+            "--embed-body",
+            action="store_true",
+            help="also embed snippet body (privacy: defaults to signature only)",
         )
-        print(f"           → {r['source_path']}")
-        if r["snippet"]:
-            print(f"           {r['snippet'][:120]}")
 
+    def extra_reindex_args(self, p):
+        p.add_argument("--embed-body", action="store_true")
 
-# ─── Other subcommands ───────────────────────────────────────────────
+    def extra_search_args(self, p):
+        p.add_argument(
+            "--source",
+            choices=["brain-note", "plan", "backlog", "schema", "persona"],
+            help="filter results by source type",
+        )
 
+    def print_index(self, result, args):
+        if not result:
+            return
+        print(
+            f"kaizen-knowledge: indexed {result['new']} new, "
+            f"skipped {result['skipped']} unchanged, "
+            f"removed {result['stale_removed']} stale",
+            file=sys.stderr,
+        )
 
-def cmd_stats(args):
-    s = do_stats()
-    if not s.get("indexed"):
-        print("kaizen-knowledge: no index yet — run `index` first")
+    def print_stats(self, s, args):
+        if not s.get("indexed"):
+            print("kaizen-knowledge: no index yet — run `index` first")
+            return
+        print(f"db:        {s['db_path']}")
+        print(f"model:     {s.get('model', '?') or '?'}")
+        print(f"dim:       {s.get('dim', '?') or '?'}")
+        print(f"indexed:   {s.get('last_indexed_ts', '?') or '?'}")
+        print(f"total:     {s['total']}")
+        for src, n in sorted(
+            s["by_source"].items(), key=lambda kv: kv[1], reverse=True
+        ):
+            print(f"  {src:<12} {n}")
+
+    def print_get(self, r, args):
+        if r is None:
+            sys.exit(f"id {args.id} not found")
+        print(json.dumps(r, indent=2))
+
+    def print_search(self, results, args):
+        for r in results:
+            tags = r.get("tags") or []
+            tag_str = f" [{','.join(tags)}]" if tags else ""
+            print(
+                f"  {r['score']:.3f}  {r['source']:<10} {r['title']}{tag_str}"
+            )
+            print(f"           → {r['source_path']}")
+            if r["snippet"]:
+                print(f"           {r['snippet'][:120]}")
+
+    def print_clear(self, result, args):
+        # Already printed in do_clear (preserves original stderr behavior).
         return
-    print(f"db:        {s['db_path']}")
-    print(f"model:     {s.get('model', '?') or '?'}")
-    print(f"dim:       {s.get('dim', '?') or '?'}")
-    print(f"indexed:   {s.get('last_indexed_ts', '?') or '?'}")
-    print(f"total:     {s['total']}")
-    for src, n in sorted(s["by_source"].items(), key=lambda kv: kv[1], reverse=True):
-        print(f"  {src:<12} {n}")
-
-
-def cmd_get(args):
-    r = do_get(args.id)
-    if r is None:
-        sys.exit(f"id {args.id} not found")
-    print(json.dumps(r, indent=2))
-
-
-def cmd_path(args):
-    print(DB_PATH)
-
-
-def cmd_clear(args):
-    if DB_PATH.is_file():
-        DB_PATH.unlink()
-        print(f"kaizen-knowledge: cleared {DB_PATH}", file=sys.stderr)
-    else:
-        print("kaizen-knowledge: no index to clear", file=sys.stderr)
-
-
-# ─── CLI ─────────────────────────────────────────────────────────────
 
 
 def build_parser() -> argparse.ArgumentParser:
-    p = argparse.ArgumentParser(
-        prog="kaizen-knowledge-index",
-        description="Semantic search over brain notes, plans, backlog, schemas, persona.",
-    )
-    sub = p.add_subparsers(dest="cmd", required=True)
-
-    pi = sub.add_parser("index", help="incremental index of all sources")
-    pi.add_argument(
-        "--embed-body",
-        action="store_true",
-        help="also embed snippet body (privacy: defaults to signature only)",
-    )
-    pi.set_defaults(func=cmd_index)
-
-    pr = sub.add_parser("reindex", help="wipe + full reindex")
-    pr.add_argument("--embed-body", action="store_true")
-    pr.set_defaults(func=cmd_reindex)
-
-    ps = sub.add_parser("search", help="semantic search")
-    ps.add_argument("query")
-    ps.add_argument("--top-k", type=int, default=10)
-    ps.add_argument(
-        "--source",
-        choices=["brain-note", "plan", "backlog", "schema", "persona"],
-        help="filter results by source type",
-    )
-    ps.add_argument("--json", action="store_true")
-    ps.set_defaults(func=cmd_search)
-
-    pt = sub.add_parser("stats")
-    pt.set_defaults(func=cmd_stats)
-
-    pg = sub.add_parser("get")
-    pg.add_argument("id", type=int)
-    pg.set_defaults(func=cmd_get)
-
-    pp = sub.add_parser("path")
-    pp.set_defaults(func=cmd_path)
-
-    pc = sub.add_parser("clear")
-    pc.set_defaults(func=cmd_clear)
-
-    return p
+    """Back-compat shim — some callers may import this name."""
+    return KnowledgeCLI().build_parser()
 
 
 def main():
-    parser = build_parser()
-    args = parser.parse_args()
-    args.func(args)
+    KnowledgeCLI().run()
 
 
 if __name__ == "__main__":

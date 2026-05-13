@@ -908,72 +908,86 @@ def cmd_detect_llm(args):
         print(f"cached at: {_LLM_CACHE_PATH}")
 
 
+# ─── CLI (M7: thin IndexerCLI subclass) ─────────────────────────────
+
+
+from _indexer_cli import IndexerCLI  # noqa: E402
+
+
+class ScrapeCLI(IndexerCLI):
+    PROG = "kaizen-scrape"
+    DESCRIPTION = (
+        "Scrape + synthesize web content into a semantic SQLite index. "
+        "PocketFlow pipeline + ScrapeGraphAI + sentence-transformers."
+    )
+    DB_PATH = DB_PATH
+    # No standard `index`/`reindex` — scrape uses `scrape <url>` instead.
+    STANDARD_SUBCOMMANDS = ("search", "stats", "get", "path", "clear")
+
+    # Module-level cmd_* already print; delegate directly.
+    def cmd_search(self, args): cmd_search(args)
+    def cmd_stats(self, args): cmd_stats(args)
+    def cmd_get(self, args): cmd_get(args)
+    def cmd_path(self, args): cmd_path(args)
+    def cmd_clear(self, args): cmd_clear(args)
+
+    # do_* stays usable for any future import; mirrors the module-level
+    # helpers' signatures.
+    def do_stats(self, args): return do_stats()
+    def do_get(self, args): return do_get(args.id)
+    def do_search(self, args): return do_search(args.query, top_k=args.top_k)
+    def do_index(self, args): return None
+    def do_reindex(self, args): return None
+
+    def register_extra_subcommands(self, sub):
+        psc = sub.add_parser("scrape", help="scrape one URL and index")
+        psc.add_argument("url")
+        psc.add_argument(
+            "--prompt",
+            help=f"extraction prompt (default: {_cfg.SCRAPE_DEFAULT_PROMPT[:60]}…)",
+        )
+        psc.add_argument("--no-embed", action="store_true",
+                         help="skip the embed + persist step")
+        psc.add_argument("--json", action="store_true")
+        psc.set_defaults(func=cmd_scrape)
+
+        pb = sub.add_parser("batch", help="scrape a file of URLs (one per line)")
+        pb.add_argument("file")
+        pb.add_argument("--prompt")
+        pb.add_argument("--no-embed", action="store_true")
+        pb.add_argument("--json", action="store_true")
+        pb.set_defaults(func=cmd_batch)
+
+        pl = sub.add_parser("list")
+        pl.add_argument("--limit", type=int, default=20)
+        pl.set_defaults(func=cmd_list)
+
+        pdl = sub.add_parser(
+            "detect-llm",
+            help="zero-config probe of common local-LLM endpoints "
+                 "(llama.cpp/Ollama/LM Studio/vLLM/text-gen-webui)",
+        )
+        pdl.add_argument("--refresh", action="store_true",
+                         help="ignore the cached endpoint, probe afresh")
+        pdl.add_argument("--json", action="store_true")
+        pdl.set_defaults(func=cmd_detect_llm)
+
+        pre = sub.add_parser(
+            "recommend",
+            help="list curated Ollama chat-model picks for ScrapeGraphAI "
+                 "(qwen2.5:7b wins)",
+        )
+        pre.add_argument("--json", action="store_true")
+        pre.set_defaults(func=cmd_recommend)
+
+
 def build_parser() -> argparse.ArgumentParser:
-    p = argparse.ArgumentParser(
-        prog="kaizen-scrape",
-        description="Scrape + synthesize web content into a semantic SQLite index. "
-                    "PocketFlow pipeline + ScrapeGraphAI + sentence-transformers.",
-    )
-    sub = p.add_subparsers(dest="cmd", required=True)
-
-    psc = sub.add_parser("scrape", help="scrape one URL and index")
-    psc.add_argument("url")
-    psc.add_argument("--prompt", help=f"extraction prompt (default: {_cfg.SCRAPE_DEFAULT_PROMPT[:60]}…)")
-    psc.add_argument("--no-embed", action="store_true", help="skip the embed + persist step")
-    psc.add_argument("--json", action="store_true")
-    psc.set_defaults(func=cmd_scrape)
-
-    pb = sub.add_parser("batch", help="scrape a file of URLs (one per line)")
-    pb.add_argument("file")
-    pb.add_argument("--prompt")
-    pb.add_argument("--no-embed", action="store_true")
-    pb.add_argument("--json", action="store_true")
-    pb.set_defaults(func=cmd_batch)
-
-    psr = sub.add_parser("search")
-    psr.add_argument("query")
-    psr.add_argument("--top-k", type=int, default=10)
-    psr.add_argument("--json", action="store_true")
-    psr.set_defaults(func=cmd_search)
-
-    pt = sub.add_parser("stats")
-    pt.set_defaults(func=cmd_stats)
-
-    pg = sub.add_parser("get")
-    pg.add_argument("id", type=int)
-    pg.set_defaults(func=cmd_get)
-
-    pl = sub.add_parser("list")
-    pl.add_argument("--limit", type=int, default=20)
-    pl.set_defaults(func=cmd_list)
-
-    pp = sub.add_parser("path")
-    pp.set_defaults(func=cmd_path)
-
-    pc = sub.add_parser("clear")
-    pc.set_defaults(func=cmd_clear)
-
-    pdl = sub.add_parser(
-        "detect-llm",
-        help="zero-config probe of common local-LLM endpoints (llama.cpp/Ollama/LM Studio/vLLM/text-gen-webui)",
-    )
-    pdl.add_argument("--refresh", action="store_true", help="ignore the cached endpoint, probe afresh")
-    pdl.add_argument("--json", action="store_true")
-    pdl.set_defaults(func=cmd_detect_llm)
-
-    pre = sub.add_parser(
-        "recommend",
-        help="list curated Ollama chat-model picks for ScrapeGraphAI (qwen2.5:7b wins)",
-    )
-    pre.add_argument("--json", action="store_true")
-    pre.set_defaults(func=cmd_recommend)
-
-    return p
+    """Back-compat shim."""
+    return ScrapeCLI().build_parser()
 
 
 def main():
-    args = build_parser().parse_args()
-    args.func(args)
+    ScrapeCLI().run()
 
 
 if __name__ == "__main__":

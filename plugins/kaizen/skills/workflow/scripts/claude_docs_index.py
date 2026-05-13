@@ -475,49 +475,65 @@ def _now() -> str:
     return iso(precision="seconds")
 
 
-# ─── CLI ────────────────────────────────────────────────────────────
+# ─── CLI (M7: thin IndexerCLI subclass) ─────────────────────────────
+
+
+from _indexer_cli import IndexerCLI  # noqa: E402
+
+
+class ClaudeDocsCLI(IndexerCLI):
+    PROG = "claude_docs_index"
+    DESCRIPTION = __doc__
+    DB_PATH = DB_PATH
+    SUBCOMMAND_REQUIRED = False  # bare invocation defaults to `stats`
+
+    # Module-level cmd_* already handle their own printing; override the
+    # base's cmd_* to delegate directly (avoids double-print + preserves
+    # back-compat with the MCP, which imports cmd_index by name).
+    def cmd_stats(self, args): cmd_stats(args)
+    def cmd_get(self, args): cmd_get(args)
+    def cmd_search(self, args): cmd_search(args)
+    def cmd_index(self, args): cmd_index(args)
+    def cmd_reindex(self, args): cmd_reindex(args)
+    def cmd_clear(self, args): cmd_clear(args)
+
+    # do_* stays as the canonical data-returning surface (used by MCP).
+    def do_stats(self, args): return do_stats()
+    def do_get(self, args): return do_get(args.id)
+    def do_search(self, args): return do_search(args.query, top_k=args.top_k)
+    def do_index(self, args): return None
+    def do_reindex(self, args): return None
+
+    def extra_index_args(self, p):
+        p.add_argument("--src", default=None,
+                       help="override SRC_DIR for this run")
+
+    def extra_reindex_args(self, p):
+        p.add_argument("--src", default=None)
+
+    def extra_clear_args(self, p):
+        p.add_argument("--yes", action="store_true")
+
+    def extra_search_args(self, p):
+        # Override base's --top-k default of 10 → 8 (claude_docs convention).
+        # argparse can't redefine, so reach into the action and tweak.
+        for action in p._actions:
+            if action.dest == "top_k":
+                action.default = 8
+
+    def register_extra_subcommands(self, sub):
+        sub.add_parser("bootstrap", help="git clone the upstream docs repo") \
+            .set_defaults(func=lambda args: cmd_bootstrap(args))
+        sub.add_parser("update", help="git pull the upstream docs repo") \
+            .set_defaults(func=lambda args: cmd_update(args))
 
 
 def main():
-    p = argparse.ArgumentParser(prog="claude_docs_index", description=__doc__,
-                                 formatter_class=argparse.RawDescriptionHelpFormatter)
-    sub = p.add_subparsers(dest="cmd")
-
-    sub.add_parser("bootstrap", help="git clone the upstream docs repo")
-    sub.add_parser("update", help="git pull the upstream docs repo")
-
-    pi = sub.add_parser("index", help="incremental sha-deduped reindex")
-    pi.add_argument("--src", default=None, help="override SRC_DIR for this run")
-
-    pr = sub.add_parser("reindex", help="drop tables + rebuild")
-    pr.add_argument("--src", default=None)
-
-    psr = sub.add_parser("search", help="cosine search; ranked chunks")
-    psr.add_argument("query")
-    psr.add_argument("--top-k", type=int, default=8)
-    psr.add_argument("--json", action="store_true")
-
-    sub.add_parser("stats", help="file/chunk count + meta")
-    pg = sub.add_parser("get", help="dump one chunk's full text")
-    pg.add_argument("id", type=int)
-    sub.add_parser("path", help="print the DB path")
-    pc = sub.add_parser("clear", help="rm the DB (--yes required)")
-    pc.add_argument("--yes", action="store_true")
-
-    args = p.parse_args(sys.argv[1:] or ["stats"])
-
-    dispatch = {
-        "bootstrap": cmd_bootstrap,
-        "update": cmd_update,
-        "index": cmd_index,
-        "reindex": cmd_reindex,
-        "search": cmd_search,
-        "stats": cmd_stats,
-        "get": cmd_get,
-        "path": cmd_path,
-        "clear": cmd_clear,
-    }
-    dispatch[args.cmd](args)
+    cli = ClaudeDocsCLI()
+    parser = cli.build_parser()
+    argv = sys.argv[1:] or ["stats"]
+    args = parser.parse_args(argv)
+    args.func(args)
 
 
 if __name__ == "__main__":

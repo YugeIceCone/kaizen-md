@@ -442,75 +442,85 @@ def cmd_clear() -> str:
     return "(no index to clear)"
 
 
-# ─── CLI ─────────────────────────────────────────────────────────────
+# ─── CLI (M7: thin IndexerCLI subclass) ──────────────────────────────
+
+
+from _indexer_cli import IndexerCLI  # noqa: E402
+
+
+class TraceCLI(IndexerCLI):
+    PROG = "trace_index.py"
+    DESCRIPTION = __doc__
+    DB_PATH = DB_PATH
+    SUBCOMMAND_REQUIRED = False  # bare invocation defaults to `index`
+
+    def do_stats(self, args):
+        return cmd_stats()
+
+    def do_get(self, args):
+        return cmd_get(args.id)
+
+    def do_search(self, args):
+        return cmd_search(
+            args.query, top_k=args.top_k, src=args.src,
+            sid=args.sid, evt=args.evt, since=args.since,
+        )
+
+    def do_index(self, args):
+        return cmd_index(
+            max_n=getattr(args, "max", None),
+            embed_data=getattr(args, "embed_data", False),
+        )
+
+    def do_reindex(self, args):
+        return cmd_reindex(embed_data=args.embed_data)
+
+    def do_clear(self, args):
+        return {"message": cmd_clear()}
+
+    def extra_index_args(self, p):
+        p.add_argument("--max", type=int, default=None,
+                       help="cap new-event count this run")
+        p.add_argument("--embed-data", action="store_true",
+                       help="also embed safe data fields (model, status, verdict)")
+
+    def extra_reindex_args(self, p):
+        p.add_argument("--embed-data", action="store_true")
+
+    def extra_search_args(self, p):
+        p.add_argument("--src", default="")
+        p.add_argument("--sid", default="")
+        p.add_argument("--evt", default="")
+        p.add_argument("--since", default=None)
+
+    def print_search(self, results, args):
+        for r in results:
+            ts = r["ts"][:23]
+            print(
+                f"  [{r['score']:.3f}] {ts}  {r['src']:6}  {r['evt']:25}  "
+                f"tool={r['tool'] or '-':8}  "
+                f"ms={r['ms'] if r['ms'] is not None else '-'}"
+            )
+        print(f"\n--- {len(results)} hits", file=sys.stderr)
+
+    def print_get(self, rec, args):
+        print(
+            json.dumps(rec, indent=2, default=str) if rec else "(not found)"
+        )
+
+    def print_clear(self, result, args):
+        print(result.get("message", ""))
 
 
 def main():
-    p = argparse.ArgumentParser(prog="trace_index.py", description=__doc__,
-                                 formatter_class=argparse.RawDescriptionHelpFormatter)
-    sub = p.add_subparsers(dest="cmd")
-
-    idx = sub.add_parser("index", help="incremental index")
-    idx.add_argument("--max", type=int, default=None, help="cap new-event count this run")
-    idx.add_argument("--embed-data", action="store_true",
-                     help="also embed safe data fields (model, status, verdict)")
-
-    rdx = sub.add_parser("reindex", help="wipe + full reindex")
-    rdx.add_argument("--embed-data", action="store_true")
-
-    sr = sub.add_parser("search", help="semantic search")
-    sr.add_argument("query")
-    sr.add_argument("--top-k", type=int, default=10)
-    sr.add_argument("--src", default="")
-    sr.add_argument("--sid", default="")
-    sr.add_argument("--evt", default="")
-    sr.add_argument("--since", default=None)
-    sr.add_argument("--json", action="store_true")
-
-    sub.add_parser("stats", help="index stats")
-    g = sub.add_parser("get", help="fetch event by id")
-    g.add_argument("id", type=int)
-    sub.add_parser("path", help="print db path")
-    sub.add_parser("clear", help="drop the index")
-
-    args = p.parse_args()
-
-    if args.cmd == "index" or args.cmd is None:
-        result = cmd_index(max_n=args.max if hasattr(args, "max") else None,
-                            embed_data=getattr(args, "embed_data", False))
-        print(json.dumps(result, indent=2))
-
-    elif args.cmd == "reindex":
-        result = cmd_reindex(embed_data=args.embed_data)
-        print(json.dumps(result, indent=2))
-
-    elif args.cmd == "search":
-        results = cmd_search(args.query, top_k=args.top_k, src=args.src,
-                              sid=args.sid, evt=args.evt, since=args.since)
-        if args.json:
-            print(json.dumps(results, indent=2, default=str))
-        else:
-            for r in results:
-                ts = r["ts"][:23]
-                print(f"  [{r['score']:.3f}] {ts}  {r['src']:6}  {r['evt']:25}  tool={r['tool'] or '-':8}  ms={r['ms'] if r['ms'] is not None else '-'}")
-            print(f"\n--- {len(results)} hits", file=sys.stderr)
-
-    elif args.cmd == "stats":
-        print(json.dumps(cmd_stats(), indent=2, default=str))
-
-    elif args.cmd == "get":
-        result = cmd_get(args.id)
-        print(json.dumps(result, indent=2, default=str) if result else "(not found)")
-
-    elif args.cmd == "path":
-        print(DB_PATH)
-
-    elif args.cmd == "clear":
-        print(cmd_clear())
-
-    else:
-        p.print_help()
-        sys.exit(1)
+    cli = TraceCLI()
+    parser = cli.build_parser()
+    argv = sys.argv[1:]
+    args = parser.parse_args(argv)
+    # Bare invocation → default to `index` (preserves old behavior).
+    if args.cmd is None:
+        args = parser.parse_args(["index"])
+    args.func(args)
 
 
 if __name__ == "__main__":
