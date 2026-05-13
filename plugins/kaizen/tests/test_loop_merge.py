@@ -33,6 +33,57 @@ ROUTINES_YAML = PLUGIN_ROOT / "skills" / "workflow" / "domain" / "routines.yaml"
 HOOKS_JSON = PLUGIN_ROOT / "hooks" / "hooks.json"
 
 
+class TestFlagAliases(unittest.TestCase):
+    """`--its` aliases `--max-iterations`; `--promise` aliases `--completion-promise`."""
+
+    def test_short_its_flag_sets_max_iterations(self):
+        with tempfile.TemporaryDirectory() as td:
+            tmp = Path(td)
+            subprocess.run(
+                ["bash", str(SETUP_SCRIPT), "p", "--its", "7"],
+                cwd=tmp, check=True, capture_output=True,
+            )
+            state = (tmp / ".kaizen" / "loop.state.md").read_text()
+            self.assertIn("max_iterations: 7", state)
+
+    def test_short_promise_flag_sets_completion_promise(self):
+        with tempfile.TemporaryDirectory() as td:
+            tmp = Path(td)
+            subprocess.run(
+                ["bash", str(SETUP_SCRIPT), "p", "--promise", "ALLDONE"],
+                cwd=tmp, check=True, capture_output=True,
+            )
+            state = (tmp / ".kaizen" / "loop.state.md").read_text()
+            self.assertIn('completion_promise: "ALLDONE"', state)
+
+    def test_long_forms_still_work(self):
+        """Back-compat: --max-iterations and --completion-promise still accepted."""
+        with tempfile.TemporaryDirectory() as td:
+            tmp = Path(td)
+            subprocess.run(
+                ["bash", str(SETUP_SCRIPT), "p",
+                 "--max-iterations", "11",
+                 "--completion-promise", "BC"],
+                cwd=tmp, check=True, capture_output=True,
+            )
+            state = (tmp / ".kaizen" / "loop.state.md").read_text()
+            self.assertIn("max_iterations: 11", state)
+            self.assertIn('completion_promise: "BC"', state)
+
+    def test_mixed_short_and_long_in_one_invocation(self):
+        with tempfile.TemporaryDirectory() as td:
+            tmp = Path(td)
+            subprocess.run(
+                ["bash", str(SETUP_SCRIPT), "p",
+                 "--its", "5",
+                 "--completion-promise", "MIX"],
+                cwd=tmp, check=True, capture_output=True,
+            )
+            state = (tmp / ".kaizen" / "loop.state.md").read_text()
+            self.assertIn("max_iterations: 5", state)
+            self.assertIn('completion_promise: "MIX"', state)
+
+
 class TestStatePathMigration(unittest.TestCase):
     """The state-path migration: .codex/ralph-loop.local.md → .kaizen/loop.state.md."""
 

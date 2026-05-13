@@ -35,8 +35,10 @@ ARGUMENTS:
   PROMPT...    Initial prompt to start the loop (can be multiple words without quotes)
 
 OPTIONS:
-  --max-iterations <n>           Maximum iterations before auto-stop (default: unlimited)
-  --completion-promise '<text>'  Promise phrase (USE QUOTES for multi-word)
+  --its <n>                      Maximum iterations before auto-stop (default: unlimited).
+                                 Long form: --max-iterations
+  --promise '<text>'             Promise phrase (USE QUOTES for multi-word).
+                                 Long form: --completion-promise
   --item 'desc|verify'           Add a ledger item (repeatable). verify is a bash
                                  command run by the Stop hook; item moves to
                                  completed only when verify exits 0. Omit the
@@ -53,14 +55,14 @@ DESCRIPTION:
   To signal completion, you must output: <promise>YOUR_PHRASE</promise>
 
 EXAMPLES:
-  /ralph-loop Build a todo API --completion-promise 'DONE' --max-iterations 20
-  /ralph-loop --max-iterations 10 Fix the auth bug
-  /ralph-loop Refactor cache layer  (runs forever)
-  /ralph-loop --completion-promise 'TASK COMPLETE' Create a REST API
+  /ralph-loop Build a todo API --promise 'DONE' --its 20
+  /ralph-loop --its 10 Fix the auth bug
+  /ralph-loop Refactor cache layer  (runs forever — discouraged)
+  /ralph-loop --promise 'TASK COMPLETE' Create a REST API
 
 STOPPING:
   Use /cancel-ralph to remove the state file manually, or let the hook stop
-  after --max-iterations or --completion-promise.
+  after --its or --promise.
 
 MONITORING:
   # View current iteration:
@@ -71,19 +73,19 @@ MONITORING:
 HELP_EOF
       exit 0
       ;;
-    --max-iterations)
+    --its|--max-iterations)
       if [[ -z "${2:-}" ]]; then
-        die "--max-iterations requires a number"
+        die "$1 requires a number"
       fi
       if ! [[ "$2" =~ ^[0-9]+$ ]]; then
-        die "--max-iterations must be a non-negative integer"
+        die "$1 must be a non-negative integer"
       fi
       MAX_ITERATIONS="$2"
       shift 2
       ;;
-    --completion-promise)
+    --promise|--completion-promise)
       if [[ -z "${2:-}" ]]; then
-        die "--completion-promise requires text"
+        die "$1 requires text"
       fi
       COMPLETION_PROMISE="$2"
       shift 2

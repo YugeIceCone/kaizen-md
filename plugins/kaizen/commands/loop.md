@@ -1,6 +1,6 @@
 ---
 description: "Start (or cancel) a self-correcting Ralph loop — cross-CLI"
-argument-hint: "PROMPT [--max-iterations N] [--completion-promise TEXT] | --cancel"
+argument-hint: "PROMPT [--its N] [--promise TEXT] | --cancel"
 allowed-tools: ["Bash(${CLAUDE_PLUGIN_ROOT}/skills/loop/scripts/setup-ralph-loop.sh:*)", "Bash(test -f .kaizen/loop.state.md:*)", "Bash(rm .kaizen/loop.state.md)", "Read(.kaizen/loop.state.md)"]
 ---
 
@@ -18,21 +18,24 @@ hosts). **Stop hooks:** auto-installed via the kaizen plugin
 
 ```bash
 # Structured ledger (recommended) — items with verify commands
-/kaizen:loop --max-iterations 30 \
+/kaizen:loop --its 30 \
   --item "Implement carve in shim.py|grep -q 'def carve' plugins/kaizen/skills/workflow/scripts/shim.py" \
   --item "Add tests in tests/test_shim.py|python3 -m unittest tests.test_shim 2>&1 | grep -q OK" \
   --item "Update SKILL.md"
 
 # Or import a pre-built ledger JSON file
-/kaizen:loop --ledger plan.json --max-iterations 30
+/kaizen:loop --ledger plan.json --its 30
 
 # Legacy freeform (no verify gate — trust-based)
 /kaizen:loop "Build a REST API for todos. Output <promise>DONE</promise> when complete." \
-  --max-iterations 30 --completion-promise "DONE"
+  --its 30 --promise "DONE"
 
 # Cancel the active loop
 /kaizen:loop --cancel
 ```
+
+**Flag aliases:** `--its` ≡ `--max-iterations`. `--promise` ≡ `--completion-promise`.
+The short forms are the recommended spelling; long forms preserved for back-compat.
 
 ## Behavior
 
@@ -45,8 +48,8 @@ hosts). **Stop hooks:** auto-installed via the kaizen plugin
    - **Ledger empty** — body of `.kaizen/loop.state.md` (after frontmatter)
      contains only whitespace. *This is the primary completion signal.*
    - **Promise match** — assistant emits `<promise>PHRASE</promise>` matching
-     `--completion-promise` (alternate exit, kept for prompt-only workflows).
-   - **Iteration cap** — `--max-iterations` reached.
+     `--promise` (alternate exit, kept for prompt-only workflows).
+   - **Iteration cap** — `--its` reached.
    - **Manual cancel** — `/kaizen:loop --cancel`.
 
 ## Ledger discipline (primary mode)
@@ -128,7 +131,7 @@ Behavior overrides via raw file edits:
 
 ## Iron Laws
 
-- **Always set `--max-iterations`** as a safety mechanism. The completion
+- **Always set `--its`** as a safety mechanism. The completion
   promise is exact-match — no glob, no regex.
 - **Emit the promise only when the criteria are truly met.** False
   promises waste budget and corrupt the iteration data.
