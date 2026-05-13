@@ -1,3 +1,8 @@
+> **SUPERSEDED 2026-05-13** — plan files no longer live in the plugin
+> source dir. Canonical location: `~/workspace/shodan/plans/2026-05-13-kaizen-roadmap.md`.
+> This stub stays for back-compat (the file appeared in HEAD at commits
+> 1a48698 / 34dd65b / c896df9); for live content read the canonical.
+
 # Kaizen roadmap — multi-axis semantic + workspace-discipline upgrade
 
 - **Date:** 2026-05-13
