@@ -1,0 +1,4 @@
+interface:
+  display_name: "Execute Plan"
+  short_description: "Execute approved plans stepwise"
+  default_prompt: "Use $execute-plan to execute this approved plan phase by phase with verification."

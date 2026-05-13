@@ -77,6 +77,37 @@ def load_routines() -> dict[str, dict]:
     return {r["name"]: r for r in data.get("routines", [])}
 
 
+def load_stage_skill_map() -> dict[str, str]:
+    """Return the `stage_skill_map` block as a flat {stage: skill} dict.
+
+    Phase C — wires every workflow stage to its implementing kaizen skill.
+    Stages without a mapping resolve to None (caller decides fallback)."""
+    data = _load_yaml(ROUTINES_YAML)
+    _check(data, ROUTINE_SCHEMA, "routines.yaml")
+    return dict(data.get("stage_skill_map") or {})
+
+
+def get_skill_for_stage(stage: str) -> str | None:
+    """Look up the kaizen skill that implements a stage. Returns None
+    when the stage isn't in the map (e.g. `simplify`, schema internals)."""
+    return load_stage_skill_map().get(stage)
+
+
+def load_defaults() -> dict:
+    """Return the `defaults` block (routing backstops). Validates lazily.
+
+    Shape: `{"routine": "<name>", "stages": ["<stage>", ...]}`. Pre-Phase-B
+    yamls without the block fall back to safe baked-in values so the bash
+    wrappers don't break mid-migration."""
+    data = _load_yaml(ROUTINES_YAML)
+    _check(data, ROUTINE_SCHEMA, "routines.yaml")
+    d = data.get("defaults") or {}
+    return {
+        "routine": d.get("routine", "build-feature"),
+        "stages": d.get("stages", ["explore", "analyze", "create-plan", "create-tasks"]),
+    }
+
+
 def load_git_discipline() -> dict:
     """Return git-discipline yaml as a plain dict. Validates against git-rules.schema.json."""
     data = _load_yaml(GIT_DISCIPLINE_YAML)
@@ -89,10 +120,17 @@ def get_routine(name: str) -> dict | None:
 
 
 def get_stages(name: str) -> list[str]:
+    """Return the stage chain for a routine.
+
+    Resolution:
+    - Unknown routine name → `defaults.stages` from the yaml (Phase B backstop).
+    - Known routine → its declared stages, EVEN IF EMPTY (e.g. `custom` is
+      the documented opt-out for user-pinned-skill workflows).
+    """
     r = get_routine(name)
     if r is None:
-        return []
-    return r.get("stages", []) or []
+        return load_defaults()["stages"]
+    return r.get("stages") or []
 
 
 def detect_routine(prompt: str) -> str:
@@ -100,7 +138,7 @@ def detect_routine(prompt: str) -> str:
 
     Iterates routines in yaml order, returning the first routine whose
     trigger_words substring-match the lowercased prompt. Falls back to
-    'build-feature' (matching the legacy bash behavior).
+    `defaults.routine` from the yaml.
     """
     p = (prompt or "").lower()
     for name, r in load_routines().items():
@@ -109,7 +147,7 @@ def detect_routine(prompt: str) -> str:
         for word in r.get("trigger_words") or []:
             if word.lower() in p:
                 return name
-    return "build-feature"
+    return load_defaults()["routine"]
 
 
 def verb_matched_explicitly(prompt: str) -> bool:
@@ -138,7 +176,29 @@ def _cli() -> int:
     if cmd == "validate":
         load_routines()
         load_git_discipline()
+        load_defaults()
         print("ok")
+        return 0
+
+    if cmd == "defaults":
+        json.dump(load_defaults(), sys.stdout, indent=2)
+        sys.stdout.write("\n")
+        return 0
+
+    if cmd == "stage-skill":
+        if not args:
+            sys.stderr.write("usage: _loader.py stage-skill <stage>\n")
+            return 2
+        skill = get_skill_for_stage(args[0])
+        if skill is None:
+            sys.stderr.write(f"[loader] stage '{args[0]}' not in stage_skill_map\n")
+            return 1
+        print(skill)
+        return 0
+
+    if cmd == "stage-skill-map":
+        json.dump(load_stage_skill_map(), sys.stdout, indent=2)
+        sys.stdout.write("\n")
         return 0
 
     if cmd == "list":

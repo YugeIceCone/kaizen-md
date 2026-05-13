@@ -1,0 +1,4 @@
+interface:
+  display_name: "Fix"
+  short_description: "Diagnose and repair a bug"
+  default_prompt: "Use $fix to diagnose, repair, review, and validate this bug."

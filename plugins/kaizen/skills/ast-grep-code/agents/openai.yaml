@@ -1,0 +1,4 @@
+interface:
+  display_name: "ast-grep Code"
+  short_description: "Exact ast-grep syntax and flag reference"
+  default_prompt: "Use $ast-grep-code to get the exact ast-grep pattern syntax and flags for this search."

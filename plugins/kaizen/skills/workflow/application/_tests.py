@@ -18,6 +18,7 @@ sys.path.insert(0, str(SCRIPT_DIR))
 
 import _loader  # noqa: E402
 import codegen  # noqa: E402
+import route_intent  # noqa: E402
 
 
 class TestLoader(unittest.TestCase):
@@ -56,8 +57,11 @@ class TestLoader(unittest.TestCase):
             ["debug", "analyze", "fix", "simplify", "review", "validate", "report"],
         )
 
-    def test_get_stages_unknown_returns_empty(self):
-        self.assertEqual(_loader.get_stages("nonexistent-routine"), [])
+    def test_get_stages_unknown_returns_defaults(self):
+        # Phase B (2026-05-13): unknown names now resolve to defaults.stages
+        # from routines.yaml (was `[]` pre-merge). See TestRoutingDefaults below.
+        defaults = _loader.load_defaults()
+        self.assertEqual(_loader.get_stages("nonexistent-routine"), defaults["stages"])
 
     def test_detect_routine_matches_verbs(self):
         self.assertEqual(_loader.detect_routine("audit the repo"), "audit")
@@ -136,9 +140,13 @@ class TestCLI(unittest.TestCase):
         self.assertEqual(rc, 0)
         self.assertEqual(out.strip(), "explore detect-stack research audit analyze review create-plan create-tasks")
 
-    def test_cli_stages_unknown(self):
-        rc, _, _ = self._run("stages", "nonexistent-xyz")
-        self.assertNotEqual(rc, 0)
+    def test_cli_stages_unknown_returns_defaults(self):
+        # Phase B (2026-05-13): unknown names return defaults.stages and
+        # exit 0 (was non-zero pre-merge).
+        rc, out, _ = self._run("stages", "nonexistent-xyz")
+        self.assertEqual(rc, 0)
+        defaults = _loader.load_defaults()
+        self.assertEqual(out.strip(), " ".join(defaults["stages"]))
 
     def test_cli_validate(self):
         rc, out, _ = self._run("validate")
@@ -149,6 +157,124 @@ class TestCLI(unittest.TestCase):
         rc, out, _ = self._run("detect", "audit the repo")
         self.assertEqual(rc, 0)
         self.assertEqual(out.strip(), "audit")
+
+
+class TestRoutingDefaults(unittest.TestCase):
+    def test_load_defaults_returns_required_keys(self):
+        d = _loader.load_defaults()
+        self.assertIn("routine", d)
+        self.assertIn("stages", d)
+        self.assertIsInstance(d["stages"], list)
+        self.assertGreater(len(d["stages"]), 0)
+
+    def test_defaults_routine_is_real(self):
+        d = _loader.load_defaults()
+        routines = _loader.load_routines()
+        self.assertIn(d["routine"], routines,
+                      "defaults.routine must reference a real routine in routines.yaml")
+
+    def test_get_stages_unknown_uses_defaults(self):
+        # Phase B: unknown routine names now resolve to defaults.stages
+        # instead of returning empty (which the bash wrapper used to backfill).
+        d = _loader.load_defaults()
+        self.assertEqual(_loader.get_stages("nonexistent-routine-xyz"), d["stages"])
+
+    def test_get_stages_custom_stays_empty(self):
+        # `custom` is the documented opt-out for user-pinned-skill workflows.
+        self.assertEqual(_loader.get_stages("custom"), [])
+
+    def test_detect_routine_no_match_uses_defaults(self):
+        d = _loader.load_defaults()
+        self.assertEqual(_loader.detect_routine("xyzzy nonsense prompt"), d["routine"])
+
+
+class TestStageSkillMap(unittest.TestCase):
+    """Phase C — stage_skill_map block in routines.yaml."""
+
+    def test_loads_as_dict(self):
+        m = _loader.load_stage_skill_map()
+        self.assertIsInstance(m, dict)
+        self.assertGreaterEqual(len(m), 15, "expected at least the 15 workflow-stage skills")
+
+    def test_workflow_stages_have_skills(self):
+        m = _loader.load_stage_skill_map()
+        for stage in ["analyze", "audit", "create-plan", "create-tasks", "debug",
+                      "execute-plan", "execute-tasks", "fix", "migrate", "refactor",
+                      "report", "review", "supervisor", "task", "validate"]:
+            self.assertIn(stage, m, f"missing stage->skill: {stage}")
+
+    def test_get_skill_for_known_stage(self):
+        self.assertEqual(_loader.get_skill_for_stage("analyze"), "kaizen:analyze")
+        self.assertEqual(_loader.get_skill_for_stage("audit"), "kaizen:audit")
+
+    def test_get_skill_for_unmapped_stage_returns_none(self):
+        # `simplify` is intentionally a slash command, not a skill.
+        self.assertIsNone(_loader.get_skill_for_stage("simplify"))
+        self.assertIsNone(_loader.get_skill_for_stage("nonexistent-stage-xyz"))
+
+    def test_every_mapped_skill_exists_in_plugin_tree(self):
+        """Every kaizen:<skill> mapping must point at a real skill dir
+        with a SKILL.md. Catches drift if a skill is renamed/deleted."""
+        plugin_skills_dir = SCRIPT_DIR.parent.parent
+        m = _loader.load_stage_skill_map()
+        for stage, full_skill in m.items():
+            if not full_skill.startswith("kaizen:"):
+                continue
+            leaf = full_skill.split(":", 1)[1]
+            skill_md = plugin_skills_dir / leaf / "SKILL.md"
+            self.assertTrue(
+                skill_md.is_file(),
+                f"stage_skill_map: {stage} -> {full_skill} but {skill_md} missing",
+            )
+
+
+class TestIntentRouting(unittest.TestCase):
+    def test_load_validates_and_returns_dict(self):
+        cfg = route_intent.load()
+        self.assertIn("routes", cfg)
+        self.assertGreaterEqual(len(cfg["routes"]), 9)
+
+    def test_every_route_has_unique_id(self):
+        cfg = route_intent.load()
+        ids = [r["id"] for r in cfg["routes"]]
+        self.assertEqual(len(ids), len(set(ids)))
+
+    def test_disambiguation_pairs_resolve_to_real_routes(self):
+        cfg = route_intent.load()
+        valid_ids = {r["id"] for r in cfg["routes"]}
+        for d in cfg["disambiguation"]:
+            for rid in d["pair"]:
+                self.assertIn(rid, valid_ids, f"disambig pair refs unknown route: {rid}")
+
+    def test_composition_sequences_resolve_to_real_routes(self):
+        cfg = route_intent.load()
+        valid_ids = {r["id"] for r in cfg["routes"]}
+        for c in cfg["composition"]:
+            for rid in c["sequence"]:
+                self.assertIn(rid, valid_ids, f"composition seq refs unknown route: {rid}")
+
+    def test_match_simplify_routes_to_kiss(self):
+        hits = route_intent.match("simplify this function")
+        self.assertEqual(hits[0][0], "kiss")
+
+    def test_match_duplicated_routes_to_dry(self):
+        hits = route_intent.match("this is duplicated across two places")
+        self.assertEqual(hits[0][0], "dry")
+
+    def test_match_train_wreck_routes_to_lod(self):
+        hits = route_intent.match("we have train wreck chains")
+        self.assertEqual(hits[0][0], "law-of-demeter")
+
+    def test_match_no_signal_returns_empty(self):
+        self.assertEqual(route_intent.match("xyzzy"), [])
+
+    def test_disambiguate_known_pair(self):
+        rule = route_intent.disambiguate("kiss", "yagni")
+        self.assertIsNotNone(rule)
+        self.assertIn("ALREADY", rule["rule"])
+
+    def test_disambiguate_unknown_pair_returns_none(self):
+        self.assertIsNone(route_intent.disambiguate("kiss", "law-of-demeter"))
 
 
 if __name__ == "__main__":

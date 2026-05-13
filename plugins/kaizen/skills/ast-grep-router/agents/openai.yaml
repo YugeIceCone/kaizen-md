@@ -1,0 +1,4 @@
+interface:
+  display_name: "ast-grep Router"
+  short_description: "Route structural search and rewrite tasks"
+  default_prompt: "Use $ast-grep-router to choose the right ast-grep invocation for this structural rewrite."

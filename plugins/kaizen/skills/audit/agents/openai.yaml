@@ -1,0 +1,4 @@
+interface:
+  display_name: "Audit"
+  short_description: "Hunt for verified bug candidates"
+  default_prompt: "Use $audit to scan this area for provable bugs and weak contracts."

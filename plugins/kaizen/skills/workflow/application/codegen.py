@@ -22,7 +22,13 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from _loader import load_routines, load_git_discipline  # noqa: E402
+from _loader import (  # noqa: E402
+    load_routines,
+    load_git_discipline,
+    load_defaults,
+    load_stage_skill_map,
+)
+import route_intent  # noqa: E402
 
 REFS_DIR = Path(__file__).resolve().parent.parent / "references"
 GENERATED_HEADER = """<!-- DO NOT HAND-EDIT.
@@ -56,6 +62,33 @@ def _render_routines() -> str:
         stages = " → ".join(r.get("stages") or []) or "—"
         out.append(f"| `{name}` | {r.get('kind')} | {trig} | {stages} |\n")
     out.append("\n")
+
+    # Phase B: surface routing defaults from the yaml (was hardcoded in bash).
+    defaults = load_defaults()
+    out.append("## Routing defaults (backstops)\n\n")
+    out.append(
+        "When `detect_routine()` finds no matching trigger word, the loader "
+        "returns the default routine. When `get_stages()` is called with an "
+        "unknown name, it returns the default stage chain. Both live in "
+        "`routines.yaml::defaults` so the yaml is the single source.\n\n"
+    )
+    out.append(f"- **Fallback routine:** `{defaults['routine']}`\n")
+    out.append(f"- **Fallback stages:** {' → '.join(f'`{s}`' for s in defaults['stages'])}\n\n")
+
+    # Phase C: stage → skill map.
+    stage_skill = load_stage_skill_map()
+    if stage_skill:
+        out.append("## Stage → skill map\n\n")
+        out.append(
+            "Every workflow stage with a 1:1 kaizen-plugin skill is listed below. "
+            "Unmapped stages (`simplify` = bundled slash command, schema-routine "
+            "internals like `red-test` / `green-impl`) resolve via per-schema "
+            "artifacts or slash commands documented in `references/orchestration.md`.\n\n"
+        )
+        out.append("| Stage | Skill |\n|---|---|\n")
+        for stage, skill in sorted(stage_skill.items()):
+            out.append(f"| `{stage}` | `{skill}` |\n")
+        out.append("\n")
 
     out.append("## Routines\n\n")
     for name, r in routines.items():
@@ -199,6 +232,74 @@ def _render_git_discipline() -> str:
     return "".join(out)
 
 
+def _render_intent_routing() -> str:
+    """Render references/code-router.md from intent_routing.yaml.
+
+    Phase A consolidation — the `code-router` skill body is now data.
+    This rebuilds the human-readable form so docs + agents can still
+    consult it. Source of truth stays the yaml."""
+    cfg = route_intent.load()
+    out = [GENERATED_HEADER.format(source="intent_routing"), "# Code-principle routing\n\n"]
+    out.append(
+        "Routes code-quality and architectural questions to the appropriate "
+        "`coding-skills:<name>` skill. Source-of-truth: "
+        "`skills/workflow/domain/intent_routing.yaml`. Loader / matcher / CLI: "
+        "`skills/workflow/application/route_intent.py`.\n\n"
+    )
+
+    out.append("## Intent → skill\n\n")
+    for r in cfg.get("routes", []):
+        out.append(f"- **{r['intent']}** → `{r['skill']}`\n")
+        cues = r.get("cues") or []
+        if cues:
+            quoted = ", ".join(f"\"{c}\"" for c in cues)
+            out.append(f"  cues: {quoted}\n")
+    out.append("\n")
+
+    dis = cfg.get("disambiguation") or []
+    if dis:
+        out.append("## Disambiguation\n\n")
+        out.append("Pairs that overlap; tiebreaker rule wins.\n\n")
+        for d in dis:
+            a, b = d["pair"]
+            out.append(f"- **{a} vs {b}** — {d['rule']}\n")
+            ex = d.get("examples") or {}
+            for rid in (a, b):
+                items = ex.get(rid) or []
+                if items:
+                    out.append(f"  - `{rid}`: {', '.join(items)}\n")
+        out.append("\n")
+
+    comp = cfg.get("composition") or []
+    if comp:
+        out.append("## Composition (multi-step)\n\n")
+        out.append("Prompts that span two routes. Sequence is ordered; never simultaneous.\n\n")
+        for c in comp:
+            seq = " → ".join(f"`{s}`" for s in c["sequence"])
+            out.append(f"- **{c['prompt_shape']}** → {seq}\n")
+            if c.get("notes"):
+                out.append(f"  _{c['notes']}_\n")
+        out.append("\n")
+
+    limits = cfg.get("limits") or {}
+    if limits:
+        out.append(f"**Cap:** `{limits.get('max_skills_per_turn', 2)}` skills per turn. {limits.get('notes', '')}\n\n")
+
+    elsewhere = cfg.get("elsewhere") or []
+    if elsewhere:
+        out.append("## When NOT to route here\n\n")
+        for e in elsewhere:
+            target = f"`{e['route_to']}`" if e.get("route_to") else "(no skill — just answer)"
+            out.append(f"- **{e['intent']}** → {target}\n")
+            if e.get("notes"):
+                out.append(f"  _{e['notes']}_\n")
+        out.append("\n")
+
+    out.append("## Invocation protocol\n\n")
+    out.append(cfg.get("invocation_protocol", "").rstrip() + "\n")
+    return "".join(out)
+
+
 def _write_atomic(path: Path, content: str) -> bool:
     """Write only if content differs. Returns True iff write happened."""
     if path.exists() and path.read_text(encoding="utf-8") == content:
@@ -212,6 +313,7 @@ def generate(check_only: bool = False) -> int:
     targets = [
         (REFS_DIR / "routines.md", _render_routines()),
         (REFS_DIR / "git-discipline.md", _render_git_discipline()),
+        (REFS_DIR / "code-router.md", _render_intent_routing()),
     ]
     drift = False
     for path, content in targets:

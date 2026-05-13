@@ -1,0 +1,4 @@
+interface:
+  display_name: "Review"
+  short_description: "Review code or plans critically"
+  default_prompt: "Use $review to review these changes and prioritize the findings."

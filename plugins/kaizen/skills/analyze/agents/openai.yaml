@@ -1,0 +1,4 @@
+interface:
+  display_name: "Analyze"
+  short_description: "Analyze impact and constraints"
+  default_prompt: "Use $analyze to inspect impact, interfaces, risks, and constraints here."

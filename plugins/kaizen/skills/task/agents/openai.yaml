@@ -1,0 +1,4 @@
+interface:
+  display_name: "Task"
+  short_description: "Execute one scoped change well"
+  default_prompt: "Use $task to implement this single scoped change and verify it."

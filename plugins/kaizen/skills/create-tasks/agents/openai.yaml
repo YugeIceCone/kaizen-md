@@ -1,0 +1,4 @@
+interface:
+  display_name: "Create Task"
+  short_description: "Split work into concrete tasks"
+  default_prompt: "Use $create-task to break this phase into concrete, verifiable tasks."

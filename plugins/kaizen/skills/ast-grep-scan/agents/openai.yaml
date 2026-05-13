@@ -1,0 +1,4 @@
+interface:
+  display_name: "ast-grep Scan"
+  short_description: "Run repo-wide ast-grep rule audits"
+  default_prompt: "Use $ast-grep-scan to run the configured ast-grep rules across this project."

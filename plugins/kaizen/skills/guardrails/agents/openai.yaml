@@ -1,0 +1,4 @@
+interface:
+  display_name: "Guardrails"
+  short_description: "Apply safety and policy gates"
+  default_prompt: "Use $guardrails to check whether this risky step is clear, blocked, or needs a checkpoint."

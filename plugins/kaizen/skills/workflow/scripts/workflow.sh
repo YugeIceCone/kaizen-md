@@ -85,19 +85,18 @@ _kz_loader() {
 }
 
 routine_stages() {
-  # Delegate to the loader. On any failure, fall back to the legacy default
-  # of "explore analyze create-plan create-tasks" to preserve robustness.
+  # Delegate to the loader. Loader resolves unknown names via routines.yaml
+  # `defaults.stages` (Phase B consolidation — yaml is the single source).
+  # The baked-in fallback below only fires when the loader script itself is
+  # unreachable, since we can't read the yaml without it.
   local loader; loader="$(_kz_loader)" || { echo "explore analyze create-plan create-tasks"; return; }
-  local out
-  out="$(python3 "$loader" stages "$1" 2>/dev/null)" || true
-  if [ -n "$out" ]; then echo "$out"; return; fi
-  # custom routine is intentionally empty
-  if [ "$1" = "custom" ]; then echo ""; return; fi
-  echo "explore analyze create-plan create-tasks"
+  python3 "$loader" stages "$1" 2>/dev/null || echo "explore analyze create-plan create-tasks"
 }
 
 detect_routine() {
-  # Pick a routine from the prompt's verbs (loader reads trigger_words from yaml).
+  # Pick a routine from the prompt's verbs. Loader resolves no-match via
+  # routines.yaml `defaults.routine`. Baked-in fallback only fires when the
+  # loader script itself is unreachable.
   local loader; loader="$(_kz_loader)" || { echo "build-feature"; return; }
   python3 "$loader" detect "$1" 2>/dev/null || echo "build-feature"
 }

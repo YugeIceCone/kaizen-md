@@ -1,0 +1,4 @@
+interface:
+  display_name: "Validate Agent"
+  short_description: "Help with Validate Agent tasks"
+  default_prompt: "Use $validate-agent to validate this plan or risky change before we proceed."

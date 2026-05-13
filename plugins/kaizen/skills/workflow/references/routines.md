@@ -31,6 +31,38 @@ Routines are stage chains the kaizen workflow runs. Each stage maps to a skill v
 | `spec-driven` | schema | — | analyze → design → tasks → decisions → implement → validate → reflect → handoff |
 | `onion-tdd-strict` | schema | — | audit → design-layers → red-test → green-impl → refactor → adapters → composition → supervisor → trace-wire → verify |
 
+## Routing defaults (backstops)
+
+When `detect_routine()` finds no matching trigger word, the loader returns the default routine. When `get_stages()` is called with an unknown name, it returns the default stage chain. Both live in `routines.yaml::defaults` so the yaml is the single source.
+
+- **Fallback routine:** `build-feature`
+- **Fallback stages:** `explore` → `analyze` → `create-plan` → `create-tasks`
+
+## Stage → skill map
+
+Every workflow stage with a 1:1 kaizen-plugin skill is listed below. Unmapped stages (`simplify` = bundled slash command, schema-routine internals like `red-test` / `green-impl`) resolve via per-schema artifacts or slash commands documented in `references/orchestration.md`.
+
+| Stage | Skill |
+|---|---|
+| `analyze` | `kaizen:analyze` |
+| `audit` | `kaizen:audit` |
+| `create-plan` | `kaizen:create-plan` |
+| `create-tasks` | `kaizen:create-tasks` |
+| `debug` | `kaizen:debug` |
+| `detect-stack` | `kaizen:detect-stack` |
+| `execute-plan` | `kaizen:execute-plan` |
+| `execute-tasks` | `kaizen:execute-tasks` |
+| `explore` | `kaizen:explore` |
+| `fix` | `kaizen:fix` |
+| `migrate` | `kaizen:migrate` |
+| `refactor` | `kaizen:refactor` |
+| `report` | `kaizen:report` |
+| `research` | `kaizen:research` |
+| `review` | `kaizen:review` |
+| `supervisor` | `kaizen:supervisor` |
+| `task` | `kaizen:task` |
+| `validate` | `kaizen:validate` |
+
 ## Routines
 
 ### `audit` (hardcoded)

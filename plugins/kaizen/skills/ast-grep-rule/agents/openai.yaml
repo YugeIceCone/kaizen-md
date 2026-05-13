@@ -1,0 +1,4 @@
+interface:
+  display_name: "ast-grep Rule"
+  short_description: "Author and test ast-grep lint rules"
+  default_prompt: "Use $ast-grep-rule to write, iterate, and snapshot-test a structural rule here."

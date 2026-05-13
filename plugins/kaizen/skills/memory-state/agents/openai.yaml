@@ -1,0 +1,4 @@
+interface:
+  display_name: "Memory State"
+  short_description: "Manage workflow memory deliberately"
+  default_prompt: "Use $memory-state to decide what to recall, track, and persist for this workflow."

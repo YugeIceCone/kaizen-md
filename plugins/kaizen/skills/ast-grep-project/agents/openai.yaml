@@ -1,0 +1,4 @@
+interface:
+  display_name: "ast-grep Project"
+  short_description: "Set up and run ast-grep on a project"
+  default_prompt: "Use $ast-grep-project to scaffold, test, and run ast-grep rules for this repo."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Migrate"
+  short_description: "Help with Migrate tasks and workflows"
+  default_prompt: "Use $migrate to research, plan, implement, review, and validate this migration."

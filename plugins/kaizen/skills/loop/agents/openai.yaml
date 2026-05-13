@@ -1,0 +1,4 @@
+interface:
+  display_name: "Loop"
+  short_description: "Self-correcting iterative task loop"
+  default_prompt: "Use $loop to run this task in a self-correcting iteration loop until it converges on completion."

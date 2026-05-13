@@ -1,0 +1,4 @@
+interface:
+  display_name: "Refactor"
+  short_description: "Help with Refactor tasks and workflows"
+  default_prompt: "Use $refactor to safely analyze, plan, implement, review, and validate this refactor."

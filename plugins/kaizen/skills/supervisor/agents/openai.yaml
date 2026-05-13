@@ -1,0 +1,4 @@
+interface:
+  display_name: "Supervisor"
+  short_description: "Coordinate a staged workflow run"
+  default_prompt: "Use $supervisor to coordinate this multi-stage workflow and choose the next stage."

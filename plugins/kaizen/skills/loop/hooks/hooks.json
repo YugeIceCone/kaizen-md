@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "SKILL_ROOT=\"${CODEX_HOME:-$HOME/.codex}/skills/loop\"; if [ ! -x \"$SKILL_ROOT/hooks/stop-hook.sh\" ] && git rev-parse --show-toplevel >/dev/null 2>&1; then SKILL_ROOT=\"$(git rev-parse --show-toplevel)/.codex/skills/loop\"; fi; bash \"$SKILL_ROOT/hooks/stop-hook.sh\"",
+            "timeout": 30,
+            "statusMessage": "Ralph loop"
+          }
+        ]
+      }
+    ]
+  }
+}

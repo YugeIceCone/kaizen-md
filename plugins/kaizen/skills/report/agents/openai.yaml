@@ -1,0 +1,4 @@
+interface:
+  display_name: "Report"
+  short_description: "Package results for delivery"
+  default_prompt: "Use $report to package this validated result for the right audience and format."

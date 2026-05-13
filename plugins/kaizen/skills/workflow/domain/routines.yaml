@@ -10,6 +10,50 @@
 # DO NOT hand-edit the regenerated references/routines.md. Edit this yaml,
 # then run `application/codegen.py` (or refresh-cache.sh, which calls it).
 
+# Routing defaults — backstop when the prompt matches no routine and when
+# get_stages() is called with an unknown routine name. Pulled out of bash
+# so this yaml is the single source of routing truth (Phase B consolidation).
+defaults:
+  routine: build-feature
+  stages: [explore, analyze, create-plan, create-tasks]
+
+# Stage → skill mapping (Phase C consolidation, 2026-05-13).
+#
+# Wires every workflow stage to the kaizen-plugin skill that implements it.
+# Stages without a 1:1 skill (`simplify` = bundled `/simplify` slash command;
+# schema-routine internals like `red-test`, `green-impl`, `register-mcp-json`)
+# are intentionally absent — those resolve via per-schema artifacts or via
+# slash commands documented in references/orchestration.md.
+#
+# Consumed by:
+#   - skills/workflow/application/_loader.py::get_skill_for_stage()
+#   - skills/workflow/application/codegen.py (renders the stage→skill table
+#     into references/routines.md and references/orchestration.md)
+#   - kaizen agents that dispatch a stage subagent (looks up implementer)
+#
+# Plugin-prefixed names (kaizen:<skill>) resolve via Claude Code's skill
+# discovery. The intent_routing.yaml `elsewhere` entries route OUT of this
+# map for ast-grep / llm-tldr / other-family questions.
+stage_skill_map:
+  analyze: kaizen:analyze
+  audit: kaizen:audit
+  create-plan: kaizen:create-plan
+  create-tasks: kaizen:create-tasks
+  debug: kaizen:debug
+  detect-stack: kaizen:detect-stack
+  execute-plan: kaizen:execute-plan
+  execute-tasks: kaizen:execute-tasks
+  explore: kaizen:explore
+  fix: kaizen:fix
+  migrate: kaizen:migrate
+  refactor: kaizen:refactor
+  report: kaizen:report
+  research: kaizen:research
+  review: kaizen:review
+  supervisor: kaizen:supervisor
+  task: kaizen:task
+  validate: kaizen:validate
+
 routines:
   # ─── Hardcoded routines (curated defaults) ─────────────────────────
   # These are the verb-detected built-ins. Stage chains preserved verbatim
