@@ -1,0 +1,236 @@
+# yaml-language-server: $schema=../../assets/schemas/workflow.schema.json
+# Shim-and-Sweep workflow schema — large refactors / carve-outs that
+# can't break import paths mid-flight. Extracted from the shodan
+# "borg-loop" discipline (refactor-with-shim, deferred deletion sweep).
+#
+# Use when:
+#   - Splitting a god-crate into multiple smaller crates
+#   - Moving a bounded context to a new module/crate location
+#   - Renaming a public surface across many call sites
+#   - Any refactor on a codebase that must keep building between commits
+#     because something is actively running against it (autopoietic
+#     workflows, long-running agents, live integrations)
+#
+# Skip when:
+#   - The refactor is small (≤2 phases) → use `refactor` schema
+#   - Behavior is changing → use `build-feature`
+#   - The change is a one-shot deletion of authorized dead code →
+#     backlog item + audit; no schema needed
+
+name: shim-and-sweep
+version: 1
+description: |
+  Eight-phase refactor for large structural moves where breaking import
+  paths mid-flight is unacceptable. Each phase that relocates code
+  ALSO leaves a 1-line re-export shim at the old path so existing
+  consumers keep resolving. Shims accumulate in a deletion manifest;
+  a final user-gated sweep removes them wholesale.
+
+  The pattern (originally "borg-loop" in shodan) preserves three
+  invariants:
+    1. The workspace compiles + tests pass at every commit boundary
+    2. Active callers never break mid-refactor (autopoiesis-safe)
+    3. Deletion is concentrated in one explicitly-authorized commit at
+       the end — making rollback (`git reset --hard <pre-sweep-tag>`)
+       a one-liner
+
+  Pre-commit integration: the kaizen pre_deletion_belief gate already
+  blocks `git rm` mid-flight; this routine works WITH that gate
+  rather than around it. The sweep phase requires `KAIZEN_ALLOW_DELETE=1`
+  or pre-authorization captured in the plan's Status block.
+
+artifacts:
+  - id: explore
+    generates: explore.md
+    template: null
+    requires: []
+    description: |
+      Phase 1 — survey the area. Enumerate every file/module that will
+      move, every public symbol that will rename, every external caller.
+      Compute the shim count up-front: one shim per moved file/dir +
+      one per renamed public symbol.
+
+      Output: file inventory, call-site inventory (grep -rln), public
+      surface, expected shim count.
+
+  - id: analyze
+    generates: analyze.md
+    template: null
+    requires: [explore]
+    description: |
+      Phase 2 — choose the carve boundary. State the BEFORE shape and
+      AFTER shape in one sentence each. Identify the dependency
+      direction the refactor establishes (e.g. Onion-DDD: inner ring
+      gains a port; outer-ring adapter implements). Flag any cyclical
+      shim risk (would the shim need to import from the new location
+      which imports from the old?).
+
+      Decision: scope tag for the architecture log + commit-message
+      prefix (e.g. §F1.x for a file-set carve, §B for a port lift).
+
+  - id: characterize
+    generates: characterization-tests.md
+    template: null
+    requires: [analyze]
+    description: |
+      Phase 3 (HARD GATE) — pin observable behavior of every public
+      surface that will move/rename BEFORE any code shifts. New tests
+      if existing coverage is insufficient. Same Michael-Feathers
+      discipline as the `refactor` schema.
+
+      Gate: every moving public surface has a green pinning test.
+      No characterize, no shim.
+
+  - id: create-plan
+    generates: plans/<date>-<slug>.md
+    template: null
+    requires: [characterize]
+    description: |
+      Phase 4 — phased plan + deletion manifest skeleton. One phase
+      per atomic carve (file/dir/module). Each phase declares:
+        - source path(s) that will become shim(s)
+        - target path(s) where canonical content lives
+        - shim contents (just `pub use <target>::*;` for Rust;
+          re-export module for Python; `export *` for TS)
+        - new manifest entries
+
+      Plan Status block declares the F-FINAL gate state:
+      `**F-FINAL gate:** [PENDING-AUTH | PRE-AUTHORIZED <YYYY-MM-DD>]`.
+
+      A `deletion-manifest.txt` is initialized at
+      `.kaizen/workflow/deletion-manifest-<slug>.txt`; new shim paths
+      get appended as the refactor progresses.
+
+  - id: create-tasks
+    generates: tasks.md
+    template: null
+    requires: [create-plan]
+    description: |
+      Phase 5 — task briefs, one per carve. Each task records:
+        - verify command (compile + targeted test)
+        - manifest line(s) that will be appended
+        - rollback note (revert the single commit)
+
+  - id: carve-with-shim
+    generates: (in-place code changes + commits + manifest growth)
+    template: null
+    requires: [create-tasks]
+    description: |
+      Phase 6 (the iterative body) — for each task:
+
+        1. Copy canonical content to the new location.
+        2. Replace the old location's contents with a 1-line shim:
+              Rust:   `pub use <new_path>::*;` (or specific symbols)
+              Python: `from <new_path> import *`
+              TS/JS:  `export * from "<new_path>";`
+        3. Append the shimmed path to `deletion-manifest-<slug>.txt`
+           with a YYYY-MM-DD timestamp.
+        4. Run compile barrier + targeted tests.
+        5. Commit the SOURCE move + the manifest update together.
+        6. Append architecture-log row.
+
+      NO `git rm` in this phase — shims stay. The pre-commit gate
+      enforces this; if you stage a deletion you'll be blocked by the
+      no_deletion_without_auth check.
+
+  - id: migrate-callers
+    generates: (in-place code changes + commits)
+    template: null
+    requires: [carve-with-shim]
+    description: |
+      Phase 7 — redirect each consumer off the shim path onto the
+      canonical path. Optional per-codebase: some shims live forever
+      (back-compat surfaces), others get caller-migration.
+
+      Per consumer-batch:
+        1. Search for `use <old_shim_path>` (or equivalent import).
+        2. Rewrite to use the canonical path.
+        3. Compile + test.
+        4. Commit one consumer batch at a time.
+
+      Exit criterion: grep returns zero hits for the shim paths you
+      intend to retire in Phase 8. (Shims you intend to keep stay; mark
+      them in the manifest as `KEEP — backcompat`.)
+
+  - id: drift-check
+    generates: drift-report.md
+    template: null
+    requires: [migrate-callers]
+    description: |
+      Phase 8 — pre-sweep verification. For each path in the deletion
+      manifest NOT marked `KEEP`:
+        - `git grep -E '<shim_path>'` returns zero non-test hits
+        - Cross-crate / cross-package consumers also clean
+        - No remaining doc / comment references that would rot
+
+      Output: drift-report.md lists each manifest entry + a verdict
+      (RETIRE / KEEP / STILL-HAS-CONSUMERS). STILL-HAS-CONSUMERS rows
+      block Phase 9.
+
+  - id: sweep
+    generates: (deletion commit + safety tag)
+    template: null
+    requires: [drift-check]
+    description: |
+      Phase 9 (HARD-GATED) — the only deletion phase. Concentrates
+      every `git rm` in one commit so revert is one step.
+
+      Pre-conditions:
+        - Plan's Status declares F-FINAL pre-authorized,
+          OR the user explicitly authorizes this commit in conversation
+        - drift-check produced zero STILL-HAS-CONSUMERS entries
+        - Pre-commit gate's `KAIZEN_ALLOW_DELETE=1` is set for this
+          commit ONLY (don't leave it set globally)
+
+      Steps:
+        1. `git tag pre-sweep-<slug>` — rollback anchor
+        2. For each non-KEEP entry in the manifest: `git rm <path>`
+        3. Drop workspace.dependencies / Cargo.toml members if a whole
+           crate was retired
+        4. Compile barrier clean (workspace check + full test suite)
+        5. Architecture-log row: `<scope> SWEEP — <N> shim(s) retired`
+        6. Single commit with scope `<scope>-SWEEP` (e.g. `§F5-SWEEP`)
+
+      Rollback: `git reset --hard pre-sweep-<slug>` returns to a
+      known-good state.
+
+  - id: validate
+    generates: validate.md
+    template: null
+    requires: [sweep]
+    description: |
+      Phase 10 — full suite green; clippy/tsc/lint clean; structural
+      lint rules (ast-grep) clean; characterization tests still green
+      confirms zero behavior drift. Archive the plan with the sweep
+      commit SHA in `## Status`.
+
+apply:
+  gate: characterize
+  progress: plans/<date>-<slug>.md
+  description: |
+    The hard gate is characterize (Phase 3) — no shims land without
+    behavior-pinning tests. The deferred deletion is enforced by the
+    kaizen pre_deletion_belief gate (no `git rm` without explicit
+    auth), making the discipline self-enforcing rather than relying
+    on author memory.
+
+# Composition notes:
+#   - skills used: writing-plans, executing-plans, test-driven-development,
+#     boy-scout-rule, onion-ddd-workflow (for layer-related carves),
+#     dry, kiss, yagni, solid, separation-of-concerns
+#   - pair with `onion-tdd-strict` schema when the carve also fixes a
+#     dependency-direction violation (then the shim doubles as a port
+#     lift)
+#
+# Pre-commit integration:
+#   - `pre_deletion_belief` gate (kaizen domain/git-discipline.yaml)
+#     blocks `git rm` mid-flight automatically. The sweep phase
+#     opts-in via KAIZEN_ALLOW_DELETE=1 for that one commit.
+#   - Architecture-log row required on each carve-with-shim commit
+#     AND on the final sweep commit (see CLAUDE.md "scope-tag
+#     convention").
+#
+# Origin: shodan workspace "borg-loop" discipline (2026-05-08+).
+# Generalized 2026-05-13.
+#
+# Invoke: /workflow schema=shim-and-sweep

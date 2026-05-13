@@ -223,3 +223,17 @@ routines:
     description: |
       Onion-DDD layering + TDD + cookbook supervisor + full trace. Strictest
       schema; gate on every stage. User-tier (lives in ~/.claude/.kaizen/).
+
+  - name: shim-and-sweep
+    kind: schema
+    schema_path: schemas/shim-and-sweep/schema.yaml
+    trigger_words: [carve, "carve out", "carve-out", "split crate", "split this crate", "shim", "deferred deletion", "deletion manifest", "borg-loop", "borg loop", "F-FINAL", "shim and sweep"]
+    stages: [explore, analyze, characterize, create-plan, create-tasks, carve-with-shim, migrate-callers, drift-check, sweep, validate]
+    end_state: "Large refactor landed without mid-flight breakage; shims swept in one user-gated commit."
+    coding_skills: [dry, separation-of-concerns, boy-scout-rule, kiss, yagni]
+    description: |
+      Refactor with deferred-deletion discipline (originally shodan's
+      "borg-loop"). Every relocation leaves a 1-line re-export shim;
+      shims accumulate in a deletion manifest; one user-gated sweep
+      retires them all. Compile + tests green at every commit boundary.
+      Pairs with the kaizen pre_deletion_belief gate.
