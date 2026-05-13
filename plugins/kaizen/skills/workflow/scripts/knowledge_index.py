@@ -32,6 +32,10 @@ defaults (signature embedded by default; body opt-in via --embed-body).
                    user (`~/.claude/kaizen-schemas/*/schema.yaml`),
                    project (`<repo>/.workflow/schemas/*/schema.yaml`)
 - **persona**:     `<KAIZEN_BRAIN>/Persona.md` Top Beliefs (one item per belief)
+- **arch-log**:    `<repo>/.kaizen/workflow/progress.md` AND
+                   `<repo>/.kaizen/workflow/archive/*.md` — one item per row
+                   in the architecture-log markdown table. Lets agents query
+                   historical structural rows without reading the whole file.
 
 ## Privacy
 
@@ -44,7 +48,7 @@ By default, ONLY a signature is embedded: title + tags + source_path
 
     knowledge_items:
         id            INTEGER PRIMARY KEY AUTOINCREMENT
-        source        TEXT NOT NULL     -- brain-note | plan | backlog | schema | persona
+        source        TEXT NOT NULL     -- brain-note | plan | backlog | schema | persona | arch-log
         source_path   TEXT NOT NULL     -- abs path, or BK-N for backlog items
         title         TEXT NOT NULL
         snippet       TEXT              -- first ~400 chars of body
@@ -396,12 +400,63 @@ def iter_persona_beliefs():
         }
 
 
+def iter_arch_log():
+    """Yield one item per row from `<repo>/.kaizen/workflow/progress.md` and
+    `<repo>/.kaizen/workflow/archive/*.md`. Each row in the markdown table
+    becomes a separately indexed knowledge item, so agents can query
+    historical scope tags (e.g. "§F2.2", "F-FINAL deletion gate") without
+    reading the whole file.
+
+    Row format expected: `| date | scope | Δ LOC | summary |`
+    """
+    arch_dir = Path.cwd() / ".kaizen" / "workflow"
+    if not arch_dir.is_dir():
+        return
+
+    files: list[Path] = []
+    live = arch_dir / "progress.md"
+    if live.is_file():
+        files.append(live)
+    archive_dir = arch_dir / "archive"
+    if archive_dir.is_dir():
+        files.extend(sorted(archive_dir.glob("*.md")))
+
+    for f in files:
+        try:
+            text = f.read_text()
+        except OSError:
+            continue
+        mtime_iso = dt.datetime.fromtimestamp(
+            f.stat().st_mtime, dt.timezone.utc
+        ).isoformat()
+        for raw in text.splitlines():
+            line = raw.strip()
+            # Match data rows only: `| YYYY-MM-DD | scope | … | summary |`
+            if not line.startswith("| 20") or "|---" in line:
+                continue
+            cells = [c.strip() for c in line.strip("|").split("|")]
+            if len(cells) < 4:
+                continue
+            date, scope, delta_loc, summary = cells[0], cells[1], cells[2], cells[3]
+            if not summary:
+                continue
+            yield {
+                "source": "arch-log",
+                "source_path": f"{f}#{date}-{scope}",
+                "title": f"{date} {scope}: {summary[:80]}",
+                "snippet": f"date: {date}\nscope: {scope}\nΔ LOC: {delta_loc}\n{summary}",
+                "tags": ["arch-log", scope] if scope else ["arch-log"],
+                "updated_at": mtime_iso,
+            }
+
+
 def iter_all_sources():
     yield from iter_brain_notes()
     yield from iter_plans()
     yield from iter_backlog_items()
     yield from iter_schemas()
     yield from iter_persona_beliefs()
+    yield from iter_arch_log()
 
 
 # ─── Item identity + embedding ───────────────────────────────────────
