@@ -100,9 +100,13 @@ PROMPT_TEXT=$(awk '
 
 PROMPT_TEXT=$(printf '%s' "$PROMPT_TEXT" | perl -0777 -pe 's/\A\s+//; s/\s+\z//')
 
+# Ledger semantics — an empty body is the legitimate completion signal.
+# The agent edits the state file's body to remove items as work completes;
+# when nothing remains, the loop ends. (Pairs with <promise>X</promise>
+# exact-match above, which is the alternate completion path.)
 if [[ -z "$PROMPT_TEXT" ]]; then
   rm -f "$RALPH_STATE_FILE"
-  json_stop "Ralph loop state invalid: prompt body is empty."
+  json_stop "Ralph loop completed: ledger empty."
   exit 0
 fi
 

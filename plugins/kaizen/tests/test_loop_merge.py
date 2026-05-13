@@ -278,6 +278,88 @@ class TestHooksJson(unittest.TestCase):
         self.assertLess(ralph_idx, reminder_idx, "stop-ralph.sh should fire first")
 
 
+class TestLedgerCompletion(unittest.TestCase):
+    """Empty body in .kaizen/loop.state.md ends the loop (ledger pattern)."""
+
+    def _run_hook(self, hook: Path, state_body: str, last_msg: str = "") -> tuple[str, str, int, bool]:
+        """Run a Stop hook with the given state body.
+        Returns (stdout, stderr, rc, state_file_still_exists)."""
+        with tempfile.TemporaryDirectory() as td:
+            state_dir = Path(td) / ".kaizen"
+            state_dir.mkdir()
+            (state_dir / "loop.state.md").write_text(
+                '---\n'
+                'active: true\n'
+                'iteration: 1\n'
+                'session_id: ""\n'
+                'last_turn_id: ""\n'
+                'max_iterations: 10\n'
+                'completion_promise: null\n'
+                'started_at: "2026-05-13T00:00:00Z"\n'
+                '---\n'
+                f'{state_body}'
+            )
+            result = subprocess.run(
+                ["bash", str(hook)],
+                input=json.dumps({
+                    "cwd": td,
+                    "session_id": "any",
+                    "turn_id": "t1",
+                    "last_assistant_message": last_msg,
+                }),
+                capture_output=True,
+                text=True,
+            )
+            state_remains = (state_dir / "loop.state.md").is_file()
+            return result.stdout, result.stderr, result.returncode, state_remains
+
+    def test_empty_body_ends_loop(self):
+        """Body containing only whitespace → loop ends (state file removed)."""
+        for hook in (HOOK_CC, HOOK_CODEX):
+            stdout, stderr, rc, remains = self._run_hook(hook, "")
+            self.assertEqual(rc, 0, f"{hook}: {stderr}")
+            payload = json.loads(stdout)
+            self.assertEqual(payload["continue"], False)
+            self.assertIn("ledger empty", payload["stopReason"].lower())
+            self.assertFalse(remains, f"{hook}: state file should be removed")
+
+    def test_whitespace_only_body_ends_loop(self):
+        """Body with newlines + tabs only also counts as empty."""
+        for hook in (HOOK_CC, HOOK_CODEX):
+            stdout, stderr, rc, remains = self._run_hook(hook, "  \n\t\n  \n")
+            self.assertEqual(rc, 0)
+            payload = json.loads(stdout)
+            self.assertEqual(payload["continue"], False)
+            self.assertIn("ledger empty", payload["stopReason"].lower())
+            self.assertFalse(remains)
+
+    def test_non_empty_body_continues_loop(self):
+        """Body with any actual content → loop continues (block decision)."""
+        for hook in (HOOK_CC, HOOK_CODEX):
+            stdout, stderr, rc, remains = self._run_hook(
+                hook, "- [ ] work item still pending"
+            )
+            self.assertEqual(rc, 0)
+            payload = json.loads(stdout)
+            self.assertEqual(payload["decision"], "block")
+            self.assertIn("work item still pending", payload["reason"])
+            self.assertTrue(remains, "state file should remain when work is pending")
+
+    def test_checkbox_ledger_continues_until_all_removed(self):
+        """A multi-item ledger keeps the loop going until items are deleted."""
+        for hook in (HOOK_CC, HOOK_CODEX):
+            # First call: 3 items → block
+            stdout, _, rc, remains = self._run_hook(
+                hook,
+                "- [ ] Item 1\n- [ ] Item 2\n- [ ] Item 3\n",
+            )
+            self.assertEqual(rc, 0)
+            payload = json.loads(stdout)
+            self.assertEqual(payload["decision"], "block")
+            self.assertIn("Item 1", payload["reason"])
+            self.assertTrue(remains)
+
+
 class TestLegacyCleanup(unittest.TestCase):
     """The legacy .codex path is removed from active code paths."""
 

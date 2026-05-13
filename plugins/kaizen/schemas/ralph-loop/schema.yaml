@@ -48,9 +48,18 @@ artifacts:
     template: null
     requires: [loop-state]
     description: |
-      Free-form text emitted by the agent inside <promise>...</promise>
-      tags. The Stop hook exact-matches the inner text against the
-      completion_promise field to decide whether to stop.
+      One of two exits, whichever fires first:
+
+      1. **Ledger empty (primary)** — agent edits the state file body to
+         remove items as work completes; when the body (after frontmatter)
+         is whitespace-only, the Stop hook removes the state file and ends
+         the loop. This is the discipline kaizen recommends.
+
+      2. **Promise tag (alternate)** — free-form text emitted inside
+         <promise>...</promise> tags; the Stop hook exact-matches the
+         inner text against the completion_promise frontmatter field.
+         Kept for prompt-only workflows that don't want to maintain a
+         ledger (e.g. one-line "build it" prompts).
 
 stages:
   - id: start

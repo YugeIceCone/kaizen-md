@@ -27,14 +27,48 @@ hosts). **Stop hooks:** auto-installed via the kaizen plugin
 
 ## Behavior
 
-1. **Start:** Writes `.kaizen/loop.state.md` with the prompt, iteration count,
-   max-iterations limit, and completion-promise phrase.
+1. **Start:** Writes `.kaizen/loop.state.md` with the prompt-as-ledger,
+   iteration count, max-iterations limit, and (optional) completion-promise.
 2. **Iterate:** When the assistant tries to exit, the Stop hook reads the
-   state file and emits `{decision: "block", reason: <prompt>}` to feed the
-   same prompt back. Iteration count increments per turn.
-3. **Stop:** Loop exits when the assistant emits `<promise>PHRASE</promise>`
-   matching `--completion-promise`, when `--max-iterations` is reached, or
-   when you run `/kaizen:loop --cancel`.
+   state file and emits `{decision: "block", reason: <ledger>}` to feed the
+   ledger back. Iteration count increments per turn.
+3. **Stop:** Loop exits on ANY of:
+   - **Ledger empty** — body of `.kaizen/loop.state.md` (after frontmatter)
+     contains only whitespace. *This is the primary completion signal.*
+   - **Promise match** — assistant emits `<promise>PHRASE</promise>` matching
+     `--completion-promise` (alternate exit, kept for prompt-only workflows).
+   - **Iteration cap** — `--max-iterations` reached.
+   - **Manual cancel** — `/kaizen:loop --cancel`.
+
+## Ledger discipline (primary mode)
+
+`.kaizen/loop.state.md` is a Markdown file with YAML frontmatter and a body
+the agent EDITS as work proceeds. The body IS the ledger.
+
+```markdown
+---
+active: true
+iteration: 3
+session_id: ""
+max_iterations: 20
+completion_promise: null
+started_at: "2026-05-13T22:00:00Z"
+---
+
+- [ ] Implement carve in shim.py
+- [ ] Add 5 tests in tests/test_shim.py
+- [ ] Update SKILL.md to reference carve
+```
+
+Each iteration the agent:
+1. Reads `.kaizen/loop.state.md`.
+2. Picks one (or more) ledger items and does the work.
+3. **Edits the state file body** — removes completed items (or replaces with
+   notes about what blocked progress).
+4. Tries to exit. The Stop hook fires: if the body is now empty, the loop
+   ends. Otherwise the (shorter) ledger is fed back.
+
+Loop ends naturally when the agent removes the last item.
 
 ## Iron Laws
 
