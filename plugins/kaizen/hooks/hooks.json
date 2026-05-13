@@ -79,6 +79,11 @@
         "hooks": [
           {
             "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/claude/stop-ralph.sh",
+            "timeout": 5
+          },
+          {
+            "type": "command",
             "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/claude/stop-backlog-reminder.sh",
             "timeout": 3
           }

@@ -1,7 +1,9 @@
 #!/bin/bash
 
 # Ralph Loop Setup Script
-# Creates loop state for a Codex Stop hook.
+# Creates loop state for a cross-CLI Stop hook (Claude Code + Codex).
+# State is written to .kaizen/loop.state.md so the same file is consumed by
+# whichever Stop hook fires (hooks/claude/stop-ralph.sh or hooks/codex/stop-ralph.sh).
 
 set -euo pipefail
 
@@ -22,7 +24,7 @@ while [[ $# -gt 0 ]]; do
   case $1 in
     -h|--help)
       cat << 'HELP_EOF'
-Ralph Loop - Codex self-correcting Stop-hook loop
+Ralph Loop - cross-CLI self-correcting Stop-hook loop (CC + Codex)
 
 USAGE:
   /ralph-loop [PROMPT...] [OPTIONS]
@@ -36,7 +38,7 @@ OPTIONS:
   -h, --help                     Show this help message
 
 DESCRIPTION:
-  Writes .codex/ralph-loop.local.md for the Ralph Stop hook.
+  Writes .kaizen/loop.state.md for the Ralph Stop hook.
   The Stop hook reads that file and continues the session with the same
   prompt until a completion promise matches or the iteration limit is reached.
 
@@ -54,10 +56,10 @@ STOPPING:
 
 MONITORING:
   # View current iteration:
-  grep '^iteration:' .codex/ralph-loop.local.md
+  grep '^iteration:' .kaizen/loop.state.md
 
   # View full state:
-  head -10 .codex/ralph-loop.local.md
+  head -10 .kaizen/loop.state.md
 HELP_EOF
       exit 0
       ;;
@@ -91,7 +93,7 @@ if [[ -z "$PROMPT" ]]; then
   die "No prompt provided"
 fi
 
-mkdir -p .codex
+mkdir -p .kaizen
 
 if [[ -n "$COMPLETION_PROMISE" ]] && [[ "$COMPLETION_PROMISE" != "null" ]]; then
   COMPLETION_PROMISE_YAML="\"$(escape_yaml_double_quoted "$COMPLETION_PROMISE")\""
@@ -99,11 +101,11 @@ else
   COMPLETION_PROMISE_YAML="null"
 fi
 
-cat > .codex/ralph-loop.local.md <<EOF
+cat > .kaizen/loop.state.md <<EOF
 ---
 active: true
 iteration: 1
-session_id: ${CODEX_SESSION_ID:-}
+session_id: ${CLAUDE_SESSION_ID:-${CODEX_SESSION_ID:-}}
 last_turn_id: ""
 max_iterations: $MAX_ITERATIONS
 completion_promise: $COMPLETION_PROMISE_YAML
@@ -120,14 +122,15 @@ Iteration: 1
 Max iterations: $(if [[ $MAX_ITERATIONS -gt 0 ]]; then echo $MAX_ITERATIONS; else echo "unlimited"; fi)
 Completion promise: $(if [[ "$COMPLETION_PROMISE" != "null" ]]; then echo "${COMPLETION_PROMISE//\"/}"; else echo "none"; fi)
 
-State file: .codex/ralph-loop.local.md
+State file: .kaizen/loop.state.md
 
-Ensure a Stop hook is installed and points to:
-  ${CODEX_HOME:-$HOME/.codex}/skills/loop/hooks/stop-hook.sh
+Stop hooks are auto-installed by the kaizen plugin:
+  Claude Code: \${CLAUDE_PLUGIN_ROOT}/hooks/claude/stop-ralph.sh
+  Codex:       \${CODEX_PLUGIN_ROOT}/hooks/codex/stop-ralph.sh
 
 The hook will continue the session with the same prompt until the loop stops.
 
-To monitor: head -10 .codex/ralph-loop.local.md
+To monitor: head -10 .kaizen/loop.state.md
 EOF
 
 if [[ -n "$PROMPT" ]]; then

@@ -1,0 +1,89 @@
+# yaml-language-server: $schema=../../assets/schemas/workflow.schema.json
+# Ralph Loop workflow schema — self-correcting Stop-hook iteration.
+#
+# Wraps the kaizen Ralph-loop pattern (originally Geoffrey Huntley's
+# "Ralph is a Bash loop") as a workflow routine. The hook mechanics live
+# in plugins/kaizen/hooks/{claude,codex}/stop-ralph.sh; this schema makes
+# the routine discoverable via `/workflow schema=ralph-loop`.
+#
+# Resolution order:
+#   1. <repo>/.kaizen/workflow/schemas/ralph-loop/schema.yaml   (project)
+#   2. ~/.claude/.kaizen/schemas/ralph-loop/schema.yaml         (user)
+#   3. <plugin>/schemas/ralph-loop/schema.yaml                  (built-in)
+
+name: ralph-loop
+version: 1
+description: |
+  Self-correcting iteration loop. The same prompt is fed to the agent each
+  pass; the agent observes previous work in files + git history and
+  iterates until a completion promise is emitted or max-iterations hits.
+
+  Cross-CLI: state at .kaizen/loop.state.md is read by both
+  hooks/claude/stop-ralph.sh (Claude Code) and hooks/codex/stop-ralph.sh
+  (Codex). The JSON contract is identical: `{decision: "block", reason:
+  <prompt>, systemMessage: <iteration note>}`.
+
+  Use when:
+    - the task has automated verification (tests, lints, build)
+    - the agent can self-correct from its own output
+    - you can write a self-contained prompt with a clear completion signal
+
+  Don't use when:
+    - the task needs mid-loop human judgment
+    - completion criteria are subjective
+    - one-shot operations (use `task` or `fix` instead)
+
+artifacts:
+  - id: loop-state
+    generates: .kaizen/loop.state.md
+    template: null
+    requires: []
+    description: |
+      Loop state file written by setup-ralph-loop.sh. Frontmatter carries
+      iteration count, max_iterations, completion_promise, session_id,
+      and last_turn_id. Body is the loop prompt.
+
+  - id: completion-promise
+    generates: null
+    template: null
+    requires: [loop-state]
+    description: |
+      Free-form text emitted by the agent inside <promise>...</promise>
+      tags. The Stop hook exact-matches the inner text against the
+      completion_promise field to decide whether to stop.
+
+stages:
+  - id: start
+    description: |
+      Write .kaizen/loop.state.md via setup-ralph-loop.sh. Required
+      arguments: PROMPT, --max-iterations N, --completion-promise PHRASE.
+    requires: []
+
+  - id: iterate
+    description: |
+      Each Stop event re-enters here. The hook increments iteration,
+      emits the prompt as `reason`, and the agent works on it. The agent
+      observes prior iterations via files + git history.
+    requires: [loop-state]
+
+  - id: verify
+    description: |
+      The agent emits <promise>PHRASE</promise> when criteria are met.
+      The Stop hook compares inner text against completion_promise.
+      On match (or max-iterations hit), state file is removed.
+    requires: [loop-state]
+
+apply:
+  gate: completion-promise
+  progress: .kaizen/loop.state.md
+  description: |
+    Loop terminates on exact promise-match or max-iterations. Iteration
+    count is the durable progress signal (visible via
+    `grep '^iteration:' .kaizen/loop.state.md`).
+
+rules:
+  - Always set --max-iterations as a safety mechanism.
+  - Emit the completion promise only when criteria are unequivocally met.
+  - Write durable artifacts (files, tests, notes) — no in-memory state
+    carries across iterations.
+  - The loop prompt is fixed at start time and cannot be modified mid-loop.

@@ -1,7 +1,14 @@
 #!/bin/bash
 
-# Ralph Loop Stop Hook (Codex)
-# Continue the session with the original prompt while loop state is active.
+# Ralph Loop Stop Hook — Claude Code variant
+# Continues the session with the original prompt while loop state is active.
+# Reads .kaizen/loop.state.md (shared with the Codex variant at
+# hooks/codex/stop-ralph.sh). The CC and Codex Stop-hook JSON contracts are
+# identical (`decision:"block", reason, systemMessage`); this variant inspects
+# CLAUDE_SESSION_ID / session_id, while the Codex variant inspects CODEX_*.
+#
+# Silent no-op when .kaizen/loop.state.md is absent — does not interfere with
+# normal CC sessions.
 
 set -euo pipefail
 
@@ -17,15 +24,25 @@ json_stop() {
   jq -n --arg reason "$reason" '{continue: false, stopReason: $reason}'
 }
 
+# CC hook inputs: `cwd`, `session_id`, and the assistant's last reply via
+# `transcript_path` (jsonl). We read both `last_assistant_message` (if the
+# kaizen wrapper pre-injects it) and fall back to scanning the transcript.
 HOOK_CWD=$(printf '%s' "$HOOK_INPUT" | jq -r '.cwd // ""')
 HOOK_SESSION=$(printf '%s' "$HOOK_INPUT" | jq -r '.session_id // ""')
-HOOK_TURN_ID=$(printf '%s' "$HOOK_INPUT" | jq -r '.turn_id // ""')
+HOOK_TURN_ID=$(printf '%s' "$HOOK_INPUT" | jq -r '.turn_id // .transcript_path // ""')
 LAST_OUTPUT=$(printf '%s' "$HOOK_INPUT" | jq -r '.last_assistant_message // ""')
 
+if [[ -z "$LAST_OUTPUT" ]]; then
+  TRANSCRIPT=$(printf '%s' "$HOOK_INPUT" | jq -r '.transcript_path // ""')
+  if [[ -n "$TRANSCRIPT" ]] && [[ -f "$TRANSCRIPT" ]]; then
+    LAST_OUTPUT=$(tac "$TRANSCRIPT" 2>/dev/null | jq -r 'select(.role=="assistant") | .content[0].text // .content // ""' 2>/dev/null | head -n 1 || printf '')
+  fi
+fi
+
 if [[ -n "$HOOK_CWD" ]]; then
-  RALPH_STATE_FILE="$HOOK_CWD/.codex/ralph-loop.local.md"
+  RALPH_STATE_FILE="$HOOK_CWD/.kaizen/loop.state.md"
 else
-  RALPH_STATE_FILE=".codex/ralph-loop.local.md"
+  RALPH_STATE_FILE=".kaizen/loop.state.md"
 fi
 
 if [[ ! -f "$RALPH_STATE_FILE" ]]; then
@@ -52,6 +69,7 @@ STATE_SESSION=${STATE_SESSION%\"}
 STATE_LAST_TURN=${STATE_LAST_TURN#\"}
 STATE_LAST_TURN=${STATE_LAST_TURN%\"}
 
+# Session pinning — if the state file was written by a different session, no-op.
 if [[ -n "$STATE_SESSION" ]] && [[ "$STATE_SESSION" != "$HOOK_SESSION" ]]; then
   exit 0
 fi
@@ -68,6 +86,7 @@ if [[ ! "$MAX_ITERATIONS" =~ ^[0-9]+$ ]]; then
   exit 0
 fi
 
+# Idempotence — don't re-process the same turn (CC may fire Stop multiple times).
 if [[ -n "$HOOK_TURN_ID" ]] && [[ -n "$STATE_LAST_TURN" ]] && [[ "$HOOK_TURN_ID" == "$STATE_LAST_TURN" ]]; then
   json_stop "Ralph loop already processed this turn."
   exit 0

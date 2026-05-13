@@ -30,6 +30,8 @@ Routines are stage chains the kaizen workflow runs. Each stage maps to a skill v
 | `minimalist` | schema | — | specs → tasks |
 | `spec-driven` | schema | — | analyze → design → tasks → decisions → implement → validate → reflect → handoff |
 | `onion-tdd-strict` | schema | — | audit → design-layers → red-test → green-impl → refactor → adapters → composition → supervisor → trace-wire → verify |
+| `ralph-loop` | schema | `ralph`, `ralph loop`, `ralph-loop`, `self-correcting loop`, `iterate until`, `stop-hook loop` | start → iterate → verify |
+| `shim-and-sweep` | schema | `carve`, `carve out`, `carve-out`, `split crate`, `split this crate`, `shim`, `deferred deletion`, `deletion manifest`, `borg-loop`, `borg loop`, `F-FINAL`, `shim and sweep` | explore → analyze → characterize → create-plan → create-tasks → carve-with-shim → migrate-callers → drift-check → sweep → validate |
 
 ## Routing defaults (backstops)
 
@@ -244,4 +246,44 @@ schema; gate on every stage. User-tier (lives in ~/.claude/.kaizen/).
 **End state:** Layered code with RED→GREEN→REFACTOR + cookbook supervisor + full trace
 
 **Coding skills cross-link:** `kaizen:solid`, `kaizen:dry`, `kaizen:kiss`, `kaizen:separation-of-concerns`
+
+### `ralph-loop` (schema)
+
+Self-correcting Stop-hook iteration loop. Cross-CLI (CC + Codex) via
+shared .kaizen/loop.state.md. Same prompt re-fed each iteration; the
+agent observes prior work in files + git history. Stops on exact
+<promise>PHRASE</promise> match or --max-iterations limit.
+
+Invoke via `/kaizen:loop "<prompt>" --max-iterations N --completion-promise "PHRASE"`
+or `/workflow schema=ralph-loop` for workflow-stage composition. The
+Stop hook lives at hooks/{claude,codex}/stop-ralph.sh; it's a silent
+no-op when .kaizen/loop.state.md is absent.
+
+**Triggers:** 'ralph', 'ralph loop', 'ralph-loop', 'self-correcting loop', 'iterate until', 'stop-hook loop'
+
+**Schema:** `schemas/ralph-loop/schema.yaml`
+
+**Stages:** `start` → `iterate` → `verify`
+
+**End state:** Completion promise matched (state file removed) OR max-iterations hit (state file removed).
+
+**Coding skills cross-link:** `kaizen:kiss`
+
+### `shim-and-sweep` (schema)
+
+Refactor with deferred-deletion discipline (originally shodan's
+"borg-loop"). Every relocation leaves a 1-line re-export shim;
+shims accumulate in a deletion manifest; one user-gated sweep
+retires them all. Compile + tests green at every commit boundary.
+Pairs with the kaizen pre_deletion_belief gate.
+
+**Triggers:** 'carve', 'carve out', 'carve-out', 'split crate', 'split this crate', 'shim', 'deferred deletion', 'deletion manifest', 'borg-loop', 'borg loop', 'F-FINAL', 'shim and sweep'
+
+**Schema:** `schemas/shim-and-sweep/schema.yaml`
+
+**Stages:** `explore` → `analyze` → `characterize` → `create-plan` → `create-tasks` → `carve-with-shim` → `migrate-callers` → `drift-check` → `sweep` → `validate`
+
+**End state:** Large refactor landed without mid-flight breakage; shims swept in one user-gated commit.
+
+**Coding skills cross-link:** `kaizen:dry`, `kaizen:separation-of-concerns`, `kaizen:boy-scout-rule`, `kaizen:kiss`, `kaizen:yagni`
 
