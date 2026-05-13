@@ -3,14 +3,24 @@
 # Ralph Loop Stop Hook — Claude Code variant
 # Continues the session with the original prompt while loop state is active.
 # Reads .kaizen/loop.state.md (shared with the Codex variant at
-# hooks/codex/stop-ralph.sh). The CC and Codex Stop-hook JSON contracts are
-# identical (`decision:"block", reason, systemMessage`); this variant inspects
-# CLAUDE_SESSION_ID / session_id, while the Codex variant inspects CODEX_*.
+# hooks/codex/stop-ralph.sh) and delegates structured-ledger transitions to
+# skills/workflow/scripts/loop_ledger.py (the cheat-proof verify gate).
 #
-# Silent no-op when .kaizen/loop.state.md is absent — does not interfere with
-# normal CC sessions.
+# CC and Codex Stop-hook JSON contracts are identical (`decision:"block",
+# reason, systemMessage`); this variant inspects CLAUDE_SESSION_ID, the
+# Codex variant inspects CODEX_SESSION_ID. Both call the same ledger helper.
+#
+# Silent no-op when .kaizen/loop.state.md is absent — does not interfere
+# with normal CC sessions.
 
 set -euo pipefail
+
+PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-${KAIZEN_PLUGIN_ROOT:-}}"
+if [[ -z "$PLUGIN_ROOT" ]]; then
+  # Resolve from this script's location: hooks/claude/stop-ralph.sh → plugin/
+  PLUGIN_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+fi
+LEDGER_HELPER="$PLUGIN_ROOT/skills/workflow/scripts/loop_ledger.py"
 
 HOOK_INPUT=$(cat)
 
@@ -24,9 +34,6 @@ json_stop() {
   jq -n --arg reason "$reason" '{continue: false, stopReason: $reason}'
 }
 
-# CC hook inputs: `cwd`, `session_id`, and the assistant's last reply via
-# `transcript_path` (jsonl). We read both `last_assistant_message` (if the
-# kaizen wrapper pre-injects it) and fall back to scanning the transcript.
 HOOK_CWD=$(printf '%s' "$HOOK_INPUT" | jq -r '.cwd // ""')
 HOOK_SESSION=$(printf '%s' "$HOOK_INPUT" | jq -r '.session_id // ""')
 HOOK_TURN_ID=$(printf '%s' "$HOOK_INPUT" | jq -r '.turn_id // .transcript_path // ""')
@@ -98,6 +105,7 @@ if [[ $MAX_ITERATIONS -gt 0 ]] && [[ $ITERATION -ge $MAX_ITERATIONS ]]; then
   exit 0
 fi
 
+# Promise exact-match path (legacy / alternate completion signal).
 if [[ "$COMPLETION_PROMISE" != "null" ]] && [[ -n "$COMPLETION_PROMISE" ]]; then
   PROMISE_TEXT=$(printf '%s' "$LAST_OUTPUT" | perl -0777 -pe 's/.*?<promise>(.*?)<\/promise>.*/$1/s; s/^\s+|\s+$//g; s/\s+/ /g' 2>/dev/null || printf '')
   if [[ -n "$PROMISE_TEXT" ]] && [[ "$PROMISE_TEXT" == "$COMPLETION_PROMISE" ]]; then
@@ -107,48 +115,54 @@ if [[ "$COMPLETION_PROMISE" != "null" ]] && [[ -n "$COMPLETION_PROMISE" ]]; then
   fi
 fi
 
-PROMPT_TEXT=$(awk '
-  BEGIN { delimiters = 0 }
-  /^---$/ { delimiters++; next }
-  delimiters >= 2 { print }
-' "$RALPH_STATE_FILE")
+# Delegate ledger transition + body update to the Python helper.
+# Cheat-proof: the helper runs each pending item's `verify` and only moves
+# items to `completed` when verify exits 0. Agent CANNOT write to completed.
+DECISION=$(python3 "$LEDGER_HELPER" "$RALPH_STATE_FILE" "$ITERATION" 2>/dev/null || printf '{"action":"noop"}')
+ACTION=$(printf '%s' "$DECISION" | jq -r '.action')
+REASON=$(printf '%s' "$DECISION" | jq -r '.reason // ""')
 
-PROMPT_TEXT=$(printf '%s' "$PROMPT_TEXT" | perl -0777 -pe 's/\A\s+//; s/\s+\z//')
+case "$ACTION" in
+  complete|complete-empty)
+    rm -f "$RALPH_STATE_FILE"
+    json_stop "$REASON"
+    exit 0
+    ;;
+  noop)
+    exit 0
+    ;;
+  block)
+    # Increment iteration + record this turn so we don't re-process it.
+    NEXT_ITERATION=$((ITERATION + 1))
+    TEMP_FILE="${RALPH_STATE_FILE}.tmp.$$"
+    TURN_ID_YAML="\"$HOOK_TURN_ID\""
+    awk -v iteration="$NEXT_ITERATION" -v turn="$TURN_ID_YAML" '
+      BEGIN { delimiters = 0 }
+      /^---$/ { delimiters++; print; next }
+      delimiters == 1 && /^iteration:/ { print "iteration: " iteration; next }
+      delimiters == 1 && /^last_turn_id:/ { print "last_turn_id: " turn; next }
+      { print }
+    ' "$RALPH_STATE_FILE" > "$TEMP_FILE"
+    mv "$TEMP_FILE" "$RALPH_STATE_FILE"
 
-# Ledger semantics — an empty body is the legitimate completion signal.
-# The agent edits the state file's body to remove items as work completes;
-# when nothing remains, the loop ends. (Pairs with <promise>X</promise>
-# exact-match above, which is the alternate completion path.)
-if [[ -z "$PROMPT_TEXT" ]]; then
-  rm -f "$RALPH_STATE_FILE"
-  json_stop "Ralph loop completed: ledger empty."
-  exit 0
-fi
+    if [[ "$COMPLETION_PROMISE" != "null" ]] && [[ -n "$COMPLETION_PROMISE" ]]; then
+      SYSTEM_MSG="Ralph iteration $NEXT_ITERATION. Stop only after the ledger is empty OR after outputting <promise>$COMPLETION_PROMISE</promise> truthfully."
+    else
+      SYSTEM_MSG="Ralph iteration $NEXT_ITERATION. Edit .kaizen/loop.state.md to add or refine ledger items as you work; items move to completed only when their verify command exits 0."
+    fi
 
-NEXT_ITERATION=$((ITERATION + 1))
-TEMP_FILE="${RALPH_STATE_FILE}.tmp.$$"
-TURN_ID_YAML="\"$HOOK_TURN_ID\""
-
-awk -v iteration="$NEXT_ITERATION" -v turn="$TURN_ID_YAML" '
-  BEGIN { delimiters = 0 }
-  /^---$/ { delimiters++; print; next }
-  delimiters == 1 && /^iteration:/ { print "iteration: " iteration; next }
-  delimiters == 1 && /^last_turn_id:/ { print "last_turn_id: " turn; next }
-  { print }
-' "$RALPH_STATE_FILE" > "$TEMP_FILE"
-mv "$TEMP_FILE" "$RALPH_STATE_FILE"
-
-if [[ "$COMPLETION_PROMISE" != "null" ]] && [[ -n "$COMPLETION_PROMISE" ]]; then
-  SYSTEM_MSG="Ralph iteration $NEXT_ITERATION. Stop only after outputting <promise>$COMPLETION_PROMISE</promise> truthfully."
-else
-  SYSTEM_MSG="Ralph iteration $NEXT_ITERATION."
-fi
-
-jq -n \
-  --arg prompt "$PROMPT_TEXT" \
-  --arg msg "$SYSTEM_MSG" \
-  '{
-    decision: "block",
-    reason: $prompt,
-    systemMessage: $msg
-  }'
+    jq -n \
+      --arg prompt "$REASON" \
+      --arg msg "$SYSTEM_MSG" \
+      '{
+        decision: "block",
+        reason: $prompt,
+        systemMessage: $msg
+      }'
+    exit 0
+    ;;
+  *)
+    # Unknown action from helper — fail safe (don't block).
+    exit 0
+    ;;
+esac

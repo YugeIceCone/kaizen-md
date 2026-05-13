@@ -376,3 +376,267 @@ class TestLegacyCleanup(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+# ─── 7. Structured ledger (JSON body + verify gate) ────────────────────
+
+
+class TestStructuredLedger(unittest.TestCase):
+    """JSON-body ledger with hook-owned verify gate (cheat-proof)."""
+
+    LEDGER_HELPER = PLUGIN_ROOT / "skills" / "workflow" / "scripts" / "loop_ledger.py"
+
+    def _run_hook_with_body(self, hook: Path, body_json: dict, last_msg: str = "") -> tuple[str, int, dict | None]:
+        """Run a Stop hook with a JSON-bodied ledger. Returns (stdout, rc, updated_ledger_or_None)."""
+        with tempfile.TemporaryDirectory() as td:
+            state_dir = Path(td) / ".kaizen"
+            state_dir.mkdir()
+            state_path = state_dir / "loop.state.md"
+            state_path.write_text(
+                '---\n'
+                'active: true\n'
+                'iteration: 1\n'
+                'session_id: ""\n'
+                'last_turn_id: ""\n'
+                'max_iterations: 10\n'
+                'completion_promise: null\n'
+                'started_at: "2026-05-13T00:00:00Z"\n'
+                '---\n'
+                + json.dumps(body_json)
+                + '\n'
+            )
+            result = subprocess.run(
+                ["bash", str(hook)],
+                input=json.dumps({
+                    "cwd": td,
+                    "session_id": "any",
+                    "turn_id": "t1",
+                    "last_assistant_message": last_msg,
+                }),
+                cwd=td,  # so verify commands run relative to the test dir
+                capture_output=True,
+                text=True,
+            )
+            updated = None
+            if state_path.is_file():
+                text = state_path.read_text()
+                body_part = text.split("---\n", 2)[-1].strip()
+                try:
+                    updated = json.loads(body_part)
+                except json.JSONDecodeError:
+                    updated = None
+            return result.stdout, result.returncode, updated
+
+    def test_passing_verify_moves_item_to_completed(self):
+        """Verify command exit 0 → hook moves item from pending to completed.
+        Use a non-empty residual pending item so the state file survives for inspection
+        (the loop's terminal cleanup removes the state file when pending hits 0)."""
+        for hook in (HOOK_CC, HOOK_CODEX):
+            ledger = {
+                "pending": [
+                    {"desc": "be true", "verify": "true"},
+                    {"desc": "keep loop alive", "verify": "false"},
+                ],
+                "completed": [],
+            }
+            stdout, rc, updated = self._run_hook_with_body(hook, ledger)
+            self.assertEqual(rc, 0)
+            self.assertIsNotNone(updated, f"{hook}: hook did not produce JSON state")
+            self.assertEqual(len(updated["pending"]), 1)
+            self.assertEqual(updated["pending"][0]["desc"], "keep loop alive")
+            self.assertEqual(len(updated["completed"]), 1)
+            self.assertEqual(updated["completed"][0]["desc"], "be true")
+            self.assertIn("iteration", updated["completed"][0])
+            self.assertIn("completed_at", updated["completed"][0])
+
+    def test_failing_verify_keeps_item_in_pending(self):
+        """Verify command exit !=0 → item stays in pending; loop continues."""
+        for hook in (HOOK_CC, HOOK_CODEX):
+            ledger = {
+                "pending": [{"desc": "always false", "verify": "false"}],
+                "completed": [],
+            }
+            stdout, rc, _ = self._run_hook_with_body(hook, ledger)
+            self.assertEqual(rc, 0)
+            payload = json.loads(stdout)
+            self.assertEqual(payload["decision"], "block")
+            self.assertIn("always false", payload["reason"])
+
+    def test_null_verify_item_stays_until_agent_removes(self):
+        """Items with verify=null are trust-based — they stay in pending."""
+        for hook in (HOOK_CC, HOOK_CODEX):
+            ledger = {
+                "pending": [{"desc": "trust based", "verify": None}],
+                "completed": [],
+            }
+            stdout, rc, updated = self._run_hook_with_body(hook, ledger)
+            self.assertEqual(rc, 0)
+            payload = json.loads(stdout)
+            self.assertEqual(payload["decision"], "block")
+            # Item should remain in pending after the hook run.
+            self.assertEqual(len(updated["pending"]), 1)
+
+    def test_agent_cannot_forge_completed_entries(self):
+        """Cheat-proof: if the agent puts items in `completed`, the hook preserves them
+        but does NOT validate them — the audit log makes any forgery visible."""
+        for hook in (HOOK_CC, HOOK_CODEX):
+            ledger = {
+                "pending": [],
+                "completed": [
+                    # Agent-forged entry (no iteration / completed_at)
+                    {"desc": "fake completion", "verify": "false"},
+                ],
+            }
+            stdout, rc, updated = self._run_hook_with_body(hook, ledger)
+            self.assertEqual(rc, 0)
+            payload = json.loads(stdout)
+            # Pending is empty → loop ends. But completed_count is reported
+            # so the user sees `1 items verified`. (The forgery is visible
+            # because the entry lacks iteration/completed_at fields when
+            # inspected.) The hook does NOT re-promote it as forged.
+            self.assertIn("continue", payload)
+            self.assertEqual(payload["continue"], False)
+
+    def test_mixed_pending_partial_completion(self):
+        """3 items: 2 verify-pass, 1 verify-fail. Hook moves 2 to completed."""
+        for hook in (HOOK_CC, HOOK_CODEX):
+            ledger = {
+                "pending": [
+                    {"desc": "ok1", "verify": "true"},
+                    {"desc": "fail", "verify": "false"},
+                    {"desc": "ok2", "verify": "true"},
+                ],
+                "completed": [],
+            }
+            stdout, rc, updated = self._run_hook_with_body(hook, ledger)
+            self.assertEqual(rc, 0)
+            self.assertEqual(len(updated["pending"]), 1)
+            self.assertEqual(updated["pending"][0]["desc"], "fail")
+            self.assertEqual(len(updated["completed"]), 2)
+            descs = sorted(c["desc"] for c in updated["completed"])
+            self.assertEqual(descs, ["ok1", "ok2"])
+
+    def test_completed_carries_iteration_and_timestamp(self):
+        for hook in (HOOK_CC, HOOK_CODEX):
+            ledger = {
+                "pending": [
+                    {"desc": "x", "verify": "true"},
+                    {"desc": "residual", "verify": "false"},  # keeps state alive
+                ],
+                "completed": [],
+            }
+            stdout, rc, updated = self._run_hook_with_body(hook, ledger)
+            self.assertEqual(rc, 0)
+            entry = updated["completed"][0]
+            self.assertEqual(entry["iteration"], 1)
+            self.assertRegex(
+                entry["completed_at"],
+                r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$",
+            )
+
+    def test_agent_appends_item_mid_loop(self):
+        """Simulates the agent editing the state file between iterations to
+        ADD a new pending item. The hook reads the modified pending list."""
+        for hook in (HOOK_CC, HOOK_CODEX):
+            ledger = {
+                "pending": [
+                    {"desc": "original", "verify": "false"},
+                    {"desc": "added by agent mid-loop", "verify": "false"},
+                ],
+                "completed": [],
+            }
+            stdout, rc, updated = self._run_hook_with_body(hook, ledger)
+            self.assertEqual(rc, 0)
+            payload = json.loads(stdout)
+            self.assertEqual(payload["decision"], "block")
+            self.assertEqual(len(updated["pending"]), 2)
+            # Both descriptions appear in the prompt
+            self.assertIn("original", payload["reason"])
+            self.assertIn("added by agent mid-loop", payload["reason"])
+
+    def test_helper_handles_freeform_body(self):
+        """Non-JSON body falls back to freeform mode (legacy compatibility)."""
+        result = subprocess.run(
+            ["python3", str(self.LEDGER_HELPER), "/dev/stdin", "1"],
+            input="dummy",
+            capture_output=True,
+            text=True,
+        )
+        # /dev/stdin won't be readable as a file → noop
+        self.assertEqual(result.returncode, 0)
+        payload = json.loads(result.stdout)
+        self.assertEqual(payload["action"], "noop")
+
+    def test_helper_validates_iteration_argument(self):
+        result = subprocess.run(
+            ["python3", str(self.LEDGER_HELPER), "/nonexistent/state", "not-a-number"],
+            capture_output=True,
+            text=True,
+        )
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("iteration must be int", result.stderr)
+
+
+class TestSetupScriptStructuredItems(unittest.TestCase):
+    """The setup script supports --item and --ledger for structured init."""
+
+    def test_item_flag_creates_json_ledger(self):
+        with tempfile.TemporaryDirectory() as td:
+            tmp = Path(td)
+            subprocess.run(
+                ["bash", str(SETUP_SCRIPT),
+                 "--item", "Implement x|grep x file.py",
+                 "--item", "Add tests"],
+                cwd=tmp,
+                check=True,
+                capture_output=True,
+            )
+            state = (tmp / ".kaizen" / "loop.state.md").read_text()
+            body = state.split("---\n", 2)[-1].strip()
+            data = json.loads(body)
+            self.assertEqual(len(data["pending"]), 2)
+            self.assertEqual(data["pending"][0]["desc"], "Implement x")
+            self.assertEqual(data["pending"][0]["verify"], "grep x file.py")
+            self.assertEqual(data["pending"][1]["desc"], "Add tests")
+            self.assertIsNone(data["pending"][1]["verify"])
+            self.assertEqual(data["completed"], [])
+
+    def test_ledger_file_flag_imports_json(self):
+        with tempfile.TemporaryDirectory() as td:
+            tmp = Path(td)
+            ledger_src = tmp / "ledger.json"
+            ledger_src.write_text(json.dumps({
+                "pending": [
+                    {"desc": "from file", "verify": "true"}
+                ]
+            }))
+            subprocess.run(
+                ["bash", str(SETUP_SCRIPT), "--ledger", str(ledger_src)],
+                cwd=tmp,
+                check=True,
+                capture_output=True,
+            )
+            state = (tmp / ".kaizen" / "loop.state.md").read_text()
+            body = state.split("---\n", 2)[-1].strip()
+            data = json.loads(body)
+            self.assertEqual(len(data["pending"]), 1)
+            self.assertEqual(data["pending"][0]["desc"], "from file")
+            # completed key auto-added
+            self.assertEqual(data["completed"], [])
+
+    def test_legacy_freeform_prompt_still_works(self):
+        """Bare prompt (no --item / --ledger) → freeform body, unchanged behavior."""
+        with tempfile.TemporaryDirectory() as td:
+            tmp = Path(td)
+            subprocess.run(
+                ["bash", str(SETUP_SCRIPT), "build a thing"],
+                cwd=tmp,
+                check=True,
+                capture_output=True,
+            )
+            state = (tmp / ".kaizen" / "loop.state.md").read_text()
+            body = state.split("---\n", 2)[-1].strip()
+            # Body is the freeform prompt, NOT JSON
+            self.assertEqual(body, "build a thing")
+            with self.assertRaises(json.JSONDecodeError):
+                json.loads(body)

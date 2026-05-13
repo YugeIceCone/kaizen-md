@@ -2,12 +2,21 @@
 
 # Ralph Loop Stop Hook — Codex variant
 # Continues the session with the original prompt while loop state is active.
-# Reads .kaizen/loop.state.md (shared with the CC variant at hooks/claude/stop-ralph.sh).
-# The CC and Codex Stop-hook JSON contracts are identical (`decision:"block",
-# reason, systemMessage`), so the two variants differ only in env-var
-# inspection (CODEX_SESSION_ID / CLAUDE_SESSION_ID) and hook-input field names.
+# Reads .kaizen/loop.state.md (shared with the CC variant at
+# hooks/claude/stop-ralph.sh) and delegates structured-ledger transitions to
+# skills/workflow/scripts/loop_ledger.py (the cheat-proof verify gate).
+#
+# CC and Codex Stop-hook JSON contracts are identical (`decision:"block",
+# reason, systemMessage`); this variant inspects CODEX_SESSION_ID, the CC
+# variant inspects CLAUDE_SESSION_ID. Both call the same ledger helper.
 
 set -euo pipefail
+
+PLUGIN_ROOT="${CODEX_PLUGIN_ROOT:-${KAIZEN_PLUGIN_ROOT:-}}"
+if [[ -z "$PLUGIN_ROOT" ]]; then
+  PLUGIN_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+fi
+LEDGER_HELPER="$PLUGIN_ROOT/skills/workflow/scripts/loop_ledger.py"
 
 HOOK_INPUT=$(cat)
 
@@ -92,48 +101,50 @@ if [[ "$COMPLETION_PROMISE" != "null" ]] && [[ -n "$COMPLETION_PROMISE" ]]; then
   fi
 fi
 
-PROMPT_TEXT=$(awk '
-  BEGIN { delimiters = 0 }
-  /^---$/ { delimiters++; next }
-  delimiters >= 2 { print }
-' "$RALPH_STATE_FILE")
+# Delegate ledger transition + body update to the shared Python helper.
+DECISION=$(python3 "$LEDGER_HELPER" "$RALPH_STATE_FILE" "$ITERATION" 2>/dev/null || printf '{"action":"noop"}')
+ACTION=$(printf '%s' "$DECISION" | jq -r '.action')
+REASON=$(printf '%s' "$DECISION" | jq -r '.reason // ""')
 
-PROMPT_TEXT=$(printf '%s' "$PROMPT_TEXT" | perl -0777 -pe 's/\A\s+//; s/\s+\z//')
+case "$ACTION" in
+  complete|complete-empty)
+    rm -f "$RALPH_STATE_FILE"
+    json_stop "$REASON"
+    exit 0
+    ;;
+  noop)
+    exit 0
+    ;;
+  block)
+    NEXT_ITERATION=$((ITERATION + 1))
+    TEMP_FILE="${RALPH_STATE_FILE}.tmp.$$"
+    TURN_ID_YAML="\"$HOOK_TURN_ID\""
+    awk -v iteration="$NEXT_ITERATION" -v turn="$TURN_ID_YAML" '
+      BEGIN { delimiters = 0 }
+      /^---$/ { delimiters++; print; next }
+      delimiters == 1 && /^iteration:/ { print "iteration: " iteration; next }
+      delimiters == 1 && /^last_turn_id:/ { print "last_turn_id: " turn; next }
+      { print }
+    ' "$RALPH_STATE_FILE" > "$TEMP_FILE"
+    mv "$TEMP_FILE" "$RALPH_STATE_FILE"
 
-# Ledger semantics — an empty body is the legitimate completion signal.
-# The agent edits the state file's body to remove items as work completes;
-# when nothing remains, the loop ends. (Pairs with <promise>X</promise>
-# exact-match above, which is the alternate completion path.)
-if [[ -z "$PROMPT_TEXT" ]]; then
-  rm -f "$RALPH_STATE_FILE"
-  json_stop "Ralph loop completed: ledger empty."
-  exit 0
-fi
+    if [[ "$COMPLETION_PROMISE" != "null" ]] && [[ -n "$COMPLETION_PROMISE" ]]; then
+      SYSTEM_MSG="Ralph iteration $NEXT_ITERATION. Stop only after the ledger is empty OR after outputting <promise>$COMPLETION_PROMISE</promise> truthfully."
+    else
+      SYSTEM_MSG="Ralph iteration $NEXT_ITERATION. Edit .kaizen/loop.state.md to add or refine ledger items as you work; items move to completed only when their verify command exits 0."
+    fi
 
-NEXT_ITERATION=$((ITERATION + 1))
-TEMP_FILE="${RALPH_STATE_FILE}.tmp.$$"
-TURN_ID_YAML="\"$HOOK_TURN_ID\""
-
-awk -v iteration="$NEXT_ITERATION" -v turn="$TURN_ID_YAML" '
-  BEGIN { delimiters = 0 }
-  /^---$/ { delimiters++; print; next }
-  delimiters == 1 && /^iteration:/ { print "iteration: " iteration; next }
-  delimiters == 1 && /^last_turn_id:/ { print "last_turn_id: " turn; next }
-  { print }
-' "$RALPH_STATE_FILE" > "$TEMP_FILE"
-mv "$TEMP_FILE" "$RALPH_STATE_FILE"
-
-if [[ "$COMPLETION_PROMISE" != "null" ]] && [[ -n "$COMPLETION_PROMISE" ]]; then
-  SYSTEM_MSG="Ralph iteration $NEXT_ITERATION. Stop only after outputting <promise>$COMPLETION_PROMISE</promise> truthfully."
-else
-  SYSTEM_MSG="Ralph iteration $NEXT_ITERATION."
-fi
-
-jq -n \
-  --arg prompt "$PROMPT_TEXT" \
-  --arg msg "$SYSTEM_MSG" \
-  '{
-    decision: "block",
-    reason: $prompt,
-    systemMessage: $msg
-  }'
+    jq -n \
+      --arg prompt "$REASON" \
+      --arg msg "$SYSTEM_MSG" \
+      '{
+        decision: "block",
+        reason: $prompt,
+        systemMessage: $msg
+      }'
+    exit 0
+    ;;
+  *)
+    exit 0
+    ;;
+esac

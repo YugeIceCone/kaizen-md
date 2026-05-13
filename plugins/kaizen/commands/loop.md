@@ -17,7 +17,16 @@ hosts). **Stop hooks:** auto-installed via the kaizen plugin
 ## Usage
 
 ```bash
-# Start a loop
+# Structured ledger (recommended) — items with verify commands
+/kaizen:loop --max-iterations 30 \
+  --item "Implement carve in shim.py|grep -q 'def carve' plugins/kaizen/skills/workflow/scripts/shim.py" \
+  --item "Add tests in tests/test_shim.py|python3 -m unittest tests.test_shim 2>&1 | grep -q OK" \
+  --item "Update SKILL.md"
+
+# Or import a pre-built ledger JSON file
+/kaizen:loop --ledger plan.json --max-iterations 30
+
+# Legacy freeform (no verify gate — trust-based)
 /kaizen:loop "Build a REST API for todos. Output <promise>DONE</promise> when complete." \
   --max-iterations 30 --completion-promise "DONE"
 
@@ -42,8 +51,9 @@ hosts). **Stop hooks:** auto-installed via the kaizen plugin
 
 ## Ledger discipline (primary mode)
 
-`.kaizen/loop.state.md` is a Markdown file with YAML frontmatter and a body
-the agent EDITS as work proceeds. The body IS the ledger.
+`.kaizen/loop.state.md` has a YAML frontmatter + a JSON body. The body is
+the structured ledger, owned jointly by the agent (write to `pending`)
+and the Stop hook (writes to `completed`, cheat-proof):
 
 ```markdown
 ---
@@ -54,21 +64,45 @@ max_iterations: 20
 completion_promise: null
 started_at: "2026-05-13T22:00:00Z"
 ---
-
-- [ ] Implement carve in shim.py
-- [ ] Add 5 tests in tests/test_shim.py
-- [ ] Update SKILL.md to reference carve
+{
+  "pending": [
+    {"desc": "Implement carve",  "verify": "grep -q 'def carve' shim.py"},
+    {"desc": "Add 5 tests",      "verify": "python3 -m unittest tests.test_shim 2>&1 | grep -q OK"},
+    {"desc": "Update SKILL.md",  "verify": null}
+  ],
+  "completed": []
+}
 ```
 
-Each iteration the agent:
-1. Reads `.kaizen/loop.state.md`.
-2. Picks one (or more) ledger items and does the work.
-3. **Edits the state file body** — removes completed items (or replaces with
-   notes about what blocked progress).
-4. Tries to exit. The Stop hook fires: if the body is now empty, the loop
-   ends. Otherwise the (shorter) ledger is fed back.
+### How it works
 
-Loop ends naturally when the agent removes the last item.
+Each iteration the Stop hook:
+
+1. Parses the body. (Non-JSON falls back to legacy freeform.)
+2. For each `pending` item with a `verify` command: runs `bash -c "$verify"`
+   with a 30-second timeout.
+3. **Items that exit 0** → moved to `completed` (with `iteration` + ISO
+   `completed_at` timestamp). **Cheat-proof**: only the hook writes to
+   `completed`; agent-injected entries without these fields are visibly
+   forged.
+4. Items that fail (or have `verify: null`) stay in `pending`.
+5. Hook builds the next-iteration prompt from the remaining `pending`
+   items and re-feeds it via `{decision: "block", reason: <list>}`.
+6. When `pending: []` is empty, the loop ends and the state file is
+   removed.
+
+### The agent's contract
+
+- **MAY append new items** to `pending` mid-loop (work discovered during
+  iteration). Just JSON-edit the file.
+- **MAY edit item descriptions** (clarify scope as you learn).
+- **MAY remove `verify: null` items** by deleting them from `pending`
+  (trust-based — these are tracked but un-gated).
+- **MUST NOT add entries to `completed` directly** — the hook is the
+  authoritative writer. Forged entries are obvious in the audit trail
+  (missing `iteration` / `completed_at`).
+- Setting `verify` on an item means *the hook will check it*. If you
+  want trust-based completion, omit `verify` (or set it to `null`).
 
 ## Iron Laws
 

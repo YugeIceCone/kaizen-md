@@ -10,6 +10,8 @@ set -euo pipefail
 PROMPT_PARTS=()
 MAX_ITERATIONS=0
 COMPLETION_PROMISE="null"
+ITEMS=()        # repeated --item "desc|verify" pairs (verify optional, "|" separator)
+LEDGER_FILE=""  # --ledger <file>: read full JSON ledger from a file
 
 die() {
   echo "Error: $*" >&2
@@ -35,6 +37,12 @@ ARGUMENTS:
 OPTIONS:
   --max-iterations <n>           Maximum iterations before auto-stop (default: unlimited)
   --completion-promise '<text>'  Promise phrase (USE QUOTES for multi-word)
+  --item 'desc|verify'           Add a ledger item (repeatable). verify is a bash
+                                 command run by the Stop hook; item moves to
+                                 completed only when verify exits 0. Omit the
+                                 verify part (and the "|") for a trust-based item.
+  --ledger <file>                Read structured ledger from a JSON file. The file
+                                 must contain {"pending":[{"desc":..,"verify":..}...]}.
   -h, --help                     Show this help message
 
 DESCRIPTION:
@@ -80,6 +88,20 @@ HELP_EOF
       COMPLETION_PROMISE="$2"
       shift 2
       ;;
+    --item)
+      if [[ -z "${2:-}" ]]; then
+        die "--item requires 'desc|verify' (verify part optional)"
+      fi
+      ITEMS+=("$2")
+      shift 2
+      ;;
+    --ledger)
+      if [[ -z "${2:-}" ]]; then
+        die "--ledger requires a file path"
+      fi
+      LEDGER_FILE="$2"
+      shift 2
+      ;;
     *)
       PROMPT_PARTS+=("$1")
       shift
@@ -89,8 +111,9 @@ done
 
 PROMPT="${PROMPT_PARTS[*]:-}"
 
-if [[ -z "$PROMPT" ]]; then
-  die "No prompt provided"
+# Validate inputs: must have at least ONE source of work (prompt, items, or ledger file).
+if [[ -z "$PROMPT" ]] && [[ ${#ITEMS[@]} -eq 0 ]] && [[ -z "$LEDGER_FILE" ]]; then
+  die "No prompt, --item, or --ledger provided"
 fi
 
 mkdir -p .kaizen
@@ -100,6 +123,49 @@ if [[ -n "$COMPLETION_PROMISE" ]] && [[ "$COMPLETION_PROMISE" != "null" ]]; then
 else
   COMPLETION_PROMISE_YAML="null"
 fi
+
+# Build the body. Modes (mutually exclusive):
+#   1. --ledger <file>         → use file contents (must be {"pending":[...]})
+#   2. --item ... [--item ...] → build a structured ledger from --item pairs
+#   3. PROMPT only             → legacy freeform body (single string)
+build_ledger_body() {
+  if [[ -n "$LEDGER_FILE" ]]; then
+    if [[ ! -f "$LEDGER_FILE" ]]; then
+      die "--ledger file does not exist: $LEDGER_FILE"
+    fi
+    # Validate it parses as JSON and contains the required pending array.
+    if ! python3 -c "import json,sys; d=json.load(open('$LEDGER_FILE')); assert isinstance(d.get('pending'),list)" 2>/dev/null; then
+      die "--ledger file is not valid JSON or lacks a 'pending' array: $LEDGER_FILE"
+    fi
+    # Ensure `completed` field exists (empty); preserve other keys.
+    python3 -c "
+import json
+d = json.load(open('$LEDGER_FILE'))
+d.setdefault('completed', [])
+print(json.dumps(d, indent=2))
+"
+    return
+  fi
+  if [[ ${#ITEMS[@]} -gt 0 ]]; then
+    # Build JSON from --item arguments. Each arg is "desc|verify" or just "desc".
+    python3 - "${ITEMS[@]}" <<'PY'
+import json, sys
+items = []
+for raw in sys.argv[1:]:
+    if "|" in raw:
+        desc, verify = raw.split("|", 1)
+        items.append({"desc": desc.strip(), "verify": verify.strip() or None})
+    else:
+        items.append({"desc": raw.strip(), "verify": None})
+print(json.dumps({"pending": items, "completed": []}, indent=2))
+PY
+    return
+  fi
+  # Legacy freeform: just emit the prompt string.
+  printf '%s\n' "$PROMPT"
+}
+
+BODY=$(build_ledger_body)
 
 cat > .kaizen/loop.state.md <<EOF
 ---
@@ -112,7 +178,7 @@ completion_promise: $COMPLETION_PROMISE_YAML
 started_at: "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 ---
 
-$PROMPT
+$BODY
 EOF
 
 cat <<EOF
