@@ -236,6 +236,86 @@ def _warn_dim_skip(skipped: int, q_dim: int) -> None:
     )
 
 
+# ─── Whole-row cosine (M6 — shared by knowledge / claude_docs / scrape /
+#     trace; onboard uses the chunked hybrid_search path above) ────────
+
+
+def cosine_topk(
+    conn: sqlite3.Connection,
+    table: str,
+    query: str,
+    *,
+    top_k: int = 10,
+    embedding_col: str = "embedding",
+    select_cols: str = "*",
+    where: str = "",
+    params: Sequence = (),
+    apply_query_prefix: bool = False,
+) -> list[tuple[sqlite3.Row, float]]:
+    """Whole-row cosine ranking. Returns (row, score) pairs sorted desc.
+
+    Designed for the 4 simpler indexers (knowledge / claude_docs / scrape
+    / trace) that each had a near-identical "embed query → fetch all rows
+    → cosine → top-k" loop in their `do_search()`. Onboard is **not** a
+    caller — it uses the chunked `hybrid_search` path.
+
+    - Embeds `query` via `_embed.embed_one()`.
+    - Optionally prepends the asymmetric `search_query: ` prefix
+      (`apply_query_prefix=True`, knowledge-style). For
+      `search_document: ` (claude_docs-style) the caller pre-applies
+      `_chunk.apply_passage_prefix` before passing — keeps this helper
+      one-knob.
+    - `select_cols` defaults to `*` so callers can name their own
+      columns in the returned `sqlite3.Row`. `embedding_col` says which
+      column holds the float32 blob.
+    - Optional `WHERE` clause + params for SQL pre-filters (trace_index
+      uses src/sid/evt/since).
+    - Filters out rows whose embedding dim != query dim, with the
+      stderr warning + count surfaced via `_warn_dim_skip`.
+    """
+    np = _embed.require_numpy()
+    if apply_query_prefix:
+        import _chunk  # local import — same pattern as dense_search
+        q = _chunk.apply_query_prefix(query)
+    else:
+        q = query
+    qblob, _ = _embed.embed_one(q)
+    qvec = np.frombuffer(qblob, dtype=np.float32)
+    q_dim = int(qvec.shape[0])
+    qnorm = qvec / (np.linalg.norm(qvec) + 1e-12)
+
+    where_clause = f" WHERE {where}" if where else ""
+    sql = f"SELECT {select_cols} FROM {table}{where_clause}"
+    rows = conn.execute(sql, list(params)).fetchall()
+    if not rows:
+        return []
+
+    kept_rows: list[sqlite3.Row] = []
+    vecs = []
+    skipped = 0
+    for r in rows:
+        blob = r[embedding_col]
+        if not blob:
+            continue
+        v = np.frombuffer(blob, dtype=np.float32)
+        if v.shape[0] != q_dim:
+            skipped += 1
+            continue
+        kept_rows.append(r)
+        vecs.append(v)
+    if skipped:
+        _warn_dim_skip(skipped, q_dim)
+    if not vecs:
+        return []
+
+    mat = np.stack(vecs)                                # (N, D)
+    norms = np.linalg.norm(mat, axis=1, keepdims=True) + 1e-12
+    mat_n = mat / norms                                  # (N, D) row-normalized
+    scores = mat_n @ qnorm                               # (N,) cosine
+    order = np.argsort(-scores)[:top_k]
+    return [(kept_rows[i], float(scores[i])) for i in order]
+
+
 def try_load_sqlite_vec(conn: sqlite3.Connection) -> bool:
     """Best-effort load of the sqlite-vec extension. Returns True on
     success, False otherwise.

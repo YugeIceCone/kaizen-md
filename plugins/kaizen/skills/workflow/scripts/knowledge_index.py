@@ -141,52 +141,43 @@ def _load_model():
     return _model, _np
 
 
-# ─── SQLite helpers ──────────────────────────────────────────────────
+# ─── SQLite helpers (M1 — shared base in _sqlite.py) ─────────────────
+
+
+import _sqlite as _kz_sqlite  # noqa: E402
+
+_SCHEMA_SQL = """
+    CREATE TABLE IF NOT EXISTS knowledge_items (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        source TEXT NOT NULL,
+        source_path TEXT NOT NULL,
+        title TEXT NOT NULL,
+        snippet TEXT,
+        tags TEXT,
+        body_embedded INTEGER NOT NULL DEFAULT 0,
+        embedding BLOB,
+        updated_at TEXT,
+        sha TEXT UNIQUE
+    );
+    CREATE INDEX IF NOT EXISTS idx_source ON knowledge_items(source);
+    CREATE INDEX IF NOT EXISTS idx_path ON knowledge_items(source_path);
+    CREATE TABLE IF NOT EXISTS knowledge_meta (
+        key TEXT PRIMARY KEY,
+        value TEXT
+    );
+"""
 
 
 def open_db(create: bool = True) -> sqlite3.Connection:
-    if create:
-        DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(str(DB_PATH))
-    conn.row_factory = sqlite3.Row
-    if create:
-        conn.executescript(
-            """
-            CREATE TABLE IF NOT EXISTS knowledge_items (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                source TEXT NOT NULL,
-                source_path TEXT NOT NULL,
-                title TEXT NOT NULL,
-                snippet TEXT,
-                tags TEXT,
-                body_embedded INTEGER NOT NULL DEFAULT 0,
-                embedding BLOB,
-                updated_at TEXT,
-                sha TEXT UNIQUE
-            );
-            CREATE INDEX IF NOT EXISTS idx_source ON knowledge_items(source);
-            CREATE INDEX IF NOT EXISTS idx_path ON knowledge_items(source_path);
-            CREATE TABLE IF NOT EXISTS knowledge_meta (
-                key TEXT PRIMARY KEY,
-                value TEXT
-            );
-            """
-        )
-    return conn
+    return _kz_sqlite.open_indexer_db(DB_PATH, _SCHEMA_SQL, create=create)
 
 
 def set_meta(conn: sqlite3.Connection, key: str, value: str) -> None:
-    conn.execute(
-        "INSERT OR REPLACE INTO knowledge_meta (key, value) VALUES (?, ?)",
-        (key, value),
-    )
+    _kz_sqlite.set_meta(conn, "knowledge_meta", key, value)
 
 
 def get_meta(conn: sqlite3.Connection, key: str, default: str = "") -> str:
-    row = conn.execute(
-        "SELECT value FROM knowledge_meta WHERE key = ?", (key,)
-    ).fetchone()
-    return row["value"] if row else default
+    return _kz_sqlite.get_meta(conn, "knowledge_meta", key, default)
 
 
 # ─── Privacy filter ──────────────────────────────────────────────────
@@ -518,44 +509,24 @@ def do_search(
     top_k: int = 10,
     source: str | None = None,
 ) -> list[dict]:
-    """Cosine-similarity search. Returns [{score, id, source, source_path, title, snippet, tags, updated_at}, ...]."""
+    """Cosine-similarity search. Returns [{score, id, source, source_path, title, snippet, tags, updated_at}, ...].
+
+    M6: scoring/embed/dim-filter loop lives in `_search.cosine_topk`."""
     if not DB_PATH.is_file():
         return []
-    conn = open_db(create=False)
-    # v1.25.0+: query embedding via shared _embed backend.
-    np = _kz_embed.require_numpy()
-    qblob, _ = _kz_embed.embed_one(query)
-    qvec = np.frombuffer(qblob, dtype=np.float32).astype(np.float32)
-    qnorm = qvec / (np.linalg.norm(qvec) + 1e-12)
-    q_dim = qvec.shape[0]
+    import _search as _kz_search
 
-    where_sql = ""
-    params: list = []
-    if source:
-        where_sql = " WHERE source = ?"
-        params.append(source)
-    rows = conn.execute(
-        f"SELECT * FROM knowledge_items{where_sql}", params
-    ).fetchall()
-    scored = []
-    skipped_mismatch = 0
-    for r in rows:
-        if not r["embedding"]:
-            continue
-        evec = np.frombuffer(r["embedding"], dtype=np.float32)
-        if evec.shape[0] != q_dim:
-            skipped_mismatch += 1
-            continue
-        score = float(np.dot(qnorm, evec / (np.linalg.norm(evec) + 1e-12)))
-        scored.append((score, r))
-    if skipped_mismatch:
-        sys.stderr.write(
-            f"kaizen-knowledge: skipped {skipped_mismatch} row(s) with dim != {q_dim} — "
-            f"reindex after embed-backend change\n"
-        )
-    scored.sort(key=lambda x: x[0], reverse=True)
+    conn = open_db(create=False)
+    where = "source = ?" if source else ""
+    params: list = [source] if source else []
+    scored = _kz_search.cosine_topk(
+        conn, "knowledge_items", query,
+        top_k=top_k,
+        where=where,
+        params=params,
+    )
     out = []
-    for score, r in scored[:top_k]:
+    for r, score in scored:
         out.append(
             {
                 "score": round(score, 4),

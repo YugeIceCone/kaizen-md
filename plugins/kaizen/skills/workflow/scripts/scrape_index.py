@@ -126,50 +126,42 @@ def _load_scraper_cls():
         sys.exit(1)
 
 
-# ─── SQLite ──────────────────────────────────────────────────────────
+# ─── SQLite (M1 — shared base in _sqlite.py) ─────────────────────────
+
+
+import _sqlite as _kz_sqlite  # noqa: E402
+
+_SCHEMA_SQL = """
+    CREATE TABLE IF NOT EXISTS scrape_items (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        url TEXT NOT NULL,
+        prompt TEXT NOT NULL,
+        title TEXT,
+        content_json TEXT NOT NULL,
+        text_extract TEXT NOT NULL,
+        embedding BLOB NOT NULL,
+        sha TEXT UNIQUE NOT NULL,
+        ts TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_scrape_url ON scrape_items(url);
+    CREATE INDEX IF NOT EXISTS idx_scrape_ts ON scrape_items(ts);
+    CREATE TABLE IF NOT EXISTS scrape_meta (
+        key TEXT PRIMARY KEY,
+        value TEXT
+    );
+"""
 
 
 def open_db(create: bool = True) -> sqlite3.Connection:
-    if create:
-        DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(str(DB_PATH))
-    conn.row_factory = sqlite3.Row
-    if create:
-        conn.executescript(
-            """
-            CREATE TABLE IF NOT EXISTS scrape_items (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                url TEXT NOT NULL,
-                prompt TEXT NOT NULL,
-                title TEXT,
-                content_json TEXT NOT NULL,
-                text_extract TEXT NOT NULL,
-                embedding BLOB NOT NULL,
-                sha TEXT UNIQUE NOT NULL,
-                ts TEXT NOT NULL
-            );
-            CREATE INDEX IF NOT EXISTS idx_scrape_url ON scrape_items(url);
-            CREATE INDEX IF NOT EXISTS idx_scrape_ts ON scrape_items(ts);
-            CREATE TABLE IF NOT EXISTS scrape_meta (
-                key TEXT PRIMARY KEY,
-                value TEXT
-            );
-            """
-        )
-    return conn
+    return _kz_sqlite.open_indexer_db(DB_PATH, _SCHEMA_SQL, create=create)
 
 
 def set_meta(conn: sqlite3.Connection, key: str, value: str) -> None:
-    conn.execute(
-        "INSERT OR REPLACE INTO scrape_meta (key, value) VALUES (?, ?)", (key, value)
-    )
+    _kz_sqlite.set_meta(conn, "scrape_meta", key, value)
 
 
 def get_meta(conn: sqlite3.Connection, key: str, default: str = "") -> str:
-    row = conn.execute(
-        "SELECT value FROM scrape_meta WHERE key = ?", (key,)
-    ).fetchone()
-    return row["value"] if row else default
+    return _kz_sqlite.get_meta(conn, "scrape_meta", key, default)
 
 
 # ─── Helpers ─────────────────────────────────────────────────────────
@@ -704,37 +696,19 @@ async def do_scrape(urls: list[str], prompt: str, no_embed: bool = False) -> dic
 
 
 def do_search(query: str, top_k: int = 10) -> list[dict]:
+    """Cosine-similarity search over scraped pages.
+
+    M6: scoring/embed/dim-filter loop lives in `_search.cosine_topk`."""
     if not DB_PATH.is_file():
         return []
+    import _search as _kz_search
+
     conn = open_db(create=False)
-    # v1.25.0+: use shared _embed backend (HTTP llama-server or fallback).
-    np = _embed.require_numpy()
-    qblob, _ = _embed.embed_one(query)
-    qvec = np.frombuffer(qblob, dtype=np.float32).astype(
-        np.float32
+    scored = _kz_search.cosine_topk(
+        conn, "scrape_items", query, top_k=top_k,
     )
-    qnorm = qvec / (np.linalg.norm(qvec) + 1e-12)
-    q_dim = qvec.shape[0]
-    rows = conn.execute("SELECT * FROM scrape_items").fetchall()
-    scored = []
-    skipped_mismatch = 0
-    for r in rows:
-        evec = np.frombuffer(r["embedding"], dtype=np.float32)
-        if evec.shape[0] != q_dim:
-            # v1.25.0+: dim mismatch (e.g. backend switched from 384 → 768).
-            # Skip but count; surface the count to the user.
-            skipped_mismatch += 1
-            continue
-        score = float(np.dot(qnorm, evec / (np.linalg.norm(evec) + 1e-12)))
-        scored.append((score, r))
-    if skipped_mismatch:
-        sys.stderr.write(
-            f"kaizen-scrape: skipped {skipped_mismatch} row(s) with dim != {q_dim} — "
-            f"reindex with `clear` + `scrape` after backend change\n"
-        )
-    scored.sort(key=lambda x: x[0], reverse=True)
     out = []
-    for s, r in scored[:top_k]:
+    for r, s in scored:
         out.append({
             "score": round(s, 4),
             "id": r["id"], "url": r["url"], "title": r["title"],

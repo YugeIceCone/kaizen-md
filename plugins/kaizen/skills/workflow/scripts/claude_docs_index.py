@@ -91,58 +91,49 @@ DEFAULT_MODEL = _cfg.EMBED_MODEL
 DEFAULT_DIM = _cfg.EMBED_DIM
 
 
-# ─── DB ──────────────────────────────────────────────────────────────
+# ─── DB (M1 — shared base in _sqlite.py) ─────────────────────────────
+
+
+import _sqlite as _kz_sqlite  # noqa: E402
+
+_SCHEMA_SQL = """
+    CREATE TABLE IF NOT EXISTS claude_doc_files (
+        path TEXT PRIMARY KEY,
+        sha TEXT NOT NULL,
+        chunk_count INTEGER,
+        title TEXT,
+        bytes INTEGER,
+        updated_at TEXT
+    );
+    CREATE TABLE IF NOT EXISTS claude_doc_chunks (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        path TEXT NOT NULL,
+        chunk_idx INTEGER NOT NULL,
+        char_start INTEGER,
+        char_end INTEGER,
+        section TEXT,
+        text TEXT NOT NULL,
+        embedding BLOB NOT NULL,
+        FOREIGN KEY (path) REFERENCES claude_doc_files(path) ON DELETE CASCADE
+    );
+    CREATE INDEX IF NOT EXISTS idx_chunks_path ON claude_doc_chunks(path);
+    CREATE TABLE IF NOT EXISTS claude_doc_meta (
+        key TEXT PRIMARY KEY,
+        value TEXT
+    );
+"""
 
 
 def open_db(create: bool = True) -> sqlite3.Connection:
-    if create:
-        DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(str(DB_PATH))
-    conn.row_factory = sqlite3.Row
-    if create:
-        conn.executescript(
-            """
-            CREATE TABLE IF NOT EXISTS claude_doc_files (
-                path TEXT PRIMARY KEY,
-                sha TEXT NOT NULL,
-                chunk_count INTEGER,
-                title TEXT,
-                bytes INTEGER,
-                updated_at TEXT
-            );
-            CREATE TABLE IF NOT EXISTS claude_doc_chunks (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                path TEXT NOT NULL,
-                chunk_idx INTEGER NOT NULL,
-                char_start INTEGER,
-                char_end INTEGER,
-                section TEXT,
-                text TEXT NOT NULL,
-                embedding BLOB NOT NULL,
-                FOREIGN KEY (path) REFERENCES claude_doc_files(path) ON DELETE CASCADE
-            );
-            CREATE INDEX IF NOT EXISTS idx_chunks_path ON claude_doc_chunks(path);
-            CREATE TABLE IF NOT EXISTS claude_doc_meta (
-                key TEXT PRIMARY KEY,
-                value TEXT
-            );
-            """
-        )
-    return conn
+    return _kz_sqlite.open_indexer_db(DB_PATH, _SCHEMA_SQL, create=create)
 
 
 def set_meta(conn: sqlite3.Connection, key: str, value: str) -> None:
-    conn.execute(
-        "INSERT OR REPLACE INTO claude_doc_meta (key, value) VALUES (?, ?)",
-        (key, value),
-    )
+    _kz_sqlite.set_meta(conn, "claude_doc_meta", key, value)
 
 
 def get_meta(conn: sqlite3.Connection, key: str, default: str = "") -> str:
-    row = conn.execute(
-        "SELECT value FROM claude_doc_meta WHERE key = ?", (key,)
-    ).fetchone()
-    return row["value"] if row else default
+    return _kz_sqlite.get_meta(conn, "claude_doc_meta", key, default)
 
 
 # ─── Source scanning ────────────────────────────────────────────────
@@ -337,36 +328,29 @@ def cmd_reindex(args) -> dict:
 # ─── Search ─────────────────────────────────────────────────────────
 
 
-def _cosine(a_blob: bytes, b_blob: bytes) -> float:
-    import struct
-    n = len(a_blob) // 4
-    a = struct.unpack(f"{n}f", a_blob)
-    b = struct.unpack(f"{n}f", b_blob)
-    dot = sum(x * y for x, y in zip(a, b))
-    na = sum(x * x for x in a) ** 0.5
-    nb = sum(x * x for x in b) ** 0.5
-    if na == 0 or nb == 0:
-        return 0.0
-    return dot / (na * nb)
-
-
 def do_search(query: str, top_k: int = 8) -> list[dict]:
     """Programmatic search — returns ranked chunks. Used by both the CLI
-    (`cmd_search`) and the MCP server (`claude_docs_mcp.py`)."""
+    (`cmd_search`) and the MCP server (`claude_docs_mcp.py`).
+
+    M6: scoring/embed/dim-filter loop lives in `_search.cosine_topk`.
+    claude_docs is the odd one out — it embeds the query with the
+    `search_document:` (passage) prefix instead of `search_query:`, so
+    we pre-apply via `_kz_chunk.apply_passage_prefix` before passing
+    through; the shared helper's `apply_query_prefix=False` keeps it
+    from double-prefixing."""
     if not DB_PATH.exists():
         return []
+    import _search as _kz_search
+
     conn = open_db(create=False)
     q_with_prefix = _kz_chunk.apply_passage_prefix(query)
-    q_blobs, _dim = _kz_embed.embed_batch([q_with_prefix])
-    q_blob = q_blobs[0]
-    rows = list(conn.execute(
-        "SELECT id, path, chunk_idx, section, text, embedding FROM claude_doc_chunks"
-    ))
-    scored = [(_cosine(q_blob, r["embedding"]), r) for r in rows]
-    scored.sort(key=lambda x: -x[0])
-    top = scored[:top_k]
+    scored = _kz_search.cosine_topk(
+        conn, "claude_doc_chunks", q_with_prefix,
+        top_k=top_k,
+        select_cols="id, path, chunk_idx, section, text, embedding",
+    )
     results = []
-    for sim, r in top:
+    for r, sim in scored:
         snippet = r["text"][:240].replace("\n", " ")
         results.append({
             "id": r["id"],

@@ -121,50 +121,45 @@ def _load_model():
     return _model, _np
 
 
-# ─── SQLite helpers ──────────────────────────────────────────────────
+# ─── SQLite helpers (M1 — shared base in _sqlite.py) ─────────────────
+
+
+import _sqlite as _kz_sqlite  # noqa: E402
+
+_SCHEMA_SQL = """
+    CREATE TABLE IF NOT EXISTS trace_events (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        ts TEXT NOT NULL,
+        src TEXT NOT NULL,
+        evt TEXT NOT NULL,
+        sid TEXT,
+        tool TEXT,
+        ms INTEGER,
+        data_json TEXT,
+        embedding BLOB,
+        content_hash TEXT UNIQUE
+    );
+    CREATE INDEX IF NOT EXISTS idx_ts ON trace_events(ts);
+    CREATE INDEX IF NOT EXISTS idx_src ON trace_events(src);
+    CREATE INDEX IF NOT EXISTS idx_sid ON trace_events(sid);
+    CREATE INDEX IF NOT EXISTS idx_evt ON trace_events(evt);
+    CREATE TABLE IF NOT EXISTS trace_meta (
+        key TEXT PRIMARY KEY,
+        value TEXT
+    );
+"""
 
 
 def open_db(create: bool = True) -> sqlite3.Connection:
-    if create:
-        DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(str(DB_PATH))
-    conn.row_factory = sqlite3.Row
-    if create:
-        conn.executescript("""
-            CREATE TABLE IF NOT EXISTS trace_events (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                ts TEXT NOT NULL,
-                src TEXT NOT NULL,
-                evt TEXT NOT NULL,
-                sid TEXT,
-                tool TEXT,
-                ms INTEGER,
-                data_json TEXT,
-                embedding BLOB,
-                content_hash TEXT UNIQUE
-            );
-            CREATE INDEX IF NOT EXISTS idx_ts ON trace_events(ts);
-            CREATE INDEX IF NOT EXISTS idx_src ON trace_events(src);
-            CREATE INDEX IF NOT EXISTS idx_sid ON trace_events(sid);
-            CREATE INDEX IF NOT EXISTS idx_evt ON trace_events(evt);
-            CREATE TABLE IF NOT EXISTS trace_meta (
-                key TEXT PRIMARY KEY,
-                value TEXT
-            );
-        """)
-    return conn
+    return _kz_sqlite.open_indexer_db(DB_PATH, _SCHEMA_SQL, create=create)
 
 
 def set_meta(conn: sqlite3.Connection, key: str, value: str) -> None:
-    conn.execute(
-        "INSERT OR REPLACE INTO trace_meta (key, value) VALUES (?, ?)",
-        (key, value),
-    )
+    _kz_sqlite.set_meta(conn, "trace_meta", key, value)
 
 
 def get_meta(conn: sqlite3.Connection, key: str, default: str = "") -> str:
-    row = conn.execute("SELECT value FROM trace_meta WHERE key = ?", (key,)).fetchone()
-    return row["value"] if row else default
+    return _kz_sqlite.get_meta(conn, "trace_meta", key, default)
 
 
 # ─── Embedding ───────────────────────────────────────────────────────
@@ -329,64 +324,45 @@ def parse_since(s: str) -> Optional[dt.datetime]:
 def cmd_search(query: str, top_k: int = 10, src: str = "", sid: str = "",
                 evt: str = "", since: Optional[str] = None) -> list[dict]:
     """Semantic search. Cosine-similarity against all stored embeddings,
-    filtered by optional fields, top-K returned."""
+    filtered by optional fields, top-K returned.
+
+    M6: scoring/embed/dim-filter loop lives in `_search.cosine_topk`.
+    SQL pre-filters (src/sid/evt/since) are plumbed through `where`."""
     if not DB_PATH.exists():
         sys.stderr.write("trace-search: index not built. Run: kaizen-trace-index index\n")
         return []
+    import _search as _kz_search
 
-    # v1.25.0+: query embed via shared _embed (HTTP llama-server or local fallback).
-    np = _kz_embed.require_numpy()
     conn = open_db(create=False)
 
     # SQL filters
-    where = []
+    where_clauses: list[str] = []
     params: list = []
     if src:
-        where.append("src = ?")
+        where_clauses.append("src = ?")
         params.append(src)
     if sid:
-        where.append("sid = ?")
+        where_clauses.append("sid = ?")
         params.append(sid)
     if evt:
-        where.append("evt = ?")
+        where_clauses.append("evt = ?")
         params.append(evt)
     if since:
         since_dt = parse_since(since)
         if since_dt is not None:
-            where.append("ts >= ?")
+            where_clauses.append("ts >= ?")
             params.append(since_dt.isoformat(timespec="milliseconds").replace("+00:00", "Z"))
 
-    sql = "SELECT id, ts, src, evt, sid, tool, ms, data_json, embedding FROM trace_events"
-    if where:
-        sql += " WHERE " + " AND ".join(where)
-
-    rows = conn.execute(sql, params).fetchall()
-    if not rows:
-        conn.close()
-        return []
-
-    # Embed the query via the shared backend.
-    q_blob, q_dim = _kz_embed.embed_one(query)
-    q_emb = np.frombuffer(q_blob, dtype=np.float32)
-    q_norm = q_emb / (np.linalg.norm(q_emb) + 1e-9)
-
-    # Score all rows (skip dim mismatches — backend may have changed mid-DB).
-    scored = []
-    skipped_mismatch = 0
-    for row in rows:
-        emb = np.frombuffer(row["embedding"], dtype=np.float32)
-        if emb.shape[0] != q_dim:
-            skipped_mismatch += 1
-            continue
-        emb_norm = emb / (np.linalg.norm(emb) + 1e-9)
-        sim = float(np.dot(q_norm, emb_norm))
-        scored.append((sim, row))
-
-    scored.sort(key=lambda x: -x[0])
-    top = scored[:top_k]
+    scored = _kz_search.cosine_topk(
+        conn, "trace_events", query,
+        top_k=top_k,
+        select_cols="id, ts, src, evt, sid, tool, ms, data_json, embedding",
+        where=" AND ".join(where_clauses),
+        params=params,
+    )
 
     out = []
-    for sim, row in top:
+    for row, sim in scored:
         data = json.loads(row["data_json"]) if row["data_json"] else {}
         out.append({
             "id": row["id"],

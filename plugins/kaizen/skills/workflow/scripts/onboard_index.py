@@ -226,101 +226,100 @@ def db_path(root: Path) -> Path:
     return root / ".kaizen" / "onboard.db"
 
 
+# M1 — shared base in _sqlite.py. onboard is the only indexer that runs
+# performance PRAGMAs (WAL, synchronous=NORMAL, cache_size, mmap, temp_store,
+# foreign_keys) on every open; the others pass an empty `pragmas=""`.
+import _sqlite as _kz_sqlite  # noqa: E402
+
+# v1.31.0+ performance pragmas. WAL gives concurrent reader+writer;
+# synchronous=NORMAL is safe with WAL; 64MB page cache + 256MB
+# mmap region cover the entire onboard.db at shodan-scale (~50MB)
+# with room to grow. temp_store=MEMORY keeps FTS5 merges in RAM.
+_PRAGMAS_SQL = """
+    PRAGMA journal_mode = WAL;
+    PRAGMA synchronous = NORMAL;
+    PRAGMA cache_size = -65536;
+    PRAGMA mmap_size = 268435456;
+    PRAGMA temp_store = MEMORY;
+    PRAGMA foreign_keys = ON;
+"""
+
+_SCHEMA_SQL = """
+    CREATE TABLE IF NOT EXISTS code_files (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        path TEXT NOT NULL UNIQUE,
+        language TEXT NOT NULL,
+        bytes INTEGER NOT NULL,
+        sloc INTEGER NOT NULL,
+        snippet TEXT NOT NULL,
+        embedding BLOB NOT NULL,
+        sha TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_code_lang ON code_files(language);
+    CREATE INDEX IF NOT EXISTS idx_code_path ON code_files(path);
+    -- v1.31.0+: lossless capture layer. One row per source file
+    -- (including failures: `error IS NOT NULL`, `text IS NULL`).
+    -- do_dump writes here; do_filter reads here. Re-running the
+    -- clean/chunk/embed stage does NOT re-read the filesystem
+    -- — it reads this table. Errors surface as queryable rows
+    -- instead of a counter.
+    CREATE TABLE IF NOT EXISTS code_files_raw (
+        path TEXT PRIMARY KEY,
+        sha TEXT,
+        language TEXT,
+        bytes INTEGER,
+        sloc_raw INTEGER,
+        mtime TEXT,
+        text TEXT,
+        error TEXT,
+        captured_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_raw_error ON code_files_raw(error);
+    CREATE TABLE IF NOT EXISTS code_meta (
+        key TEXT PRIMARY KEY,
+        value TEXT
+    );
+    -- v1.28.0+: chunk-level table for RAG-grade hybrid search.
+    -- One file → many chunks. Each chunk carries its own embedding
+    -- and a (char_start, char_end) back to the source for citation.
+    -- language is denormalized so hybrid_search can filter without
+    -- joining to code_files.
+    CREATE TABLE IF NOT EXISTS code_chunks (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        file_id INTEGER NOT NULL REFERENCES code_files(id) ON DELETE CASCADE,
+        chunk_idx INTEGER NOT NULL,
+        char_start INTEGER NOT NULL,
+        char_end INTEGER NOT NULL,
+        text TEXT NOT NULL,
+        embedding BLOB NOT NULL,
+        embedding_q8 BLOB,
+        language TEXT NOT NULL,
+        UNIQUE(file_id, chunk_idx)
+    );
+    CREATE INDEX IF NOT EXISTS idx_chunk_file ON code_chunks(file_id);
+    CREATE INDEX IF NOT EXISTS idx_chunk_lang ON code_chunks(language);
+"""
+
+
 def open_db(root: Path, create: bool = True) -> sqlite3.Connection:
-    path = db_path(root)
-    if create:
-        path.parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(str(path))
-    conn.row_factory = sqlite3.Row
-    # v1.31.0+ performance pragmas. WAL gives concurrent reader+writer;
-    # synchronous=NORMAL is safe with WAL; 64MB page cache + 256MB
-    # mmap region cover the entire onboard.db at shodan-scale (~50MB)
-    # with room to grow. temp_store=MEMORY keeps FTS5 merges in RAM.
-    conn.executescript(
-        """
-        PRAGMA journal_mode = WAL;
-        PRAGMA synchronous = NORMAL;
-        PRAGMA cache_size = -65536;
-        PRAGMA mmap_size = 268435456;
-        PRAGMA temp_store = MEMORY;
-        PRAGMA foreign_keys = ON;
-        """
+    conn = _kz_sqlite.open_indexer_db(
+        db_path(root), _SCHEMA_SQL,
+        pragmas=_PRAGMAS_SQL, create=create,
     )
     if create:
-        conn.executescript(
-            """
-            CREATE TABLE IF NOT EXISTS code_files (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                path TEXT NOT NULL UNIQUE,
-                language TEXT NOT NULL,
-                bytes INTEGER NOT NULL,
-                sloc INTEGER NOT NULL,
-                snippet TEXT NOT NULL,
-                embedding BLOB NOT NULL,
-                sha TEXT NOT NULL,
-                updated_at TEXT NOT NULL
-            );
-            CREATE INDEX IF NOT EXISTS idx_code_lang ON code_files(language);
-            CREATE INDEX IF NOT EXISTS idx_code_path ON code_files(path);
-            -- v1.31.0+: lossless capture layer. One row per source file
-            -- (including failures: `error IS NOT NULL`, `text IS NULL`).
-            -- do_dump writes here; do_filter reads here. Re-running the
-            -- clean/chunk/embed stage does NOT re-read the filesystem
-            -- — it reads this table. Errors surface as queryable rows
-            -- instead of a counter.
-            CREATE TABLE IF NOT EXISTS code_files_raw (
-                path TEXT PRIMARY KEY,
-                sha TEXT,
-                language TEXT,
-                bytes INTEGER,
-                sloc_raw INTEGER,
-                mtime TEXT,
-                text TEXT,
-                error TEXT,
-                captured_at TEXT NOT NULL
-            );
-            CREATE INDEX IF NOT EXISTS idx_raw_error ON code_files_raw(error);
-            CREATE TABLE IF NOT EXISTS code_meta (
-                key TEXT PRIMARY KEY,
-                value TEXT
-            );
-            -- v1.28.0+: chunk-level table for RAG-grade hybrid search.
-            -- One file → many chunks. Each chunk carries its own embedding
-            -- and a (char_start, char_end) back to the source for citation.
-            -- language is denormalized so hybrid_search can filter without
-            -- joining to code_files.
-            CREATE TABLE IF NOT EXISTS code_chunks (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                file_id INTEGER NOT NULL REFERENCES code_files(id) ON DELETE CASCADE,
-                chunk_idx INTEGER NOT NULL,
-                char_start INTEGER NOT NULL,
-                char_end INTEGER NOT NULL,
-                text TEXT NOT NULL,
-                embedding BLOB NOT NULL,
-                embedding_q8 BLOB,
-                language TEXT NOT NULL,
-                UNIQUE(file_id, chunk_idx)
-            );
-            CREATE INDEX IF NOT EXISTS idx_chunk_file ON code_chunks(file_id);
-            CREATE INDEX IF NOT EXISTS idx_chunk_lang ON code_chunks(language);
-            """
-        )
-        # FTS5 mirror (separate from executescript because it uses triggers).
+        # FTS5 mirror (separate from the SCHEMA_SQL executescript because
+        # it uses triggers; _sqlite.open_indexer_db is schema-only).
         _kz_search.ensure_fts_mirror(conn, "code_chunks")
     return conn
 
 
 def set_meta(conn: sqlite3.Connection, key: str, value: str) -> None:
-    conn.execute(
-        "INSERT OR REPLACE INTO code_meta (key, value) VALUES (?, ?)", (key, value)
-    )
+    _kz_sqlite.set_meta(conn, "code_meta", key, value)
 
 
 def get_meta(conn: sqlite3.Connection, key: str, default: str = "") -> str:
-    row = conn.execute(
-        "SELECT value FROM code_meta WHERE key = ?", (key,)
-    ).fetchone()
-    return row["value"] if row else default
+    return _kz_sqlite.get_meta(conn, "code_meta", key, default)
 
 
 # ─── Source-file discovery ───────────────────────────────────────────
