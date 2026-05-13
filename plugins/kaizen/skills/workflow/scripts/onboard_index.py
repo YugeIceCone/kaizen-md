@@ -295,11 +295,40 @@ _SCHEMA_SQL = """
         embedding BLOB NOT NULL,
         embedding_q8 BLOB,
         language TEXT NOT NULL,
+        -- O1 (v1.32): 'code' for cleaned-source chunks (default),
+        -- 'doc' for extracted-docstring chunks. Sidecar signal for
+        -- "why does X exist" queries.
+        kind TEXT NOT NULL DEFAULT 'code',
         UNIQUE(file_id, chunk_idx)
     );
     CREATE INDEX IF NOT EXISTS idx_chunk_file ON code_chunks(file_id);
     CREATE INDEX IF NOT EXISTS idx_chunk_lang ON code_chunks(language);
+    -- idx_chunk_kind is created inside _migrate_kind_column() so it works
+    -- on both fresh dbs (column present) AND pre-v1.32 dbs (column added
+    -- by ALTER TABLE first). Putting it here would fire on a pre-v1.32
+    -- schema before the column exists.
 """
+
+
+def _migrate_kind_column(conn: sqlite3.Connection) -> None:
+    """O1 migration — add `kind` column + index on code_chunks.
+
+    `CREATE TABLE IF NOT EXISTS` won't add columns to an existing table,
+    and the schema-level `CREATE INDEX idx_chunk_kind` can't run on a
+    pre-v1.32 table that lacks the column. Both happen here.
+
+    Idempotent: ALTER is gated on a PRAGMA probe; index uses
+    IF NOT EXISTS. Existing rows get the default 'code' value; new
+    doc-chunks land as 'doc'."""
+    cols = {row[1] for row in conn.execute("PRAGMA table_info(code_chunks)")}
+    if "kind" not in cols:
+        conn.execute(
+            "ALTER TABLE code_chunks ADD COLUMN kind TEXT NOT NULL DEFAULT 'code'"
+        )
+    # Always ensure the index — works on both freshly-created and migrated dbs.
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_chunk_kind ON code_chunks(kind)"
+    )
 
 
 def open_db(root: Path, create: bool = True) -> sqlite3.Connection:
@@ -308,6 +337,8 @@ def open_db(root: Path, create: bool = True) -> sqlite3.Connection:
         pragmas=_PRAGMAS_SQL, create=create,
     )
     if create:
+        # Migrations (idempotent): bring pre-v1.32 dbs up to current schema.
+        _migrate_kind_column(conn)
         # FTS5 mirror (separate from the SCHEMA_SQL executescript because
         # it uses triggers; _sqlite.open_indexer_db is schema-only).
         _kz_search.ensure_fts_mirror(conn, "code_chunks")
@@ -384,6 +415,112 @@ _HASKELL_BLOCK = re.compile(r"\{-.*?-\}", re.DOTALL)
 _OCAML_BLOCK = re.compile(r"\(\*.*?\*\)", re.DOTALL)
 _SQL_LINE = re.compile(r"--[^\n]*")
 _SQL_BLOCK = re.compile(r"/\*.*?\*/", re.DOTALL)
+
+
+# ─── Docstring extraction (O1: sidecar signal for "why" queries) ─────
+
+
+_RUST_DOC = re.compile(r"^\s*///([^\n]*)", re.MULTILINE)
+_RUST_INNER_DOC = re.compile(r"^\s*//!([^\n]*)", re.MULTILINE)
+_JSDOC_BLOCK = re.compile(r"/\*\*(.*?)\*/", re.DOTALL)
+_PY_TRIPLE_DOUBLE_CAPTURE = re.compile(r'"""(.*?)"""', re.DOTALL)
+_PY_TRIPLE_SINGLE_CAPTURE = re.compile(r"'''(.*?)'''", re.DOTALL)
+_C_DOC_LINE = re.compile(r"^\s*//[/!]([^\n]*)", re.MULTILINE)
+
+
+def _clean_jsdoc_lines(block: str) -> str:
+    """JSDoc /** lines often start with ` * `. Strip the leading-star
+    bullets so the resulting prose embeds cleanly."""
+    out = []
+    for raw in block.split("\n"):
+        s = raw.strip()
+        if s.startswith("*"):
+            s = s[1:].lstrip()
+        if s:
+            out.append(s)
+    return "\n".join(out)
+
+
+def _extract_python_docstrings(source: str) -> str:
+    """AST-based for accuracy: pull module/class/function docstrings.
+    Falls back to regex on SyntaxError so partial files still contribute."""
+    try:
+        import ast as _ast  # local import to keep top-level optional
+        tree = _ast.parse(source)
+    except (SyntaxError, ValueError):
+        # Regex fallback — captures every triple-quoted block (incl.
+        # those that aren't actually docstrings; OK for semantic search).
+        parts: list[str] = []
+        parts.extend(m.group(1).strip() for m in _PY_TRIPLE_DOUBLE_CAPTURE.finditer(source))
+        parts.extend(m.group(1).strip() for m in _PY_TRIPLE_SINGLE_CAPTURE.finditer(source))
+        return "\n\n".join(p for p in parts if p)
+    parts: list[str] = []
+    mod_doc = _ast.get_docstring(tree)
+    if mod_doc:
+        parts.append(mod_doc.strip())
+    for node in _ast.walk(tree):
+        if isinstance(
+            node, (_ast.FunctionDef, _ast.AsyncFunctionDef, _ast.ClassDef)
+        ):
+            d = _ast.get_docstring(node)
+            if d:
+                parts.append(d.strip())
+    return "\n\n".join(parts)
+
+
+def _extract_rust_docstrings(source: str) -> str:
+    """Concatenate `///` outer-doc + `//!` inner-doc comments."""
+    parts = [m.group(1).strip() for m in _RUST_DOC.finditer(source)]
+    parts.extend(m.group(1).strip() for m in _RUST_INNER_DOC.finditer(source))
+    return "\n".join(p for p in parts if p)
+
+
+def _extract_jsdoc(source: str) -> str:
+    """Pull every JSDoc-style /** ... */ block and clean leading stars."""
+    out = []
+    for m in _JSDOC_BLOCK.finditer(source):
+        cleaned = _clean_jsdoc_lines(m.group(1))
+        if cleaned.strip():
+            out.append(cleaned)
+    return "\n\n".join(out)
+
+
+def _extract_c_family_doc_lines(source: str) -> str:
+    """C/C++/Java/Kotlin/Go-style `///` and `//!` doc lines (less common
+    but used in Rust and some C++ codebases)."""
+    parts = [m.group(1).strip() for m in _C_DOC_LINE.finditer(source)]
+    return "\n".join(p for p in parts if p)
+
+
+# Language → docstring-extractor registry. `c-family` extracts JSDoc
+# blocks + doc lines; languages without a canonical docstring shape
+# return empty.
+_DOCSTRING_EXTRACTORS = {
+    "python": _extract_python_docstrings,
+    "rust": _extract_rust_docstrings,
+    "c-family": lambda s: "\n\n".join(
+        filter(None, [_extract_jsdoc(s), _extract_c_family_doc_lines(s)])
+    ),
+    "c-family-and-hash": _extract_jsdoc,  # JSX/TSX/etc.
+}
+
+
+def extract_docstrings(source: str, language: str) -> str:
+    """Return the concatenated docstrings/header-comments for `source`.
+
+    Empty string for languages without a canonical docstring convention
+    (markdown, yaml, toml, sql, shell, etc.) — those use prose / values
+    directly and don't need a sidecar signal.
+
+    `language` is the canonical name from LANG_TABLE (e.g. 'python',
+    'rust', 'typescript'). The function maps to the language's strategy
+    (the same mapping used by strip_comments) to pick an extractor.
+    """
+    if not source:
+        return ""
+    strategy = _strategy_for_language(language)
+    fn = _DOCSTRING_EXTRACTORS.get(strategy)
+    return fn(source) if fn else ""
 
 
 def strip_comments(text: str, strategy: str) -> str:
@@ -503,13 +640,21 @@ def _strategy_for_language(language: str) -> str:
 def clean_for_embed(raw_rec: dict) -> dict:
     """Stage 2a — comment-strip + whitespace-normalize. Error rows pass
     through unchanged (preserved into the chunk stage so they keep
-    surfacing in stats)."""
+    surfacing in stats).
+
+    O1: also extract docstrings as a SIDECAR signal so "why does X exist"
+    queries match prose, not just code identifiers. Stored on the record
+    under `docstrings` — chunk_record then emits doc-chunks alongside
+    code-chunks."""
     if raw_rec.get("error") or "text" not in raw_rec:
         return dict(raw_rec)
-    strategy = _strategy_for_language(raw_rec.get("language", ""))
+    language = raw_rec.get("language", "")
+    strategy = _strategy_for_language(language)
     cleaned = normalize_whitespace(strip_comments(raw_rec["text"], strategy))
+    docstrings = extract_docstrings(raw_rec["text"], language)
     out = dict(raw_rec)
     out["cleaned"] = cleaned
+    out["docstrings"] = docstrings
     out["snippet"] = cleaned[:SNIPPET_MAX]
     out["sloc"] = count_sloc(cleaned)
     return out
@@ -548,8 +693,28 @@ def chunk_record(cleaned_rec: dict) -> list[dict]:
             "char_start": c.char_start,
             "char_end": c.char_end,
             "text": c.text,
+            "kind": "code",
             "kept": True,
         })
+    # O1: emit doc-chunks alongside code-chunks. They share file_id but
+    # carry kind="doc" so search can prefer doc results for "why" queries.
+    # Doc chunks are NOT comment-stripped; the docstring text IS the signal.
+    docstrings = (cleaned_rec.get("docstrings") or "").strip()
+    if docstrings:
+        doc_chunks = _kz_chunk.chunk_text(docstrings)
+        next_idx = len(out)
+        for c in doc_chunks:
+            out.append({
+                "path": cleaned_rec["path"],
+                "sha": cleaned_rec.get("sha"),
+                "language": cleaned_rec.get("language"),
+                "chunk_idx": next_idx + c.chunk_idx,
+                "char_start": c.char_start,
+                "char_end": c.char_end,
+                "text": c.text,
+                "kind": "doc",
+                "kept": True,
+            })
     if not out:
         return [{
             "path": cleaned_rec["path"],
@@ -756,22 +921,24 @@ def do_filter(root: Path) -> dict:
         if chunk_q8_blobs is not None:
             conn.executemany(
                 """INSERT INTO code_chunks
-                   (file_id, chunk_idx, char_start, char_end, text, embedding, embedding_q8, language)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                   (file_id, chunk_idx, char_start, char_end, text, embedding, embedding_q8, language, kind)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 [
                     (file_id, c["chunk_idx"], c["char_start"], c["char_end"],
-                     c["text"], blob, q8, cleaned_rec["language"])
+                     c["text"], blob, q8, cleaned_rec["language"],
+                     c.get("kind") or "code")
                     for c, blob, q8 in zip(kept, chunk_blobs, chunk_q8_blobs)
                 ],
             )
         else:
             conn.executemany(
                 """INSERT INTO code_chunks
-                   (file_id, chunk_idx, char_start, char_end, text, embedding, language)
-                   VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                   (file_id, chunk_idx, char_start, char_end, text, embedding, language, kind)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
                 [
                     (file_id, c["chunk_idx"], c["char_start"], c["char_end"],
-                     c["text"], blob, cleaned_rec["language"])
+                     c["text"], blob, cleaned_rec["language"],
+                     c.get("kind") or "code")
                     for c, blob in zip(kept, chunk_blobs)
                 ],
             )
