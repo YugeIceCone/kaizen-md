@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/session-surface-backlog.sh",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/claude/session-surface-backlog.sh",
             "timeout": 5
           }
         ]
@@ -33,7 +33,7 @@
           },
           {
             "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/userprompt-inbox.sh",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/claude/userprompt-inbox.sh",
             "timeout": 3
           }
         ]
@@ -45,7 +45,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/pretooluse-bash-gate.sh",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/claude/pretooluse-bash-gate.sh",
             "timeout": 3
           }
         ]
@@ -57,7 +57,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/posttooluse-bash-commit.sh",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/claude/posttooluse-bash-commit.sh",
             "timeout": 3
           }
         ]
@@ -67,7 +67,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/posttooluse-drain-inbox.sh",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/claude/posttooluse-drain-inbox.sh",
             "timeout": 3
           }
         ]
@@ -79,7 +79,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/stop-backlog-reminder.sh",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/claude/stop-backlog-reminder.sh",
             "timeout": 3
           }
         ]
@@ -91,8 +91,44 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/precompact-snapshot.sh",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/claude/precompact-snapshot.sh",
             "timeout": 5
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/claude/subagentstop-trace.sh",
+            "timeout": 3
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/claude/sessionend-drain.sh",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/claude/notification-surface.sh",
+            "timeout": 3
           }
         ]
       }

@@ -13,13 +13,13 @@
 set -uo pipefail
 
 _HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=../skills/workflow/scripts/_plugin_root.sh
-source "$_HOOK_DIR/../skills/workflow/scripts/_plugin_root.sh"
+# shellcheck source=../../skills/workflow/scripts/_plugin_root.sh
+source "$_HOOK_DIR/../../skills/workflow/scripts/_plugin_root.sh"
 PLUGIN_ROOT="$(kaizen_plugin_root 2>/dev/null)" || exit 0
 
 INPUT=$(cat 2>/dev/null || echo "{}")
 
-printf '%s' "$INPUT" | bash "$PLUGIN_ROOT/hooks/_trace.sh" PostToolUse-drain
+printf '%s' "$INPUT" | bash "$PLUGIN_ROOT/hooks/claude/_trace.sh" PostToolUse-drain
 
 DRAINED=$(python3 "$PLUGIN_ROOT/skills/workflow/scripts/inbox.py" drain 2>/dev/null || echo "")
 

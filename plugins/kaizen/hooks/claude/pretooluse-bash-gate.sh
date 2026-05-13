@@ -16,14 +16,14 @@ set -uo pipefail
 
 # Resolve plugin root (CLAUDE_PLUGIN_ROOT → KAIZEN_PLUGIN_ROOT → derived).
 _HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=../skills/workflow/scripts/_plugin_root.sh
-source "$_HOOK_DIR/../skills/workflow/scripts/_plugin_root.sh"
+# shellcheck source=../../skills/workflow/scripts/_plugin_root.sh
+source "$_HOOK_DIR/../../skills/workflow/scripts/_plugin_root.sh"
 PLUGIN_ROOT="$(kaizen_plugin_root 2>/dev/null)" || { echo '{}'; exit 0; }
 
 # Read event JSON from stdin
 EVENT=$(cat 2>/dev/null || echo '{}')
 
-printf '%s' "$EVENT" | bash "$PLUGIN_ROOT/hooks/_trace.sh" PreToolUse-bash Bash
+printf '%s' "$EVENT" | bash "$PLUGIN_ROOT/hooks/claude/_trace.sh" PreToolUse-bash Bash
 
 # Extract command via python3 (already required for backlog.py)
 COMMAND=$(printf '%s' "$EVENT" | python3 -c "

@@ -7,14 +7,14 @@
 set -uo pipefail
 
 _HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=../skills/workflow/scripts/_plugin_root.sh
-source "$_HOOK_DIR/../skills/workflow/scripts/_plugin_root.sh"
+# shellcheck source=../../skills/workflow/scripts/_plugin_root.sh
+source "$_HOOK_DIR/../../skills/workflow/scripts/_plugin_root.sh"
 PLUGIN_ROOT="$(kaizen_plugin_root 2>/dev/null)" || { echo '{}'; exit 0; }
 
 # Capture event JSON for trace, then discard
 EVENT=$(cat 2>/dev/null || echo '{}')
 
-printf '%s' "$EVENT" | bash "$PLUGIN_ROOT/hooks/_trace.sh" Stop
+printf '%s' "$EVENT" | bash "$PLUGIN_ROOT/hooks/claude/_trace.sh" Stop
 
 # Clear the inbox turn-starter sentinel — next UserPromptSubmit starts
 # a fresh turn. Non-blocking, never raises.
