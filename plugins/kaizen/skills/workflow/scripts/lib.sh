@@ -55,14 +55,31 @@ log_warn() { color_init; printf '%s!%s  %s\n' "$YELLOW" "$RESET" "$1" >&2; }
 log_skip() { color_init; printf '%s∘%s  %s\n' "$DIM"    "$RESET" "$1" >&2; }
 log_info() { color_init; printf '   %s\n' "$1" >&2; }
 
-# Resolve a sibling script via 3-tier search
+# Resolve a sibling script via 3-tier search.
 # Usage: sibling=$(find_sibling backlog.py)
+#
+# Order: $CLAUDE_PLUGIN_ROOT → $KAIZEN_PLUGIN_ROOT → derived plugin root
+# → script-hint dir → user-global ~/.claude (legacy clone).
+# Uses kaizen_plugin_root() so the same fallback chain serves Claude Code,
+# Codex CLI, and host-less invocations.
 find_sibling() {
     local name="$1"
     local hint_dir="${2:-${BASH_SOURCE[1]%/*}}"
     hint_dir=$(cd "$hint_dir" 2>/dev/null && pwd)
+
+    # Source the resolver lazily so callers that already sourced it don't pay twice.
+    if ! type kaizen_plugin_root >/dev/null 2>&1; then
+        local _lib_dir
+        _lib_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+        # shellcheck source=/dev/null
+        source "$_lib_dir/_plugin_root.sh"
+    fi
+
+    local plugin_root
+    plugin_root="$(kaizen_plugin_root || true)"
+
     for candidate in \
-        "${CLAUDE_PLUGIN_ROOT:-/__unset__}/skills/workflow/scripts/$name" \
+        "${plugin_root:-/__unset__}/skills/workflow/scripts/$name" \
         "$hint_dir/$name" \
         "$HOME/.claude/skills/workflow/scripts/$name"; do
         if [ -f "$candidate" ]; then

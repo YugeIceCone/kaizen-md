@@ -5,10 +5,16 @@
 
 set -uo pipefail
 
+# Resolve plugin root (CLAUDE_PLUGIN_ROOT → KAIZEN_PLUGIN_ROOT → derived).
+_HOOK_DIR="$(cd "$(dirname "$(python3 -c "import os,sys; print(os.path.realpath(sys.argv[1]))" "${BASH_SOURCE[0]}")")" && pwd)"
+# shellcheck source=../skills/workflow/scripts/_plugin_root.sh
+source "$_HOOK_DIR/../skills/workflow/scripts/_plugin_root.sh"
+PLUGIN_ROOT="$(kaizen_plugin_root 2>/dev/null)" || { echo '{}'; exit 0; }
+
 # Capture event JSON for trace, then discard
 EVENT=$(cat 2>/dev/null || echo '{}')
 
-printf '%s' "$EVENT" | bash "${CLAUDE_PLUGIN_ROOT}/hooks/_trace.sh" PreCompact
+printf '%s' "$EVENT" | bash "$PLUGIN_ROOT/hooks/_trace.sh" PreCompact
 
 REPO=$(git rev-parse --show-toplevel 2>/dev/null) || { echo '{}'; exit 0; }
 cd "$REPO" || { echo '{}'; exit 0; }
@@ -19,15 +25,11 @@ if [ ! -f ".kaizen.toml" ] && [ ! -d ".workflow" ]; then
     exit 0
 fi
 
-# Resolve backup.sh — three search paths, in order:
-#   1. ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/backup.sh (plugin install)
-#   2. via readlink-f of this script's location → sibling ../skills/workflow/scripts/
-#   3. ~/.claude/skills/workflow/scripts/backup.sh (standalone install)
-_HOOK_DIR="$(cd "$(dirname "$(python3 -c "import os,sys; print(os.path.realpath(sys.argv[1]))" "${BASH_SOURCE[0]}")")" && pwd)"
+# Resolve backup.sh — try resolved plugin root first, then the legacy
+# ~/.claude/ standalone install as a last-ditch fallback.
 BACKUP_SH=""
 for candidate in \
-    "${CLAUDE_PLUGIN_ROOT:-/__unset__}/skills/workflow/scripts/backup.sh" \
-    "$_HOOK_DIR/../skills/workflow/scripts/backup.sh" \
+    "$PLUGIN_ROOT/skills/workflow/scripts/backup.sh" \
     "$HOME/.claude/skills/workflow/scripts/backup.sh"; do
     if [ -x "$candidate" ]; then
         BACKUP_SH="$candidate"

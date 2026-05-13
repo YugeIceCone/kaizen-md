@@ -12,9 +12,14 @@
 
 set -uo pipefail
 
+_HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=../skills/workflow/scripts/_plugin_root.sh
+source "$_HOOK_DIR/../skills/workflow/scripts/_plugin_root.sh"
+PLUGIN_ROOT="$(kaizen_plugin_root 2>/dev/null)" || exit 0
+
 INPUT=$(cat 2>/dev/null || echo "{}")
 
-printf '%s' "$INPUT" | bash "${CLAUDE_PLUGIN_ROOT}/hooks/_trace.sh" UserPromptSubmit
+printf '%s' "$INPUT" | bash "$PLUGIN_ROOT/hooks/_trace.sh" UserPromptSubmit
 
 PROMPT=$(echo "$INPUT" | python3 -c "
 import json, sys
@@ -35,7 +40,7 @@ except Exception:
 " 2>/dev/null)
 
 if [ -n "${PROMPT:-}" ]; then
-    INBOX="${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/inbox.py"
+    INBOX="$PLUGIN_ROOT/skills/workflow/scripts/inbox.py"
     # Capture prints the absolute path of the new message file
     CAPTURED=$(python3 "$INBOX" capture --session "$SESSION" "$PROMPT" 2>/dev/null) || true
     # Mark this as the turn-starter ONLY if no sentinel exists. Mid-turn
