@@ -29,45 +29,17 @@ import sys
 from pathlib import Path
 from typing import Any
 
-try:
-    import yaml
-except ImportError:
-    sys.stderr.write("kaizen workflow loader: PyYAML required (pip install pyyaml)\n")
-    sys.exit(1)
-
-try:
-    from jsonschema import validate as _validate, ValidationError as _ValidationError
-    _HAS_JSONSCHEMA = True
-except ImportError:
-    _HAS_JSONSCHEMA = False
+# H1 dedup: shared YAML + JSON-Schema helpers.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from _yaml import load_yaml as _load_yaml  # noqa: E402
+from _yaml import load_json as _load_json  # noqa: E402
+from _yaml import validate as _check  # noqa: E402
 
 DOMAIN_DIR = Path(__file__).resolve().parent.parent / "domain"
 ROUTINES_YAML = DOMAIN_DIR / "routines.yaml"
 GIT_DISCIPLINE_YAML = DOMAIN_DIR / "git-discipline.yaml"
 ROUTINE_SCHEMA = DOMAIN_DIR / "schemas" / "routine.schema.json"
 GIT_RULES_SCHEMA = DOMAIN_DIR / "schemas" / "git-rules.schema.json"
-
-
-def _load_yaml(path: Path) -> dict:
-    with path.open("r", encoding="utf-8") as f:
-        return yaml.safe_load(f) or {}
-
-
-def _load_json(path: Path) -> dict:
-    with path.open("r", encoding="utf-8") as f:
-        return json.load(f)
-
-
-def _check(data: dict, schema_path: Path, source: str) -> None:
-    if not _HAS_JSONSCHEMA:
-        sys.stderr.write(f"[loader] jsonschema not installed; skipping validation of {source}\n")
-        return
-    schema = _load_json(schema_path)
-    try:
-        _validate(data, schema)
-    except _ValidationError as e:
-        sys.stderr.write(f"[loader] {source} failed schema validation:\n  {e.message}\n  at: {list(e.absolute_path)}\n")
-        sys.exit(2)
 
 
 def load_routines() -> dict[str, dict]:

@@ -69,8 +69,11 @@ KEEP_BACKUPS = lambda: _env_int("KAIZEN_KEEP_BACKUPS", 10)
 INBOX_TTL_DAYS = lambda: _env_int("KAIZEN_INBOX_TTL_DAYS", 7)
 
 
+from _time import utc_now  # M5 dedup
+
+
 def now() -> dt.datetime:
-    return dt.datetime.now(dt.timezone.utc)
+    return utc_now()
 
 
 # ─── Individual checks ───────────────────────────────────────────────

@@ -50,14 +50,7 @@ except ImportError as e:
 mcp = FastMCP("state")
 
 
-def _repo_root() -> str:
-    try:
-        return subprocess.check_output(
-            ["git", "rev-parse", "--show-toplevel"],
-            stderr=subprocess.DEVNULL, text=True,
-        ).strip()
-    except subprocess.CalledProcessError:
-        return os.getcwd()
+from _subproc import git_repo_root as _repo_root  # noqa: E402, F401 — M2 dedup
 
 
 # ─── status / health (wrap bash scripts) ─────────────────────────────

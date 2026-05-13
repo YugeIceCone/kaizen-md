@@ -484,8 +484,11 @@ def cmd_clear(args) -> dict:
     return {"removed": str(DB_PATH)}
 
 
+from _time import iso  # M5 dedup
+
+
 def _now() -> str:
-    return dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
+    return iso(precision="seconds")
 
 
 # ─── CLI ────────────────────────────────────────────────────────────

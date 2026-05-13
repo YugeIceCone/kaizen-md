@@ -88,8 +88,11 @@ def _disabled() -> bool:
     return os.environ.get("KAIZEN_TRACE_DISABLE") == "1"
 
 
+from _time import iso  # M5 dedup
+
+
 def _now_iso() -> str:
-    return dt.datetime.now(dt.timezone.utc).isoformat(timespec="milliseconds").replace("+00:00", "Z")
+    return iso()
 
 
 # ─── Append + rotation ───────────────────────────────────────────────

@@ -10,27 +10,23 @@
 set -u
 # Don't 'set -e' — we want to run every check, then summarise.
 
-# ─── Colours (no-op when not a TTY) ──────────────────────────────────
-if [ -t 2 ]; then
-    BOLD=$'\e[1m'; DIM=$'\e[2m'; RED=$'\e[31m'; YELLOW=$'\e[33m'
-    GREEN=$'\e[32m'; BLUE=$'\e[34m'; RESET=$'\e[0m'
-else
-    BOLD=""; DIM=""; RED=""; YELLOW=""; GREEN=""; BLUE=""; RESET=""
-fi
+# ─── Path resolution (used by multiple checks; hoist to avoid unbound) ─
+_SCRIPT_REAL_DIR="$(cd "$(dirname "$(python3 -c "import os,sys; print(os.path.realpath(sys.argv[1]))" "${BASH_SOURCE[0]}")")" && pwd)"
 
+# ─── Shared helpers from lib.sh (M3 dedup) ───────────────────────────
+. "$_SCRIPT_REAL_DIR/lib.sh"
+color_init
 PASS="${GREEN}✓${RESET}"
 FAIL="${RED}✗${RESET}"
 WARN="${YELLOW}!${RESET}"
 SKIP="${DIM}∘${RESET}"
-
-# ─── Path resolution (used by multiple checks; hoist to avoid unbound) ─
-_SCRIPT_REAL_DIR="$(cd "$(dirname "$(python3 -c "import os,sys; print(os.path.realpath(sys.argv[1]))" "${BASH_SOURCE[0]}")")" && pwd)"
 
 # ─── Counters ────────────────────────────────────────────────────────
 HARD_FAILS=0
 SOFT_WARNS=0
 SUGGESTIONS=()
 
+# Counter-aware wrappers (lib.sh's log_* don't count). pass/skip pure aliases.
 emit() { printf '%s  %s\n' "$1" "$2" >&2; }
 hard_fail() { HARD_FAILS=$((HARD_FAILS + 1)); emit "$FAIL" "$1"; }
 warn()      { SOFT_WARNS=$((SOFT_WARNS + 1)); emit "$WARN" "$1"; }
@@ -45,17 +41,7 @@ REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null) || {
 cd "$REPO_ROOT"
 
 CONFIG="$REPO_ROOT/.kaizen.toml"
-
-# ─── Tiny TOML reader (key = "value" only, no nesting) ───────────────
-toml_get() {
-    local key="$1" default="$2"
-    [ -f "$CONFIG" ] || { echo "$default"; return; }
-    local v
-    v=$(grep -E "^${key}[[:space:]]*=" "$CONFIG" 2>/dev/null \
-        | head -1 \
-        | sed -E 's/^[^=]*=[[:space:]]*//; s/^"(.*)"$/\1/; s/^'\''(.*)'\''$/\1/')
-    [ -n "$v" ] && echo "$v" || echo "$default"
-}
+TOML_PATH="$CONFIG"   # lib.sh's toml_get reads $TOML_PATH
 
 # ─── Config + defaults ───────────────────────────────────────────────
 COMPILE_CHECK_CMD=$(toml_get compile_check_cmd "")

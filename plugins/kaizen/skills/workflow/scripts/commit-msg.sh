@@ -20,13 +20,10 @@
 
 set -u
 
-if [ -t 2 ]; then
-    BOLD=$'\e[1m'; DIM=$'\e[2m'; RED=$'\e[31m'; YELLOW=$'\e[33m'
-    GREEN=$'\e[32m'; RESET=$'\e[0m'
-else
-    BOLD=""; DIM=""; RED=""; YELLOW=""; GREEN=""; RESET=""
-fi
-
+# ─── Shared helpers from lib.sh (M3 dedup) ───────────────────────────
+_SCRIPT_REAL_DIR="$(cd "$(dirname "$(python3 -c "import os,sys; print(os.path.realpath(sys.argv[1]))" "${BASH_SOURCE[0]}")")" && pwd)"
+. "$_SCRIPT_REAL_DIR/lib.sh"
+color_init
 PASS="${GREEN}✓${RESET}"
 FAIL="${RED}✗${RESET}"
 SKIP_GLYPH="${DIM}∘${RESET}"
@@ -61,16 +58,7 @@ REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null) || {
 }
 cd "$REPO_ROOT"
 CONFIG="$REPO_ROOT/.kaizen.toml"
-
-toml_get() {
-    local key="$1" default="$2"
-    [ -f "$CONFIG" ] || { echo "$default"; return; }
-    local v
-    v=$(grep -E "^${key}[[:space:]]*=" "$CONFIG" 2>/dev/null \
-        | head -1 \
-        | sed -E 's/^[^=]*=[[:space:]]*//; s/^"(.*)"$/\1/; s/^'\''(.*)'\''$/\1/')
-    [ -n "$v" ] && echo "$v" || echo "$default"
-}
+TOML_PATH="$CONFIG"   # lib.sh's toml_get reads $TOML_PATH
 
 PLAN_DIR=$(toml_get plan_dir "plans")
 

@@ -95,8 +95,11 @@ BRAIN_DIR = HOME / ".claude" / "brain"
 # ─── Helpers ─────────────────────────────────────────────────────────
 
 
+from _time import iso  # M5 dedup
+
+
 def now_iso() -> str:
-    return dt.datetime.now(dt.timezone.utc).isoformat(timespec="milliseconds").replace("+00:00", "Z")
+    return iso()
 
 
 def parse_since(s: str) -> Optional[dt.datetime]:
@@ -113,23 +116,7 @@ def parse_since(s: str) -> Optional[dt.datetime]:
         return None
 
 
-def iter_jsonl(path: Path):
-    """Yield each JSON record from a .jsonl or .jsonl.gz file."""
-    if not path.exists():
-        return
-    opener = gzip.open if path.suffix == ".gz" else open
-    try:
-        with opener(path, "rt") as fp:
-            for line in fp:
-                line = line.strip()
-                if not line:
-                    continue
-                try:
-                    yield json.loads(line)
-                except json.JSONDecodeError:
-                    continue
-    except OSError:
-        return
+from _jsonl import iter_jsonl  # noqa: E402 — shared helper (M4 dedup)
 
 
 def dir_size_bytes(p: Path) -> int:

@@ -62,36 +62,17 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR))
 from _curate import curate as _curate, SEVERITY_RANK  # noqa: E402
 from _uv import uv_cmd  # noqa: E402
+from _subproc import git_repo_root as _repo_root  # noqa: E402, F401 — M2 dedup
+from _subproc import run as _run_base  # noqa: E402
 
 
-# ─── Subprocess + repo helpers ────────────────────────────────────────
-
-
-def _repo_root() -> str:
-    try:
-        return subprocess.check_output(
-            ["git", "rev-parse", "--show-toplevel"],
-            stderr=subprocess.DEVNULL, text=True,
-        ).strip()
-    except subprocess.CalledProcessError:
-        return os.getcwd()
+# ─── Subprocess wrapper — lint-MCP variant ────────────────────────────
 
 
 def _run(cmd: list[str], cwd: str | None = None, timeout: int = 120) -> dict:
-    """List-form subprocess. Returns {exit_code, stdout, stderr}.
-
-    `timeout=120` is generous because `uv run --with ty` cold-starts can take
-    ~5s on first invocation while uv resolves + downloads."""
-    try:
-        r = subprocess.run(
-            cmd, cwd=cwd or _repo_root(),
-            capture_output=True, text=True, timeout=timeout,
-        )
-        return {"exit_code": r.returncode, "stdout": r.stdout, "stderr": r.stderr}
-    except subprocess.TimeoutExpired as e:
-        return {"exit_code": -1, "stdout": "", "stderr": f"timeout after {timeout}s: {e}"}
-    except FileNotFoundError as e:
-        return {"exit_code": -2, "stdout": "", "stderr": f"binary not found: {e}"}
+    """List-form subprocess. timeout=120s default for `uv run --with ty`
+    cold-starts (uv resolves + downloads on first call)."""
+    return _run_base(cmd, cwd=cwd, timeout=timeout)
 
 
 # ─── Curator ──────────────────────────────────────────────────────────

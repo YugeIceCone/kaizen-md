@@ -35,41 +35,14 @@ import sys
 from pathlib import Path
 from typing import Any
 
-try:
-    import yaml
-except ImportError:
-    sys.stderr.write("kaizen route_intent: PyYAML required (pip install pyyaml)\n")
-    sys.exit(1)
-
-try:
-    from jsonschema import validate as _validate, ValidationError as _ValidationError
-    _HAS_JSONSCHEMA = True
-except ImportError:
-    _HAS_JSONSCHEMA = False
+# H1 dedup: shared YAML + JSON-Schema helpers.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from _yaml import load_yaml as _load_yaml  # noqa: E402
+from _yaml import validate as _check  # noqa: E402
 
 DOMAIN_DIR = Path(__file__).resolve().parent.parent / "domain"
 INTENT_YAML = DOMAIN_DIR / "intent_routing.yaml"
 INTENT_SCHEMA = DOMAIN_DIR / "schemas" / "intent_routing.schema.json"
-
-
-# ─── Loaders ─────────────────────────────────────────────────────────
-
-
-def _load_yaml(path: Path) -> dict:
-    with path.open("r", encoding="utf-8") as f:
-        return yaml.safe_load(f) or {}
-
-
-def _check(data: dict, schema_path: Path, source: str) -> None:
-    if not _HAS_JSONSCHEMA:
-        sys.stderr.write(f"[route_intent] jsonschema not installed; skipping validation of {source}\n")
-        return
-    schema = json.loads(schema_path.read_text())
-    try:
-        _validate(data, schema)
-    except _ValidationError as e:
-        sys.stderr.write(f"[route_intent] {source} failed schema validation:\n  {e.message}\n  at: {list(e.absolute_path)}\n")
-        sys.exit(2)
 
 
 def load() -> dict:

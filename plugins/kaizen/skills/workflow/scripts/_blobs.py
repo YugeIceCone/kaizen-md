@@ -317,8 +317,11 @@ def _materialise_ref(sha: str, ref_path: Path) -> None:
     ref_path.symlink_to(blob)
 
 
+from _time import iso  # M5 dedup
+
+
 def _now() -> str:
-    return dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
+    return iso(precision="seconds")
 
 
 # ─── Self-test ───────────────────────────────────────────────────────

@@ -634,8 +634,11 @@ def git_log_for_path(workspace_root: Path, pkg_dir: Path, limit: int = 8) -> lis
 # ─── Per-package scan ────────────────────────────────────────────────
 
 
+from _time import iso  # M5 dedup
+
+
 def now_iso() -> str:
-    return dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    return iso(precision="seconds")
 
 
 def _crate_name_from_path(rel: Path) -> str:

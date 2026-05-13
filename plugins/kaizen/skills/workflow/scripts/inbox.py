@@ -64,8 +64,11 @@ def _ensure() -> Path:
     return d
 
 
+from _time import utc_now  # M5 dedup
+
+
 def _now() -> dt.datetime:
-    return dt.datetime.now(dt.timezone.utc)
+    return utc_now()
 
 
 def _ts_iso() -> str:

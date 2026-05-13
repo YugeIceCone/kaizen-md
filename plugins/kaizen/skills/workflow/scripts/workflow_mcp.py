@@ -62,28 +62,9 @@ WF_SH = SCRIPT_DIR / "workflow.sh"
 WF_RUNNER = SCRIPT_DIR / "workflow_runner.py"
 
 
-def _repo_root() -> str:
-    try:
-        return subprocess.check_output(
-            ["git", "rev-parse", "--show-toplevel"],
-            stderr=subprocess.DEVNULL, text=True,
-        ).strip()
-    except subprocess.CalledProcessError:
-        return os.getcwd()
-
-
-def _run(cmd: list[str], timeout: int = 30) -> dict:
-    """List-form subprocess. Returns {exit_code, stdout, stderr}."""
-    try:
-        r = subprocess.run(
-            cmd, cwd=_repo_root(),
-            capture_output=True, text=True, timeout=timeout,
-        )
-        return {"exit_code": r.returncode, "stdout": r.stdout, "stderr": r.stderr}
-    except subprocess.TimeoutExpired as e:
-        return {"exit_code": -1, "stdout": "", "stderr": f"timeout: {e}"}
-    except FileNotFoundError as e:
-        return {"exit_code": -2, "stdout": "", "stderr": f"binary not found: {e}"}
+# M2 dedup: shared in _subproc.py (default timeout 30s is the workflow MCP variant).
+from _subproc import git_repo_root as _repo_root  # noqa: E402, F401
+from _subproc import run as _run  # noqa: E402
 
 
 def _read_state() -> dict | None:

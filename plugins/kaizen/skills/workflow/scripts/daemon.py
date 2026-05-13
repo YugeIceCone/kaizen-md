@@ -53,12 +53,15 @@ STATE_FILE = STATE_DIR / "state.json"
 LOG_FILE = STATE_DIR / "log"
 
 
+from _time import iso, utc_now  # M5 dedup
+
+
 def now() -> dt.datetime:
-    return dt.datetime.now(dt.timezone.utc)
+    return utc_now()
 
 
 def now_iso() -> str:
-    return now().isoformat(timespec="seconds")
+    return iso(precision="seconds")
 
 
 def market_dir() -> Path:
