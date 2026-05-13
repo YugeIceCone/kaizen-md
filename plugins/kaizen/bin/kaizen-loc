@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+# kaizen-loc — function-level codebase metrics + per-symbol search.
+# Symlinked to ~/.local/bin/kaizen-loc by /kaizen:install.
+#
+# Backed by ${PLUGIN_ROOT}/skills/workflow/scripts/loc_index.py. See
+# `kaizen-loc --help` for subcommands (index / search / files / show /
+# report / stats / get / path / clear).
+#
+# Phase 1 X1 — Python port of shodan's xtask/src/loc.rs. Per-repo SQLite
+# index at <repo>/.kaizen/loc.db.
+
+set -euo pipefail
+
+_BIN_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=../skills/workflow/scripts/_plugin_root.sh
+source "$_BIN_DIR/../skills/workflow/scripts/_plugin_root.sh"
+PLUGIN_ROOT="$(kaizen_plugin_root)" || {
+    echo "kaizen-loc: plugin root unresolved — set CLAUDE_PLUGIN_ROOT or KAIZEN_PLUGIN_ROOT" >&2
+    exit 1
+}
+
+exec python3 "$PLUGIN_ROOT/skills/workflow/scripts/loc_index.py" "$@"
