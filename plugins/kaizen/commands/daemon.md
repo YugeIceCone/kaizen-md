@@ -6,4 +6,4 @@ argument-hint: [run|install|uninstall|status|log]
 
 # kaizen daemon
 
-!`python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/daemon.py ${ARGUMENTS:-status}`
+!`uv run --script ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/daemon.py ${ARGUMENTS:-status}`

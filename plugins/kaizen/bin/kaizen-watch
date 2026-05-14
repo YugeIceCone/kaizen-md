@@ -7,9 +7,9 @@ PLUGIN_ROOT=$(cd "$(dirname "$SCRIPT")/.." && pwd)
 DAEMON="$PLUGIN_ROOT/skills/workflow/scripts/daemon.py"
 
 case "${1:-start}" in
-    start)    shift; exec python3 "$DAEMON" watch-start "$@" ;;
-    stop)     shift; exec python3 "$DAEMON" watch-stop "$@" ;;
-    status)   shift; exec python3 "$DAEMON" watch-status "$@" ;;
-    fg)       shift; exec python3 "$DAEMON" watch "$@" ;;
+    start)    shift; exec uv run --script "$DAEMON" watch-start "$@" ;;
+    stop)     shift; exec uv run --script "$DAEMON" watch-stop "$@" ;;
+    status)   shift; exec uv run --script "$DAEMON" watch-status "$@" ;;
+    fg)       shift; exec uv run --script "$DAEMON" watch "$@" ;;
     *)        echo "usage: kaizen-watch [start|stop|status|fg] [--interval SEC]"; exit 1 ;;
 esac

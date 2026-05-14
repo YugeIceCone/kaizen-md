@@ -188,7 +188,7 @@ if [ "$SKIP_GLOBALS" -eq 0 ]; then
   # opts out. watch-start is idempotent + cron-supervised (daemon install).
   if [ "${KAIZEN_DAEMON_INDEX_DISABLE:-}" != "1" ]; then
     step "start plugin-index watch daemon" \
-      "bash -c 'python3 \"$PLUGIN_ROOT/skills/workflow/scripts/daemon.py\" watch-start && python3 \"$PLUGIN_ROOT/skills/workflow/scripts/daemon.py\" install'"
+      "bash -c 'uv run --script \"$PLUGIN_ROOT/skills/workflow/scripts/daemon.py\" watch-start && uv run --script \"$PLUGIN_ROOT/skills/workflow/scripts/daemon.py\" install'"
   fi
 
   echo ""
@@ -244,7 +244,7 @@ if [ "$WITH_INDEX" -eq 1 ] || [ "$WITH_BROWSER" -eq 1 ] || [ "$WITH_DAEMON" -eq 
 
   if [ "$WITH_DAEMON" -eq 1 ]; then
     step "install auto-daemon (crontab entry)" \
-      "python3 '$PLUGIN_ROOT/skills/workflow/scripts/daemon.py' install"
+      "uv run --script '$PLUGIN_ROOT/skills/workflow/scripts/daemon.py' install"
   fi
 
   if [ "$WITH_TRACE_PROXY" -eq 1 ]; then
