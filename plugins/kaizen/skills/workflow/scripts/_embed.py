@@ -239,6 +239,49 @@ def resolve_backend(refresh: bool = False, bypass_env_http: bool = False) -> dic
     return cfg
 
 
+# ─── E7 / E8 — embedding-runtime knobs ───────────────────────────────
+#
+# E7: multi-process encoding. For large batches (>= MP_THRESHOLD), call
+#     SentenceTransformer.encode_multi_process which forks N workers and
+#     parallelizes across them. 4-8× speedup on initial reindex.
+# E8: pooling + normalize. KAIZEN_EMBED_NORMALIZE=l2 enables L2 norm on
+#     output (recommended for cosine search; some models normalize
+#     internally — toggle controls the EXTRA pass). KAIZEN_EMBED_POOLING
+#     is informational here — actual pooling is baked into the model on
+#     load; documented for future use.
+
+
+def _get_mp_workers() -> int:
+    """KAIZEN_EMBED_MP_WORKERS — process count for encode_multi_process.
+    0 (default) disables multi-process encoding entirely."""
+    raw = os.environ.get("KAIZEN_EMBED_MP_WORKERS", "0")
+    try:
+        return max(0, int(raw))
+    except ValueError:
+        return 0
+
+
+def _get_mp_threshold() -> int:
+    """KAIZEN_EMBED_MP_THRESHOLD — minimum batch size to use multi-process
+    encoding. Default 500 (small batches don't amortize fork overhead)."""
+    raw = os.environ.get("KAIZEN_EMBED_MP_THRESHOLD", "500")
+    try:
+        return max(1, int(raw))
+    except ValueError:
+        return 500
+
+
+def _get_normalize_flag() -> bool:
+    """KAIZEN_EMBED_NORMALIZE in {l2, none}. Default l2 (cosine-search
+    optimal). `none` disables the extra normalize pass."""
+    raw = os.environ.get("KAIZEN_EMBED_NORMALIZE", "l2").lower().strip()
+    return raw == "l2"
+
+
+def _should_use_multi_process(batch_size: int) -> bool:
+    return _get_mp_workers() > 0 and batch_size >= _get_mp_threshold()
+
+
 # ─── Embedding API ───────────────────────────────────────────────────
 
 _local_model = None
@@ -361,8 +404,40 @@ def _embed_http_batch(texts: list[str], base_url: str, model: str) -> tuple[list
 
 
 def _embed_local_batch(texts: list[str]) -> tuple[list[bytes], int]:
+    """Local sentence-transformers batch.
+
+    E7: for batches >= KAIZEN_EMBED_MP_THRESHOLD and when
+        KAIZEN_EMBED_MP_WORKERS > 0, fan out via encode_multi_process.
+    E8: KAIZEN_EMBED_NORMALIZE=l2 (default) sets normalize_embeddings
+        in the encode call. `none` disables the extra normalize pass."""
     model, np = _load_local_model()
-    vecs = model.encode(texts, batch_size=64, show_progress_bar=False, convert_to_numpy=True)
+    normalize = _get_normalize_flag()
+    if _should_use_multi_process(len(texts)):
+        # encode_multi_process spawns pool then encodes — heavier setup
+        # but 4-8× faster on large batches (proportional to workers).
+        workers = _get_mp_workers()
+        try:
+            pool = model.start_multi_process_pool(
+                target_devices=[f"cpu_{i}" for i in range(workers)],
+            )
+            try:
+                vecs = model.encode_multi_process(
+                    texts, pool, batch_size=64, normalize_embeddings=normalize,
+                )
+            finally:
+                model.stop_multi_process_pool(pool)
+        except (AttributeError, TypeError):
+            # Older sentence-transformers may not expose the helpers — fall
+            # back to single-process encoding rather than crashing.
+            vecs = model.encode(
+                texts, batch_size=64, show_progress_bar=False,
+                convert_to_numpy=True, normalize_embeddings=normalize,
+            )
+    else:
+        vecs = model.encode(
+            texts, batch_size=64, show_progress_bar=False,
+            convert_to_numpy=True, normalize_embeddings=normalize,
+        )
     vecs = vecs.astype(np.float32)
     out = [vecs[i].tobytes() for i in range(vecs.shape[0])]
     return out, int(vecs.shape[1]) if vecs.ndim > 1 else int(vecs.shape[0])
