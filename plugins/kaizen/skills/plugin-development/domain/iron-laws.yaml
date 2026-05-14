@@ -89,3 +89,33 @@ laws:
     severity: soft
     detect: "session enters kaizen-md cwd without plugin-development in loaded-skills"
     why: "User stated: 'the dev skill can't be skipped' — codified 2026-05-14."
+
+  - id: bin-wrapper-per-cli-strict
+    statement: "Every Python script with an argparse main() under skills/workflow/scripts/ MUST have a matching bin/kaizen-* wrapper landed in the SAME commit. Specialized op scripts (e.g. brain_index.py / brain_promote.py / metrics.py) need their own wrappers — one bin per CLI script."
+    severity: hard
+    detect: "git diff shows new skills/workflow/scripts/<f>.py with `if __name__ == \"__main__\"` + argparse but no bin/kaizen-<feature>[-<op>] in the same commit"
+    why: "Hit twice this session: brain shipped only kaizen-brain (missing -index/-promote/-audit/-evolve, fixed in commit ed4b490); metrics shipped only kaizen-metrics. /kaizen:install symlinks bin/ entries into ~/.local/bin/, so a missing wrapper = 'command not found' from shell. The plugin-development validator's wiring-checklist enforces this via scripts/validate.py."
+
+  - id: slash-command-args-no-default-spaces
+    statement: "Slash command `${ARGUMENTS:-default}` template only bash-evaluates the `:-default` when the default has NO whitespace. For multi-word defaults, give the underlying script a no-arg fallback and pass bare `$ARGUMENTS` (no curly braces, no default)."
+    severity: hard
+    detect: "commands/<feature>.md contains `${ARGUMENTS:-<default with spaces>}`"
+    why: "Hit on /kaizen:metrics — user ran `top --kind skill`, slash dispatched `lifetime --since 7d` (the bash default fell through because CC's template substitution + bash interaction couldn't handle the space). Fixed by giving metrics.py a no-arg default (runs 7d lifetime) and changing slash to bare `$ARGUMENTS`. See onboard.md / trace-search.md for short-default examples that work."
+
+  - id: hooks-json-additive-event-multi-command
+    statement: "When adding a hook to an ADDITIVE_EVENT (SubagentStop / SessionEnd / Notification) that already has a config block, APPEND to the existing block's `hooks:[]` list — don't add a sibling block with the same matcher."
+    severity: soft
+    detect: "hooks.json::<EVENT> has 2+ config blocks with matcher='*'"
+    why: "test_cc_hooks_wireup.py originally asserted exactly 1 config block per ADDITIVE_EVENT. Relaxed 2026-05-14 to allow >= 1 commands, but the convention is still to append within one block for the same matcher."
+
+  - id: trace-coverage-all-tools
+    statement: "Hook scripts that fire on PreToolUse / PostToolUse should cover ALL tools (matcher='*'), not just Bash. The universal pretooluse-trace.sh / posttooluse-trace.sh fire for Skill / Edit / Write / mcp__* / etc. — don't add per-tool hooks that re-trace what the universal already captures."
+    severity: soft
+    detect: "new hook script in hooks/claude/ fires `_trace.sh` with a tool name already covered by the universal hooks"
+    why: "Until M1 (2026-05-14), only Bash had trace coverage. 30K events captured, 0 skill invocations. The universal trace fixed it; new hooks should rely on it for tool-call traces, not re-add per-tool tracing."
+
+  - id: metrics-skip-check-before-merge
+    statement: "Before merging any structural change touching plugin-original code, run `kaizen-metrics skips --json` to confirm no mandatory-skill-load was missed."
+    severity: soft
+    detect: "session touched plugins/kaizen/** files without `Skill(plugin-development)` invocation; surfaced via metrics-session-end.sh hook"
+    why: "Self-correction signal. The SessionEnd hook auto-writes drafts to brain/Inbox/; surfacing the same check pre-merge catches violations before they ship."

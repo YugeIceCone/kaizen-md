@@ -41,7 +41,7 @@ violations. **When prose and yaml disagree, yaml wins.**
 
 ## Enforcement (the skill is not skippable)
 
-Three layers:
+Four layers:
 
 1. **`scripts/validate.py`** — run manually or as a pre-commit
    gate hook:
@@ -60,6 +60,20 @@ Three layers:
    with `kaizen:` frontmatter. Surfaces via the kaizen gate's
    custom-pattern check when commits touch `plugins/kaizen/`.
 
+4. **`/kaizen:metrics skips`** (v1.34+) — runtime skip-detection.
+   The SessionEnd hook auto-fires `metrics-session-end.sh` which
+   runs `metrics.py skips` and writes draft Inbox entries when
+   files were touched without the matching skill being loaded.
+   See [`metrics`](../metrics/SKILL.md) — the self-correction
+   surface that catches violations after the fact.
+
+   ```bash
+   # Manual check at any time:
+   kaizen-metrics skips
+   # Or via MCP from an agent:
+   mcp__plugin_kaizen_metrics__metrics_skips(sid=None)
+   ```
+
 ## What this skill is NOT
 
 This skill **does not duplicate** canonical content. For these
@@ -75,6 +89,7 @@ topics, the authoritative homes are:
 | AI-coding discipline before commit | [`vibe-check`](../vibe-check/SKILL.md) |
 | Generic plugin structure / hooks / commands / agents / MCP | External `plugin-dev:*` skills |
 | Plugin pre-commit gate / 12 checks | [`workflow`](../workflow/SKILL.md) PART 3 |
+| Adoption / never-used / skip-detection metrics | [`metrics`](../metrics/SKILL.md) |
 
 Read those FIRST when relevant. This skill assumes you've absorbed
 their rules and focuses on what's **kaizen-md specific**.
@@ -584,6 +599,57 @@ CLAUDE.md is the durable rulebook. Volatile data goes in:
 
 This rule applies to README.md and any rulebook-shaped file too.
 
+### Don't ship a CLI script without a bin wrapper
+
+Specialized op scripts (e.g. `brain_index.py` / `brain_promote.py` /
+`brain_audit.py` / `brain_evolve.py` / `metrics.py`) each need their
+OWN `bin/kaizen-<feature>[-<op>]` wrapper. `/kaizen:install` symlinks
+`bin/` entries into `~/.local/bin/`; a missing wrapper means
+`kaizen-<feature>-<op>` returns `command not found` from any shell.
+
+Caught TWICE this session: brain initially shipped only
+`kaizen-brain` (hotfix `ed4b490` added the four missing wrappers);
+metrics caught at the same place. The validator's wiring-checklist
+now flags this — iron-laws.yaml::`bin-wrapper-per-cli-strict`.
+
+### Don't use `${ARGUMENTS:-default}` with whitespace defaults
+
+Slash commands template-substitute `${ARGUMENTS}` to the user's
+args. The `:-default` bash-parameter-expansion only fires when the
+substituted-then-bash-evaluated value is empty AND the default
+contains NO whitespace. Multi-word defaults are interpreted
+literally even when the user passes args.
+
+❌ Broken:
+```bash
+!`python3 .../metrics.py ${ARGUMENTS:-lifetime --since 7d}`
+# User runs: /kaizen:metrics top --kind skill
+# Result:     runs "lifetime --since 7d" (default fired despite ARGUMENTS being set)
+```
+
+✓ Fix: give the underlying script a no-arg default + pass bare
+`$ARGUMENTS`:
+```bash
+!`python3 .../metrics.py $ARGUMENTS`
+# Script's main() runs `lifetime --since 7d` when argv is empty.
+```
+
+OR use the brain.md-style explicit dispatcher:
+```bash
+!`bash -c 'ARGS="${ARGUMENTS:-default}"; ...'`
+```
+
+Single-word defaults work fine (`${ARGUMENTS:-stats}` in onboard.md).
+
+### Don't add per-tool trace hooks if the universal already covers it
+
+`hooks/claude/pretooluse-trace.sh` + `posttooluse-trace.sh` (matcher
+`*`) fire for every non-Bash tool. New hooks should NOT re-trace
+the same tool — pollution + double-counting in metrics rollups.
+
+Bash is the exception: `pretooluse-bash-gate.sh` traces + gates;
+the universal hook skips Bash to avoid the double.
+
 ---
 
 ## Quick reference
@@ -644,6 +710,17 @@ worked example — read it end-to-end before starting your own.
 5. **Node+Flow for all multi-step ops.** No ad-hoc orchestration.
 6. **Lazy-load heavy deps + `is_available()`** — never auto-install.
 7. **Sandbox tests via env vars.** Never touch real `~/.claude/`.
-8. **Bin wrapper per CLI script** — symlinks land via `/kaizen:install`.
+8. **Bin wrapper per CLI script** — every argparse-main script gets
+   its OWN `bin/kaizen-<feature>[-<op>]`. Symlinks land via
+   `/kaizen:install`. Specialized ops (index / promote / audit /
+   evolve / metrics) each need their own wrapper.
 9. **plugin.json + hooks.json + bin wrappers wired** in the same commit.
 10. **Commit per atomic unit** using the phased-work template.
+11. **Run `kaizen-metrics skips` before merging** structural changes —
+    catches mandatory-skill-load misses; the SessionEnd hook also
+    surfaces these to brain/Inbox/.
+12. **Slash command `${ARGUMENTS:-default}` only works with whitespace-
+    free defaults.** Multi-word default → give the script a no-arg
+    fallback and pass bare `$ARGUMENTS`.
+13. **Don't re-trace tools** the universal `pretooluse-trace.sh` /
+    `posttooluse-trace.sh` already cover.

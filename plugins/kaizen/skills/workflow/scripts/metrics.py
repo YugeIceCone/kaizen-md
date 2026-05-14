@@ -613,7 +613,12 @@ def main(argv: Optional[list[str]] = None) -> int:
         prog="kaizen-metrics",
         description="Rollup + never-used catalog over the kaizen trace log.",
     )
-    sub = p.add_subparsers(dest="cmd", required=True)
+    # required=False so calling with no subcommand defaults to `lifetime
+    # --since 7d` (matches the slash-command default behavior expectation).
+    # The `${ARGUMENTS:-default with spaces}` slash-command pattern fails
+    # to bash-evaluate when the default contains whitespace, so callers
+    # may invoke metrics.py with empty argv. Handle that here.
+    sub = p.add_subparsers(dest="cmd", required=False)
 
     s_sess = sub.add_parser("session", help="rollup for one session")
     s_sess.add_argument("--sid", help="session id (default: latest)")
@@ -650,6 +655,12 @@ def main(argv: Optional[list[str]] = None) -> int:
     s_skips.set_defaults(func=_cmd_skips)
 
     args = p.parse_args(argv)
+    if args.cmd is None:
+        # Bare invocation — default to the 7-day lifetime rollup.
+        # This is the behavior the slash command's `${ARGUMENTS:-...}`
+        # was meant to provide; the bash-default-with-spaces quirk
+        # surfaces here as the canonical no-arg fallback instead.
+        return _cmd_lifetime(argparse.Namespace(since="7d", json=False))
     return args.func(args)
 
 

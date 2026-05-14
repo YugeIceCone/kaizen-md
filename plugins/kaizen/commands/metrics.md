@@ -6,4 +6,4 @@ argument-hint: [session|lifetime|never-used|top|skips|path]
 
 # /kaizen:metrics
 
-!`python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/metrics.py ${ARGUMENTS:-lifetime --since 7d}`
+!`python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/metrics.py $ARGUMENTS`
