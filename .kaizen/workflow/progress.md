@@ -28,3 +28,4 @@
 | 2026-05-14 | refactor | -171   | carved onboard_index schema DDL + 4 migration fns into new onboard_schema.py module          |
 | 2026-05-14 | docs     | +157   | added repo-root CLAUDE.md — Claude Code onboarding rulebook for the marketplace              |
 | 2026-05-14 | refactor | ~0     | carved iron-laws.yaml + skeleton into new skills/iron-laws/ skill (iron-laws plan, phase 1)  |
+| 2026-05-14 | feat     | ~+1.6k | iron-laws skill complete — SSOT registry + loader + codegen + checker + CLI + MCP + drift gate |

@@ -3,9 +3,9 @@
 Generated from skills/iron-laws/domain/iron-laws.yaml by
 skills/iron-laws/application/codegen.py.
 
-To change content, edit the yaml and run:
-    python3 skills/iron-laws/application/codegen.py
-or `kaizen-iron-laws render`. refresh-cache.sh runs codegen before sync.
+To change content, edit the yaml and run `kaizen-iron-laws render`
+(or this file directly). CI runs `codegen.py --check` to fail the
+build if this file ever drifts from the yaml.
 -->
 
 # Iron Laws

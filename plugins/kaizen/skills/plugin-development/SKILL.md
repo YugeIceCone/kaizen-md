@@ -31,9 +31,13 @@ The authoritative declarations live in `domain/`:
 | File | What it declares |
 |---|---|
 | `domain/feature-shape.yaml` | The file slots + per-slot `required` / `when` predicates |
-| `domain/iron-laws.yaml` | The iron laws with `severity` (hard / soft / info) and machine-checkable `detect` patterns |
 | `domain/wiring-checklist.yaml` | Per-artifact wiring entries (plugin.json permissions, hooks.json events, bin chmod, etc.) |
 | `domain/schemas/feature.schema.json` | JSONSchema for optional `skills/<feature>/domain/manifest.yaml` |
+
+The **iron laws** moved to their own skill — see `kaizen:iron-laws`
+(registry at `skills/iron-laws/domain/iron-laws.yaml`, plus a checker,
+CLI, and MCP server). `scripts/validate.py` still surfaces iron-law
+violations by delegating to that skill's checker.
 
 The prose below explains the WHY; the yaml encodes the WHAT.
 `scripts/validate.py` reads the yaml directly and reports
