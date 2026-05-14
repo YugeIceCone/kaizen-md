@@ -30,7 +30,7 @@ Size work by **trace + sem + grep** — count actual files touched, manifest edi
 | Split siblings | 4–15 files OR 1 manifest OR 1 trait move | sibling micros |
 | Plan file | ≥16 files OR ≥2 manifests OR cross-context OR carve-out trigger | `plans/<date>-<slug>.md` |
 
-## Pre-commit gates (12)
+## Pre-commit gates (13)
 
 Each gate runs in order; cheaper gates first. Errors block; warnings notify.
 
@@ -85,6 +85,12 @@ New public function/class should have a paired test in the same commit
 ### `no_volatile_data_in_claude_md` (error)
 
 CLAUDE.md must not contain SHAs, dates, or LOC numbers (volatile)
+
+### `iron_laws` (error)
+
+Staged diff checked against the auto-enforced iron laws (kaizen-md repo only)
+
+**Probe:** `python3 ${SCRIPTS}/iron_laws.py check --staged`
 
 ### `conventional_commit_subject` (error)
 
