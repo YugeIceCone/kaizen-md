@@ -299,14 +299,32 @@ _SCHEMA_SQL = """
         -- 'doc' for extracted-docstring chunks. Sidecar signal for
         -- "why does X exist" queries.
         kind TEXT NOT NULL DEFAULT 'code',
+        -- O2 (v1.33): enclosing symbol name when ast-chunked (Python).
+        -- Empty string for non-ast paths. Populated by _ast_chunk's
+        -- chunk_python_by_symbol when language='python'.
+        symbol_name TEXT NOT NULL DEFAULT '',
         UNIQUE(file_id, chunk_idx)
     );
     CREATE INDEX IF NOT EXISTS idx_chunk_file ON code_chunks(file_id);
     CREATE INDEX IF NOT EXISTS idx_chunk_lang ON code_chunks(language);
-    -- idx_chunk_kind is created inside _migrate_kind_column() so it works
-    -- on both fresh dbs (column present) AND pre-v1.32 dbs (column added
-    -- by ALTER TABLE first). Putting it here would fire on a pre-v1.32
-    -- schema before the column exists.
+    -- idx_chunk_kind + idx_chunk_symbol are created inside their migration
+    -- helpers so they work on fresh AND pre-existing dbs (the ALTER must
+    -- run before the CREATE INDEX on those columns).
+
+    -- O6 (v1.33): xref table for symbol-level cross-references. Each row
+    -- ties one chunk to one symbol it imports / defines / calls. Enables
+    -- "find chunks that import X" / "who calls Y" queries via M7's
+    -- onboard_xref MCP tool.
+    CREATE TABLE IF NOT EXISTS code_chunks_xref (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        chunk_id INTEGER NOT NULL REFERENCES code_chunks(id) ON DELETE CASCADE,
+        symbol TEXT NOT NULL,
+        kind TEXT NOT NULL,  -- 'import' | 'def' | 'call'
+        UNIQUE(chunk_id, symbol, kind)
+    );
+    CREATE INDEX IF NOT EXISTS idx_xref_chunk ON code_chunks_xref(chunk_id);
+    CREATE INDEX IF NOT EXISTS idx_xref_symbol ON code_chunks_xref(symbol);
+    CREATE INDEX IF NOT EXISTS idx_xref_kind ON code_chunks_xref(kind);
 """
 
 
@@ -331,14 +349,86 @@ def _migrate_kind_column(conn: sqlite3.Connection) -> None:
     )
 
 
+def _populate_xref_imports(
+    conn: sqlite3.Connection,
+    file_id: int,
+    cleaned_rec: dict,
+    kept_chunks: list[dict],
+) -> None:
+    """O6 helper — populate code_chunks_xref with import bindings for
+    Python source. No-op for other languages (extractor returns []).
+
+    Each `import X` / `from M import Y` produces one xref row with
+    kind='import'. The row is tied to the chunk_id of the file's
+    module-level prologue chunk (kind='code', symbol_name='<module>').
+    When no such chunk exists (e.g. file starts with a class/function),
+    falls back to the file's first chunk."""
+    if cleaned_rec.get("language") != "python":
+        return
+    raw_text = cleaned_rec.get("text") or cleaned_rec.get("cleaned") or ""
+    if not raw_text:
+        return
+    try:
+        from _ast_chunk import extract_python_imports as _eli
+        imports = _eli(raw_text)
+    except (ImportError, AttributeError):
+        return
+    if not imports:
+        return
+
+    # Find the chunk to hang imports on. Prefer the module prologue;
+    # else the first chunk.
+    target_chunk_idx = None
+    for c in kept_chunks:
+        if c.get("symbol_name") == "<module>":
+            target_chunk_idx = c["chunk_idx"]
+            break
+    if target_chunk_idx is None and kept_chunks:
+        target_chunk_idx = kept_chunks[0]["chunk_idx"]
+    if target_chunk_idx is None:
+        return
+
+    row = conn.execute(
+        "SELECT id FROM code_chunks WHERE file_id = ? AND chunk_idx = ?",
+        (file_id, target_chunk_idx),
+    ).fetchone()
+    if not row:
+        return
+    chunk_id = row["id"]
+
+    conn.executemany(
+        """INSERT OR IGNORE INTO code_chunks_xref (chunk_id, symbol, kind)
+           VALUES (?, ?, ?)""",
+        [(chunk_id, imp.symbol, "import") for imp in imports],
+    )
+
+
+def _migrate_symbol_name_column(conn: sqlite3.Connection) -> None:
+    """O2 migration — add `symbol_name` column + index on code_chunks.
+
+    Same pattern as _migrate_kind_column. Pre-v1.33 dbs get the column
+    via ALTER TABLE; fresh dbs already have it from the schema. The
+    CREATE INDEX runs always to handle both code paths."""
+    cols = {row[1] for row in conn.execute("PRAGMA table_info(code_chunks)")}
+    if "symbol_name" not in cols:
+        conn.execute(
+            "ALTER TABLE code_chunks ADD COLUMN "
+            "symbol_name TEXT NOT NULL DEFAULT ''"
+        )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_chunk_symbol ON code_chunks(symbol_name)"
+    )
+
+
 def open_db(root: Path, create: bool = True) -> sqlite3.Connection:
     conn = _kz_sqlite.open_indexer_db(
         db_path(root), _SCHEMA_SQL,
         pragmas=_PRAGMAS_SQL, create=create,
     )
     if create:
-        # Migrations (idempotent): bring pre-v1.32 dbs up to current schema.
-        _migrate_kind_column(conn)
+        # Migrations (idempotent): bring older dbs up to current schema.
+        _migrate_kind_column(conn)         # v1.32 — adds `kind`
+        _migrate_symbol_name_column(conn)  # v1.33 — adds `symbol_name`
         # FTS5 mirror (separate from the SCHEMA_SQL executescript because
         # it uses triggers; _sqlite.open_indexer_db is schema-only).
         _kz_search.ensure_fts_mirror(conn, "code_chunks")
@@ -682,20 +772,47 @@ def chunk_record(cleaned_rec: dict) -> list[dict]:
             "kept": False,
             "kept_reason": "empty_after_clean",
         }]
-    chunks = _kz_chunk.chunk_text(cleaned)
+    # O2 (v1.33): symbol-aware chunking for Python — use the original
+    # (uncleaned) source so function/class boundaries align with the AST.
+    # Falls back to the generic sentence-boundary chunker on parse error
+    # (handled by chunk_python_by_symbol returning []) or non-Python.
     out: list[dict] = []
-    for c in chunks:
-        out.append({
-            "path": cleaned_rec["path"],
-            "sha": cleaned_rec.get("sha"),
-            "language": cleaned_rec.get("language"),
-            "chunk_idx": c.chunk_idx,
-            "char_start": c.char_start,
-            "char_end": c.char_end,
-            "text": c.text,
-            "kind": "code",
-            "kept": True,
-        })
+    language = cleaned_rec.get("language", "")
+    if language == "python":
+        raw_text = cleaned_rec.get("text") or cleaned
+        sym_chunks = _kz_ast.chunk_python_by_symbol(raw_text)
+        if sym_chunks:
+            for sc in sym_chunks:
+                out.append({
+                    "path": cleaned_rec["path"],
+                    "sha": cleaned_rec.get("sha"),
+                    "language": language,
+                    "chunk_idx": sc.chunk_idx,
+                    "char_start": sc.char_start,
+                    "char_end": sc.char_end,
+                    "text": sc.text,
+                    "kind": "code",
+                    "symbol_name": sc.symbol_name,
+                    "kept": True,
+                })
+    if not out:
+        # Non-Python OR Python that failed to parse — fall through to the
+        # generic chunker. Same shape, symbol_name='' (sentinel for "not
+        # ast-chunked").
+        chunks = _kz_chunk.chunk_text(cleaned)
+        for c in chunks:
+            out.append({
+                "path": cleaned_rec["path"],
+                "sha": cleaned_rec.get("sha"),
+                "language": language,
+                "chunk_idx": c.chunk_idx,
+                "char_start": c.char_start,
+                "char_end": c.char_end,
+                "text": c.text,
+                "kind": "code",
+                "symbol_name": "",
+                "kept": True,
+            })
     # O1: emit doc-chunks alongside code-chunks. They share file_id but
     # carry kind="doc" so search can prefer doc results for "why" queries.
     # Doc chunks are NOT comment-stripped; the docstring text IS the signal.
@@ -713,6 +830,7 @@ def chunk_record(cleaned_rec: dict) -> list[dict]:
                 "char_end": c.char_end,
                 "text": c.text,
                 "kind": "doc",
+                "symbol_name": "",
                 "kept": True,
             })
     if not out:
@@ -750,6 +868,7 @@ def process_file(path: Path, root: Path) -> dict | None:
 
 import _embed as _kz_embed  # v1.25.0+: HTTP-first embedding backend
 import _chunk as _kz_chunk  # v1.27.0+: sentence-boundary chunker
+import _ast_chunk as _kz_ast  # v1.33.0+: symbol-aware Python chunker (O2)
 import _search as _kz_search  # v1.27.0+: BM25+dense hybrid search
 import _quant as _kz_quant  # v1.31.0+: int8 quantization helpers
 
@@ -922,30 +1041,39 @@ def do_filter(root: Path) -> dict:
             "SELECT id FROM code_files WHERE path = ?", (cleaned_rec["path"],)
         ).fetchone()["id"]
         conn.execute("DELETE FROM code_chunks WHERE file_id = ?", (file_id,))
+        # NB: chunk_id cascades into code_chunks_xref via FK ON DELETE CASCADE
         if chunk_q8_blobs is not None:
             conn.executemany(
                 """INSERT INTO code_chunks
-                   (file_id, chunk_idx, char_start, char_end, text, embedding, embedding_q8, language, kind)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                   (file_id, chunk_idx, char_start, char_end, text, embedding, embedding_q8, language, kind, symbol_name)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 [
                     (file_id, c["chunk_idx"], c["char_start"], c["char_end"],
                      c["text"], blob, q8, cleaned_rec["language"],
-                     c.get("kind") or "code")
+                     c.get("kind") or "code",
+                     c.get("symbol_name") or "")
                     for c, blob, q8 in zip(kept, chunk_blobs, chunk_q8_blobs)
                 ],
             )
         else:
             conn.executemany(
                 """INSERT INTO code_chunks
-                   (file_id, chunk_idx, char_start, char_end, text, embedding, language, kind)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                   (file_id, chunk_idx, char_start, char_end, text, embedding, language, kind, symbol_name)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 [
                     (file_id, c["chunk_idx"], c["char_start"], c["char_end"],
                      c["text"], blob, cleaned_rec["language"],
-                     c.get("kind") or "code")
+                     c.get("kind") or "code",
+                     c.get("symbol_name") or "")
                     for c, blob in zip(kept, chunk_blobs)
                 ],
             )
+        # O6 (v1.33): populate code_chunks_xref from Python imports. Each
+        # imported symbol becomes one xref row tied to whichever chunk
+        # contains the source `import` statement. Heuristic: the module-
+        # level prologue chunk (kind='code', symbol_name='<module>') owns
+        # them. Other languages skip (extractor returns []).
+        _populate_xref_imports(conn, file_id, cleaned_rec, kept)
         chunks_written += len(kept)
         files_indexed += 1
         bar.tick(f"+ {cleaned_rec['path']} ({len(kept)} chunks)")

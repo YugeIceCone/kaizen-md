@@ -181,5 +181,99 @@ async def onboard_recent(limit: int = 20, language: str = "") -> list[dict]:
     return [{k: r[k] for k in r.keys()} for r in rows]
 
 
+# ─── M7 (v1.33+) — symbol-aware + xref tools ──────────────────────────
+
+
+@mcp.tool()
+async def onboard_symbol_search(
+    name: str,
+    kind: str = "",
+    language: str = "",
+    top_k: int = 20,
+) -> list[dict]:
+    """Look up chunks by symbol name (O2 ast-chunked Python).
+
+    name:     substring or glob (e.g. 'carve', '*Visitor*'). Empty
+              matches any (essentially "list ast-chunked symbols").
+    kind:     chunk kind filter — 'code' | 'doc' | 'module' (default
+              empty = any).
+    language: limit to one language (only Python populates symbol_name
+              at the moment).
+    top_k:    max results.
+
+    Returns chunk rows with {id, file_id, path, language, kind,
+    symbol_name, char_start, char_end, snippet}."""
+    root = _root()
+    if not oi.db_path(root).is_file():
+        return []
+    conn = oi.open_db(root, create=False)
+    where, params = [], []
+    if name:
+        if "*" in name or "?" in name:
+            sql_like = name.replace("*", "%").replace("?", "_")
+            where.append("c.symbol_name LIKE ?")
+            params.append(sql_like)
+        else:
+            where.append("c.symbol_name LIKE ?")
+            params.append(f"%{name}%")
+    else:
+        where.append("c.symbol_name != ''")
+    if kind:
+        where.append("c.kind = ?")
+        params.append(kind)
+    if language:
+        where.append("c.language = ?")
+        params.append(language)
+    sql = (
+        "SELECT c.id, c.file_id, f.path, c.language, c.kind, c.symbol_name, "
+        "       c.char_start, c.char_end, substr(c.text, 1, 200) AS snippet "
+        "FROM code_chunks c JOIN code_files f ON f.id = c.file_id "
+        "WHERE " + " AND ".join(where) +
+        " ORDER BY c.id LIMIT ?"
+    )
+    params.append(int(top_k))
+    rows = conn.execute(sql, params).fetchall()
+    conn.close()
+    return [{k: r[k] for k in r.keys()} for r in rows]
+
+
+@mcp.tool()
+async def onboard_xref(symbol: str, kind: str = "") -> list[dict]:
+    """Find chunks that reference `symbol` via the xref table (O6).
+
+    symbol: the name to look up (e.g. 'pathlib.Path', 'requests').
+            Matched against the xref `symbol` column with substring
+            semantics; pass exact name for exact match.
+    kind:   xref kind — 'import' | 'def' | 'call' (current
+            implementation populates 'import' from Python ast).
+            Empty = any.
+
+    Returns rows with {chunk_id, symbol, kind, path, language,
+    chunk_symbol_name, snippet}. Use this to answer 'which files
+    import X' / 'who uses Y'."""
+    root = _root()
+    if not oi.db_path(root).is_file():
+        return []
+    conn = oi.open_db(root, create=False)
+    where = ["x.symbol LIKE ?"]
+    params: list = [f"%{symbol}%"]
+    if kind:
+        where.append("x.kind = ?")
+        params.append(kind)
+    sql = (
+        "SELECT x.chunk_id, x.symbol, x.kind, "
+        "       f.path, c.language, c.symbol_name AS chunk_symbol_name, "
+        "       substr(c.text, 1, 200) AS snippet "
+        "FROM code_chunks_xref x "
+        "JOIN code_chunks c ON c.id = x.chunk_id "
+        "JOIN code_files f ON f.id = c.file_id "
+        "WHERE " + " AND ".join(where) +
+        " ORDER BY x.id LIMIT 50"
+    )
+    rows = conn.execute(sql, params).fetchall()
+    conn.close()
+    return [{k: r[k] for k in r.keys()} for r in rows]
+
+
 if __name__ == "__main__":
     mcp.run()
