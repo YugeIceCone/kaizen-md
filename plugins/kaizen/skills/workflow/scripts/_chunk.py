@@ -175,24 +175,99 @@ def chunk_into_dicts(
 # distinguish "I'm encoding a query" from "I'm encoding a passage".
 # For models that don't care (MiniLM), the prefix is just extra tokens
 # the model ignores; quality regression is minimal.
-QUERY_PREFIX = "search_query: "
-PASSAGE_PREFIX = "search_document: "
+# E1 — Model-aware asymmetric prefix detection.
+#
+# Different embedding models expect different query/passage markers:
+#   nomic-embed*       query="search_query: "        passage="search_document: "
+#   bge-*              query="Represent this..."     passage=""
+#   e5-*               query="query: "               passage="passage: "
+#   jina-embed*        query=""                      passage=""
+#   gte-qwen*          query="Instruct: ...\nQuery:" passage=""
+#   minilm / generic   nomic-compatible (tolerated by most)
+#
+# DEFAULT_QUERY_PREFIX / DEFAULT_PASSAGE_PREFIX = nomic family (most common
+# in kaizen's stack — used by `all-MiniLM-L6-v2` defaults). The legacy
+# module-level constants `QUERY_PREFIX` / `PASSAGE_PREFIX` alias to these
+# for back-compat with callers (embed-rerank MCP, ad-hoc importers).
+
+_BGE_QUERY = "Represent this sentence for searching relevant passages: "
+_E5_QUERY = "query: "
+_E5_PASSAGE = "passage: "
+_GTE_QWEN_QUERY = (
+    "Instruct: Given a query, retrieve passages that answer it\nQuery: "
+)
+_NOMIC_QUERY = "search_query: "
+_NOMIC_PASSAGE = "search_document: "
+
+MODEL_PREFIXES: dict[str, tuple[str, str]] = {
+    "nomic":    (_NOMIC_QUERY, _NOMIC_PASSAGE),
+    "bge":      (_BGE_QUERY, ""),
+    "e5":       (_E5_QUERY, _E5_PASSAGE),
+    "jina":     ("", ""),
+    "gte-qwen": (_GTE_QWEN_QUERY, ""),
+    "generic":  (_NOMIC_QUERY, _NOMIC_PASSAGE),  # safe default for unknown
+}
+
+# Back-compat aliases — default-model (nomic) prefixes.
+QUERY_PREFIX = _NOMIC_QUERY
+PASSAGE_PREFIX = _NOMIC_PASSAGE
+
+
+def detect_model_family(model: str) -> str:
+    """Substring-match the model name against known embedding families.
+
+    Returns one of the MODEL_PREFIXES keys. Empty/unknown models map to
+    'generic' (which currently uses nomic-style prefixes — the most
+    widely tolerated default)."""
+    if not model:
+        return "generic"
+    m = model.lower()
+    if "nomic" in m or "minilm" in m or "mxbai" in m:
+        return "nomic"  # minilm + mxbai tolerate nomic prefixes
+    if "bge" in m:
+        return "bge"
+    if "gte-qwen" in m or ("qwen" in m and "embed" in m):
+        return "gte-qwen"
+    if "e5" in m:
+        return "e5"
+    if "jina" in m:
+        return "jina"
+    return "generic"
+
+
+def prefixes_for_model(model: str) -> tuple[str, str]:
+    """Return (query_prefix, passage_prefix) for the model. Tuple shape
+    is stable; an empty string indicates "no prefix for this slot"."""
+    return MODEL_PREFIXES[detect_model_family(model)]
 
 
 def apply_query_prefix(text: str, model: str = "") -> str:
-    """Prepend the asymmetric query prefix if the model is known to
-    benefit. Right now: applies unconditionally (nomic/bge/e5 are common
-    and others are tolerant)."""
-    if text.startswith(QUERY_PREFIX):
+    """Prepend the model's query prefix. Idempotent: if `text` already
+    starts with any known query prefix, it is returned unchanged.
+
+    Empty prefix (e.g. jina) means no transformation."""
+    q_pref, _ = prefixes_for_model(model)
+    if not q_pref:
         return text
-    return QUERY_PREFIX + text
+    # Idempotence guard — already-prefixed text passes through. Check
+    # against ALL known query prefixes so cross-model batches don't
+    # double-prefix.
+    for q, _ in MODEL_PREFIXES.values():
+        if q and text.startswith(q):
+            return text
+    return q_pref + text
 
 
 def apply_passage_prefix(text: str, model: str = "") -> str:
-    """Same shape for passages."""
-    if text.startswith(PASSAGE_PREFIX):
+    """Prepend the model's passage prefix. Same idempotence rules as
+    apply_query_prefix."""
+    _, p_pref = prefixes_for_model(model)
+    if not p_pref:
         return text
-    return PASSAGE_PREFIX + text
+    for _, p in MODEL_PREFIXES.values():
+        if p and text.startswith(p):
+            return text
+    return p_pref + text
 
 
 def apply_passage_prefix_batch(texts: Iterable[str], model: str = "") -> list[str]:
@@ -246,18 +321,23 @@ def apply_passage_prefix_with_metadata(
     symbol: str = "",
     model: str = "",
 ) -> str:
-    """Prepend metadata + the model-aware search_document: prefix.
+    """Prepend metadata + the model-aware passage prefix.
 
-    Order: search_document: marker first (so the model sees its asymmetric
-    cue immediately), then the metadata lines, then the original text. If
-    the input already starts with PASSAGE_PREFIX it is preserved unchanged
-    (idempotent re-application)."""
-    if text.startswith(PASSAGE_PREFIX):
-        return text
+    Order: model's passage prefix first (if non-empty — see E1 family
+    detection), then the metadata lines, then the original text.
+    Idempotent: already-prefixed text passes through unchanged.
+
+    `model=""` uses the nomic-family default (PASSAGE_PREFIX) for
+    back-compat with pre-E1 callers."""
+    # Idempotence — check ALL known passage prefixes (cross-model safe)
+    for _, p in MODEL_PREFIXES.values():
+        if p and text.startswith(p):
+            return text
+    _, p_pref = prefixes_for_model(model)
     meta = build_metadata_prefix(
         path=path, language=language, kind=kind, symbol=symbol
     )
-    return PASSAGE_PREFIX + meta + text
+    return p_pref + meta + text
 
 
 def apply_passage_prefix_batch_with_metadata(
