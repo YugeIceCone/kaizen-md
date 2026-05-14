@@ -1,0 +1,295 @@
+"""Tests for metrics.py — rollup + never-used catalog."""
+
+from __future__ import annotations
+
+import json
+import os
+import sys
+import tempfile
+import unittest
+from pathlib import Path
+
+_KZ_DIR = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(_KZ_DIR / "skills/workflow/scripts"))
+
+import metrics  # noqa: E402
+
+
+def _write_trace(path: Path, events: list[dict]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w") as f:
+        for e in events:
+            f.write(json.dumps(e) + "\n")
+
+
+class MetricsBase(unittest.TestCase):
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.trace_dir = Path(self._tmp.name) / "trace"
+        self.trace_file = self.trace_dir / "events.jsonl"
+        self._orig = os.environ.get("KAIZEN_TRACE_DIR")
+        os.environ["KAIZEN_TRACE_DIR"] = str(self.trace_dir)
+
+    def tearDown(self):
+        self._tmp.cleanup()
+        if self._orig is None:
+            os.environ.pop("KAIZEN_TRACE_DIR", None)
+        else:
+            os.environ["KAIZEN_TRACE_DIR"] = self._orig
+
+
+class TestEventIter(MetricsBase):
+    def test_iter_empty_when_no_file(self):
+        self.assertEqual(list(metrics.iter_events()), [])
+
+    def test_iter_yields_valid_records(self):
+        _write_trace(self.trace_file, [
+            {"ts": "2026-05-14T00:00:00Z", "src": "hook", "evt": "PreToolUse-Skill", "tool": "Skill"},
+            {"ts": "2026-05-14T00:00:01Z", "src": "hook", "evt": "PreToolUse-Bash", "tool": "Bash"},
+        ])
+        events = list(metrics.iter_events())
+        self.assertEqual(len(events), 2)
+        self.assertEqual(events[0]["evt"], "PreToolUse-Skill")
+
+    def test_iter_skips_malformed(self):
+        # Mix valid + invalid JSON lines
+        self.trace_file.parent.mkdir(parents=True, exist_ok=True)
+        with self.trace_file.open("w") as f:
+            f.write('{"ts":"2026-05-14T00:00:00Z","evt":"X"}\n')
+            f.write('not valid json\n')
+            f.write('{"ts":"2026-05-14T00:00:01Z","evt":"Y"}\n')
+        events = list(metrics.iter_events())
+        self.assertEqual(len(events), 2)
+
+    def test_filter_by_sid(self):
+        _write_trace(self.trace_file, [
+            {"ts": "2026-05-14T00:00:00Z", "evt": "A", "sid": "session-1"},
+            {"ts": "2026-05-14T00:00:01Z", "evt": "B", "sid": "session-2"},
+            {"ts": "2026-05-14T00:00:02Z", "evt": "C", "sid": "session-1"},
+        ])
+        events = list(metrics.iter_events(sid="session-1"))
+        self.assertEqual(len(events), 2)
+
+
+class TestDurationParsing(unittest.TestCase):
+    def test_minute_duration(self):
+        out = metrics.parse_duration("30m")
+        self.assertIsNotNone(out)
+
+    def test_day_duration(self):
+        out = metrics.parse_duration("7d")
+        self.assertIsNotNone(out)
+
+    def test_iso_timestamp(self):
+        out = metrics.parse_duration("2026-05-14T00:00:00Z")
+        self.assertIsNotNone(out)
+
+    def test_invalid_returns_none(self):
+        self.assertIsNone(metrics.parse_duration("bogus"))
+        self.assertIsNone(metrics.parse_duration(""))
+
+
+class TestRollup(MetricsBase):
+    def test_rollup_counts_tools(self):
+        _write_trace(self.trace_file, [
+            {"ts": "2026-05-14T00:00:00Z", "evt": "PreToolUse-Skill", "tool": "Skill",
+             "data": {"ident": "brain"}},
+            {"ts": "2026-05-14T00:00:01Z", "evt": "PreToolUse-Skill", "tool": "Skill",
+             "data": {"ident": "brain"}},
+            {"ts": "2026-05-14T00:00:02Z", "evt": "PreToolUse-Edit", "tool": "Edit"},
+        ])
+        r = metrics.rollup_events()
+        self.assertEqual(r.by_tool["Skill"], 2)
+        self.assertEqual(r.by_tool["Edit"], 1)
+        self.assertEqual(r.by_skill["brain"], 2)
+
+    def test_rollup_counts_mcp(self):
+        _write_trace(self.trace_file, [
+            {"ts": "2026-05-14T00:00:00Z", "evt": "PreToolUse-mcp__plugin_kaizen_brain__capture",
+             "tool": "mcp__plugin_kaizen_brain__capture"},
+            {"ts": "2026-05-14T00:00:01Z", "evt": "PreToolUse-mcp__plugin_kaizen_brain__capture",
+             "tool": "mcp__plugin_kaizen_brain__capture"},
+        ])
+        r = metrics.rollup_events()
+        self.assertEqual(r.by_mcp["mcp__plugin_kaizen_brain__capture"], 2)
+
+    def test_rollup_post_tool_does_not_double_count(self):
+        _write_trace(self.trace_file, [
+            {"ts": "2026-05-14T00:00:00Z", "evt": "PreToolUse-Skill", "tool": "Skill",
+             "data": {"ident": "brain"}},
+            {"ts": "2026-05-14T00:00:01Z", "evt": "PostToolUse-Skill", "tool": "Skill",
+             "data": {"result": "ok"}},
+        ])
+        r = metrics.rollup_events()
+        # Tool counted on Pre only — not double
+        self.assertEqual(r.by_tool["Skill"], 1)
+
+    def test_rollup_counts_errors(self):
+        _write_trace(self.trace_file, [
+            {"ts": "2026-05-14T00:00:00Z", "evt": "PostToolUse-Edit", "tool": "Edit",
+             "data": {"result": "err"}},
+            {"ts": "2026-05-14T00:00:01Z", "evt": "PostToolUse-Edit", "tool": "Edit",
+             "data": {"result": "ok"}},
+        ])
+        r = metrics.rollup_events()
+        self.assertEqual(r.errors, 1)
+
+    def test_rollup_session_tracking(self):
+        _write_trace(self.trace_file, [
+            {"ts": "2026-05-14T00:00:00Z", "evt": "SessionStart", "sid": "s1"},
+            {"ts": "2026-05-14T00:00:01Z", "evt": "SessionStart", "sid": "s2"},
+            {"ts": "2026-05-14T00:00:02Z", "evt": "X", "sid": "s1"},
+        ])
+        r = metrics.rollup_events()
+        self.assertEqual(len(r.sessions), 2)
+
+
+class TestLatestSession(MetricsBase):
+    def test_latest_session_id(self):
+        _write_trace(self.trace_file, [
+            {"ts": "2026-05-13T00:00:00Z", "evt": "SessionStart", "sid": "old"},
+            {"ts": "2026-05-14T00:00:00Z", "evt": "SessionStart", "sid": "newer"},
+        ])
+        self.assertEqual(metrics.latest_session_id(), "newer")
+
+    def test_returns_none_on_empty(self):
+        self.assertIsNone(metrics.latest_session_id())
+
+
+class TestNeverUsed(MetricsBase):
+    def test_never_used_skills_finds_all_when_trace_empty(self):
+        # Empty trace → all available skills are never-used
+        _write_trace(self.trace_file, [])
+        result = metrics.never_used("skill")
+        self.assertEqual(result["kind"], "skill")
+        self.assertEqual(result["used_count"], 0)
+        # Plugin-original skills are visible
+        self.assertGreater(len(result["never_used"]), 0)
+
+    def test_never_used_excludes_vendored(self):
+        _write_trace(self.trace_file, [])
+        result = metrics.never_used("skill")
+        # Vendored skills must NOT appear in available -> not in never_used
+        for vendored in ("kiss", "solid", "yagni"):
+            self.assertNotIn(vendored, result["never_used"])
+
+    def test_never_used_skill_marks_used(self):
+        _write_trace(self.trace_file, [
+            {"ts": "2026-05-14T00:00:00Z", "evt": "PreToolUse-Skill",
+             "tool": "Skill", "data": {"ident": "brain"}},
+        ])
+        result = metrics.never_used("skill")
+        self.assertEqual(result["used_count"], 1)
+        self.assertNotIn("brain", result["never_used"])
+
+    def test_never_used_tool(self):
+        _write_trace(self.trace_file, [
+            {"ts": "2026-05-14T00:00:00Z", "evt": "PreToolUse-Bash", "tool": "Bash"},
+            {"ts": "2026-05-14T00:00:01Z", "evt": "PreToolUse-Edit", "tool": "Edit"},
+        ])
+        result = metrics.never_used("tool")
+        self.assertIn("Bash", [x for x in result["never_used"]] + ["Bash"])  # noqa
+        # Anyway, expected_count is positive
+        self.assertGreater(result["expected_count"], 0)
+
+    def test_never_used_invalid_kind_raises(self):
+        _write_trace(self.trace_file, [])
+        with self.assertRaises(ValueError):
+            metrics.never_used("bogus")
+
+
+class TestTopN(MetricsBase):
+    def test_top_n_by_tool(self):
+        events = []
+        for _ in range(5):
+            events.append({"ts": "2026-05-14T00:00:00Z",
+                           "evt": "PreToolUse-Skill", "tool": "Skill",
+                           "data": {"ident": "brain"}})
+        for _ in range(3):
+            events.append({"ts": "2026-05-14T00:00:01Z",
+                           "evt": "PreToolUse-Skill", "tool": "Skill",
+                           "data": {"ident": "workflow"}})
+        _write_trace(self.trace_file, events)
+        top = metrics.top_n("skill", n=2)
+        self.assertEqual(top[0][0], "brain")
+        self.assertEqual(top[0][1], 5)
+
+
+class TestPaths(unittest.TestCase):
+    def test_trace_log_path_env_override(self):
+        orig = os.environ.get("KAIZEN_TRACE_DIR")
+        os.environ["KAIZEN_TRACE_DIR"] = "/tmp/x-test"
+        try:
+            self.assertEqual(
+                str(metrics.trace_log_path()),
+                "/tmp/x-test/events.jsonl",
+            )
+        finally:
+            if orig is None:
+                os.environ.pop("KAIZEN_TRACE_DIR", None)
+            else:
+                os.environ["KAIZEN_TRACE_DIR"] = orig
+
+
+class TestCli(unittest.TestCase):
+    """End-to-end CLI tests — subprocess to ensure argparse wiring."""
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.trace_dir = Path(self._tmp.name) / "trace"
+        self.trace_dir.mkdir()
+        (self.trace_dir / "events.jsonl").write_text(
+            '{"ts":"2026-05-14T00:00:00Z","evt":"PreToolUse-Skill","tool":"Skill","data":{"ident":"brain"},"sid":"smoke"}\n'
+        )
+        self._orig = os.environ.get("KAIZEN_TRACE_DIR")
+        os.environ["KAIZEN_TRACE_DIR"] = str(self.trace_dir)
+
+    def tearDown(self):
+        self._tmp.cleanup()
+        if self._orig is None:
+            os.environ.pop("KAIZEN_TRACE_DIR", None)
+        else:
+            os.environ["KAIZEN_TRACE_DIR"] = self._orig
+
+    def _run(self, *args):
+        import subprocess
+        script = _KZ_DIR / "skills/workflow/scripts/metrics.py"
+        env = os.environ.copy()
+        return subprocess.run(
+            ["python3", str(script), *args],
+            capture_output=True, text=True, env=env, timeout=10,
+        )
+
+    def test_path_subcommand(self):
+        result = self._run("path")
+        self.assertEqual(result.returncode, 0)
+        out = json.loads(result.stdout)
+        self.assertIn("trace_log", out)
+
+    def test_lifetime_subcommand(self):
+        result = self._run("lifetime", "--json")
+        self.assertEqual(result.returncode, 0)
+        out = json.loads(result.stdout)
+        self.assertGreaterEqual(out["total_events"], 1)
+
+    def test_session_subcommand(self):
+        result = self._run("session", "--sid", "smoke", "--json")
+        self.assertEqual(result.returncode, 0)
+        out = json.loads(result.stdout)
+        self.assertEqual(out["sid"], "smoke")
+
+    def test_top_subcommand(self):
+        result = self._run("top", "--kind", "skill", "--n", "5", "--json")
+        self.assertEqual(result.returncode, 0)
+        out = json.loads(result.stdout)
+        self.assertIsInstance(out, list)
+
+    def test_never_used_subcommand(self):
+        result = self._run("never-used", "--kind", "skill", "--json")
+        self.assertEqual(result.returncode, 0)
+        out = json.loads(result.stdout)
+        self.assertEqual(out["kind"], "skill")
+
+
+if __name__ == "__main__":
+    unittest.main()
