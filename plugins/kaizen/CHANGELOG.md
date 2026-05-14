@@ -5,6 +5,26 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [S
 
 ## [Unreleased]
 
+### Added — workflow observability + Context7 wiring + ci-gate skill
+
+- **Workflow-stage trace events** — `trace.py` gains a `workflow`
+  source; `workflow.sh` emits `routine-start` / `stage-start` /
+  `stage-complete` on init/next/advance (covers the MCP path too). The
+  pipeline was invisible to the trace log; now `kaizen-metrics` can
+  report per-stage timing and which routines actually run.
+- **Context7 wired across research → review** — `research` names
+  Context7 as the first-choice doc source; `analyze` / `create-plan`
+  verify external-library APIs before the plan locks; `review` /
+  `validate` verify library claims against it. A regression-guard test
+  keeps the wiring from disappearing.
+- **`ci-gate` skill** — runs the CI-equivalent merge gate locally
+  (`ci-gate.sh`: bash/python/json/SKILL.md checks + iron-laws codegen
+  drift + full unittest suite). It is the SSOT for the CI check list —
+  `.github/workflows/test.yml` now calls it, so CI and local runs
+  cannot drift. Wired as a `ci-gate` stage into the code-landing
+  routines (build-feature / fix-bug / refactor / migrate / harden).
+  `/kaizen:ci-gate` + `kaizen-ci-gate` drive it.
+
 ### Added — `iron-laws` skill (managed single-source-of-truth for the iron laws)
 
 The plugin's iron laws become a managed SSOT system — `iron-laws.yaml` as the master, generated/linked derivations, and a real checker wired into `validate.py` + the pre-commit gate + an MCP server. Resolves the documentation-drift (stale "11-slot" / "13 iron laws" counts) and enforcement-gap (0 of 21 laws actually machine-checked) failure modes.
