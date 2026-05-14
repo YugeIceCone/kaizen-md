@@ -79,10 +79,14 @@ prompt_template: |
 
       {result_path}
 
-  The JSON MUST match this schema (note `additionalProperties: false`):
+  The JSON MUST match this schema — `additionalProperties: false`
+  means include ONLY the keys it defines:
 
   {result_schema}
 
+  Your result's top-level keys must be EXACTLY `checkpoint_id`,
+  `skill`, `status`, `summary`, `findings` — nothing else. Do NOT
+  add `$schema`, `$id`, or any other key; the contract rejects them.
   `status` is one of: `clean` (zero findings), `findings` (one or
   more), `error` (you could not complete the audit — explain why in
   `summary`). `checkpoint_id` and `skill` MUST echo the values given

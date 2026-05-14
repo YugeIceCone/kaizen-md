@@ -3,6 +3,12 @@
 All notable changes to the `kaizen` plugin documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [SemVer](https://semver.org/).
 
+## [1.35.1] — 2026-05-14
+
+### Fixed — agent-self-audit subagent results rejected over echoed schema meta-keys
+
+The first live `agent-self-audit` run surfaced a prompt-design bug: subagents echoed the `$schema` / `$id` meta-keys from the JSON Schema embedded in their brief into their result body, and the strict `additionalProperties: false` contract then rejected 12/13 otherwise-valid results as "malformed". Three layers of defense: `_validate_result` strips `$`-prefixed meta-keys before validating; `_prompt_schema` strips `$schema`/`$id`/`title`/`description` from the schema embedded in each brief so there is nothing to copy; and the `agent-dispatch.yaml` prompt template now states the exact permitted top-level keys explicitly. The graceful-degradation path worked as designed throughout — every rejected result became a `medium` finding rather than crashing the aggregate — so the run's results were fully salvageable by re-aggregating once the fix landed. +3 tests.
+
 ## [1.35.0] — 2026-05-14
 
 ### Added — agent-self-audit (the self-audit checkpoint executor)

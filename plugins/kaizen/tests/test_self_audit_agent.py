@@ -130,6 +130,24 @@ class TestBuildBriefs(unittest.TestCase):
         briefs = agent.build_briefs([cp], self.cfg, self.schema_text, self.run_dir)
         self.assertEqual(briefs[0]["subagent_type"], "Explore")
 
+    def test_prompt_schema_strips_meta_keys(self):
+        # The schema embedded in a brief must not carry its own
+        # meta-keys — subagents copy them into their result, which
+        # additionalProperties:false then rejects.
+        cleaned = json.loads(agent._prompt_schema(self.schema_text))
+        for meta in ("$schema", "$id", "title", "description"):
+            self.assertNotIn(meta, cleaned)
+        # the substantive contract survives the strip
+        self.assertEqual(cleaned["required"],
+                         ["checkpoint_id", "skill", "status", "findings"])
+        self.assertFalse(cleaned["additionalProperties"])
+
+    def test_brief_embeds_no_schema_meta_keys(self):
+        cps = [_checkpoint("k-cp", "kiss", ["x/"])]
+        briefs = agent.build_briefs(cps, self.cfg, self.schema_text, self.run_dir)
+        self.assertNotIn('"$schema"', briefs[0]["prompt"])
+        self.assertNotIn('"$id"', briefs[0]["prompt"])
+
 
 class TestValidateResult(unittest.TestCase):
     def setUp(self):
@@ -164,6 +182,17 @@ class TestValidateResult(unittest.TestCase):
         bad = self._ok()
         del bad["skill"]
         self.assertIsNotNone(agent._validate_result(bad, None))
+
+    def test_meta_keys_tolerated(self):
+        # Subagents echo $schema/$id from the schema embedded in their
+        # brief — these must NOT fail validation (the prompt bug the
+        # first live agent-self-audit run surfaced). Both the
+        # jsonschema path and the structural fallback strip them.
+        ok = self._ok()
+        ok["$schema"] = "https://json-schema.org/draft/2020-12/schema"
+        ok["$id"] = "https://example/x.json"
+        self.assertIsNone(agent._validate_result(ok, self.schema))
+        self.assertIsNone(agent._validate_result(ok, None))
 
 
 class TestMergeResults(unittest.TestCase):

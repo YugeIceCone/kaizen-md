@@ -137,7 +137,7 @@ def build_briefs(
             "targets_block": targets_block,
             "rationale": rationale,
             "result_path": str(result_path),
-            "result_schema": schema_text.strip(),
+            "result_schema": _prompt_schema(schema_text),
         })
         briefs.append({
             "checkpoint_id": cp["id"],
@@ -150,10 +150,37 @@ def build_briefs(
     return briefs
 
 
+def _strip_meta_keys(d: dict) -> dict:
+    """Drop JSON-Schema meta-keys ($schema, $id, …) from a dict. LLM
+    subagents routinely echo these from the schema embedded in their
+    brief into the result body; they carry no contract meaning, so
+    strip rather than reject."""
+    return {k: v for k, v in d.items() if not k.startswith("$")}
+
+
+def _prompt_schema(schema_text: str) -> str:
+    """The schema embedded in a subagent brief, minus its own meta-keys.
+    `$schema` / `$id` / `title` / `description` are noise for "match
+    this shape" — and worse, subagents copy them into their result,
+    where additionalProperties:false then rejects an otherwise-valid
+    result. Strip at the source so there's nothing to copy."""
+    try:
+        schema = json.loads(schema_text)
+    except json.JSONDecodeError:
+        return schema_text.strip()
+    for meta in ("$schema", "$id", "title", "description"):
+        schema.pop(meta, None)
+    return json.dumps(schema, indent=2)
+
+
 def _validate_result(raw: dict, schema: Optional[dict]) -> Optional[str]:
     """Return None when `raw` satisfies the checkpoint-result contract,
     else a short error string. Uses jsonschema when available; falls
-    back to a structural check so aggregate still works without it."""
+    back to a structural check so aggregate still works without it.
+
+    `$`-prefixed meta-keys are stripped before validating — see
+    _strip_meta_keys for why."""
+    raw = _strip_meta_keys(raw)
     if schema is not None:
         try:
             import jsonschema  # type: ignore
