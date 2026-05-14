@@ -307,8 +307,18 @@ def load_or_infer_manifest(feature: str) -> FeatureManifest:
         or (scripts / f"{feature}.py").is_file()
         or any(scripts.glob(f"{feature}_*.py"))
     )
+    # Core/public split: only true when the feature ships a
+    # <feature>.py public CLI OR a _<feature>.py private core. MCP-only
+    # (audit), op-modules-only (loop), and the host skill (workflow)
+    # have backing code but no split — the `core` + `tests` slots
+    # don't apply to them.
+    has_core_split = (
+        (scripts / f"_{feature}.py").is_file()
+        or (scripts / f"{feature}.py").is_file()
+    )
     predicates = {
         "feature_has_backing_code": has_backing_code,
+        "feature_has_core_split": has_core_split,
         "feature_has_routing_or_taxonomy": any((skill_dir / "domain").glob("*.yaml")) if (skill_dir / "domain").is_dir() else False,
         "feature_writes_validatable_artifacts": (skill_dir / "domain" / "schemas").is_dir() and any((skill_dir / "domain" / "schemas").glob("*.schema.json")),
         "feature_has_skill_scoped_tooling": (skill_dir / "scripts").is_dir() and any((skill_dir / "scripts").glob("*.py")),

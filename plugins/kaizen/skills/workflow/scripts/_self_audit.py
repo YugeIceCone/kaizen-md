@@ -157,11 +157,23 @@ def script_in_plugin_permissions(script_name: str) -> bool:
 
 
 def hook_fires_trace(hook_path: Path) -> bool:
+    """A hook 'fires trace' if it invokes _trace.sh OR runs trace.py
+    with the `event` subcommand.
+
+    The `trace.py event` check is regex, not a literal substring:
+    hooks invoke it as `python3 "$PLUGIN_ROOT/.../trace.py" event` —
+    the quote + path between `trace.py` and `event` means a literal
+    `"trace.py event"` substring misses. That was the
+    posttooluse-trace.sh false-positive the self-audit caught on
+    itself."""
     try:
         text = hook_path.read_text(encoding="utf-8")
     except OSError:
         return False
-    return ("_trace.sh" in text) or ("trace.py event" in text)
+    if "_trace.sh" in text:
+        return True
+    # `trace.py` <quote/space/path...> `event` — tolerate the gap.
+    return re.search(r'trace\.py["\'\s][^\n]*\bevent\b', text) is not None
 
 
 def file_contains_volatile(text: str) -> list[str]:

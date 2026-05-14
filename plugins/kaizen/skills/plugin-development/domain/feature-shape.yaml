@@ -44,9 +44,17 @@ slots:
   - id: core
     path_pattern: "skills/workflow/scripts/_<feature>.py"
     required: false
-    when: feature_has_backing_code
+    when: feature_has_core_split
     role: "private core — paths/config/primitives/no side effects"
-    why: "Underscore prefix marks 'used only by sibling <feature>*.py modules'. Doc-only skills (instructions / patterns) have no core."
+    why: |
+      Underscore prefix marks 'used only by sibling <feature>*.py
+      modules'. Only required when the feature HAS a core/public
+      split — i.e. it ships a <feature>.py public CLI or _<feature>.py
+      core. MCP-only features (audit), op-modules-only features
+      (loop: ledger/state/mcp), and the script-host skill (workflow)
+      have backing code but no core/public split — the slot doesn't
+      apply. Doc-only skills (instructions / patterns) also have no
+      core. See predicate `feature_has_core_split`."
 
   - id: public-cli
     path_pattern: "skills/workflow/scripts/<feature>.py"
@@ -96,9 +104,17 @@ slots:
   - id: tests
     path_pattern: "tests/test_<feature>*.py"
     required: false
-    when: feature_has_backing_code
+    when: feature_has_core_split
     role: "unit + flow + integration tests"
-    why: "Sandbox via env vars; mock heavy deps; @skipUnless for real-model integration. Doc-only skills have no scripts to test."
+    why: |
+      Sandbox via env vars; mock heavy deps; @skipUnless for
+      real-model integration. Gated on feature_has_core_split (same
+      as `core`): a feature with a <feature>.py / _<feature>.py
+      surface owns named tests. MCP-only / op-only / host-skill
+      features (audit / loop / workflow) have their coverage in
+      differently-named test files (test_audit_mcp, test_loop_*,
+      test_index_flow) — not test_<feature>*.py. Doc-only skills
+      have no scripts to test."
 
 # Conditional predicates — evaluated against the feature manifest
 # (a yaml file at skills/<feature>/domain/manifest.yaml when present;
@@ -107,6 +123,15 @@ predicates:
   feature_has_backing_code:
     description: "Feature has Python scripts at skills/workflow/scripts/<feature>*.py or _<feature>.py."
     detect: "any of {_<feature>.py, <feature>.py, <feature>_*.py} in skills/workflow/scripts/"
+  feature_has_core_split:
+    description: |
+      Feature has a core/public split — it ships a <feature>.py
+      public CLI OR a _<feature>.py private core. Gates the `core`
+      + `tests` slots. A feature with backing code but no split
+      (MCP-only: audit; op-modules-only: loop; the script-host
+      skill: workflow) does NOT need a _<feature>.py and its tests
+      live in differently-named files.
+    detect: "skills/workflow/scripts/_<feature>.py OR skills/workflow/scripts/<feature>.py exists"
   feature_has_routing_or_taxonomy:
     description: "Feature classifies / routes inputs (e.g. brain's entity-types)."
     detect: "any *.yaml in skills/<feature>/domain/"
