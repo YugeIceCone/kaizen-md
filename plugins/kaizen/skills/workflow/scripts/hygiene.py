@@ -346,11 +346,31 @@ def main() -> None:
     p = argparse.ArgumentParser(prog="hygiene.py", description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("cmd", nargs="?", default="check",
-                   help="check | fix | check-<name> | fix-<name> | json")
+                   help="check | fix | check-<name> | fix-<name> | json | langs")
     p.add_argument("--verbose", "-v", action="store_true")
+    p.add_argument("--root", help="repo root for `langs` (default: cwd)")
+    p.add_argument("--json", action="store_true",
+                   help="JSON output (works with `langs`)")
     args = p.parse_args()
 
     cmd = args.cmd
+
+    # X5: per-language composite hygiene (cargo audit / pip-audit /
+    # npm audit / govulncheck / tsc --noEmit). Detects languages via
+    # manifest files at --root and runs each probe; missing tools are
+    # skipped (not hard failures) so CI envs without every audit tool
+    # installed still pass.
+    if cmd == "langs":
+        from pathlib import Path as _Path
+        sys.path.insert(0, str(_Path(__file__).resolve().parent))
+        import _hygiene_lang as kz_hlang
+        root = (
+            _Path(args.root).expanduser().resolve()
+            if args.root else _Path.cwd()
+        )
+        result = kz_hlang.run_composite(root)
+        print(kz_hlang.format_report(result, json_mode=args.json))
+        sys.exit(0 if result.ok else 1)
 
     if cmd == "json":
         results = run_all_checks()
