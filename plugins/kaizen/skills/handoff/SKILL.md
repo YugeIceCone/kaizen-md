@@ -2,7 +2,7 @@
 name: handoff-managing
 description: Creates and resumes session handoff documents for transferring work between sessions. Use to save context, resume from previous sessions, or manage handoff files.
 metadata:
-  version: "1.1"
+  version: "1.2"
 ---
 
 # Handoff Managing
@@ -22,12 +22,22 @@ You are wrapping up the current session. Goal: produce a thorough but **concise*
 
 ### Step 1 — Determine session name + filepath
 
+The session name groups related handoffs into one folder. Derive it
+from the **current project** — the "latest folder" heuristic alone is
+project-blind and mis-files cross-project work (kaizen-md work under a
+`shodan-rs/` folder, etc.).
+
 ```bash
-# Latest existing session folder. Returns folder name, or empty if none.
-ls -td ~/.claude/thoughts/handoffs/*/ 2>/dev/null | head -1 | xargs -r basename
+# Primary signal: the current git repo name — the correct grouping.
+git rev-parse --show-toplevel 2>/dev/null | xargs -r basename
 ```
 
-If output is empty, use `general` as the session name. Otherwise use the returned folder name (e.g. `open-source-release`, `ENG-2124`).
+- If that prints a name → use it.
+- If empty (not in a git repo) → fall back to the latest existing
+  folder: `ls -td ~/.claude/thoughts/handoffs/*/ 2>/dev/null | head -1 | xargs -r basename`.
+- If still empty → use `general`.
+- If you're working a ticket (e.g. `ENG-2124`), prefer the ticket id
+  as the session name regardless of the above.
 
 File path:
 
@@ -53,8 +63,8 @@ date -u +%Y-%m-%d_%H-%M
 ---
 session: {session-name from step 1}
 date: YYYY-MM-DD
-status: complete|partial|blocked
-outcome: SUCCEEDED|PARTIAL_PLUS|PARTIAL_MINUS|FAILED
+status: partial          # PLACEHOLDER — Step 4 sets the real value
+outcome: IN_PROGRESS     # PLACEHOLDER — Step 4 sets this from the user's answer
 ---
 
 goal: {one line — what this session accomplished. Shown in statusline.}
@@ -91,17 +101,25 @@ files:
 **Rules:**
 - `goal:` + `now:` — required, statusline-visible.
 - **Do not** rename to `session_goal` / `objective` / `focus` / `current` — the parser only matches `goal:` and `now:`.
+- `status:` + `outcome:` — write the PLACEHOLDER values shown above (`partial` / `IN_PROGRESS`) and nothing else. The real values come from the user in Step 4 — do NOT guess or pre-fill them here, or Step 4's question becomes performative.
 - Prefer file-path-with-line references (`crates/core/src/runtime/dispatch.rs:222`) over inline code blocks.
 - Be thorough. The whole point is to compress context without losing key details.
 
 Use the **Write** tool to save the file.
 
-### Step 3 — Persist to the SQLite DB
+### Step 3 — Optionally persist to the SQLite DB
 
-The handoff is stored to BOTH the filesystem (above) AND the SQLite DB at `~/.claude/session_logs.db` (primary, queryable).
+The **filesystem YAML from Step 2 is the system of record** — portable,
+always works, what `resume` reads. The SQLite DB at
+`~/.claude/session_logs.db` is an *optional queryable index*, written
+via `~/.claude/scripts/stores.py`. That helper is **not shipped with
+the plugin** — it's part of a personal `~/.claude/scripts/` setup. If
+it's absent, **skip this step**; the handoff is already saved.
 
 ```bash
-~/.claude/scripts/.venv/bin/python3 -c "
+# Guarded — only touch the DB if the helper actually exists.
+if [ -f ~/.claude/scripts/stores.py ]; then
+  python3 -c "
 import sys, os
 sys.path.insert(0, os.path.expanduser('~/.claude/scripts'))
 from stores import handoff_save
@@ -109,13 +127,19 @@ content = open(os.path.expanduser('~/.claude/thoughts/handoffs/{session-name}/{f
 handoff_save('{session-name}', content, 'partial')
 print('Saved to DB')
 "
+else
+  echo "stores.py absent — filesystem YAML is the record; skipping DB."
+fi
 ```
 
-Replace `{session-name}` and `{filename}` (no extension) with values from step 1. Initial status is `partial` — the final outcome is set in step 4.
+Replace `{session-name}` and `{filename}` (no extension) with values from step 1. The DB row's status starts `partial`; the final outcome is set in Step 4.
 
 ### Step 4 — Mark session outcome (REQUIRED)
 
-Before responding to the user, ask about the session outcome via the **AskUserQuestion** tool:
+Step 2 wrote placeholder `status:` / `outcome:`. Now get the real
+values from the user and write them back.
+
+Ask about the session outcome via the **AskUserQuestion** tool:
 
 ```
 Question: "How did this session go?"
@@ -126,10 +150,18 @@ Options:
   - FAILED:        Task abandoned or blocked
 ```
 
-After the user responds, re-save with the final status:
+After the user responds:
+
+1. **Update the YAML file** (the system of record) — use the **Edit**
+   tool to replace the placeholder frontmatter:
+   - `status:` → `complete` (or `partial` / `blocked` per the work)
+   - `outcome:` → the user's literal answer (`SUCCEEDED` / `PARTIAL_PLUS` / `PARTIAL_MINUS` / `FAILED`)
+
+2. **Optionally re-save to the DB** — same guard as Step 3:
 
 ```bash
-~/.claude/scripts/.venv/bin/python3 -c "
+if [ -f ~/.claude/scripts/stores.py ]; then
+  python3 -c "
 import sys, os
 sys.path.insert(0, os.path.expanduser('~/.claude/scripts'))
 from stores import handoff_save
@@ -137,18 +169,22 @@ content = open(os.path.expanduser('~/.claude/thoughts/handoffs/{session-name}/{f
 handoff_save('{session-name}', content, '<USER_CHOICE>')
 print('Outcome recorded in DB')
 "
+else
+  echo "stores.py absent — YAML frontmatter already updated; skipping DB."
+fi
 ```
 
-Replace `<USER_CHOICE>` with the literal answer (`SUCCEEDED` / `PARTIAL_PLUS` / `PARTIAL_MINUS` / `FAILED`). Outcome lives in the `status` column of the `handoffs` table.
+Replace `<USER_CHOICE>` with the literal answer. If the DB step runs, the outcome lives in the `status` column of the `handoffs` table — but the YAML frontmatter is authoritative.
 
 ### Step 5 — Confirm completion to the user
 
 ```
-Handoff created at ~/.claude/thoughts/handoffs/{session-name}/{filename}.yaml
-Outcome marked as {OUTCOME}.
+Handoff saved: ~/.claude/thoughts/handoffs/{session-name}/{filename}.yaml
+Outcome: {OUTCOME}.
 
-Resume in a new session with the `resume` command (no args needed —
-the latest DB handoff loads automatically) or by passing a path.
+Resume in a new session by pointing it at that path, or run the
+`resume` command with the path. (If the optional DB index is present,
+`resume` with no args also works — but the YAML file is the record.)
 ```
 
 ---
@@ -183,26 +219,19 @@ ls -t ~/.claude/thoughts/handoffs/{TICKET}/ 2>/dev/null
 
 #### Mode C — No args
 
-Query the DB for the latest entry:
+The filesystem is the system of record. List the most recent handoffs:
 
 ```bash
-~/.claude/scripts/.venv/bin/python3 -c "
-import sys, os
-sys.path.insert(0, os.path.expanduser('~/.claude/scripts'))
-from stores import handoff_latest
-results = handoff_latest(limit=1)
-if results:
-    h = results[0]
-    print(f'session_id={h[\"session_id\"]} created_at={h[\"created_at\"]} status={h[\"status\"]}')
-    print('---CONTENT---')
-    print(h['content'])
-else:
-    print('NO_DB_HANDOFF')
-"
+ls -t ~/.claude/thoughts/handoffs/*/*.yaml 2>/dev/null | head -5
 ```
 
-- DB hit → use that content directly (skip the "ask which one" prompt).
-- `NO_DB_HANDOFF` → fall back to filesystem: list `~/.claude/thoughts/handoffs/*/` and present options.
+- One clear most-recent → read it (Step 2).
+- Several plausible / ambiguous → present the list, ask which one.
+- None found → tell the user there's no handoff to resume.
+
+The optional DB index (`~/.claude/scripts/stores.py`, if present) can
+also answer "latest" — but it's just a convenience over the YAML
+files, which are authoritative. Don't depend on it.
 
 ### Step 2 — Read the handoff fully + its references
 
@@ -280,4 +309,5 @@ After the user confirms direction:
 - **Be thorough**: more information is better than less. Include both top-level objectives and lower-level details.
 - **Avoid large code blocks / diffs**. Use `path/to/file.ext:line` references the next agent can follow when ready.
 - **Resume verifies, never assumes.** Codebase state can drift between sessions; always confirm `done_this_session` files still exist and the `worked:` patterns still hold.
-- **Create asks for outcome.** Do not skip step 4 of `create` — the DB outcome column is what makes handoffs queryable later.
+- **Create asks for outcome.** Do not skip Step 4 of `create` — and write the answer back to the YAML frontmatter, not just the DB. The YAML file is the system of record; the SQLite DB is an optional, may-not-be-present index.
+- **The plugin ships self-contained.** The `~/.claude/scripts/stores.py` DB helper is NOT part of the plugin — every DB step is guarded with `if [ -f ~/.claude/scripts/stores.py ]` and degrades to filesystem-only. Never add an unguarded external-script invocation (iron law `skill-md-no-external-script-paths`).

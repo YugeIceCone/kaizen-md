@@ -3,6 +3,15 @@
 All notable changes to the `kaizen` plugin documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [SemVer](https://semver.org/).
 
+## [1.35.2] — 2026-05-14
+
+### Fixed — kaizen:handoff non-portable + self-contradictory prompt
+
+Tracing a failed handoff run surfaced that the `handoff` skill was structurally broken for anyone but its original author. Steps 3/4 and resume Mode C hard-invoked `~/.claude/scripts/.venv/bin/python3` importing `~/.claude/scripts/stores.py` — a personal `~/.claude/scripts/` setup that is **not shipped with the plugin** and not present on the system (the `handoffs` table in `session_logs.db` had 0 rows — it had never once worked). Vendored at v1.33.0 (`daddffd`) without porting the dependency.
+
+- **`skills/handoff/SKILL.md`** rewritten across 7 points: DB persistence (Steps 3, 4, resume Mode C) is now **guarded** with `if [ -f ~/.claude/scripts/stores.py ]` and degrades to filesystem-only; the filesystem YAML is named the **system of record** (the DB is an optional index, not "primary"); the Step 2 / Step 4 contradiction is resolved — Step 2 writes placeholder `status: partial` / `outcome: IN_PROGRESS`, Step 4 writes the user's real answer back to the YAML frontmatter (previously Step 2's schema implied write-time fill while Step 4 said ask-after, so agents pre-filled and Step 4's question went performative); the session-name heuristic now derives from the current git repo instead of "latest folder" (which mis-filed cross-project work); resume hints lead with the file path.
+- **`skills/plugin-development/domain/iron-laws.yaml`** — new `skill-md-no-external-script-paths` law (soft): a SKILL.md must not invoke an unshipped external script/interpreter; if it genuinely needs one, guard with an existence check and make the in-plugin path the system of record. Defense-in-depth regression guard.
+
 ## [1.35.1] — 2026-05-14
 
 ### Fixed — agent-self-audit subagent results rejected over echoed schema meta-keys

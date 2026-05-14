@@ -126,6 +126,12 @@ laws:
     detect: "skills/<feature>/SKILL.md contains `!` immediately followed by a backtick (any column, any fence)"
     why: "Hit 2026-05-14: loading Skill(plugin-development) errored — its SKILL.md had `!`bash -c '...'`` examples inside a ```bash fence that the loader ran anyway (the literal `...` in the example then failed as a command). plugin-pitfalls documents the same gotcha but keeps its example inside a ```markdown fence which apparently didn't fire — fragile. SKILL.md is documentation; only commands/*.md files carry live exec markers."
 
+  - id: skill-md-no-external-script-paths
+    statement: "A SKILL.md must not invoke a script or interpreter from OUTSIDE the plugin — no `~/.claude/scripts/...`, no `.venv/bin/python` that isn't under ${CLAUDE_PLUGIN_ROOT}. The skill ships to users who don't have your personal ~/.claude/ setup; an unshipped external dependency makes the skill structurally broken for everyone but the author. Reading/writing DATA under ~/.claude/ (a handoff YAML, ~/.claude/brain/) is fine — this law is about EXECUTING unshipped code. If a SKILL.md genuinely needs such a path, guard it (`if [ -f <path> ]; then ... else <graceful skip> fi`) and make the in-plugin path the system of record."
+    severity: soft
+    detect: "skills/<feature>/SKILL.md bash block invokes ~/.claude/scripts/ or a .venv/bin/python not under ${CLAUDE_PLUGIN_ROOT}, unguarded by an existence check"
+    why: "Hit 2026-05-14: kaizen:handoff steps 3/4 + resume Mode C hard-invoked ~/.claude/scripts/.venv/bin/python3 importing ~/.claude/scripts/stores.py — neither shipped with the plugin, neither present anywhere on the system. The DB step exit-127'd mid-flow; the handoffs table had 0 rows (the skill had NEVER worked for anyone without the author's personal setup). Vendored at v1.33.0 (daddffd) without porting the dependency — the 'lifted ad-hoc, dependency not ported' anti-pattern. Fix: DB persistence made conditional on stores.py existing; the filesystem YAML is the system of record."
+
   - id: every-hook-script-traces-its-firing
     statement: "Every hook script in hooks/claude/ MUST fire `_trace.sh` (or `trace.py event`) so its lifecycle is visible to kaizen-metrics. The universal pretooluse/posttooluse trace covers TOOL calls; hook-internal firing needs its own trace line."
     severity: soft
