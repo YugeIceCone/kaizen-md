@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # kaizen pre-commit gate — runs the 8-item checklist.
 # Symlinked from ~/.claude/skills/workflow/ into a project's
-# .kaizen/hooks/pre-commit via scripts/install.sh.
+# .kaizen/hooks/pre-commit via scripts/setup.sh.
 #
 # Config: .kaizen.toml at repo root (see SKILL.md PART 4).
 # Bypass for emergencies: git commit --no-verify (agent must surface,
@@ -358,7 +358,7 @@ elif [ "$SKIP_TDD_VAL" != "1" ]; then
     NEW_FILES=$(git diff --cached --name-only --diff-filter=A 2>/dev/null)
     for f in $NEW_FILES; do
         case "$f" in
-            tests/*|*_test.go|*.test.ts|*.test.tsx|*.spec.ts|test_*.py|*_test.py) continue ;;
+            tests/*|*/tests/*|*_test.go|*.test.ts|*.test.tsx|*.spec.ts|test_*.py|*/test_*.py|*_test.py) continue ;;
             *.rs|*.ts|*.tsx|*.js|*.go|*.py)
                 # Skip files that are themselves tests-only (cfg(test) etc.)
                 if git show ":$f" 2>/dev/null | grep -qE "^#\[cfg\(test\)\]|^describe\(|^test\(|^def test_"; then
