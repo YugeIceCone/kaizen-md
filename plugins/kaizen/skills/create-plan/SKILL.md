@@ -11,6 +11,11 @@ Creates a phased, agent-reusable implementation plan for multi-step or risky wor
 
 If a good approved plan already exists, use **plan-executing** instead. If only one task or phase needs decomposition, use **tasks-creating**.
 
+**Before writing tasks that call an external library:** confirm the
+API shape against Context7 (`resolve-library-id` → `query-docs`). A
+plan step that shows the wrong method signature or import path is a
+plan failure — the executing agent will copy it verbatim.
+
 ## When To Use
 
 Trigger this skill when any of the following apply:

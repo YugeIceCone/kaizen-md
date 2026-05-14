@@ -15,6 +15,10 @@ Validates a plan or risky change against current best practices and local projec
 - migration or refactor plans with compatibility risk
 - risky integrations or architecture changes
 - completed work that needs a final go or no-go pass
+- **Current best practices via Context7.** Where the validation hinges
+  on "is this still the right way?", check the library's current docs
+  through Context7 — its docs track upstream versions, so it catches
+  practices that were correct when written but have since changed.
 
 ## External Validation
 

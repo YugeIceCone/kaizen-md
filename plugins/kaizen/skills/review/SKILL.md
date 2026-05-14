@@ -15,6 +15,10 @@ Reviews code, diffs, and plans for correctness, risk, and quality. Use this skil
 - ordered by severity
 - concrete file and line references
 - brief summary only after findings
+- **Verify library/API claims against Context7.** Any place the diff
+  or plan asserts how an external library behaves — an API signature,
+  an event model, a config key — confirm it with Context7
+  (`resolve-library-id` → `query-docs`) rather than trusting the claim.
 
 If there are no findings, say so explicitly and note any residual risk or testing gap.
 

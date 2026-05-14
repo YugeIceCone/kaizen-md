@@ -17,6 +17,12 @@ Assesses blast radius, affected interfaces, and risks for a proposed change or b
 - what can break if the change is wrong
 - whether the work is a single task, a bug investigation, or a phased plan
 
+**External-API verification.** When the change depends on a library or
+framework API, verify the actual current API surface via Context7
+(`resolve-library-id` → `query-docs`) *during analysis* — do not carry
+an unverified API assumption into the plan. Mismatches caught here are
+cheap; caught at review they cost a redesign.
+
 ## Analysis Flow
 
 1. Restate the proposed change, question, or failure mode.

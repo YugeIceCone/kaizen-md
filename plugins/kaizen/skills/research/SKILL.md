@@ -11,6 +11,12 @@ Gathers external facts from official docs, APIs, standards, and comparable imple
 
 ## Research Modes
 
+**First-choice doc source: Context7 MCP.** For any library, framework,
+SDK, API, or CLI tool, use `resolve-library-id` then `query-docs`
+before web search — it returns version-current documentation and code
+examples. Web search and the legacy `*_docs.py` shims are the
+fallback when Context7 has no coverage.
+
 - external docs -> official docs, standards, changelogs, current APIs
 - comparable implementations -> reference repos or current ecosystem examples
 - mixed -> combine external sources with local code context
