@@ -42,7 +42,6 @@ import sys
 from pathlib import Path
 
 HOME = Path(os.path.expanduser("~"))
-DEFAULT_MARKET = HOME / ".claude" / "local-marketplaces" / "kaizen-md"
 
 # v1.22.0+: state lives at ~/.claude/.kaizen/daemon/. KAIZEN_DAEMON_STATE still wins.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -65,7 +64,9 @@ def now_iso() -> str:
 
 
 def market_dir() -> Path:
-    return Path(os.environ.get("KAIZEN_MARKETPLACE", DEFAULT_MARKET))
+    # SSOT: _paths.plugin_index_root() resolves KAIZEN_PLUGIN_INDEX_ROOT
+    # / KAIZEN_MARKETPLACE. plugin_src() still appends plugins/kaizen.
+    return _p.plugin_index_root()
 
 
 def plugin_src() -> Path:
@@ -193,6 +194,62 @@ def run_hygiene_fix() -> tuple[bool, str]:
         return False, str(e)
 
 
+def _run_index_refresh() -> tuple[bool, str]:
+    """Step-5 of tick(): incremental loc + onboard index of the plugin
+    root. Both indexers are sha/mtime incremental — cheap when nothing
+    changed. Gated by KAIZEN_DAEMON_INDEX_DISABLE."""
+    if os.environ.get("KAIZEN_DAEMON_INDEX_DISABLE") == "1":
+        return True, "skipped (KAIZEN_DAEMON_INDEX_DISABLE=1)"
+    root = _p.plugin_index_root()
+    scripts = scripts_dir()
+    results = []
+    for label, argv in (
+        ("loc", ["python3", str(scripts / "loc_index.py"),
+                 "index", "--root", str(root)]),
+        ("onboard", ["uv", "run", "--script", str(scripts / "onboard_index.py"),
+                     "index", "--root", str(root)]),
+    ):
+        try:
+            r = subprocess.run(argv, capture_output=True, text=True, timeout=600)
+            results.append(f"{label}={'ok' if r.returncode == 0 else 'fail'}")
+        except (FileNotFoundError, subprocess.SubprocessError) as e:
+            results.append(f"{label}=err({e})")
+    return True, " ".join(results)
+
+
+def index_status(root: Path | None = None) -> dict:
+    """Freshness self-check: compare loc.db's last_indexed_ts against the
+    newest source-file mtime under root."""
+    import sqlite3
+    root = root or _p.plugin_index_root()
+    db = root / ".kaizen" / "loc.db"
+    if not db.exists():
+        return {"fresh": False, "reason": "never indexed (no loc.db)"}
+    try:
+        conn = sqlite3.connect(str(db))
+        row = conn.execute(
+            "SELECT value FROM loc_meta WHERE key = 'last_indexed_ts'"
+        ).fetchone()
+        conn.close()
+    except sqlite3.Error as e:
+        return {"fresh": False, "reason": f"loc.db unreadable: {e}"}
+    if not row:
+        return {"fresh": False, "reason": "no last_indexed_ts in loc.db"}
+    indexed = dt.datetime.fromisoformat(row[0])
+    newest = 0.0
+    for p in root.rglob("*"):
+        parts = set(p.parts)
+        if {".kaizen", ".git", "__pycache__", "node_modules", "target"} & parts:
+            continue
+        if p.is_file():
+            newest = max(newest, p.stat().st_mtime)
+    newest_dt = dt.datetime.fromtimestamp(newest, dt.timezone.utc)
+    behind = (newest_dt - indexed).total_seconds()
+    if behind > 1.0:
+        return {"fresh": False, "reason": f"stale ({int(behind)}s behind)"}
+    return {"fresh": True, "reason": "up to date"}
+
+
 # ─── Cron install ────────────────────────────────────────────────────
 
 
@@ -303,6 +360,12 @@ def tick() -> dict:
     for line in out.splitlines():
         if line.strip().startswith("✓") or line.strip().startswith("∘"):
             log_line("INFO", f"  {line.strip()}")
+
+    # 5. Index refresh — keep the plugin loc/onboard index fresh.
+    if os.environ.get("KAIZEN_DAEMON_INDEX_DISABLE") != "1":
+        ok, out = _run_index_refresh()
+        actions["index"] = actions.get("index", 0) + 1
+        log_line("INFO", f"index-refresh: {out}")
 
     save_state(state)
     log_line("INFO", "daemon tick complete")
@@ -473,6 +536,7 @@ def main() -> None:
     ws.add_argument("--interval", type=float, default=DEFAULT_WATCH_INTERVAL_SEC)
     sub.add_parser("watch-stop", help="stop watcher (SIGTERM, then SIGKILL after 3s)")
     sub.add_parser("watch-status", help="check if watcher is alive")
+    sub.add_parser("index-status", help="report plugin-index freshness")
 
     args = p.parse_args()
     cmd = args.cmd or "run"
@@ -507,6 +571,8 @@ def main() -> None:
             print(f"local_sha:      {state.get('local_sha', '?')}")
             print(f"remote_sha:     {state.get('remote_sha', '?')}")
             print(f"actions:        {state.get('actions', {})}")
+            ist = index_status()
+            print(f"index:          {'fresh' if ist['fresh'] else 'stale'} — {ist['reason']}")
         else:
             print("(no runs yet)")
         if LOG_FILE.exists():
@@ -560,6 +626,11 @@ def main() -> None:
             tail = f" ({', '.join(extras)})" if extras else ""
             print(f"  not running{tail}")
             sys.exit(1)
+
+    elif cmd == "index-status":
+        st = index_status()
+        print(f"  plugin index: {'fresh' if st['fresh'] else 'STALE'} — {st['reason']}")
+        sys.exit(0 if st["fresh"] else 1)
 
     else:
         p.print_help()
