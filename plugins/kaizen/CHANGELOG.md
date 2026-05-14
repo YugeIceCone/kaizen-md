@@ -12,6 +12,7 @@ The plugin's iron laws become a managed SSOT system — `iron-laws.yaml` as the 
 - **Carve** — `iron-laws.yaml` moved from `skills/plugin-development/domain/` to a dedicated `skills/iron-laws/` skill (SKILL.md + `domain/schemas/iron-law.schema.json`). `validate.py` + its test repointed via a new `IRON_LAWS_YAML` constant.
 - **Schema** — every law gains an `enforcement` field (`auto` | `manual`) and, for `auto` laws, a `check` field naming its checker function. 15 of 21 laws classified `auto` (machine-checkable), 6 `manual` (fuzzy / session-state). The JSON Schema conditionally requires `check` iff `enforcement: auto`.
 - **Application layer** — `_loader.py` (schema-validated, fail-fast registry loader) + `codegen.py` (renders the read-only `references/iron-laws.md`; `--check` mode is the CI drift gate; idempotent). 10 loader + codegen tests in `tests/test_iron_laws.py`.
+- **Checker core** — `skills/workflow/scripts/_iron_laws.py`: a `check_*` function per `auto` law (15), the `CHECKS` dispatch registry, `Finding` / `CheckContext` types, and `run_checks(scope, repo_root, law_id)`. `--staged` scope checks the staged diff; `--all` scope audits the whole plugin. 18 tests (positive + negative per check, registry integrity).
 
 ## [1.36.2] — 2026-05-14
 

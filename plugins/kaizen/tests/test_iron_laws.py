@@ -70,6 +70,191 @@ class TestLoader(unittest.TestCase):
             Path(bad).unlink()
 
 
+def _mini_plugin(tmp: Path) -> Path:
+    """Build a minimal repo skeleton: <tmp>/plugins/kaizen/{skills,hooks,bin,commands,...}."""
+    pk = tmp / "plugins" / "kaizen"
+    for d in ("skills/workflow/scripts", "skills/demo", "hooks/claude",
+              "bin", "commands", "tests", ".claude-plugin"):
+        (pk / d).mkdir(parents=True, exist_ok=True)
+    (pk / ".claude-plugin" / "plugin.json").write_text('{"permissions": {"allow": []}}')
+    (pk / "hooks" / "hooks.json").write_text('{"hooks": {}}')
+    return pk
+
+
+def _ctx(tmp: Path, scope="all", changed=None):
+    import _iron_laws
+    return _iron_laws.CheckContext(
+        repo_root=tmp,
+        plugin_root=tmp / "plugins" / "kaizen",
+        scope=scope,
+        changed=changed or [],
+    )
+
+
+class TestChecker(unittest.TestCase):
+    def setUp(self):
+        self._td = tempfile.mkdtemp()
+        self.tmp = Path(self._td)
+        self.pk = _mini_plugin(self.tmp)
+
+    def tearDown(self):
+        import shutil
+        shutil.rmtree(self._td, ignore_errors=True)
+
+    def test_hook_bypass_knob(self):
+        import _iron_laws
+        good = self.pk / "hooks/claude/demo-hook.sh"
+        good.write_text('#!/bin/bash\n[ -n "$KAIZEN_DEMO_DISABLE" ] && exit 0\n')
+        self.assertEqual(_iron_laws.check_hook_bypass_knob(_ctx(self.tmp)), [])
+        good.write_text('#!/bin/bash\necho hi\n')
+        self.assertTrue(_iron_laws.check_hook_bypass_knob(_ctx(self.tmp)))
+
+    def test_every_hook_script_traces_its_firing(self):
+        import _iron_laws
+        h = self.pk / "hooks/claude/demo-hook.sh"
+        h.write_text('#!/bin/bash\nbash "$D/_trace.sh" demo\n')
+        self.assertEqual(_iron_laws.check_every_hook_script_traces_its_firing(_ctx(self.tmp)), [])
+        h.write_text('#!/bin/bash\necho hi\n')
+        self.assertTrue(_iron_laws.check_every_hook_script_traces_its_firing(_ctx(self.tmp)))
+
+    def test_skill_md_no_exec_markers(self):
+        import _iron_laws
+        s = self.pk / "skills/demo/SKILL.md"
+        s.write_text("# Demo\n\nrun the thing normally.\n")
+        self.assertEqual(_iron_laws.check_skill_md_no_exec_markers(_ctx(self.tmp)), [])
+        s.write_text("# Demo\n\n!`bash -c 'echo hi'`\n")
+        self.assertTrue(_iron_laws.check_skill_md_no_exec_markers(_ctx(self.tmp)))
+
+    def test_skill_md_no_external_script_paths(self):
+        import _iron_laws
+        s = self.pk / "skills/demo/SKILL.md"
+        s.write_text("# Demo\n\n```bash\npython3 ${CLAUDE_PLUGIN_ROOT}/x.py\n```\n")
+        self.assertEqual(_iron_laws.check_skill_md_no_external_script_paths(_ctx(self.tmp)), [])
+        s.write_text("# Demo\n\n```bash\n~/.claude/scripts/.venv/bin/python3 x.py\n```\n")
+        self.assertTrue(_iron_laws.check_skill_md_no_external_script_paths(_ctx(self.tmp)))
+
+    def test_lazy_heavy_deps(self):
+        import _iron_laws
+        p = self.pk / "skills/workflow/scripts/demo.py"
+        p.write_text("try:\n    import torch\nexcept ImportError:\n    torch = None\n")
+        self.assertEqual(_iron_laws.check_lazy_heavy_deps(_ctx(self.tmp)), [])
+        p.write_text("import torch\nprint(torch)\n")
+        self.assertTrue(_iron_laws.check_lazy_heavy_deps(_ctx(self.tmp)))
+
+    def test_sandbox_tests(self):
+        import _iron_laws
+        t = self.pk / "tests/test_demo.py"
+        t.write_text("import os\nP = os.environ['KAIZEN_DEMO_PATH']\n")
+        self.assertEqual(_iron_laws.check_sandbox_tests(_ctx(self.tmp)), [])
+        t.write_text("from pathlib import Path\n(Path.home() / '.claude' / 'x').write_text('y')\n")
+        self.assertTrue(_iron_laws.check_sandbox_tests(_ctx(self.tmp)))
+
+    def test_slash_command_args_no_default_spaces(self):
+        import _iron_laws
+        c = self.pk / "commands/demo.md"
+        c.write_text("---\nname: demo\n---\nrun $ARGUMENTS\n")
+        self.assertEqual(_iron_laws.check_slash_command_args_no_default_spaces(_ctx(self.tmp)), [])
+        c.write_text("---\nname: demo\n---\nrun ${ARGUMENTS:-lifetime --since 7d}\n")
+        self.assertTrue(_iron_laws.check_slash_command_args_no_default_spaces(_ctx(self.tmp)))
+
+    def test_no_modify_vendored(self):
+        import _iron_laws
+        clean = _ctx(self.tmp, scope="staged",
+                     changed=["plugins/kaizen/skills/demo/SKILL.md"])
+        self.assertEqual(_iron_laws.check_no_modify_vendored(clean), [])
+        dirty = _ctx(self.tmp, scope="staged",
+                     changed=["plugins/kaizen/skills/kiss/SKILL.md"])
+        self.assertTrue(_iron_laws.check_no_modify_vendored(dirty))
+
+    def test_bin_wrapper_per_cli(self):
+        import _iron_laws
+        p = self.pk / "skills/workflow/scripts/demo.py"
+        p.write_text("import argparse\nif __name__ == '__main__':\n    argparse.ArgumentParser()\n")
+        # no bin wrapper → finding
+        self.assertTrue(_iron_laws.check_bin_wrapper_per_cli(_ctx(self.tmp)))
+        (self.pk / "bin" / "kaizen-demo").write_text("#!/bin/bash\n")
+        self.assertEqual(_iron_laws.check_bin_wrapper_per_cli(_ctx(self.tmp)), [])
+
+    def test_plugin_manifest_permissions(self):
+        import _iron_laws
+        (self.pk / "skills/workflow/scripts/demo.py").write_text("print('hi')\n")
+        changed = ["plugins/kaizen/skills/workflow/scripts/demo.py"]
+        dirty = _ctx(self.tmp, scope="staged", changed=changed)
+        self.assertTrue(_iron_laws.check_plugin_manifest_permissions(dirty))
+        (self.pk / ".claude-plugin" / "plugin.json").write_text(
+            '{"permissions": {"allow": ["Bash(python3 x/demo.py:*)"]}}')
+        self.assertEqual(_iron_laws.check_plugin_manifest_permissions(dirty), [])
+
+    def test_paired_tests(self):
+        import _iron_laws
+        (self.pk / "skills/workflow/scripts/demo.py").write_text("print('hi')\n")
+        changed = ["plugins/kaizen/skills/workflow/scripts/demo.py"]
+        self.assertTrue(_iron_laws.check_paired_tests(_ctx(self.tmp, "staged", changed)))
+        (self.pk / "tests/test_demo.py").write_text("# test\n")
+        self.assertEqual(
+            _iron_laws.check_paired_tests(_ctx(self.tmp, "staged", changed)), [])
+
+    def test_bin_wrapper_per_cli_strict(self):
+        import _iron_laws
+        (self.pk / "skills/workflow/scripts/demo.py").write_text(
+            "import argparse\nif __name__ == '__main__':\n    argparse.ArgumentParser()\n")
+        changed = ["plugins/kaizen/skills/workflow/scripts/demo.py"]
+        self.assertTrue(_iron_laws.check_bin_wrapper_per_cli_strict(_ctx(self.tmp, "staged", changed)))
+        (self.pk / "bin" / "kaizen-demo").write_text("#!/bin/bash\n")
+        changed.append("plugins/kaizen/bin/kaizen-demo")
+        self.assertEqual(
+            _iron_laws.check_bin_wrapper_per_cli_strict(_ctx(self.tmp, "staged", changed)), [])
+
+    def test_hooks_json_additive_event_multi_command(self):
+        import _iron_laws
+        good = {"hooks": {"SessionEnd": [{"matcher": "*", "hooks": [{"x": 1}, {"y": 2}]}]}}
+        (self.pk / "hooks/hooks.json").write_text(json.dumps(good))
+        self.assertEqual(_iron_laws.check_hooks_json_additive_event_multi_command(_ctx(self.tmp)), [])
+        bad = {"hooks": {"SessionEnd": [
+            {"matcher": "*", "hooks": [{"x": 1}]}, {"matcher": "*", "hooks": [{"y": 2}]}]}}
+        (self.pk / "hooks/hooks.json").write_text(json.dumps(bad))
+        self.assertTrue(_iron_laws.check_hooks_json_additive_event_multi_command(_ctx(self.tmp)))
+
+    def test_claude_md_no_volatile_data(self):
+        import _iron_laws
+        cm = self.tmp / "CLAUDE.md"
+        cm.write_text("# CLAUDE.md\n\nThe durable rulebook. No volatile data here.\n")
+        self.assertEqual(_iron_laws.check_claude_md_no_volatile_data(_ctx(self.tmp)), [])
+        cm.write_text("# CLAUDE.md\n\nLanded in commit a1b2c3d4e5f6 on 2026-05-14.\n")
+        self.assertTrue(_iron_laws.check_claude_md_no_volatile_data(_ctx(self.tmp)))
+
+    def test_node_flow_for_multi_step(self):
+        import _iron_laws
+        p = self.pk / "skills/workflow/scripts/demo.py"
+        p.write_text("import asyncio\nasync def f():\n    await asyncio.gather(a())\n")
+        self.assertEqual(_iron_laws.check_node_flow_for_multi_step(_ctx(self.tmp)), [])
+        p.write_text(
+            "import asyncio\n"
+            "async def f():\n    await asyncio.gather(a())\n"
+            "async def g():\n    await asyncio.gather(b())\n")
+        self.assertTrue(_iron_laws.check_node_flow_for_multi_step(_ctx(self.tmp)))
+
+
+class TestRegistryIntegrity(unittest.TestCase):
+    def test_every_auto_law_has_a_check_fn(self):
+        import _loader, _iron_laws
+        for law in _loader.auto_laws():
+            self.assertIn(law["check"], _iron_laws.CHECKS,
+                          f"auto law {law['id']} has no check_* fn registered")
+
+    def test_no_orphan_check_fns(self):
+        import _loader, _iron_laws
+        declared = {law["check"] for law in _loader.auto_laws()}
+        for name in _iron_laws.CHECKS:
+            self.assertIn(name, declared, f"check fn {name} maps to no auto law")
+
+    def test_run_checks_dispatches_only_auto(self):
+        import _iron_laws
+        # run_checks on a clean repo skeleton returns a list (no crash)
+        result = _iron_laws.run_checks(scope="all", repo_root=Path.cwd())
+        self.assertIsInstance(result, list)
+
+
 class TestCodegen(unittest.TestCase):
     def test_render_is_deterministic(self):
         import codegen
