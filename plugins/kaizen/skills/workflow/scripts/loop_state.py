@@ -272,6 +272,72 @@ def complete_item(
     return entry
 
 
+def next_pending(path: Path | None = None) -> dict | None:
+    """Token-saving accessor: return ONLY the next pending item.
+
+    Returns the first item in `pending` as a dict, or None if the
+    ledger is empty / loop is freeform / no loop active. Lets agents
+    work on one item at a time without re-reading the whole state
+    file each iteration — saves ~200 tokens per iter on a 20-item
+    ledger."""
+    p = path or state_path()
+    if not p.is_file():
+        return None
+    fm, ledger, _ = load(p)
+    pending = ledger.get("pending") or []
+    if not pending:
+        return None
+    return pending[0]
+
+
+def progress(path: Path | None = None) -> dict:
+    """Token-saving accessor: just the counters.
+
+    Returns {iteration, pending_count, completed_count, max_iterations,
+    pct_done, active}. No item details — for "how far along?" queries.
+    """
+    p = path or state_path()
+    if not p.is_file():
+        return {"active": False}
+    s = status(p)
+    if not s.get("active"):
+        return {"active": False}
+    total = s["pending_count"] + s["completed_count"]
+    pct = round(100 * s["completed_count"] / total, 1) if total else 0.0
+    return {
+        "active": True,
+        "iteration": s["iteration"],
+        "pending_count": s["pending_count"],
+        "completed_count": s["completed_count"],
+        "max_iterations": s["max_iterations"],
+        "pct_done": pct,
+    }
+
+
+def tldr(path: Path | None = None) -> str:
+    """Token-saving accessor: one-line human-readable summary.
+
+    Format: "iter N/M | P pending | C done | NEXT: <desc>"
+    Empty string when no loop active. Use as a compact status header
+    in iteration prompts (saves ~80% vs full state-file read)."""
+    p = path or state_path()
+    if not p.is_file():
+        return ""
+    pr = progress(p)
+    if not pr.get("active"):
+        return ""
+    nxt = next_pending(p)
+    base = (
+        f"iter {pr['iteration']}/{pr['max_iterations'] or '∞'} | "
+        f"{pr['pending_count']} pending | "
+        f"{pr['completed_count']} done"
+    )
+    if nxt:
+        desc = (nxt.get("desc") or "")[:60]
+        base += f" | NEXT: {desc}"
+    return base
+
+
 def emit_promise(phrase: str, path: Path | None = None) -> dict:
     """Structured completion signal — writes `phrase` to a `last_promise`
     field in the state file's frontmatter. The Stop hook checks this
@@ -399,6 +465,15 @@ def main(argv: list[str] | None = None) -> int:
     pp.add_argument("phrase", help="must match the loop's configured completion_promise")
     pp.add_argument("--json", action="store_true")
 
+    # Token-saving accessors
+    pn = sub.add_parser("next", help="show only the next pending item (saves tokens)")
+    pn.add_argument("--json", action="store_true")
+
+    ppr = sub.add_parser("progress", help="show counters only (saves tokens)")
+    ppr.add_argument("--json", action="store_true")
+
+    pt = sub.add_parser("tldr", help="one-line summary (most-compact view)")
+
     px = sub.add_parser("cancel", help="remove the state file (end the loop)")
     px.add_argument("--json", action="store_true")
 
@@ -457,6 +532,38 @@ def main(argv: list[str] | None = None) -> int:
                 print(json.dumps(entry, indent=2))
             else:
                 print(f"completed: [{entry.get('id', '?')}] {entry['desc']}")
+            return 0
+        if args.cmd == "next":
+            item = next_pending()
+            if args.json:
+                print(json.dumps(item, indent=2))
+            else:
+                if item is None:
+                    print("(no pending items)")
+                    return 1
+                _print_items([item], "next")
+            return 0
+        if args.cmd == "progress":
+            pr = progress()
+            if args.json:
+                print(json.dumps(pr, indent=2))
+            else:
+                if not pr.get("active"):
+                    print("(no active loop)")
+                    return 1
+                print(
+                    f"iter {pr['iteration']}/{pr['max_iterations'] or 'unlimited'} | "
+                    f"pending {pr['pending_count']} | "
+                    f"completed {pr['completed_count']} | "
+                    f"{pr['pct_done']}% done"
+                )
+            return 0
+        if args.cmd == "tldr":
+            line = tldr()
+            if not line:
+                print("(no active loop)")
+                return 1
+            print(line)
             return 0
         if args.cmd == "promise":
             result = emit_promise(args.phrase)

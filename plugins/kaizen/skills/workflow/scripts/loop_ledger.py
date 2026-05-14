@@ -47,11 +47,19 @@ from __future__ import annotations
 
 import datetime as dt
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
 
 VERIFY_TIMEOUT_SECONDS = 30
+
+# ─── Failproof knobs (env-overridable) ───────────────────────────────
+# Defaults chosen to be generous — these are last-resort safety rails,
+# not normal-flow exits.
+
+DEFAULT_MAX_AGE_DAYS = 30     # state file older than this → auto-cancel
+DEFAULT_STUCK_ITERATIONS = 5   # same body sha for N iters → auto-end
 
 
 def split_frontmatter(text: str) -> tuple[str, str]:
@@ -215,12 +223,144 @@ def render_prompt(pending: list[dict]) -> str:
     return "\n".join(lines)
 
 
+def _max_age_days() -> int:
+    raw = os.environ.get("KAIZEN_LOOP_MAX_AGE_DAYS", str(DEFAULT_MAX_AGE_DAYS))
+    try:
+        return max(1, int(raw))
+    except ValueError:
+        return DEFAULT_MAX_AGE_DAYS
+
+
+def _stuck_iterations() -> int:
+    raw = os.environ.get("KAIZEN_LOOP_STUCK_ITERATIONS", str(DEFAULT_STUCK_ITERATIONS))
+    try:
+        return max(2, int(raw))
+    except ValueError:
+        return DEFAULT_STUCK_ITERATIONS
+
+
+def _frontmatter_value(fm: str, key: str) -> str:
+    """Plain extract of `key: <value>` from a frontmatter block. Strips
+    surrounding quotes. Empty string when absent."""
+    prefix = f"{key}:"
+    for line in fm.split("\n"):
+        s = line.strip()
+        if s.startswith(prefix):
+            v = s[len(prefix):].strip()
+            if (len(v) >= 2) and v[0] == v[-1] and v[0] in ('"', "'"):
+                v = v[1:-1]
+            return v
+    return ""
+
+
+def _is_stale(fm: str) -> tuple[bool, int]:
+    """Return (is_stale, age_days). True iff started_at is older than
+    KAIZEN_LOOP_MAX_AGE_DAYS. Loop state files left behind by crashed
+    sessions get auto-cleaned by this check on the next Stop event."""
+    started_iso = _frontmatter_value(fm, "started_at")
+    if not started_iso:
+        return False, 0
+    try:
+        started = dt.datetime.fromisoformat(started_iso.replace("Z", "+00:00"))
+    except ValueError:
+        return False, 0
+    if started.tzinfo is None:
+        started = started.replace(tzinfo=dt.timezone.utc)
+    age = (dt.datetime.now(dt.timezone.utc) - started).days
+    return age > _max_age_days(), age
+
+
+def _body_sha(body: str) -> str:
+    """Stable sha of the body content (after stripping the framing
+    frontmatter)."""
+    import hashlib as _h
+    return _h.sha1(body.strip().encode("utf-8")).hexdigest()[:16]
+
+
+def _check_no_progress(fm: str, body_now_sha: str) -> tuple[bool, int]:
+    """Return (is_stuck, run_count). Stuck when the body hasn't changed
+    for KAIZEN_LOOP_STUCK_ITERATIONS consecutive iterations.
+
+    The hook persists `last_body_sha:` and `stuck_run:` fields in the
+    frontmatter (see _persist_progress_marks). When sha matches, the
+    counter increments; when it differs, the counter resets to 0."""
+    prior_sha = _frontmatter_value(fm, "last_body_sha")
+    try:
+        run = int(_frontmatter_value(fm, "stuck_run") or "0")
+    except ValueError:
+        run = 0
+    if prior_sha and prior_sha == body_now_sha:
+        run += 1
+    else:
+        run = 0
+    return run >= _stuck_iterations(), run
+
+
+def _persist_progress_marks(fm: str, body_now_sha: str, stuck_run: int) -> str:
+    """Update or append `last_body_sha:` + `stuck_run:` in the
+    frontmatter block (between the two `---` markers). Idempotent."""
+    lines = fm.split("\n")
+    out: list[str] = []
+    saw_sha = False
+    saw_run = False
+    for line in lines:
+        s = line.strip()
+        if s.startswith("last_body_sha:"):
+            out.append(f'last_body_sha: "{body_now_sha}"')
+            saw_sha = True
+        elif s.startswith("stuck_run:"):
+            out.append(f"stuck_run: {stuck_run}")
+            saw_run = True
+        elif s == "---" and len(out) > 1:
+            # Closing marker — inject fields just before it if not seen yet.
+            if not saw_sha:
+                out.append(f'last_body_sha: "{body_now_sha}"')
+                saw_sha = True
+            if not saw_run:
+                out.append(f"stuck_run: {stuck_run}")
+                saw_run = True
+            out.append(line)
+        else:
+            out.append(line)
+    return "\n".join(out)
+
+
 def decide(state_path: Path, iteration: int) -> dict:
     """Main entry point. Returns the decision dict for the caller hook."""
     if not state_path.is_file():
         return {"action": "noop"}
     text = state_path.read_text()
     fm, body = split_frontmatter(text)
+
+    # ─── Safety rail 1: stale state file (crashed session, abandoned loop) ──
+    stale, age = _is_stale(fm)
+    if stale:
+        return {
+            "action": "complete-empty",
+            "reason": (
+                f"Ralph loop auto-cancelled: state file is {age}d old "
+                f"(> KAIZEN_LOOP_MAX_AGE_DAYS={_max_age_days()})."
+            ),
+            "mode": "stale",
+        }
+
+    # ─── Safety rail 2: no-progress detection ───────────────────────────────
+    body_now_sha = _body_sha(body)
+    stuck, run = _check_no_progress(fm, body_now_sha)
+    if stuck:
+        return {
+            "action": "complete-empty",
+            "reason": (
+                f"Ralph loop auto-cancelled: body sha unchanged for "
+                f"{run} consecutive iterations "
+                f"(>= KAIZEN_LOOP_STUCK_ITERATIONS={_stuck_iterations()}). "
+                "Either work is genuinely complete and the agent forgot to "
+                "emit the promise, or the iteration is making no progress."
+            ),
+            "mode": "stuck",
+            "stuck_run": run,
+        }
+
     ledger, _ = parse_body(body)
 
     # ─── Freeform / legacy path ──────────────────────────────────────
@@ -230,17 +370,23 @@ def decide(state_path: Path, iteration: int) -> dict:
                 "action": "complete-empty",
                 "reason": "Ralph loop completed: ledger empty.",
             }
+        # Persist progress marks so the next decide() can detect stuck-state.
+        new_fm = _persist_progress_marks(fm, body_now_sha, run)
+        state_path.write_text(f"{new_fm}\n{body}".rstrip() + "\n")
         return {
             "action": "block",
             "reason": body.strip(),
             "mode": "freeform",
+            "stuck_run": run,
         }
 
     # ─── Structured ledger path ──────────────────────────────────────
     new_ledger, just_completed = transition(ledger, iteration)
-    # Persist updated ledger
+    # Persist updated ledger + progress marks
     new_body = json.dumps(new_ledger, indent=2)
-    state_path.write_text(f"{fm}\n{new_body}\n")
+    new_body_sha = _body_sha(new_body)
+    new_fm = _persist_progress_marks(fm, new_body_sha, run)
+    state_path.write_text(f"{new_fm}\n{new_body}\n")
 
     pending = new_ledger["pending"]
     completed = new_ledger["completed"]

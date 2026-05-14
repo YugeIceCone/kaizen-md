@@ -150,6 +150,41 @@ async def loop_complete_item(id_or_desc: str, note: str = "") -> dict:
 
 
 @mcp.tool()
+async def loop_next() -> dict:
+    """Token-saving accessor: just the next pending item.
+
+    Returns the first item in the ledger's `pending` list as
+    {id, desc, verify}, or {"empty": true} when the ledger is empty
+    / no loop is active. Use this instead of loop_list_pending() when
+    you only need the immediate next task (saves ~200 tokens on a
+    20-item ledger)."""
+    item = ls.next_pending()
+    if item is None:
+        return {"empty": True}
+    return item
+
+
+@mcp.tool()
+async def loop_progress() -> dict:
+    """Token-saving accessor: just the counters.
+
+    Returns {active, iteration, pending_count, completed_count,
+    max_iterations, pct_done}. No per-item details. For "how far along"
+    queries during an iteration."""
+    return ls.progress()
+
+
+@mcp.tool()
+async def loop_tldr() -> str:
+    """Token-saving accessor: one-line compact summary string.
+
+    Format: "iter N/M | P pending | C done | NEXT: <desc>". Empty
+    string when no loop is active. Most-compact loop view — useful
+    as a one-shot status header without parsing dicts."""
+    return ls.tldr()
+
+
+@mcp.tool()
 async def loop_promise(phrase: str) -> dict:
     """Emit the completion promise as a structured tool call.
 
