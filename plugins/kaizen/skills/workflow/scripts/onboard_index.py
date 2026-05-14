@@ -330,6 +330,19 @@ _SCHEMA_SQL = """
     CREATE INDEX IF NOT EXISTS idx_xref_chunk ON code_chunks_xref(chunk_id);
     CREATE INDEX IF NOT EXISTS idx_xref_symbol ON code_chunks_xref(symbol);
     CREATE INDEX IF NOT EXISTS idx_xref_kind ON code_chunks_xref(kind);
+
+    -- E10 (v1.34): ColBERT late-interaction sidecar. One row per chunk
+    -- carrying a (seq_len, dim) float32 matrix of token-level vectors.
+    -- Stored separately because the storage cost is ~10x dense; the
+    -- sidecar lets users `DROP TABLE code_chunks_colbert` to reclaim
+    -- space without touching code_chunks. Populated only when
+    -- KAIZEN_COLBERT_ENABLE=1 + transformers/torch available.
+    CREATE TABLE IF NOT EXISTS code_chunks_colbert (
+        chunk_id INTEGER PRIMARY KEY REFERENCES code_chunks(id) ON DELETE CASCADE,
+        vectors BLOB NOT NULL,   -- packed: <II header + float32 body
+        seq_len INTEGER NOT NULL,
+        dim     INTEGER NOT NULL
+    );
 """
 
 
@@ -441,6 +454,23 @@ def _migrate_embedding_sparse_column(conn: sqlite3.Connection) -> None:
         )
 
 
+def _migrate_colbert_sidecar(conn: sqlite3.Connection) -> None:
+    """E10 migration — ensure the `code_chunks_colbert` sidecar table
+    exists. Idempotent — CREATE TABLE IF NOT EXISTS in the schema SQL
+    already handles fresh dbs; this runs for pre-v1.34 dbs whose
+    schema script didn't include the sidecar."""
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS code_chunks_colbert (
+            chunk_id INTEGER PRIMARY KEY REFERENCES code_chunks(id) ON DELETE CASCADE,
+            vectors BLOB NOT NULL,
+            seq_len INTEGER NOT NULL,
+            dim     INTEGER NOT NULL
+        )
+        """
+    )
+
+
 def open_db(root: Path, create: bool = True) -> sqlite3.Connection:
     conn = _kz_sqlite.open_indexer_db(
         db_path(root), _SCHEMA_SQL,
@@ -451,6 +481,7 @@ def open_db(root: Path, create: bool = True) -> sqlite3.Connection:
         _migrate_kind_column(conn)         # v1.32 — adds `kind`
         _migrate_symbol_name_column(conn)  # v1.33 — adds `symbol_name`
         _migrate_embedding_sparse_column(conn)  # v1.34 — adds `embedding_sparse` (E9)
+        _migrate_colbert_sidecar(conn)     # v1.34 — adds code_chunks_colbert (E10)
         # FTS5 mirror (separate from the SCHEMA_SQL executescript because
         # it uses triggers; _sqlite.open_indexer_db is schema-only).
         _kz_search.ensure_fts_mirror(conn, "code_chunks")
@@ -894,6 +925,7 @@ import _ast_chunk as _kz_ast  # v1.33.0+: symbol-aware Python chunker (O2)
 import _search as _kz_search  # v1.27.0+: BM25+dense hybrid search
 import _quant as _kz_quant  # v1.31.0+: int8 quantization helpers
 import _sparse as _kz_sparse  # v1.34.0+: SPLADE sparse-embedding helpers (E9)
+import _colbert as _kz_colbert  # v1.34.0+: ColBERT late-interaction helpers (E10)
 
 
 def _has_embedding_q8_column(conn: sqlite3.Connection) -> bool:
@@ -951,6 +983,48 @@ def _maybe_sparse_batch(
         return None
     sparses = _kz_sparse.encode_sparse_batch(texts)
     return [_kz_sparse.serialize(s) if s else None for s in sparses]
+
+
+def _maybe_colbert_batch(
+    conn: sqlite3.Connection, texts: list[str]
+) -> list[tuple[bytes, int, int] | None] | None:
+    """E10 — return per-row (blob, seq_len, dim) tuples when:
+
+      1. `code_chunks_colbert` sidecar table exists, AND
+      2. `KAIZEN_COLBERT_ENABLE=1` is set, AND
+      3. `_colbert.is_available()` reports True.
+
+    Returns ``None`` when ColBERT is disabled / unavailable (caller
+    skips the sidecar write). Returns a list (same length as ``texts``)
+    of tuples or ``None`` per row otherwise — per-row ``None`` means
+    the encoder produced an empty/invalid matrix for that text and the
+    sidecar row should be skipped."""
+    # Sidecar table is created at migration time; probe via sqlite_master
+    # to avoid coupling to schema knowledge here.
+    has_sidecar = conn.execute(
+        "SELECT name FROM sqlite_master "
+        "WHERE type='table' AND name='code_chunks_colbert'"
+    ).fetchone() is not None
+    if not has_sidecar:
+        return None
+    if not _kz_colbert.is_colbert_enabled():
+        return None
+    if not _kz_colbert.is_available():
+        return None
+    mats = _kz_colbert.encode_colbert_batch(texts)
+    out: list[tuple[bytes, int, int] | None] = []
+    for mat in mats:
+        if mat is None or getattr(mat, "size", 0) == 0:
+            out.append(None)
+            continue
+        try:
+            blob = _kz_colbert.serialize(mat)
+            seq_len, dim = int(mat.shape[0]), int(mat.shape[1])
+        except (ValueError, AttributeError, IndexError):
+            out.append(None)
+            continue
+        out.append((blob, seq_len, dim))
+    return out
 from _progress import Progress as _Progress  # v1.30.0+: live stderr progress
 
 
@@ -1081,6 +1155,11 @@ def do_filter(root: Path) -> dict:
         # we skip the sparse column entirely (same back-compat shape as
         # the q8 branch above for pre-v1.31 dbs).
         chunk_sparse_blobs = _maybe_sparse_batch(conn, chunk_texts)
+        # E10 (v1.34+): also write ColBERT multi-vector sidecar when
+        # KAIZEN_COLBERT_ENABLE=1. Returns None when disabled; else
+        # list of (blob, seq_len, dim) tuples or None per row. Written
+        # AFTER the code_chunks INSERT below so chunk_ids exist.
+        chunk_colbert_payloads = _maybe_colbert_batch(conn, chunk_texts)
         # Upsert the file row.
         conn.execute(
             """INSERT OR REPLACE INTO code_files
@@ -1143,6 +1222,37 @@ def do_filter(root: Path) -> dict:
         # level prologue chunk (kind='code', symbol_name='<module>') owns
         # them. Other languages skip (extractor returns []).
         _populate_xref_imports(conn, file_id, cleaned_rec, kept)
+        # E10 (v1.34): ColBERT multi-vector sidecar. Re-query chunk_ids
+        # by (file_id, chunk_idx) because executemany doesn't expose them.
+        # Only runs when KAIZEN_COLBERT_ENABLE=1 + colbert available.
+        if chunk_colbert_payloads is not None:
+            id_rows = conn.execute(
+                "SELECT id, chunk_idx FROM code_chunks "
+                "WHERE file_id = ? ORDER BY chunk_idx",
+                (file_id,),
+            ).fetchall()
+            idx_to_id = {int(r["chunk_idx"]): int(r["id"]) for r in id_rows}
+            sidecar_rows = []
+            for i, c in enumerate(kept):
+                payload = chunk_colbert_payloads[i]
+                if payload is None:
+                    continue
+                chunk_id = idx_to_id.get(c["chunk_idx"])
+                if chunk_id is None:
+                    continue
+                blob, seq_len, dim = payload
+                sidecar_rows.append((chunk_id, blob, seq_len, dim))
+            if sidecar_rows:
+                # INSERT OR REPLACE — the DELETE FROM code_chunks above
+                # cascaded into code_chunks_colbert via FK, so this is
+                # really just INSERT. OR REPLACE guards against any
+                # racy partial-state leftover.
+                conn.executemany(
+                    """INSERT OR REPLACE INTO code_chunks_colbert
+                       (chunk_id, vectors, seq_len, dim)
+                       VALUES (?, ?, ?, ?)""",
+                    sidecar_rows,
+                )
         chunks_written += len(kept)
         files_indexed += 1
         bar.tick(f"+ {cleaned_rec['path']} ({len(kept)} chunks)")

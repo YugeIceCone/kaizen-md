@@ -568,6 +568,80 @@ def sparse_search(
     return scored[:top_k]
 
 
+# ─── ColBERT late-interaction (E10) ──────────────────────────────────
+#
+# Token-level multi-vector retrieval. Each chunk in the
+# `code_chunks_colbert` sidecar has a (seq_len, dim) matrix; the query
+# is encoded the same way and MaxSim aggregates per-token cosines into
+# a score. Higher storage cost (~10x dense) but better long-tail recall.
+#
+# Returns [] when the sidecar table is absent or empty — hybrid_search
+# does not auto-fold ColBERT; callers opt in explicitly via the
+# `colbert_search` MCP tool or by composing in RRF.
+
+
+def colbert_search(
+    conn: sqlite3.Connection,
+    base_table: str,
+    query: str,
+    top_k: int = 50,
+    *,
+    sidecar_table: str = "code_chunks_colbert",
+    extra_where: str = "",
+    extra_params: Sequence = (),
+) -> list[tuple[int, float]]:
+    """v1.34.0+ (E10) — ColBERT MaxSim search via the multi-vector
+    sidecar.
+
+    Returns ``[(rowid, max_sim_score), ...]`` top-K descending. The
+    ``base_table`` parameter is the chunk table (e.g. ``code_chunks``);
+    ``sidecar_table`` defaults to ``<base_table>_colbert`` — pass
+    explicitly for other indexers.
+
+    Returns ``[]`` (degrades gracefully) when:
+
+      - sidecar table absent (pre-v1.34 db), OR
+      - ``_colbert.is_available()`` False (deps / model missing), OR
+      - no rows in the sidecar yet (KAIZEN_COLBERT_ENABLE wasn't on
+        during indexing).
+    """
+    # Sidecar present?
+    row = conn.execute(
+        "SELECT name FROM sqlite_master "
+        "WHERE type='table' AND name=?",
+        (sidecar_table,),
+    ).fetchone()
+    if row is None:
+        return []
+    import _colbert  # lazy local import — heavy deps
+    if not _colbert.is_available():
+        return []
+    q_mat = _colbert.encode_colbert(query)
+    if q_mat is None or getattr(q_mat, "size", 0) == 0:
+        return []
+
+    where = ""
+    if extra_where:
+        where = f" WHERE {extra_where}"
+    rows = conn.execute(
+        f"SELECT chunk_id, vectors FROM {sidecar_table}{where}",
+        list(extra_params),
+    ).fetchall()
+    if not rows:
+        return []
+
+    scored: list[tuple[int, float]] = []
+    for r in rows:
+        d_mat = _colbert.deserialize(bytes(r[1]))
+        if d_mat is None:
+            continue
+        s = _colbert.max_sim_score(q_mat, d_mat)
+        if s > 0:
+            scored.append((int(r[0]), s))
+    scored.sort(key=lambda x: x[1], reverse=True)
+    return scored[:top_k]
+
+
 # ─── Hybrid (linear) ─────────────────────────────────────────────────
 
 
