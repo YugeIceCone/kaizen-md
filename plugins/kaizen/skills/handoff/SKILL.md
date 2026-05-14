@@ -2,7 +2,7 @@
 name: handoff-managing
 description: Creates and resumes session handoff documents for transferring work between sessions. Use to save context, resume from previous sessions, or manage handoff files.
 metadata:
-  version: "1.2"
+  version: "1.3"
 ---
 
 # Handoff Managing
@@ -107,32 +107,24 @@ files:
 
 Use the **Write** tool to save the file.
 
-### Step 3 — Optionally persist to the SQLite DB
+### Step 3 — Index the handoff into the store
 
-The **filesystem YAML from Step 2 is the system of record** — portable,
-always works, what `resume` reads. The SQLite DB at
-`~/.claude/session_logs.db` is an *optional queryable index*, written
-via `~/.claude/scripts/stores.py`. That helper is **not shipped with
-the plugin** — it's part of a personal `~/.claude/scripts/` setup. If
-it's absent, **skip this step**; the handoff is already saved.
+The **filesystem YAML from Step 2 is the system of record**. The
+plugin's handoff store (`handoff.db`) is the *queryable index* — it's
+what `resume` reads to find the latest handoff fast. Index the YAML
+you just wrote:
 
 ```bash
-# Guarded — only touch the DB if the helper actually exists.
-if [ -f ~/.claude/scripts/stores.py ]; then
-  python3 -c "
-import sys, os
-sys.path.insert(0, os.path.expanduser('~/.claude/scripts'))
-from stores import handoff_save
-content = open(os.path.expanduser('~/.claude/thoughts/handoffs/{session-name}/{filename}.yaml')).read()
-handoff_save('{session-name}', content, 'partial')
-print('Saved to DB')
-"
-else
-  echo "stores.py absent — filesystem YAML is the record; skipping DB."
-fi
+python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/handoff.py \
+  save --session "{session-name}" \
+       --file ~/.claude/thoughts/handoffs/{session-name}/{filename}.yaml \
+       --status partial
 ```
 
-Replace `{session-name}` and `{filename}` (no extension) with values from step 1. The DB row's status starts `partial`; the final outcome is set in Step 4.
+`save` upserts on the file path — re-running it (Step 4 does) updates
+the row in place, never duplicates. Status starts `partial`; Step 4
+sets the final value. The store is plugin-owned (`handoff.py`); no
+external-script dependency.
 
 ### Step 4 — Mark session outcome (REQUIRED)
 
@@ -157,24 +149,19 @@ After the user responds:
    - `status:` → `complete` (or `partial` / `blocked` per the work)
    - `outcome:` → the user's literal answer (`SUCCEEDED` / `PARTIAL_PLUS` / `PARTIAL_MINUS` / `FAILED`)
 
-2. **Optionally re-save to the DB** — same guard as Step 3:
+2. **Re-index into the store** — pick up the updated frontmatter:
 
 ```bash
-if [ -f ~/.claude/scripts/stores.py ]; then
-  python3 -c "
-import sys, os
-sys.path.insert(0, os.path.expanduser('~/.claude/scripts'))
-from stores import handoff_save
-content = open(os.path.expanduser('~/.claude/thoughts/handoffs/{session-name}/{filename}.yaml')).read()
-handoff_save('{session-name}', content, '<USER_CHOICE>')
-print('Outcome recorded in DB')
-"
-else
-  echo "stores.py absent — YAML frontmatter already updated; skipping DB."
-fi
+python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/handoff.py \
+  save --session "{session-name}" \
+       --file ~/.claude/thoughts/handoffs/{session-name}/{filename}.yaml \
+       --status complete
 ```
 
-Replace `<USER_CHOICE>` with the literal answer. If the DB step runs, the outcome lives in the `status` column of the `handoffs` table — but the YAML frontmatter is authoritative.
+`--status` is the work-lifecycle state — `complete` when the session's
+work is done (`partial` / `blocked` otherwise). `save` upserts, so this
+updates the Step 3 row in place. The YAML frontmatter stays
+authoritative; the store mirrors it for fast `latest` / `list`.
 
 ### Step 5 — Confirm completion to the user
 
@@ -183,8 +170,9 @@ Handoff saved: ~/.claude/thoughts/handoffs/{session-name}/{filename}.yaml
 Outcome: {OUTCOME}.
 
 Resume in a new session by pointing it at that path, or run the
-`resume` command with the path. (If the optional DB index is present,
-`resume` with no args also works — but the YAML file is the record.)
+`resume` command with no args — it reads the latest handoff straight
+from the store. The YAML file stays the system of record; the store
+is just the index.
 ```
 
 ---
@@ -219,19 +207,20 @@ ls -t ~/.claude/thoughts/handoffs/{TICKET}/ 2>/dev/null
 
 #### Mode C — No args
 
-The filesystem is the system of record. List the most recent handoffs:
+Query the handoff store for the most recent entry:
 
 ```bash
-ls -t ~/.claude/thoughts/handoffs/*/*.yaml 2>/dev/null | head -5
+python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/handoff.py latest --json
 ```
 
-- One clear most-recent → read it (Step 2).
-- Several plausible / ambiguous → present the list, ask which one.
-- None found → tell the user there's no handoff to resume.
+- A `handoff` object → read its `file_path` in full (Step 2). That
+  file is the system of record.
+- `"handoff": null` → the store is empty. Fall back to the filesystem:
+  `ls -t ~/.claude/thoughts/handoffs/*/*.yaml 2>/dev/null | head -5` —
+  present the list, or tell the user there's nothing to resume.
 
-The optional DB index (`~/.claude/scripts/stores.py`, if present) can
-also answer "latest" — but it's just a convenience over the YAML
-files, which are authoritative. Don't depend on it.
+Use `handoff.py list [--limit N] [--session SID]` to browse beyond
+just the latest.
 
 ### Step 2 — Read the handoff fully + its references
 
@@ -309,5 +298,5 @@ After the user confirms direction:
 - **Be thorough**: more information is better than less. Include both top-level objectives and lower-level details.
 - **Avoid large code blocks / diffs**. Use `path/to/file.ext:line` references the next agent can follow when ready.
 - **Resume verifies, never assumes.** Codebase state can drift between sessions; always confirm `done_this_session` files still exist and the `worked:` patterns still hold.
-- **Create asks for outcome.** Do not skip Step 4 of `create` — and write the answer back to the YAML frontmatter, not just the DB. The YAML file is the system of record; the SQLite DB is an optional, may-not-be-present index.
-- **The plugin ships self-contained.** The `~/.claude/scripts/stores.py` DB helper is NOT part of the plugin — every DB step is guarded with `if [ -f ~/.claude/scripts/stores.py ]` and degrades to filesystem-only. Never add an unguarded external-script invocation (iron law `skill-md-no-external-script-paths`).
+- **Create asks for outcome.** Do not skip Step 4 of `create` — write the answer to the YAML frontmatter (the system of record) AND re-index via `handoff.py save` so the store mirrors it.
+- **The store is plugin-owned + self-contained.** `handoff.py` + `_handoff.py` + `handoff.db` (at `~/.claude/.kaizen/handoff.db`; override `KAIZEN_HANDOFF_DB`) ship with the plugin — no external `~/.claude/scripts/` dependency. This skill was refactored off the recovered-but-lost `stores.py` in v1.36.0; the YAML files remain the durable system of record, the store is the queryable index.

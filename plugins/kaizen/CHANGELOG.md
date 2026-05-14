@@ -3,6 +3,21 @@
 All notable changes to the `kaizen` plugin documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [SemVer](https://semver.org/).
 
+## [1.36.0] — 2026-05-14
+
+### Added — handoff promoted from prose-only skill to a real plugin-owned feature
+
+The `handoff` skill's DB layer was broken: it invoked `~/.claude/scripts/stores.py`, an unshipped personal script (fixed defensively in 1.35.1 by guarding the calls). The provenance hunt traced the skill's lineage through `port/`'s fork-graveyard and recovered the lost `stores.py` from `port/.claude_backup/scripts/stores.py` — a 938-line session-logger god-file. This release refactors the **handoff slice** of that file into the canonical kaizen feature shape: plugin-owned, no external dependency.
+
+- **`skills/workflow/scripts/_handoff.py`** (new) — core: env-aware path resolution (`KAIZEN_HANDOFF_DB` / `KAIZEN_HANDOFF_DIR`), `_SCHEMA_SQL`, `open_db` via the shared `_sqlite` helper, and `save_handoff` / `latest_handoffs` / `list_handoffs`. `save_handoff` upserts on `file_path` — re-saving a handoff (e.g. after create-Step-4 sets the outcome) updates the row instead of duplicating it, an improvement over the recovered insert-always behaviour. Reads are defensive: `[]` on a missing/empty DB, never raises.
+- **`skills/workflow/scripts/handoff.py`** (new) — the CLI: `save` / `latest` / `list` / `path`. Plain argparse (handoff is CRUD over a store, not LLM orchestration). Bare invocation defaults to `latest`.
+- **`skills/handoff/domain/handoff.yaml`** + **`domain/schemas/handoff-record.schema.json`** (new) — status + outcome enums, path defaults, and the DB-record contract (schema-driven per the iron law).
+- **`bin/kaizen-handoff`** (new) — bin wrapper.
+- **`tests/test_handoff.py`** (new) — 18 tests, env-sandboxed.
+- **`skills/handoff/SKILL.md`** rewritten — Step 3 / Step 4 / resume Mode C now call `python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/handoff.py` instead of the guarded `~/.claude/scripts/stores.py` blocks. The filesystem YAML stays the system of record; the SQLite store (`~/.claude/.kaizen/handoff.db`) is the queryable index.
+
+The handoff DB now works out of the box for every plugin user — the `handoffs` table was empty for everyone but the original author before this.
+
 ## [1.35.2] — 2026-05-14
 
 ### Fixed — kaizen:handoff non-portable + self-contradictory prompt
