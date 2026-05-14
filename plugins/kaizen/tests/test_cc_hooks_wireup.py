@@ -47,16 +47,20 @@ class TestManifestHasAdditiveEvents(unittest.TestCase):
             cfg = self.data["hooks"][event]
             self.assertEqual(len(cfg), 1, f"{event}: expected 1 config block")
             commands = cfg[0]["hooks"]
-            self.assertEqual(len(commands), 1, f"{event}: expected 1 command")
-            cmd = commands[0]["command"]
-            # Strip the ${CLAUDE_PLUGIN_ROOT} prefix and look up the file.
-            # Per-provider categorization: claude hooks live under hooks/claude/.
-            self.assertIn("${CLAUDE_PLUGIN_ROOT}/hooks/claude/", cmd)
-            rel = cmd.split("${CLAUDE_PLUGIN_ROOT}/", 1)[1].split(" ", 1)[0]
-            self.assertTrue(
-                (PLUGIN_ROOT / rel).is_file(),
-                f"{event}: script not found at {rel}",
+            self.assertGreaterEqual(
+                len(commands), 1, f"{event}: expected >= 1 command",
             )
+            # Every command's script must exist on disk + live under
+            # hooks/claude/ (per the provider-categorization R-PROV
+            # convention).
+            for c in commands:
+                cmd = c["command"]
+                self.assertIn("${CLAUDE_PLUGIN_ROOT}/hooks/claude/", cmd)
+                rel = cmd.split("${CLAUDE_PLUGIN_ROOT}/", 1)[1].split(" ", 1)[0]
+                self.assertTrue(
+                    (PLUGIN_ROOT / rel).is_file(),
+                    f"{event}: script not found at {rel}",
+                )
 
 
 class TestHookScriptsParseAsBash(unittest.TestCase):
