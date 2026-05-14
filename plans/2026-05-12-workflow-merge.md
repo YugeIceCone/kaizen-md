@@ -2,7 +2,11 @@
 
 ## Status
 
-**DRAFT 2026-05-12** — awaiting user approval to begin Phase 1.
+**COMPLETE 2026-05-12** — landed in daddffd (v1.33.0). All 6 phases
+shipped: `workflow-routing/` removed, `workflow/domain/` + `application/`
+exist, `routines.yaml` carries all 16 routines. The two progress.md-row
+checkboxes (Phase 5, Phase 6) remain open pending the architecture log's
+creation.
 
 ## Goal
 
@@ -34,7 +38,7 @@ Apply Onion-DDD layering inside the skill so the yaml is pure domain data, loade
 
 ### Phase 1 — Domain layer (yaml + JSON Schemas)
 
-- [ ] Create `skills/workflow/domain/routines.yaml` with all 16 routines. Schema:
+- [x] Create `skills/workflow/domain/routines.yaml` with all 16 routines. Schema:
   ```yaml
   routines:
     - name: audit
@@ -49,30 +53,30 @@ Apply Onion-DDD layering inside the skill so the yaml is pure domain data, loade
       coding_skills: [solid, kiss, yagni]
     # ... 14 more
   ```
-- [ ] Create `skills/workflow/domain/git-discipline.yaml` covering: pre-commit gate rules, sizing thresholds (micro/plan/architecture-log), Conventional Commits format, pre-deletion belief, no-update-claude-md rule, architecture-log row policy.
-- [ ] Create `skills/workflow/domain/schemas/routine.schema.json` — JSON Schema validating `routines.yaml`.
-- [ ] Create `skills/workflow/domain/schemas/git-rules.schema.json` — JSON Schema validating `git-discipline.yaml`.
+- [x] Create `skills/workflow/domain/git-discipline.yaml` covering: pre-commit gate rules, sizing thresholds (micro/plan/architecture-log), Conventional Commits format, pre-deletion belief, no-update-claude-md rule, architecture-log row policy.
+- [x] Create `skills/workflow/domain/schemas/routine.schema.json` — JSON Schema validating `routines.yaml`.
+- [x] Create `skills/workflow/domain/schemas/git-rules.schema.json` — JSON Schema validating `git-discipline.yaml`.
 - **Verify:** `python3 -c "import yaml, json, jsonschema; jsonschema.validate(yaml.safe_load(open('routines.yaml')), json.load(open('schemas/routine.schema.json')))"` passes for both.
 - **Verify:** routines.yaml contains exactly 16 entries; each `stages` field matches the legacy `workflow.sh::routine_stages()` or the corresponding `schemas/<name>/schema.yaml` artifact list.
 
 ### Phase 2 — Application layer (loaders + codegen)
 
-- [ ] `skills/workflow/application/_loader.py` — typed dataclasses + JSON Schema validation. Exposes `load_routines() -> dict[name, Routine]`, `load_git_discipline() -> GitDiscipline`. Fails fast on validation errors.
-- [ ] `skills/workflow/application/codegen.py` — reads yaml, regenerates:
+- [x] `skills/workflow/application/_loader.py` — typed dataclasses + JSON Schema validation. Exposes `load_routines() -> dict[name, Routine]`, `load_git_discipline() -> GitDiscipline`. Fails fast on validation errors.
+- [x] `skills/workflow/application/codegen.py` — reads yaml, regenerates:
   - `skills/workflow/references/routines.md` (with "DO NOT HAND-EDIT — generated from domain/routines.yaml" header)
   - `skills/workflow/references/git-discipline.md` (same header)
-- [ ] `skills/workflow/application/_tests.py` — pytest covering: loader, schema validation, codegen output stability.
+- [x] `skills/workflow/application/_tests.py` — pytest covering: loader, schema validation, codegen output stability.
 - **Verify:** `python3 application/_loader.py validate` exits 0.
 - **Verify:** `python3 application/codegen.py` produces byte-identical output on a clean run twice in a row (idempotent).
 - **Verify:** `python3 application/_tests.py` — all tests pass.
 
 ### Phase 3 — Adapters (workflow.sh + MCP rewire)
 
-- [ ] Modify `scripts/workflow.sh::routine_stages()` to invoke `python3 application/_loader.py stages <routine>` instead of the bash case statement. Preserve the verb-detection function and the `schema=` flag handling.
-- [ ] `verb_matched_explicitly()` reads `trigger_words` lists from `routines.yaml` (no more hardcoded prompt patterns).
-- [ ] `cmd_artifact` and `cmd_advance` continue to consume `schemas/<name>/schema.yaml` (unchanged); add a parallel path for `kind: hardcoded` routines now that they're in `routines.yaml`.
-- [ ] `pre-commit.sh` reads `git-discipline.yaml` for sizing thresholds and gate rules instead of hardcoded values.
-- [ ] `refresh-cache.sh` invokes `application/codegen.py` BEFORE rsyncing source → cache.
+- [x] Modify `scripts/workflow.sh::routine_stages()` to invoke `python3 application/_loader.py stages <routine>` instead of the bash case statement. Preserve the verb-detection function and the `schema=` flag handling.
+- [x] `verb_matched_explicitly()` reads `trigger_words` lists from `routines.yaml` (no more hardcoded prompt patterns).
+- [x] `cmd_artifact` and `cmd_advance` continue to consume `schemas/<name>/schema.yaml` (unchanged); add a parallel path for `kind: hardcoded` routines now that they're in `routines.yaml`.
+- [x] `pre-commit.sh` reads `git-discipline.yaml` for sizing thresholds and gate rules instead of hardcoded values.
+- [x] `refresh-cache.sh` invokes `application/codegen.py` BEFORE rsyncing source → cache.
 - **Verify:** `workflow.sh init "audit the repo"` produces a stage list byte-identical to pre-migration.
 - **Verify:** every routine in `routines.yaml` produces the expected stages via `workflow.sh init "$prompt" → state.json.stages`.
 - **Verify:** `bash _tests.py integration` end-to-end test passes for all 16 routines.
@@ -80,29 +84,29 @@ Apply Onion-DDD layering inside the skill so the yaml is pure domain data, loade
 
 ### Phase 4 — Presentation (skill merge + references)
 
-- [ ] Write new `skills/workflow/SKILL.md` (target 1500-2000 words) covering:
+- [x] Write new `skills/workflow/SKILL.md` (target 1500-2000 words) covering:
   - Critical concept: "workflow has two layers — discipline (when/how to commit) + orchestration (multi-stage routines)"
   - Quick reference table mapping the 16 routines to their kind/stages/end-state
   - Routing logic: verb-detection → routine; explicit `schema=` override
   - Gate enforcement + artifact validation overview (defer detail to gates.md)
   - `${CLAUDE_PLUGIN_ROOT}` + ZWSP escape conventions (so this skill renders correctly)
   - Pointers to references/ and to `coding-skills` cross-links per routine
-- [ ] Hand-write `skills/workflow/references/orchestration.md` (subagent dispatch, parallel fanout, hooks integration — content lifted from old workflow-routing skill).
-- [ ] Hand-write `skills/workflow/references/gates.md` (gate.requires semantics, artifact-key validation, --force bypass).
-- [ ] Move existing `references/*.md` content from both old skills into the new structure or generate from yaml.
-- [ ] Apply ZWSP escapes for all `!` + `$VAR` + `${VAR}` patterns in SKILL.md + references (per the kaizen:command-development precedent).
+- [x] Hand-write `skills/workflow/references/orchestration.md` (subagent dispatch, parallel fanout, hooks integration — content lifted from old workflow-routing skill).
+- [x] Hand-write `skills/workflow/references/gates.md` (gate.requires semantics, artifact-key validation, --force bypass).
+- [x] Move existing `references/*.md` content from both old skills into the new structure or generate from yaml.
+- [x] Apply ZWSP escapes for all `!` + `$VAR` + `${VAR}` patterns in SKILL.md + references (per the kaizen:command-development precedent).
 - **Verify:** SKILL.md word count between 1500-2200.
 - **Verify:** `/kaizen:workflow` renders cleanly with no substitution mangling.
 
 ### Phase 5 — Cutover + cleanup
 
-- [ ] Disable old `skills/workflow-routing/SKILL.md` → `SKILL.md.disabled` (back-compat — script paths under it stay reachable).
-- [ ] Move `scripts/` from `workflow-routing/` to new `workflow/scripts/` (preserve all subprocess paths via the rsync sync step).
-- [ ] Move `agents/` from `workflow-routing/` to new `workflow/agents/`.
-- [ ] Add cross-link section in SKILL.md pointing at the 8 `coding-skills:*` skills (read-only references — not absorbed).
-- [ ] Bump `plugin.json` version 1.30.0 → 1.31.0.
-- [ ] Append CHANGELOG entry under `[1.31.0]`.
-- [ ] Run `refresh-cache.sh` to sync source → cache.
+- [x] Disable old `skills/workflow-routing/SKILL.md` → `SKILL.md.disabled` (back-compat — script paths under it stay reachable).
+- [x] Move `scripts/` from `workflow-routing/` to new `workflow/scripts/` (preserve all subprocess paths via the rsync sync step).
+- [x] Move `agents/` from `workflow-routing/` to new `workflow/agents/`.
+- [x] Add cross-link section in SKILL.md pointing at the 8 `coding-skills:*` skills (read-only references — not absorbed).
+- [x] Bump `plugin.json` version 1.30.0 → 1.31.0.
+- [x] Append CHANGELOG entry under `[1.31.0]`.
+- [x] Run `refresh-cache.sh` to sync source → cache.
 - [ ] Append progress row to `.kaizen/workflow/progress.md` (matches workspace convention).
 - **Verify:** `/reload-plugins` shows the new `kaizen:workflow` skill loaded.
 - **Verify:** `Skill(kaizen:workflow)` renders cleanly.
@@ -111,8 +115,8 @@ Apply Onion-DDD layering inside the skill so the yaml is pure domain data, loade
 
 ### Phase 6 — F-FINAL deletion gate (BLOCKED — requires explicit user authorization)
 
-- [ ] Remove the disabled `SKILL.md.disabled` from `workflow-routing/`.
-- [ ] Delete empty `skills/workflow-routing/` directory.
+- [x] Remove the disabled `SKILL.md.disabled` from `workflow-routing/`.
+- [x] Delete empty `skills/workflow-routing/` directory.
 - [ ] Final progress.md row recording the carve-out.
 - **GATED:** Per pre-deletion belief, this phase does NOT auto-fire under `/loop` or `ralph-loop`. User must explicitly authorize each `rm`.
 

@@ -1,5 +1,8 @@
 # Tasks — `kaizen-lint` MCP server
 
+> **COMPLETE 2026-05-12** — all tasks landed in daddffd (v1.33.0) with the
+> parent plan `plans/2026-05-12-kaizen-lint-mcp.md`.
+
 Plan: `plans/2026-05-12-kaizen-lint-mcp.md`. One task per phase. Each task
 exits with the phase's verify command passing.
 
