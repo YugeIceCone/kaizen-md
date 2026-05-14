@@ -15,6 +15,10 @@
 
 set -uo pipefail
 
+# Bypass: KAIZEN_TRACE_DISABLE=1. trace.py honors it too, but checking here
+# skips the python3 spawn entirely — _trace.sh is on the hot path (~6 hooks).
+[ "${KAIZEN_TRACE_DISABLE:-}" = "1" ] && exit 0
+
 EVT="${1:-unknown}"
 TOOL="${2:-}"
 
@@ -27,7 +31,14 @@ source "$_HOOK_DIR/../../skills/workflow/scripts/_plugin_root.sh"
 PLUGIN_ROOT="$(kaizen_plugin_root 2>/dev/null)" || exit 0
 
 INPUT=$(cat 2>/dev/null || echo "{}")
-SID=$(printf '%s' "$INPUT" | python3 -c "import json,sys; print(json.loads(sys.stdin.read() or '{}').get('session_id',''))" 2>/dev/null)
+# Shell-native session_id extraction — avoids a python3 spawn on the hot
+# path (H2 speed fix). Matches `"session_id"<ws>:<ws>"<value>"`; empty when
+# the field is absent or JSON-null. trace.py stays the single writer so
+# rotation/pruning/path-resolution aren't duplicated into shell (DRY).
+SID=$(printf '%s' "$INPUT" \
+    | grep -oE '"session_id"[[:space:]]*:[[:space:]]*"[^"]*"' \
+    | head -n1 \
+    | sed -E 's/.*:[[:space:]]*"([^"]*)".*/\1/')
 
 python3 "$PLUGIN_ROOT/skills/workflow/scripts/trace.py" event \
     --src hook --evt "$EVT" \
