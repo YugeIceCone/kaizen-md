@@ -1,0 +1,100 @@
+# Agent-self-audit dispatch config — schema-driven subagent fan-out.
+#
+# The mechanical self-audit (self_audit.py) emits skill-checkpoint
+# Findings: "load Skill X, apply it to targets Y". A script cannot
+# apply a skill — skill bodies are LLM judgment. agent-self-audit
+# closes that loop in three phases:
+#
+#   A. dispatch-plan  — self_audit_agent.py renders one self-contained
+#      subagent brief per checkpoint Finding -> dispatch.json manifest.
+#   B. fan-out        — the orchestrating agent (NOT a script) reads the
+#      manifest and dispatches one subagent per brief via the Agent
+#      tool. Driven by commands/agent-self-audit.md.
+#   C. aggregate      — self_audit_agent.py reads + jsonschema-validates
+#      every subagent result -> consolidated <utc>-agent-self.md report.
+#
+# This file owns phase A's rendering: the subagent type, the prompt
+# template, and where runs land. Phase C's merge logic is code.
+# Edit this yaml to retune the briefs — no Python change needed.
+
+version: 1
+
+dispatch:
+  # Which Claude Code subagent type each brief targets. general-purpose
+  # has Skill + Read + Grep + Glob — enough for a read-only
+  # skill-application audit. A checkpoint stage in audit-pipeline.yaml
+  # may override this per-skill via a `subagent_type:` field.
+  subagent_type: general-purpose
+
+  # Advisory cap on simultaneous subagents. The fan-out is agent-driven
+  # (Python cannot spawn subagents), so this is enforced by the
+  # playbook in commands/agent-self-audit.md, not by code.
+  max_parallel: 5
+
+  # Per-run output dir, relative to the repo root being audited.
+  # Each run gets its own <run-id> subdir (a UTC timestamp) holding:
+  #   dispatch.json            — the manifest (phase A output)
+  #   <checkpoint-id>.json     — one subagent result (phase B output)
+  #   <utc>-agent-self.md      — the consolidated report (phase C output)
+  # Override for test sandboxing via $KAIZEN_SELF_AUDIT_AGENT_DIR.
+  run_dir: ".kaizen/audits/agent"
+
+# The prompt every subagent receives. self_audit_agent.py substitutes
+# the {placeholders} — it is NOT Python str.format (the template and
+# the injected schema both contain literal braces), so substitution is
+# plain string replacement. The brief is fully self-contained: a
+# subagent has none of the orchestrator's conversation context.
+prompt_template: |
+  You are a read-only code-quality auditor for the kaizen-md plugin.
+
+  ## Your task
+
+  1. Load the Skill `{skill}` via the Skill tool and read it IN FULL —
+     tables and examples included, not just the description.
+  2. Apply its discipline to these target path(s) in the plugin:
+  {targets_block}
+  3. Produce findings — concrete, specific, anchored to a file path
+     (and a line range when you can pin one).
+
+  ## Focus
+
+  {rationale}
+
+  ## Hard rules
+
+  - READ-ONLY. Do NOT edit, create, or delete any file except the one
+    result file named below. You are auditing, not fixing — remediation
+    is a separate, user-approved step.
+  - Anchor every finding to a file path. A finding with no `files` is
+    not actionable.
+  - If the targets are clean against this skill, say so — an empty
+    `findings` array with `status: clean` is a valid, useful result.
+  - Stay scoped to `{skill}`. Do not audit against other skills; other
+    subagents cover those.
+
+  ## Output contract
+
+  When done, use the Write tool to write your findings as JSON to
+  exactly this path:
+
+      {result_path}
+
+  The JSON MUST match this schema (note `additionalProperties: false`):
+
+  {result_schema}
+
+  `status` is one of: `clean` (zero findings), `findings` (one or
+  more), `error` (you could not complete the audit — explain why in
+  `summary`). `checkpoint_id` and `skill` MUST echo the values given
+  to you above.
+
+  Return a one-line summary as your final message.
+
+# Appended to {rationale} so subagent severity calls stay consistent
+# with the mechanical pipeline's severity_order (info < low < medium <
+# high < critical). Most skill findings land at low or medium.
+severity_hint: |
+  Severity guidance — info: note only, no action needed. low:
+  minor/cosmetic. medium: a real violation worth fixing. high:
+  structural or architectural breakage. critical: security or
+  data-loss. When unsure between two levels, pick the lower one.

@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kaizen-md/self-audit/checkpoint-result.schema.json",
+  "title": "Agent-self-audit checkpoint result",
+  "description": "What one subagent writes after loading a Skill and applying it to a checkpoint's targets. self_audit_agent.py aggregate reads + validates these; an untrusted-LLM-output boundary, so the schema is strict (additionalProperties: false).",
+  "type": "object",
+  "required": ["checkpoint_id", "skill", "status", "findings"],
+  "properties": {
+    "checkpoint_id": {
+      "type": "string",
+      "description": "Echoes the dispatch.json brief id this result answers."
+    },
+    "skill": {
+      "type": "string",
+      "description": "The skill the subagent loaded + applied."
+    },
+    "status": {
+      "type": "string",
+      "enum": ["clean", "findings", "error"],
+      "description": "clean = zero findings; findings = one or more; error = audit could not complete (explain in summary)."
+    },
+    "summary": {
+      "type": "string",
+      "description": "One-line outcome of the checkpoint."
+    },
+    "findings": {
+      "type": "array",
+      "description": "Concrete violations the subagent found. Empty when status is clean.",
+      "items": {
+        "type": "object",
+        "required": ["severity", "title"],
+        "properties": {
+          "severity": {
+            "type": "string",
+            "enum": ["info", "low", "medium", "high", "critical"]
+          },
+          "title": {
+            "type": "string",
+            "minLength": 5,
+            "maxLength": 200
+          },
+          "detail": {
+            "type": "string",
+            "description": "Multi-line context: what the skill says, where the code diverges, why it matters."
+          },
+          "files": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "File paths the finding applies to (and line ranges when known)."
+          },
+          "remediation": {
+            "type": "string",
+            "description": "Concrete one-line action that would resolve the finding."
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}
