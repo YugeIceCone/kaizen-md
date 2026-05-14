@@ -1,4 +1,8 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.10"
+# dependencies = ["watchdog>=4.0"]
+# ///
 """kaizen daemon — one-shot worker that runs hash-compare + hygiene.
 
 Designed for cron (or systemd timer). Each invocation:
@@ -36,6 +40,7 @@ import datetime as dt
 import hashlib
 import json
 import os
+import shutil
 import signal
 import subprocess
 import sys
@@ -43,6 +48,13 @@ import time
 from pathlib import Path
 
 HOME = Path(os.path.expanduser("~"))
+
+# Resolved uv binary. daemon.py is a `uv run --script` script (watchdog
+# in its `# /// script` block); cron + the watch-start Popen re-invoke
+# it through uv. Cron's PATH is minimal, so resolve to an absolute path
+# at import time — falls back to bare "uv" when not found (interactive
+# shells still resolve it via PATH).
+UV = shutil.which("uv") or "uv"
 
 # v1.22.0+: state lives at ~/.claude/.kaizen/daemon/. KAIZEN_DAEMON_STATE still wins.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -262,9 +274,12 @@ def cron_install(interval_min: int = 30) -> bool:
     daemon = scripts_dir() / "daemon.py"
     # Cron supervises the persistent watch daemon. `watch-start` is
     # idempotent (pidfile check) — a no-op if alive, resurrect if dead.
-    periodic = (f"*/{interval_min} * * * * python3 {daemon} watch-start "
+    # daemon.py runs via `uv run --script` (watchdog dep); UV is the
+    # absolute uv path since cron's PATH does not include ~/.local/bin.
+    periodic = (f"*/{interval_min} * * * * {UV} run --script {daemon} watch-start "
                 f">/dev/null 2>&1  {CRON_MARKER}")
-    reboot = f"@reboot python3 {daemon} watch-start >/dev/null 2>&1  {CRON_MARKER}"
+    reboot = (f"@reboot {UV} run --script {daemon} watch-start "
+              f">/dev/null 2>&1  {CRON_MARKER}")
     cron_line = periodic + "\n" + reboot
 
     # Read existing crontab (may not exist)
@@ -619,7 +634,8 @@ def watch_start(interval: float) -> tuple[bool, int | str]:
     log = LOG_FILE.open("a")
     try:
         p = subprocess.Popen(
-            ["python3", str(daemon_script), "watch", "--interval", str(interval)],
+            [UV, "run", "--script", str(daemon_script),
+             "watch", "--interval", str(interval)],
             stdout=log, stderr=log, stdin=subprocess.DEVNULL,
             start_new_session=True,  # detach from controlling terminal (nohup-equivalent)
         )

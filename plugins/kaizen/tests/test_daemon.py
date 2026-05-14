@@ -88,6 +88,24 @@ class TestWatchBackendSelect(unittest.TestCase):
         self.assertIn("__pycache__", joined)
 
 
+class TestDaemonUvScript(unittest.TestCase):
+    def test_daemon_is_a_uv_run_script(self):
+        lines = (SCRIPTS / "daemon.py").read_text().splitlines()
+        self.assertIn("uv run --script", lines[0],
+                      "daemon.py shebang must invoke uv run --script")
+
+    def test_daemon_declares_watchdog_dependency(self):
+        text = (SCRIPTS / "daemon.py").read_text()
+        self.assertRegex(text, r"#\s*dependencies\s*=.*watchdog",
+                         "watchdog must be declared in the # /// script block")
+
+    def test_uv_constant_resolved(self):
+        # daemon.UV is the resolved uv binary (abs path when found, bare
+        # 'uv' otherwise) — used for cron lines + the watch-start Popen.
+        self.assertTrue(daemon.UV)
+        self.assertIn("uv", daemon.UV)
+
+
 class TestCronSupervisor(unittest.TestCase):
     def test_cron_install_supervises_watch_start(self):
         captured = {}
