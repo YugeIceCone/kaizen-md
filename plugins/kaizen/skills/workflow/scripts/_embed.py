@@ -390,6 +390,9 @@ def _embed_local(text: str) -> tuple[bytes, int]:
     vec = model.encode(text, convert_to_numpy=True, show_progress_bar=False).astype(
         np.float32
     )
+    # E5 (v1.33+): truncate to KAIZEN_EMBED_MATRYOSHKA_DIM when the
+    # active model is matryoshka-trained. No-op otherwise.
+    vec = maybe_truncate_matryoshka(vec, _cfg.EMBED_MODEL)
     return vec.tobytes(), int(vec.shape[0])
 
 
@@ -491,6 +494,13 @@ def _embed_local_batch(texts: list[str]) -> tuple[list[bytes], int]:
             convert_to_numpy=True, normalize_embeddings=normalize,
         )
     vecs = vecs.astype(np.float32)
+    # E5 (v1.33+): truncate each row to KAIZEN_EMBED_MATRYOSHKA_DIM when
+    # the active model is matryoshka. _get_matryoshka_dim() returns 0
+    # (no-op) by default, so this is free for non-matryoshka setups.
+    _matry_dim = _get_matryoshka_dim()
+    if _matry_dim > 0 and is_matryoshka_model(_cfg.EMBED_MODEL) and vecs.ndim > 1:
+        if vecs.shape[1] > _matry_dim:
+            vecs = vecs[:, :_matry_dim]
     out = [vecs[i].tobytes() for i in range(vecs.shape[0])]
     return out, int(vecs.shape[1]) if vecs.ndim > 1 else int(vecs.shape[0])
 

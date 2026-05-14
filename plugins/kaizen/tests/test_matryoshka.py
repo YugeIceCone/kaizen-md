@@ -137,6 +137,26 @@ class TestMaybeTruncate(unittest.TestCase):
             )
 
 
+class TestEmbedPathWiring(unittest.TestCase):
+    """Source-level check that the matryoshka helpers are actually
+    called in the embed pipeline. Source grep — catches a regression
+    where someone removes the wiring without removing the helper."""
+
+    EMBED_PATH = PLUGIN_ROOT / "skills" / "workflow" / "scripts" / "_embed.py"
+
+    def test_embed_local_calls_maybe_truncate(self):
+        text = self.EMBED_PATH.read_text()
+        # The single-text path calls maybe_truncate_matryoshka by name
+        self.assertIn("maybe_truncate_matryoshka(vec", text,
+                      "_embed_local should call maybe_truncate_matryoshka")
+
+    def test_embed_local_batch_consults_matryoshka_dim(self):
+        text = self.EMBED_PATH.read_text()
+        # The batch path inline-checks dim + family
+        self.assertIn("_get_matryoshka_dim()", text)
+        self.assertIn("is_matryoshka_model", text)
+
+
 class TestGetMatryoshkaDim(unittest.TestCase):
     def test_default_zero(self):
         with _EnvSandbox():
