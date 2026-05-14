@@ -16,9 +16,9 @@ set -uo pipefail
 
 _SCRIPT_REAL_DIR="$(cd "$(dirname "$(python3 -c "import os,sys; print(os.path.realpath(sys.argv[1]))" "${BASH_SOURCE[0]}")")" && pwd)"
 
-# Plugin root (one level up from scripts/ → skills/kaizen → skills → plugin)
+# Plugin root (scripts/ → workflow/ → skills/ → kaizen plugin root)
 PLUGIN_ROOT="$(cd "$_SCRIPT_REAL_DIR/../../.." && pwd)"
-HOOKS_DIR="$PLUGIN_ROOT/hooks"
+HOOKS_DIR="$PLUGIN_ROOT/hooks/claude"
 GW_SCRIPTS="$_SCRIPT_REAL_DIR"
 
 # v1.30.0+ — unified path SSOT.
@@ -199,11 +199,10 @@ echo "$SS_OUT" | grep -q "additionalContext"
 assert "SessionStart with in_flight item → additionalContext" $?
 
 # ──────────────────────────────────────────────────────────────────────
-# Stage 7 — Python unit tests
+# Stage 7 — Python unit suite (the full suite CI's `unittest discover` runs)
 # ──────────────────────────────────────────────────────────────────────
-UNIT_TESTS="$GW_SCRIPTS/../../../tests/test_backlog.py"
-if [ -f "$UNIT_TESTS" ]; then
-    tap "Python unit tests (14)" python3 "$UNIT_TESTS"
+if [ -d "$PLUGIN_ROOT/tests" ]; then
+    tap "Python unit suite" python3 -m unittest discover -s "$PLUGIN_ROOT/tests" -p "test_*.py"
 fi
 
 # ──────────────────────────────────────────────────────────────────────
