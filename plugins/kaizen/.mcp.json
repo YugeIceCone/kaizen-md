@@ -125,6 +125,14 @@
         "--script",
         "${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/roadmap_mcp.py"
       ]
+    },
+    "drift": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--script",
+        "${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/drift_mcp.py"
+      ]
     }
   }
 }
