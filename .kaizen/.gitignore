@@ -2,9 +2,13 @@
 #
 # Ignores ephemeral kaizen state (cache/, hooks/, trace/, daemon
 # socket, etc.). Durable workflow artifacts under workflow/ stay
-# tracked: progress.md (architecture log), backlog.{json,md},
-# audits/ (durable reports). This keeps the rule local to .kaizen/
-# so the repo root's .gitignore stays project-focused.
+# tracked: progress.md (architecture log) and backlog.{json,md}.
+# This keeps the rule local to .kaizen/ so the repo root's
+# .gitignore stays project-focused.
+#
+# Note: audit reports live at .kaizen/audits/ (NOT under workflow/),
+# so they are ignored by the `*` rule below — only workflow/ is
+# whitelisted. Move them under workflow/ if they should be tracked.
 
 *
 !.gitignore

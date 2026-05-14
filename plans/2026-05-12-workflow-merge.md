@@ -5,8 +5,7 @@
 **COMPLETE 2026-05-12** — landed in daddffd (v1.33.0). All 6 phases
 shipped: `workflow-routing/` removed, `workflow/domain/` + `application/`
 exist, `routines.yaml` carries all 16 routines. The two progress.md-row
-checkboxes (Phase 5, Phase 6) remain open pending the architecture log's
-creation.
+checkboxes were ticked 2026-05-14 when the architecture log was created.
 
 ## Goal
 
@@ -107,7 +106,7 @@ Apply Onion-DDD layering inside the skill so the yaml is pure domain data, loade
 - [x] Bump `plugin.json` version 1.30.0 → 1.31.0.
 - [x] Append CHANGELOG entry under `[1.31.0]`.
 - [x] Run `refresh-cache.sh` to sync source → cache.
-- [ ] Append progress row to `.kaizen/workflow/progress.md` (matches workspace convention).
+- [x] Append progress row to `.kaizen/workflow/progress.md` (matches workspace convention).
 - **Verify:** `/reload-plugins` shows the new `kaizen:workflow` skill loaded.
 - **Verify:** `Skill(kaizen:workflow)` renders cleanly.
 - **Verify:** `health.sh` returns "healthy (no issues)".
@@ -117,7 +116,7 @@ Apply Onion-DDD layering inside the skill so the yaml is pure domain data, loade
 
 - [x] Remove the disabled `SKILL.md.disabled` from `workflow-routing/`.
 - [x] Delete empty `skills/workflow-routing/` directory.
-- [ ] Final progress.md row recording the carve-out.
+- [x] Final progress.md row recording the carve-out.
 - **GATED:** Per pre-deletion belief, this phase does NOT auto-fire under `/loop` or `ralph-loop`. User must explicitly authorize each `rm`.
 
 ## Verification commands (per phase)
