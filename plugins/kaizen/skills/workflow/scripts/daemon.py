@@ -73,7 +73,7 @@ def plugin_src() -> Path:
 
 
 def scripts_dir() -> Path:
-    return plugin_src() / "skills" / "kaizen" / "scripts"
+    return plugin_src() / "skills" / "workflow" / "scripts"
 
 
 # ─── State ───────────────────────────────────────────────────────────
