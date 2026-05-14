@@ -3,8 +3,8 @@
 
 Walks a feature's filesystem footprint and checks it against the
 canonical shape in ``../domain/feature-shape.yaml`` + iron laws in
-``../domain/iron-laws.yaml`` + wiring checklist in
-``../domain/wiring-checklist.yaml``.
+``../../iron-laws/domain/iron-laws.yaml`` (owned by the ``iron-laws``
+skill) + wiring checklist in ``../domain/wiring-checklist.yaml``.
 
 ## CLI
 
@@ -49,6 +49,9 @@ SKILL_DIR = SCRIPT_DIR.parent
 DOMAIN_DIR = SKILL_DIR / "domain"
 PLUGIN_ROOT = SKILL_DIR.parent.parent  # plugins/kaizen
 REPO_ROOT = PLUGIN_ROOT.parent.parent   # kaizen-md repo root
+# iron-laws.yaml moved to its own skill (skills/iron-laws/) — validate.py
+# still consumes it, but the iron-laws skill owns it.
+IRON_LAWS_YAML = SKILL_DIR.parent / "iron-laws" / "domain" / "iron-laws.yaml"
 
 
 # ─── Minimal YAML loader (stdlib-only) ───────────────────────────────
@@ -405,7 +408,7 @@ def _exists_with_glob(resolved: str) -> bool:
 
 def check_iron_laws(feature: Optional[str] = None) -> list[Finding]:
     findings: list[Finding] = []
-    laws = _load_yaml(DOMAIN_DIR / "iron-laws.yaml").get("laws", [])
+    laws = _load_yaml(IRON_LAWS_YAML).get("laws", [])
 
     # Only implement the cheap, deterministic checks here. The
     # heavier ones (commit-time analysis) belong in the pre-commit

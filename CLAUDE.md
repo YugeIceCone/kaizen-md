@@ -57,7 +57,7 @@ fail CI — see Cross-platform below).
 - **Never edit vendored skills** (hard rule). Many skills under
   `plugins/kaizen/skills/` are vendored from upstream projects (coding-skills ©
   JordanCoin, superpowers © obra, remember © remember-md). The exact list is in
-  `skills/plugin-development/domain/iron-laws.yaml::no-modify-vendored` and
+  `skills/iron-laws/domain/iron-laws.yaml::no-modify-vendored` and
   `ATTRIBUTIONS.md`. To change one: patch upstream, then `bundle-refresh` (see
   `plugins/kaizen/CONTRIBUTING.md`). Plugin-original code is `skills/workflow/`,
   the kaizen-authored `skills/<feature>/`, and `scripts/ commands/ hooks/ bin/`.
@@ -124,7 +124,7 @@ new I/O in `scripts/`.
 
 ### Iron laws (hard = commit-blocking)
 
-Full spec in `skills/plugin-development/domain/iron-laws.yaml`. The hard ones:
+Full spec in `skills/iron-laws/domain/iron-laws.yaml`. The hard ones:
 
 - **bin-wrapper-per-cli** — every `skills/workflow/scripts/*.py` with an
   `argparse` main gets its own `bin/kaizen-*` wrapper **in the same commit**

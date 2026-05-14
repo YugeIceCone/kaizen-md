@@ -135,7 +135,7 @@ class TestSchemaLoad(unittest.TestCase):
     def test_iron_laws_loads(self):
         sys.path.insert(0, str(_VALIDATE.parent))
         import validate
-        data = validate._load_yaml(validate.DOMAIN_DIR / "iron-laws.yaml")
+        data = validate._load_yaml(validate.IRON_LAWS_YAML)
         self.assertIn("laws", data)
         self.assertGreater(len(data["laws"]), 5)
 

@@ -3,6 +3,14 @@
 All notable changes to the `kaizen` plugin documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [SemVer](https://semver.org/).
 
+## [Unreleased]
+
+### Added — `iron-laws` skill (managed single-source-of-truth for the iron laws)
+
+The plugin's iron laws become a managed SSOT system — `iron-laws.yaml` as the master, generated/linked derivations, and a real checker wired into `validate.py` + the pre-commit gate + an MCP server. Resolves the documentation-drift (stale "11-slot" / "13 iron laws" counts) and enforcement-gap (0 of 21 laws actually machine-checked) failure modes.
+
+- **Carve** — `iron-laws.yaml` moved from `skills/plugin-development/domain/` to a dedicated `skills/iron-laws/` skill (SKILL.md + `domain/schemas/iron-law.schema.json`). `validate.py` + its test repointed via a new `IRON_LAWS_YAML` constant.
+
 ## [1.36.2] — 2026-05-14
 
 ### Fixed — handoff→brain bridge silently swallowed prose-heavy handoffs

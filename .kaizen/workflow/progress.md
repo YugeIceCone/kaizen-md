@@ -27,3 +27,4 @@
 | 2026-05-14 | chore    | +27    | created this architecture log — `.kaizen/.gitignore` slot now backed by a real file         |
 | 2026-05-14 | refactor | -171   | carved onboard_index schema DDL + 4 migration fns into new onboard_schema.py module          |
 | 2026-05-14 | docs     | +157   | added repo-root CLAUDE.md — Claude Code onboarding rulebook for the marketplace              |
+| 2026-05-14 | refactor | ~0     | carved iron-laws.yaml + skeleton into new skills/iron-laws/ skill (iron-laws plan, phase 1)  |
