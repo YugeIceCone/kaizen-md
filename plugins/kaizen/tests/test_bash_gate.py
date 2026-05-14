@@ -131,6 +131,72 @@ class TestDecide(unittest.TestCase):
         self.assertNotIn("systemMessage", out)
 
 
+class TestStripNoncommand(unittest.TestCase):
+    """_strip_noncommand() — heredoc bodies + quoted literals are DATA."""
+
+    def test_strips_heredoc_body(self):
+        cmd = ("git commit -m \"$(cat <<'EOF'\n"
+               "fix the git push --force regression\n"
+               "EOF\n"
+               ")\"")
+        stripped = _bash_gate._strip_noncommand(cmd)
+        self.assertNotIn("git push --force", stripped)
+
+    def test_strips_double_quoted_string(self):
+        stripped = _bash_gate._strip_noncommand('git commit -m "rm -rf bug"')
+        self.assertNotIn("rm -rf", stripped)
+
+    def test_strips_single_quoted_string(self):
+        stripped = _bash_gate._strip_noncommand("echo 'git reset --hard'")
+        self.assertNotIn("git reset --hard", stripped)
+
+    def test_keeps_unquoted_command_tokens(self):
+        stripped = _bash_gate._strip_noncommand("rm -rf /home/user/project")
+        self.assertIn("rm -rf /home/user/project", stripped)
+
+
+class TestQuotedFalsePositives(unittest.TestCase):
+    """decide() must not gate on destructive ops quoted inside DATA.
+
+    Regression: a `git commit` whose heredoc message mentioned
+    `git push --force` was flagged as a force-push and forced a prompt.
+    """
+
+    def test_commit_heredoc_mentioning_force_push_is_clean(self):
+        cmd = ("cd ~/repo && git commit -m \"$(cat <<'EOF'\n"
+               "perf(hooks): collapse the gate\n"
+               "The --force regex never matched git push --force-with-lease.\n"
+               "EOF\n"
+               ")\" 2>&1 | tail -10")
+        self.assertEqual(_bash_gate.decide(cmd), {})
+
+    def test_commit_dash_m_mentioning_rm_rf_is_clean(self):
+        self.assertEqual(_bash_gate.decide('git commit -m "fix rm -rf /foo bug"'), {})
+
+    def test_echo_of_destructive_string_is_clean(self):
+        self.assertEqual(_bash_gate.decide("echo 'git reset --hard HEAD'"), {})
+
+    def test_real_force_push_still_gated(self):
+        out = _bash_gate.decide("git push --force origin main")
+        self.assertEqual(
+            out["hookSpecificOutput"]["permissionDecision"], "ask")
+
+    def test_real_rm_rf_still_gated_with_quoted_path(self):
+        # The `rm -rf` prefix is unquoted; only the path is quoted. Stripping
+        # the path leaves `rm -rf ` — still flagged (and the safe-path check
+        # can't see /tmp, so it errs toward asking; acceptable).
+        out = _bash_gate.decide('rm -rf "/home/user/important dir"')
+        self.assertEqual(
+            out["hookSpecificOutput"]["permissionDecision"], "ask")
+
+    def test_real_destructive_after_heredoc_still_gated(self):
+        cmd = ("cat <<'EOF'\njust some text\nEOF\n"
+               "git push --force")
+        out = _bash_gate.decide(cmd)
+        self.assertEqual(
+            out["hookSpecificOutput"]["permissionDecision"], "ask")
+
+
 class TestReadCommand(unittest.TestCase):
     """_read_command() — stdin event JSON parse, defensive on every shape."""
 

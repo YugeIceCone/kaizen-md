@@ -41,6 +41,33 @@ _RM_RF_SAFE = re.compile(
 
 _NO_DELETIONS_BELIEF = Path.home() / ".claude" / "brain" / "Notes" / "pref-no-deletions.md"
 
+# Heredoc body: `<<['"]?WORD['"]?` … newline … a line that is just WORD.
+# The body is opaque DATA (not re-interpreted as commands) — strip it so a
+# commit message that merely *mentions* `git push --force` doesn't trip the
+# gate. Non-greedy + DOTALL stops at the first matching close delimiter.
+_HEREDOC = re.compile(r"<<-?\s*['\"]?(\w+)['\"]?.*?\n[ \t]*\1\b", re.DOTALL)
+_DQUOTE = re.compile(r'"[^"]*"')
+_SQUOTE = re.compile(r"'[^']*'")
+
+
+def _strip_noncommand(command: str) -> str:
+    """Blank out heredoc bodies and quoted-string literals.
+
+    The gate must inspect the *commands the shell will run*, not text the
+    shell treats as data. A `git commit -m "$(cat <<EOF … EOF)"` carries a
+    whole commit message — destructive-op tokens quoted inside it are prose,
+    not commands. Stripping that DATA leaves real unquoted command tokens
+    (`rm -rf /foo`, `git push --force`) intact, so the patterns still catch
+    genuine destructive commands while shedding the mid-message false hits.
+    """
+    s = _HEREDOC.sub(" ", command)
+    # Double-quotes first — `$(... )` substitutions and most commit `-m`
+    # bodies are double-quoted; doing them first avoids a stray `'` inside
+    # a double-quoted string anchoring a spurious single-quote match.
+    s = _DQUOTE.sub(" ", s)
+    s = _SQUOTE.sub(" ", s)
+    return s
+
 
 def destructive_decision(command: str) -> tuple[str, str] | None:
     """Return (permissionDecision, reason) for a destructive command, else None.
@@ -91,10 +118,16 @@ def advisory_message(command: str) -> str | None:
 
 
 def decide(command: str) -> dict:
-    """Pure decision function — command in, hook-output dict out."""
+    """Pure decision function — command in, hook-output dict out.
+
+    Heredoc bodies and quoted-string literals are stripped before pattern
+    matching so the gate reasons about commands, not data the shell carries
+    (e.g. a commit message that mentions a destructive command).
+    """
     if not command:
         return {}
-    destructive = destructive_decision(command)
+    scan_target = _strip_noncommand(command)
+    destructive = destructive_decision(scan_target)
     if destructive:
         verb, reason = destructive
         return {
@@ -104,7 +137,7 @@ def decide(command: str) -> dict:
                 "permissionDecisionReason": reason,
             }
         }
-    advisory = advisory_message(command)
+    advisory = advisory_message(scan_target)
     if advisory:
         return {"systemMessage": advisory}
     return {}
