@@ -102,6 +102,7 @@ files:
 - `goal:` + `now:` — required, statusline-visible.
 - **Do not** rename to `session_goal` / `objective` / `focus` / `current` — the parser only matches `goal:` and `now:`.
 - `status:` + `outcome:` — write the PLACEHOLDER values shown above (`partial` / `IN_PROGRESS`) and nothing else. The real values come from the user in Step 4 — do NOT guess or pre-fill them here, or Step 4's question becomes performative.
+- **No raw `: ` (colon-space) inside a prose value.** YAML reads it as a nested mapping and the whole body fails to parse. Use ` — ` (em-dash) or `;` instead, or quote the value. A `file.rs:222` reference is fine — no space after the colon. (The line-based bridge tolerates a malformed body, but `resume` / the statusline `yaml.safe_load` the file — keep it valid.)
 - Prefer file-path-with-line references (`crates/core/src/runtime/dispatch.rs:222`) over inline code blocks.
 - Be thorough. The whole point is to compress context without losing key details.
 

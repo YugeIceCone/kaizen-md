@@ -3,6 +3,15 @@
 All notable changes to the `kaizen` plugin documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [SemVer](https://semver.org/).
 
+## [1.36.2] — 2026-05-14
+
+### Fixed — handoff→brain bridge silently swallowed prose-heavy handoffs
+
+The first live "update the handoff" run exposed it: `extract_brain_candidates` did a strict `yaml.safe_load` of the whole handoff body, so a single unquoted `: ` (colon-space) anywhere in the prose — e.g. a `findings` item reading "6 HIGH: test-suite integrity" — made the parse raise, caught as `except yaml.YAMLError: return []`. The bridge then reported "no durable learnings" on a handoff *full* of them.
+
+- **`_handoff.py`** — `extract_brain_candidates` rewritten as a lenient line-based section scan (stdlib `re`, no PyYAML): it tracks the four section headers and their `- ` items, joins multi-line items, and is robust to whatever prose the items carry. It can't raise a parse error, so "empty" now genuinely means empty. `_candidate_text` removed (no longer needed). +2 regression tests (`test_extracts_from_invalid_yaml_body`, `test_multiline_item_is_joined`).
+- **`skills/handoff/SKILL.md`** — Step 2 gains a rule: no raw `: ` inside a prose value (use `—` / `;` / quote it) — the body must stay valid YAML for `resume` / the statusline even though the bridge now tolerates malformed bodies.
+
 ## [1.36.1] — 2026-05-14
 
 ### Added — handoff → brain bridge

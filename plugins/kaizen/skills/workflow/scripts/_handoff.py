@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import datetime as dt
 import os
+import re
 import sqlite3
 import sys
 from pathlib import Path
@@ -180,11 +181,14 @@ def latest_handoffs(
 
 _BRAIN_SECTIONS = ("decisions", "findings", "worked", "failed")
 
+# A bare `decisions:` / `findings:` / `worked:` / `failed:` line opens a
+# section; an indented `- ` line under it is one item.
+_SECTION_RE = re.compile(r"^(decisions|findings|worked|failed):\s*$")
+_ITEM_RE = re.compile(r"^\s+-\s+(.*\S)\s*$")
+
 
 def _strip_frontmatter(text: str) -> str:
-    """Return the YAML body after a leading `---...---` frontmatter
-    block. `yaml.safe_load` reads only the first document, so the body
-    must be isolated before parsing."""
+    """Return the body after a leading `---...---` frontmatter block."""
     if not text.lstrip().startswith("---"):
         return text
     lines = text.splitlines()
@@ -194,44 +198,56 @@ def _strip_frontmatter(text: str) -> str:
     return text
 
 
-def _candidate_text(item: object) -> str:
-    """Normalise one handoff learning-item to a single capture string.
-    `decisions` / `findings` items are single-key dicts ({name: detail});
-    `worked` / `failed` items are plain strings."""
-    if isinstance(item, str):
-        return item.strip()
-    if isinstance(item, dict):
-        return "; ".join(f"{k}: {v}" for k, v in item.items()).strip()
-    return str(item).strip()
-
-
 def extract_brain_candidates(yaml_text: str) -> list[dict]:
-    """Pull the durable-learning items out of a handoff YAML — the
-    sections brain wants (decisions / findings / worked / failed).
-    The session-ephemeral sections are deliberately skipped.
+    """Pull the durable-learning items out of a handoff's decisions /
+    findings / worked / failed sections — the session-ephemeral
+    sections (goal / now / done_this_session / next / blockers) are
+    deliberately skipped.
 
-    Each item: ``{"section": str, "text": str}``. Returns ``[]`` when
-    PyYAML is unavailable or the body doesn't parse — the bridge is a
-    best-effort enhancement, never a hard dependency."""
-    try:
-        import yaml  # type: ignore
-    except ImportError:
-        return []
-    try:
-        body = yaml.safe_load(_strip_frontmatter(yaml_text)) or {}
-    except yaml.YAMLError:
-        return []
-    if not isinstance(body, dict):
-        return []
+    Uses a lenient line-based section scan, NOT a strict
+    ``yaml.safe_load`` of the body. Handoff bodies are prose-heavy —
+    colons, em-dashes, quotes mid-sentence — and a single unquoted
+    ``: `` anywhere would otherwise sink the whole parse, leaving the
+    bridge to silently report "no learnings" (the bug the first live
+    `update the handoff` run hit). The scan only cares about the four
+    section headers and their ``- `` items, so it is robust to
+    whatever prose the items carry. Returns ``[]`` only when those
+    sections are genuinely empty.
+
+    Each item: ``{"section": str, "text": str}``."""
     out: list[dict] = []
-    for section in _BRAIN_SECTIONS:
-        items = body.get(section)
-        if not items:
-            continue
-        for item in (items if isinstance(items, list) else [items]):
-            text = _candidate_text(item)
+    section: Optional[str] = None
+    cur: Optional[str] = None
+
+    def _flush() -> None:
+        nonlocal cur
+        if cur is not None:
+            text = " ".join(cur.split())
             if text:
                 out.append({"section": section, "text": text})
+        cur = None
+
+    for line in _strip_frontmatter(yaml_text).splitlines():
+        header = _SECTION_RE.match(line)
+        if header:
+            _flush()
+            section = header.group(1)
+            continue
+        if section is None:
+            continue
+        # A non-indented, non-blank line closes the current section.
+        if line.strip() and not line[0].isspace():
+            _flush()
+            section = None
+            continue
+        item = _ITEM_RE.match(line)
+        if item:
+            _flush()
+            cur = item.group(1)
+        elif cur is not None and line.strip():
+            # continuation line of a multi-line item
+            cur += " " + line.strip()
+    _flush()
     return out
 
 

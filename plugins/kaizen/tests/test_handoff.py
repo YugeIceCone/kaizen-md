@@ -187,13 +187,8 @@ class TestStore(SandboxBase):
 
 
 class TestBridge(unittest.TestCase):
-    """extract_brain_candidates is pure — no sandbox needed."""
-
-    def setUp(self):
-        try:
-            import yaml  # noqa: F401
-        except ImportError:
-            self.skipTest("PyYAML not installed")
+    """extract_brain_candidates is pure + stdlib-only — no sandbox,
+    no PyYAML (the extractor is a lenient line scan, not yaml.load)."""
 
     def test_pulls_only_durable_sections(self):
         cands = _handoff.extract_brain_candidates(_SAMPLE_HANDOFF)
@@ -214,18 +209,50 @@ class TestBridge(unittest.TestCase):
         self.assertIn("handoff stays standalone", blob)
         self.assertIn("stores.py was never shipped", blob)
 
-    def test_dict_items_normalised(self):
+    def test_item_text_is_raw_line_content(self):
         cands = _handoff.extract_brain_candidates(_SAMPLE_HANDOFF)
         dec = [c for c in cands if c["section"] == "decisions"][0]
-        # single-key dict -> "name: detail"
-        self.assertIn(":", dec["text"])
+        # the item text is the raw content after `- ` — verbatim
         self.assertTrue(dec["text"].startswith("separate-store"))
+        self.assertIn(":", dec["text"])
+
+    def test_extracts_from_invalid_yaml_body(self):
+        # The regression: a handoff body that is NOT valid YAML — list
+        # items with unquoted `: ` mid-value. Strict yaml.safe_load
+        # would raise and the old bridge returned [] ("no learnings").
+        # The line scan must still pull all 3 items.
+        broken = (
+            "---\nsession: x\n---\n\n"
+            "decisions:\n"
+            "  - keep-standalone: handoff and brain are distinct: never merge\n"
+            "findings:\n"
+            "  - the bug: 16 MEDIUM: onion-ddd violations everywhere\n"
+            "worked:\n"
+            "  - discovery first: list, size, categorize before any rm\n"
+        )
+        cands = _handoff.extract_brain_candidates(broken)
+        self.assertEqual(len(cands), 3)
+        self.assertEqual([c["section"] for c in cands],
+                         ["decisions", "findings", "worked"])
+        self.assertIn("never merge", cands[0]["text"])
+
+    def test_multiline_item_is_joined(self):
+        body = (
+            "---\nsession: x\n---\n\n"
+            "worked:\n"
+            "  - discovery-first before destructive ops\n"
+            "    caught the build/=source near-miss\n"
+        )
+        cands = _handoff.extract_brain_candidates(body)
+        self.assertEqual(len(cands), 1)
+        self.assertIn("near-miss", cands[0]["text"])
+        self.assertIn("discovery-first", cands[0]["text"])
 
     def test_empty_when_no_learning_sections(self):
         bare = "---\nsession: x\n---\n\ngoal: just a goal\nnow: nothing durable\n"
         self.assertEqual(_handoff.extract_brain_candidates(bare), [])
 
-    def test_bad_yaml_returns_empty_not_raise(self):
+    def test_garbage_input_returns_empty_not_raise(self):
         self.assertEqual(
             _handoff.extract_brain_candidates("::: not : valid : yaml :::"), [])
 
@@ -282,10 +309,6 @@ class TestCli(SandboxBase):
         self.assertIn("no handoffs", r.stdout)
 
     def test_bridge_lists_candidates(self):
-        try:
-            import yaml  # noqa: F401
-        except ImportError:
-            self.skipTest("PyYAML not installed")
         f = self._write_yaml("bridge.yaml", _SAMPLE_HANDOFF)
         r = self._run("bridge", "--file", str(f), "--json")
         self.assertEqual(r.returncode, 0)
@@ -300,10 +323,6 @@ class TestCli(SandboxBase):
         self.assertIn("error", json.loads(r.stdout))
 
     def test_bridge_no_learnings_is_count_zero(self):
-        try:
-            import yaml  # noqa: F401
-        except ImportError:
-            self.skipTest("PyYAML not installed")
         f = self._write_yaml("bare.yaml", "---\nsession: x\n---\n\ngoal: g\nnow: n\n")
         r = self._run("bridge", "--file", str(f), "--json")
         self.assertEqual(r.returncode, 0)
