@@ -1,0 +1,118 @@
+# Brain entity types — the four epistemic categories every captured
+# thought is classified into. Mirrors the canonical types from the
+# retired Remember plugin (schema.js::detectType) but lives here as
+# yaml so the type-detection heuristics are inspectable + editable
+# without touching code.
+
+version: 1
+
+types:
+  - name: world-fact
+    description: |
+      Verifiable claim about reality. A decision made, a technical
+      fact, a learning that survives re-derivation. The "we use X
+      over Y" / "the library does Z" / "this method beats that"
+      category.
+    target_dirs:
+      # Default destinations when this type is auto-routed. The
+      # writer picks the first dir whose subject matches; falls
+      # through to Notes/ as the catch-all.
+      - "Projects/<project>"
+      - "Areas/<area>"
+      - "Notes"
+    frontmatter:
+      # Required keys for this type's frontmatter. Validator
+      # rejects writes that omit these.
+      required: [name, description, type]
+      optional: [confidence, tags, sources_count, freshness, created, updated, evidence]
+    triggers:
+      # Substring/regex matches that promote a thought to this type.
+      # First match wins (after `experience`-specific date detection).
+      - "we decided"
+      - "going with"
+      - "chose .* over"
+      - "switched to"
+      - "agreed on"
+      - "decided to"
+
+  - name: belief
+    description: |
+      Subjective claim with implicit confidence. A preference, a
+      hypothesis, a judgment that may be revised when evidence
+      shifts. The "prefers X" / "probably Y" / "I think Z" /
+      "better to" category. Beliefs REQUIRE a `confidence` field
+      (0.0 to 1.0) — this distinguishes them from world-facts.
+    target_dirs:
+      - "Notes"
+    frontmatter:
+      required: [name, description, type, confidence]
+      optional: [tags, sources_count, freshness, created, updated, evidence]
+    triggers:
+      - "prefers"
+      - "probably"
+      - "I think"
+      - "seems like"
+      - "better to"
+      - "would rather"
+      - "tend to"
+      - "always X"
+      - "never Y"
+
+  - name: observation
+    description: |
+      Synthesized profile about an entity. Creates/updates
+      People/<x>.md, Projects/<x>/<x>.md, Areas/<x>.md. The "works
+      at" / "based in" / "leads the team" / "responsible for"
+      category. Distinguished from world-fact by having a clear
+      subject entity.
+    target_dirs:
+      - "People"
+      - "Projects/<project>"
+      - "Areas/<area>"
+    frontmatter:
+      required: [name, description, type]
+      optional: [confidence, tags, sources_count, freshness, created, updated, evidence]
+    triggers:
+      - "works as"
+      - "lives in"
+      - "based in"
+      - "leads the team"
+      - "responsible for"
+      - "uses .* (daily|weekly)"
+      - "is the .* expert"
+
+  - name: experience
+    description: |
+      First-person event log. Always lands in Journal/<date>.md.
+      The "met with X" / "called Y" / "today did Z" category.
+      Detected primarily by date markers and event verbs.
+    target_dirs:
+      - "Journal"
+    frontmatter:
+      # Journal entries are append-only sections, not new files
+      # with their own frontmatter. Required = empty.
+      required: []
+      optional: [tags]
+    triggers:
+      - "met with"
+      - "called"
+      - "talked to"
+      - "today"
+      - "yesterday"
+      - "this morning"
+      - "this afternoon"
+      - "spent .* on"
+      - "[0-9]{4}-[0-9]{2}-[0-9]{2}"  # Bare ISO date
+
+# Type-detection priority. When multiple triggers match, the
+# earlier entry wins. The order here mirrors the original plugin's
+# `detectType` heuristics.
+detection_priority:
+  - experience    # date markers / event verbs are most specific
+  - world-fact    # decisions are next-most-specific
+  - observation   # entity predicates
+  - belief        # subjective markers (catch-all near the end)
+
+# Default type when nothing matches. Original plugin defaulted to
+# world-fact; we preserve that for backwards-compat.
+default_type: world-fact

@@ -1,0 +1,176 @@
+# Routing rules — decide where a captured thought lands.
+#
+# The capture flow asks two questions:
+#
+#   1. WHICH TIER? — project-scoped auto-memory vs cross-project
+#      Remember (brain/Notes/).
+#   2. WHICH FILE? — within the chosen tier, what entity / subject
+#      does this thought attach to?
+#
+# Both are answered by walking these rules in order. First match
+# wins.
+
+version: 1
+
+tiers:
+  - name: brain
+    description: |
+      Cross-project durable beliefs / world-facts / observations /
+      experiences. Lives at ~/.claude/brain/ (or
+      $REMEMBER_BRAIN_PATH if set).
+    path_env: REMEMBER_BRAIN_PATH
+    path_default: "~/.claude/brain"
+    types:
+      # Which entity types live in this tier. observation +
+      # experience are always brain (project memory doesn't have
+      # the structure for them). world-fact + belief can route
+      # either way per the rules below.
+      - world-fact
+      - belief
+      - observation
+      - experience
+
+  - name: project-memory
+    description: |
+      Project-scoped feedback / corrections / decisions. Lives at
+      ~/.claude/projects/<slug>/memory/ where <slug> is the CC
+      project slug derived from the cwd.
+    path_template: "~/.claude/projects/{project_slug}/memory"
+    types:
+      - world-fact
+      - belief
+
+# Tier-selection rules. Walked in order; first match wins.
+# Conditions are AND'd within a rule.
+tier_rules:
+  - name: explicit-project-marker
+    description: User said "for this project" / "in this codebase"
+    when:
+      keyword_any:
+        - "for this project"
+        - "in this codebase"
+        - "specific to this repo"
+        - "project-specific"
+    route_to: project-memory
+
+  - name: explicit-cross-project-marker
+    description: User said "always" / "every project" / "cross-project"
+    when:
+      keyword_any:
+        - "always X"
+        - "never Y"
+        - "every project"
+        - "cross-project"
+        - "user-wide"
+        - "globally"
+    route_to: brain
+
+  - name: experience-and-observation-always-brain
+    description: experience + observation are structurally brain-only
+    when:
+      type_in: [experience, observation]
+    route_to: brain
+
+  - name: high-confidence-belief-goes-brain
+    description: Belief with confidence >= 0.85 is durable enough
+    when:
+      type_in: [belief]
+      confidence_gte: 0.85
+    route_to: brain
+
+  - name: low-confidence-or-narrow-fact-project
+    description: Default for narrow facts / corrections — stay scoped
+    when:
+      type_in: [world-fact, belief]
+    route_to: project-memory
+
+  # Catch-all
+  - name: default
+    description: When in doubt, project tier (cheap, scoped, easy to promote)
+    when: {}
+    route_to: project-memory
+
+# File-selection rules within a tier. The flow walks these AFTER
+# tier is decided.
+file_rules:
+  brain:
+    world-fact:
+      - subdir: "Projects/<project>"
+        when:
+          project_entity_present: true
+      - subdir: "Areas/<area>"
+        when:
+          area_entity_present: true
+      - subdir: "Notes"
+        when: {}  # catch-all
+
+    belief:
+      - subdir: "Notes"
+        filename_template: "pref-{slug}.md"
+        when: {}
+
+    observation:
+      - subdir: "People"
+        filename_template: "{entity}.md"
+        when:
+          subject_is_person: true
+      - subdir: "Projects/<project>"
+        filename_template: "{project}.md"
+        when:
+          subject_is_project: true
+      - subdir: "Areas/<area>"
+        filename_template: "{area}.md"
+        when: {}
+
+    experience:
+      - subdir: "Journal"
+        filename_template: "{iso_date}.md"
+        when: {}
+
+  project-memory:
+    world-fact:
+      - filename_template: "project_{slug}.md"
+        when: {}
+    belief:
+      - filename_template: "feedback_{slug}.md"
+        when: {}
+
+# Promotion rules — when project-memory entries graduate to brain.
+promotion:
+  triggers:
+    - name: sources_count_threshold
+      description: A belief with sources_count >= 2 generalizes
+      when:
+        type_in: [belief, world-fact]
+        sources_count_gte: 2
+      route_to: brain
+
+    - name: explicit-promote-tag
+      description: "Frontmatter `promote: true` forces promotion"
+      when:
+        frontmatter_key: promote
+      route_to: brain
+
+  on_promote:
+    # Action to take on the project-memory file after copy.
+    # Options: archive (move to memory/Archive/), tombstone
+    # (replace body with promoted-to link), keep (leave intact).
+    source_action: tombstone
+
+# Capture rules — what to capture vs skip. Mirrors the user's
+# REMEMBER.md cascading-rules pattern.
+capture:
+  capture_when:
+    - "User-stated preference applies across projects (always X / never Y)"
+    - "Durable belief from repeated evidence (>=2 sessions)"
+    - "World-fact (we use X over Y)"
+    - "Observation about working style that generalizes"
+    - "User correction specific to this project (project-memory)"
+    - "Recurring project gotcha that would re-bite a future agent"
+
+  skip_when:
+    - "Ephemeral session state — use plans / tasks / progress.md"
+    - "Code patterns derivable by reading the project"
+    - "Git history / who-changed-what — use git log/blame"
+    - "Debugging recipes — the fix is in the code; commit body has context"
+    - "Test counts, commit shas, LOC totals — those live in commit logs"

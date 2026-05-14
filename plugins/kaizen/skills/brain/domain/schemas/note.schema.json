@@ -1,0 +1,92 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kaizen-md/brain/note.schema.json",
+  "title": "Brain Note frontmatter",
+  "description": "JSON Schema for the frontmatter block at the head of every Brain Note (~/.claude/brain/Notes/*.md, ~/.claude/brain/People/*.md, etc.). Validator enforces required-by-type rules from entity-types.yaml.",
+  "type": "object",
+  "required": ["name", "description", "type"],
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Human-readable title. Appears in the H1 and in cross-references.",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "description": {
+      "type": "string",
+      "description": "One-line summary used by Persona.md ## Top Beliefs and by the brain index.",
+      "minLength": 1,
+      "maxLength": 500
+    },
+    "type": {
+      "type": "string",
+      "enum": ["world-fact", "belief", "observation", "experience"],
+      "description": "Epistemic category — see domain/entity-types.yaml."
+    },
+    "confidence": {
+      "type": "number",
+      "minimum": 0.0,
+      "maximum": 1.0,
+      "description": "REQUIRED for type=belief. Best-estimate confidence 0.0-1.0. Distinguishes beliefs from world-facts."
+    },
+    "tags": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "Free-form tags for grouping / search."
+    },
+    "sources_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of evidence sources backing this note. Auto-incremented when evidence is appended; triggers brain promotion at >=2 for project-memory entries."
+    },
+    "freshness": {
+      "type": "string",
+      "enum": ["fresh", "stable", "stale"],
+      "description": "fresh=created/updated this week, stable=mature belief, stale=evolved/superseded."
+    },
+    "created": {
+      "type": "string",
+      "format": "date",
+      "description": "ISO date (YYYY-MM-DD)."
+    },
+    "updated": {
+      "type": "string",
+      "format": "date",
+      "description": "ISO date (YYYY-MM-DD). Auto-bumped on every write."
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["source"],
+        "properties": {
+          "source": {
+            "type": "string",
+            "description": "Filesystem path to the Journal entry / project memory / commit / log that backs this note."
+          },
+          "quote": {
+            "type": "string",
+            "description": "Verbatim user quote when the evidence is a stated preference."
+          },
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "description": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "promote": {
+      "type": "boolean",
+      "description": "Project-memory only. Set to true to force brain promotion on the next /kaizen:brain promote run."
+    }
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"type": {"const": "belief"}}},
+      "then": {"required": ["name", "description", "type", "confidence"]}
+    }
+  ]
+}
