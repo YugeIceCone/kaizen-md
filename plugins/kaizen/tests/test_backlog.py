@@ -23,7 +23,7 @@ import unittest
 from pathlib import Path
 
 # Make backlog.py importable
-SCRIPT_DIR = Path(__file__).resolve().parent.parent / "skills" / "kaizen" / "scripts"
+SCRIPT_DIR = Path(__file__).resolve().parent.parent / "skills" / "workflow" / "scripts"
 sys.path.insert(0, str(SCRIPT_DIR))
 
 import backlog as bl  # noqa: E402

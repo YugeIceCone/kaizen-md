@@ -25,7 +25,7 @@ def _fresh_inbox(tmp: Path):
     os.environ["KAIZEN_INBOX_DIR"] = str(tmp)
     if "inbox" in sys.modules:
         del sys.modules["inbox"]
-    SCRIPT_DIR = Path(__file__).resolve().parent.parent / "skills" / "kaizen" / "scripts"
+    SCRIPT_DIR = Path(__file__).resolve().parent.parent / "skills" / "workflow" / "scripts"
     sys.path.insert(0, str(SCRIPT_DIR))
     import inbox  # noqa: E402
     return inbox

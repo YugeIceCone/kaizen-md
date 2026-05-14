@@ -18,7 +18,7 @@ import sys
 import unittest
 from pathlib import Path
 
-SCRIPT_DIR = Path(__file__).resolve().parent.parent / "skills" / "kaizen" / "scripts"
+SCRIPT_DIR = Path(__file__).resolve().parent.parent / "skills" / "workflow" / "scripts"
 sys.path.insert(0, str(SCRIPT_DIR))
 
 import scrape_index as si  # noqa: E402
