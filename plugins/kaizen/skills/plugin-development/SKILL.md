@@ -620,26 +620,35 @@ substituted-then-bash-evaluated value is empty AND the default
 contains NO whitespace. Multi-word defaults are interpreted
 literally even when the user passes args.
 
-❌ Broken:
-```bash
-!`python3 .../metrics.py ${ARGUMENTS:-lifetime --since 7d}`
-# User runs: /kaizen:metrics top --kind skill
-# Result:     runs "lifetime --since 7d" (default fired despite ARGUMENTS being set)
-```
+❌ Broken — `commands/<feature>.md` body (exec marker stripped):
+
+    python3 .../metrics.py ${ARGUMENTS:-lifetime --since 7d}
+
+    # User runs: /kaizen:metrics top --kind skill
+    # Result:     runs "lifetime --since 7d" (default fired
+    #             despite ARGUMENTS being set)
 
 ✓ Fix: give the underlying script a no-arg default + pass bare
-`$ARGUMENTS`:
-```bash
-!`python3 .../metrics.py $ARGUMENTS`
-# Script's main() runs `lifetime --since 7d` when argv is empty.
-```
+`$ARGUMENTS`. The `commands/<feature>.md` body (shown WITHOUT its
+leading bang-backtick exec marker, which the Skill loader would
+otherwise try to run) becomes:
 
-OR use the brain.md-style explicit dispatcher:
-```bash
-!`bash -c 'ARGS="${ARGUMENTS:-default}"; ...'`
-```
+    python3 .../metrics.py $ARGUMENTS
+
+— and the script's `main()` runs `lifetime --since 7d` when argv is
+empty.
+
+OR use the brain.md-style explicit dispatcher — a `bash -c '...'`
+body that reads `${ARGUMENTS:-default}` into a local before
+dispatching. See `commands/brain.md` for the worked example.
 
 Single-word defaults work fine (`${ARGUMENTS:-stats}` in onboard.md).
+
+> **Meta-gotcha:** SKILL.md examples must NOT contain a literal
+> bang-backtick (`` ! `` + `` ` ``) exec marker — the Skill tool
+> processes those the same way slash commands do and will try to
+> run them at skill-load time. Describe slash-command bodies in
+> prose or indented blocks, never as live exec markup.
 
 ### Don't add per-tool trace hooks if the universal already covers it
 

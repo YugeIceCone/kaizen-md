@@ -119,3 +119,15 @@ laws:
     severity: soft
     detect: "session touched plugins/kaizen/** files without `Skill(plugin-development)` invocation; surfaced via metrics-session-end.sh hook"
     why: "Self-correction signal. The SessionEnd hook auto-writes drafts to brain/Inbox/; surfacing the same check pre-merge catches violations before they ship."
+
+  - id: skill-md-no-exec-markers
+    statement: "Don't put a `!`-backtick exec marker in a SKILL.md body. The Skill tool executes them at skill-load time. Document slash-command bodies as PROSE or INDENTED plain-text blocks — never as `!`-backtick markup, fenced or not. Fence-type matters and is fragile: a ```bash fence did NOT protect the marker (it ran + errored); a ```markdown fence appeared to. Don't rely on that — just don't use the marker."
+    severity: soft
+    detect: "skills/<feature>/SKILL.md contains `!` immediately followed by a backtick (any column, any fence)"
+    why: "Hit 2026-05-14: loading Skill(plugin-development) errored — its SKILL.md had `!`bash -c '...'`` examples inside a ```bash fence that the loader ran anyway (the literal `...` in the example then failed as a command). plugin-pitfalls documents the same gotcha but keeps its example inside a ```markdown fence which apparently didn't fire — fragile. SKILL.md is documentation; only commands/*.md files carry live exec markers."
+
+  - id: every-hook-script-traces-its-firing
+    statement: "Every hook script in hooks/claude/ MUST fire `_trace.sh` (or `trace.py event`) so its lifecycle is visible to kaizen-metrics. The universal pretooluse/posttooluse trace covers TOOL calls; hook-internal firing needs its own trace line."
+    severity: soft
+    detect: "hooks/claude/<f>.sh (excluding _trace.sh itself) with no `_trace.sh` / `trace.py event` reference"
+    why: "Self-audit's hook-trace-coverage stage flags these. Pre-fix, brain-session-end / brain-user-prompt / karpathy-gate / metrics-session-end / stop-ralph fired invisibly — no signal that the hook ran. Fixed 2026-05-14 (commit 691944f)."
