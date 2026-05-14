@@ -10,6 +10,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [S
 The plugin's iron laws become a managed SSOT system — `iron-laws.yaml` as the master, generated/linked derivations, and a real checker wired into `validate.py` + the pre-commit gate + an MCP server. Resolves the documentation-drift (stale "11-slot" / "13 iron laws" counts) and enforcement-gap (0 of 21 laws actually machine-checked) failure modes.
 
 - **Carve** — `iron-laws.yaml` moved from `skills/plugin-development/domain/` to a dedicated `skills/iron-laws/` skill (SKILL.md + `domain/schemas/iron-law.schema.json`). `validate.py` + its test repointed via a new `IRON_LAWS_YAML` constant.
+- **Schema** — every law gains an `enforcement` field (`auto` | `manual`) and, for `auto` laws, a `check` field naming its checker function. 15 of 21 laws classified `auto` (machine-checkable), 6 `manual` (fuzzy / session-state). The JSON Schema conditionally requires `check` iff `enforcement: auto`.
 
 ## [1.36.2] — 2026-05-14
 

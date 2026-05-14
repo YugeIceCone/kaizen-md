@@ -12,15 +12,20 @@
       "minItems": 1,
       "items": {
         "type": "object",
-        "required": ["id", "statement", "severity", "why"],
+        "required": ["id", "statement", "severity", "enforcement", "why"],
         "additionalProperties": false,
         "properties": {
           "id": { "type": "string", "pattern": "^[a-z0-9-]+$" },
           "statement": { "type": "string", "minLength": 1 },
           "severity": { "enum": ["hard", "soft", "info"] },
+          "enforcement": { "enum": ["auto", "manual"] },
+          "check": { "type": "string", "pattern": "^[a-z0-9_]+$" },
           "detect": { "type": "string" },
           "why": { "type": "string", "minLength": 1 }
-        }
+        },
+        "if": { "properties": { "enforcement": { "const": "auto" } } },
+        "then": { "required": ["check"] },
+        "else": { "not": { "required": ["check"] } }
       }
     }
   }

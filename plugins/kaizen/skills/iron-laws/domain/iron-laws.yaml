@@ -4,10 +4,17 @@
 #   id          slug for cross-reference
 #   statement   one-line rule (the law itself)
 #   severity    hard (commit blocked) | soft (warning surfaced) | info
-#   detect      machine-checkable predicate, when one exists
+#   enforcement auto (machine-checked by _iron_laws.py) | manual (fuzzy /
+#               session-state — listed + documented, not auto-checked)
+#   check       name of the check_* fn in _iron_laws.py — required iff
+#               enforcement is auto
+#   detect      machine-checkable predicate, in prose
 #   why         rationale link to canonical source or memory entry
 #
-# The SKILL.md prose explains; this yaml is the enforcement spec.
+# This yaml is the single source of truth. SKILL.md explains; the
+# generated references/iron-laws.md is a read-only copy; the checker,
+# validate.py, the pre-commit gate, and the MCP server all reference
+# this file live.
 
 version: 1
 
@@ -15,125 +22,161 @@ laws:
   - id: canonical-edit-path
     statement: "Edit at ~/workspace/kaizen-md/, never the symlink ~/.claude/local-marketplaces/kaizen-md/"
     severity: soft
+    enforcement: manual
     detect: "modified-file path starts with ~/.claude/local-marketplaces/kaizen-md/"
-    why: "User stated preference; symlink confuses git status / IDE search / path-canonicalization helpers. See ~/.claude/projects/<slug>/memory/feedback_kaizen_plugin_canonical_path.md"
+    why: "User stated preference; symlink confuses git status / IDE search / path-canonicalization helpers. See ~/.claude/projects/<slug>/memory/feedback_kaizen_plugin_canonical_path.md. Manual: the checker sees only repo-relative git paths — it cannot tell which path the agent edited through."
 
   - id: no-modify-vendored
     statement: "Don't modify vendored skills. Patch upstream first, then refresh via bundle-refresh."
     severity: hard
+    enforcement: auto
+    check: no_modify_vendored
     detect: "modified file in skills/{kiss,solid,dry,yagni,karpathy,boy-scout-rule,convention-over-configuration,law-of-demeter,separation-of-concerns,brainstorming,executing-plans,writing-plans,using-superpowers,subagent-driven-development,test-driven-development,verification-before-completion,dispatching-parallel-agents,finishing-a-development-branch,using-git-worktrees,writing-skills,receiving-code-review,requesting-code-review,systematic-debugging,tdd,init,remember,process,evolve,reflect,synthesize,status}/"
     why: "Upstream provenance. See CONTRIBUTING.md::Architecture rules and ATTRIBUTIONS.md."
 
   - id: schema-driven-domain
     statement: "Feature routing / taxonomies / conventions live in domain/*.yaml — not hardcoded in Python."
     severity: soft
+    enforcement: manual
     detect: "feature has hardcoded route table without corresponding domain/*.yaml"
-    why: "Users edit yaml without rebuilding; tests validate against jsonschema."
+    why: "Users edit yaml without rebuilding; tests validate against jsonschema. Manual: 'hardcoded route table' has no reliable mechanical signature."
 
   - id: node-flow-for-multi-step
     statement: "Multi-step async ops use flow.AsyncNode + AsyncFlow. No ad-hoc orchestration."
     severity: soft
+    enforcement: auto
+    check: node_flow_for_multi_step
     detect: "module imports asyncio.gather more than once without subclassing AsyncParallelBatchNode"
     why: "Consistent observability + retry/cycle guards; see skills/workflow/scripts/flow.py docstring."
 
   - id: lazy-heavy-deps
     statement: "Heavy deps (transformers, torch, tree-sitter, etc.) lazy-load with is_available() + graceful fallback."
     severity: soft
+    enforcement: auto
+    check: lazy_heavy_deps
     detect: "top-level `import torch` or `import transformers` outside try/except"
     why: "Default kaizen install must not require ~3GB ML stack. See ~/.claude/brain/Notes/pref-optional-feature-graceful-fallback.md"
 
   - id: sandbox-tests
     statement: "Tests sandbox via env vars (KAIZEN_<X>_PATH=<tmp>). Never touch real ~/.claude/."
     severity: hard
+    enforcement: auto
+    check: sandbox_tests
     detect: "test file writes to ~/.claude/ or ~/workspace/ without KAIZEN_<X>_PATH override"
     why: "Test isolation; CI runs without polluting the user's brain or auto-memory."
 
   - id: bin-wrapper-per-cli
     statement: "Each CLI script gets its own bin/kaizen-* wrapper. /kaizen:install symlinks bin/ into ~/.local/bin/."
     severity: hard
+    enforcement: auto
+    check: bin_wrapper_per_cli
     detect: "skills/workflow/scripts/<feature>_<op>.py with argparse main but no bin/kaizen-<feature>-<op>"
     why: "Without a wrapper, kaizen-<feature>-<op> is 'command not found' from shell. See brain commit 2cfd234 + bin-wrapper hotfix."
 
   - id: plugin-manifest-permissions
     statement: "New script + hook entries land with matching plugin.json permission lines in the same commit."
     severity: hard
+    enforcement: auto
+    check: plugin_manifest_permissions
     detect: "git diff shows new skills/workflow/scripts/<feature>.py or hooks/claude/<feature>-*.sh without matching plugin.json::permissions.allow entry"
     why: "Missing permission entries prompt the user on every invocation; structural cohesion."
 
   - id: hook-bypass-knob
     statement: "Every hook script reads KAIZEN_<FEATURE>_DISABLE env early and exits 0 when set."
     severity: hard
+    enforcement: auto
+    check: hook_bypass_knob
     detect: "hooks/claude/<feature>-*.sh missing `KAIZEN_*_DISABLE` guard"
     why: "User must be able to disable any hook without uninstalling the plugin."
 
   - id: claude-md-no-volatile-data
     statement: "Don't write commit SHAs, dates, or LOC counts into CLAUDE.md / README.md. Use CHANGELOG / git log / progress.md."
     severity: hard
+    enforcement: auto
+    check: claude_md_no_volatile_data
     detect: "claude-md-no-sha gate check"
-    why: "CLAUDE.md is the durable rulebook; volatile data rots."
+    why: "CLAUDE.md is the durable rulebook; volatile data rots. Overlaps a git-discipline.yaml pre-commit gate — that gate defers here so the law is defined + checked in one place."
 
   - id: phased-commit-template
     statement: "Atomic per-item commit using the phased-work template (subject / motivation / Files / env / test baseline / refs)."
     severity: soft
+    enforcement: manual
     detect: "git commit message length < 200 chars on a structural change"
-    why: "Phased commits read as a coherent rollout in git log. See ~/.claude/brain/Notes/pref-phased-work-commit-template.md"
+    why: "Phased commits read as a coherent rollout in git log. See ~/.claude/brain/Notes/pref-phased-work-commit-template.md. Manual: needs the commit message, which the pre-commit hook does not have (the commit-msg hook is the right home)."
 
   - id: paired-tests
     statement: "Every new .py / .sh script in plugin-original code has a matching test in tests/test_<x>.py."
     severity: soft
+    enforcement: auto
+    check: paired_tests
     detect: "git diff adds skills/workflow/scripts/<f>.py without adding/modifying tests/test_<f>*.py"
-    why: "Existing gate check (paired-test, severity=warn). See workflow skill PART 3."
+    why: "Existing gate check (paired-test, severity=warn). See workflow skill PART 3. Overlaps a git-discipline.yaml pre-commit gate — that gate defers here so the law is defined + checked in one place."
 
   - id: skill-cant-be-skipped
     statement: "When touching plugin-original code, the plugin-development skill is mandatory-load."
     severity: soft
+    enforcement: manual
     detect: "session enters kaizen-md cwd without plugin-development in loaded-skills"
-    why: "User stated: 'the dev skill can't be skipped' — codified 2026-05-14."
+    why: "User stated: 'the dev skill can't be skipped' — codified 2026-05-14. Manual: needs session state (which skills were loaded) — not visible to a file/diff checker."
 
   - id: bin-wrapper-per-cli-strict
     statement: "Every Python script with an argparse main() under skills/workflow/scripts/ MUST have a matching bin/kaizen-* wrapper landed in the SAME commit. Specialized op scripts (e.g. brain_index.py / brain_promote.py / metrics.py) need their own wrappers — one bin per CLI script."
     severity: hard
+    enforcement: auto
+    check: bin_wrapper_per_cli_strict
     detect: "git diff shows new skills/workflow/scripts/<f>.py with `if __name__ == \"__main__\"` + argparse but no bin/kaizen-<feature>[-<op>] in the same commit"
     why: "Hit twice this session: brain shipped only kaizen-brain (missing -index/-promote/-audit/-evolve, fixed in commit ed4b490); metrics shipped only kaizen-metrics. /kaizen:install symlinks bin/ entries into ~/.local/bin/, so a missing wrapper = 'command not found' from shell. The plugin-development validator's wiring-checklist enforces this via scripts/validate.py."
 
   - id: slash-command-args-no-default-spaces
     statement: "Slash command `${ARGUMENTS:-default}` template only bash-evaluates the `:-default` when the default has NO whitespace. For multi-word defaults, give the underlying script a no-arg fallback and pass bare `$ARGUMENTS` (no curly braces, no default)."
     severity: hard
+    enforcement: auto
+    check: slash_command_args_no_default_spaces
     detect: "commands/<feature>.md contains `${ARGUMENTS:-<default with spaces>}`"
     why: "Hit on /kaizen:metrics — user ran `top --kind skill`, slash dispatched `lifetime --since 7d` (the bash default fell through because CC's template substitution + bash interaction couldn't handle the space). Fixed by giving metrics.py a no-arg default (runs 7d lifetime) and changing slash to bare `$ARGUMENTS`. See onboard.md / trace-search.md for short-default examples that work."
 
   - id: hooks-json-additive-event-multi-command
     statement: "When adding a hook to an ADDITIVE_EVENT (SubagentStop / SessionEnd / Notification) that already has a config block, APPEND to the existing block's `hooks:[]` list — don't add a sibling block with the same matcher."
     severity: soft
+    enforcement: auto
+    check: hooks_json_additive_event_multi_command
     detect: "hooks.json::<EVENT> has 2+ config blocks with matcher='*'"
     why: "test_cc_hooks_wireup.py originally asserted exactly 1 config block per ADDITIVE_EVENT. Relaxed 2026-05-14 to allow >= 1 commands, but the convention is still to append within one block for the same matcher."
 
   - id: trace-coverage-all-tools
     statement: "Hook scripts that fire on PreToolUse / PostToolUse should cover ALL tools (matcher='*'), not just Bash. The universal pretooluse-trace.sh / posttooluse-trace.sh fire for Skill / Edit / Write / mcp__* / etc. — don't add per-tool hooks that re-trace what the universal already captures."
     severity: soft
+    enforcement: manual
     detect: "new hook script in hooks/claude/ fires `_trace.sh` with a tool name already covered by the universal hooks"
-    why: "Until M1 (2026-05-14), only Bash had trace coverage. 30K events captured, 0 skill invocations. The universal trace fixed it; new hooks should rely on it for tool-call traces, not re-add per-tool tracing."
+    why: "Until M1 (2026-05-14), only Bash had trace coverage. 30K events captured, 0 skill invocations. The universal trace fixed it; new hooks should rely on it for tool-call traces, not re-add per-tool tracing. Manual: 'a tool name already covered' requires semantic analysis of hook intent."
 
   - id: metrics-skip-check-before-merge
     statement: "Before merging any structural change touching plugin-original code, run `kaizen-metrics skips --json` to confirm no mandatory-skill-load was missed."
     severity: soft
+    enforcement: manual
     detect: "session touched plugins/kaizen/** files without `Skill(plugin-development)` invocation; surfaced via metrics-session-end.sh hook"
-    why: "Self-correction signal. The SessionEnd hook auto-writes drafts to brain/Inbox/; surfacing the same check pre-merge catches violations before they ship."
+    why: "Self-correction signal. The SessionEnd hook auto-writes drafts to brain/Inbox/; surfacing the same check pre-merge catches violations before they ship. Manual: needs session trace state, not a file/diff."
 
   - id: skill-md-no-exec-markers
     statement: "Don't put a `!`-backtick exec marker in a SKILL.md body. The Skill tool executes them at skill-load time. Document slash-command bodies as PROSE or INDENTED plain-text blocks — never as `!`-backtick markup, fenced or not. Fence-type matters and is fragile: a ```bash fence did NOT protect the marker (it ran + errored); a ```markdown fence appeared to. Don't rely on that — just don't use the marker."
     severity: soft
+    enforcement: auto
+    check: skill_md_no_exec_markers
     detect: "skills/<feature>/SKILL.md contains `!` immediately followed by a backtick (any column, any fence)"
     why: "Hit 2026-05-14: loading Skill(plugin-development) errored — its SKILL.md had `!`bash -c '...'`` examples inside a ```bash fence that the loader ran anyway (the literal `...` in the example then failed as a command). plugin-pitfalls documents the same gotcha but keeps its example inside a ```markdown fence which apparently didn't fire — fragile. SKILL.md is documentation; only commands/*.md files carry live exec markers."
 
   - id: skill-md-no-external-script-paths
     statement: "A SKILL.md must not invoke a script or interpreter from OUTSIDE the plugin — no `~/.claude/scripts/...`, no `.venv/bin/python` that isn't under ${CLAUDE_PLUGIN_ROOT}. The skill ships to users who don't have your personal ~/.claude/ setup; an unshipped external dependency makes the skill structurally broken for everyone but the author. Reading/writing DATA under ~/.claude/ (a handoff YAML, ~/.claude/brain/) is fine — this law is about EXECUTING unshipped code. If a SKILL.md genuinely needs such a path, guard it (`if [ -f <path> ]; then ... else <graceful skip> fi`) and make the in-plugin path the system of record."
     severity: soft
+    enforcement: auto
+    check: skill_md_no_external_script_paths
     detect: "skills/<feature>/SKILL.md bash block invokes ~/.claude/scripts/ or a .venv/bin/python not under ${CLAUDE_PLUGIN_ROOT}, unguarded by an existence check"
     why: "Hit 2026-05-14: kaizen:handoff steps 3/4 + resume Mode C hard-invoked ~/.claude/scripts/.venv/bin/python3 importing ~/.claude/scripts/stores.py — neither shipped with the plugin, neither present anywhere on the system. The DB step exit-127'd mid-flow; the handoffs table had 0 rows (the skill had NEVER worked for anyone without the author's personal setup). Vendored at v1.33.0 (daddffd) without porting the dependency — the 'lifted ad-hoc, dependency not ported' anti-pattern. Fix: DB persistence made conditional on stores.py existing; the filesystem YAML is the system of record."
 
   - id: every-hook-script-traces-its-firing
     statement: "Every hook script in hooks/claude/ MUST fire `_trace.sh` (or `trace.py event`) so its lifecycle is visible to kaizen-metrics. The universal pretooluse/posttooluse trace covers TOOL calls; hook-internal firing needs its own trace line."
     severity: soft
+    enforcement: auto
+    check: every_hook_script_traces_its_firing
     detect: "hooks/claude/<f>.sh (excluding _trace.sh itself) with no `_trace.sh` / `trace.py event` reference"
     why: "Self-audit's hook-trace-coverage stage flags these. Pre-fix, brain-session-end / brain-user-prompt / karpathy-gate / metrics-session-end / stop-ralph fired invisibly — no signal that the hook ran. Fixed 2026-05-14 (commit 691944f)."
