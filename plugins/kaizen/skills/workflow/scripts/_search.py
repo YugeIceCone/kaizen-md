@@ -499,6 +499,75 @@ def dense_search_q8(
     return [(ids[i], float(scores[i])) for i in order]
 
 
+# ─── Sparse retrieval (E9 — SPLADE) ──────────────────────────────────
+#
+# Sparse vectors are stored as JSON {token_id: weight} in the
+# `embedding_sparse` BLOB column (populated when KAIZEN_SPARSE_ENABLE=1
+# during indexing). The search path:
+#
+#   1. Encode the query via the same SPLADE model used at index time.
+#   2. SELECT all non-NULL `embedding_sparse` rows.
+#   3. Compute dot product per row (sparse · sparse).
+#   4. Return top-K by descending score.
+#
+# Falls back to an empty list (NOT to dense_search) when sparse is
+# unavailable or the column is empty — the caller (hybrid_search) folds
+# sparse in via RRF when results are present and skips it otherwise.
+
+
+def sparse_search(
+    conn: sqlite3.Connection,
+    base_table: str,
+    query: str,
+    top_k: int = 50,
+    *,
+    extra_where: str = "",
+    extra_params: Sequence = (),
+) -> list[tuple[int, float]]:
+    """v1.34.0+ (E9) — SPLADE sparse-vector cosine via dot product.
+
+    Returns ``[(rowid, sparse_dot_score), ...]`` top-K descending.
+    Returns ``[]`` (not a fallback) when:
+
+      - ``embedding_sparse`` column is absent (pre-v1.34 db), OR
+      - transformers/torch unavailable (``_sparse.is_available()`` False), OR
+      - No rows have a populated sparse vector yet.
+
+    Empty return is intentional: ``hybrid_search`` checks the result
+    and skips the sparse term in its RRF when sparse hasn't been
+    indexed, so partially-migrated dbs degrade gracefully to BM25 +
+    dense."""
+    cols = {row[1] for row in conn.execute(f"PRAGMA table_info({base_table})")}
+    if "embedding_sparse" not in cols:
+        return []
+    import _sparse  # local import — heavy deps lazy-loaded only when called
+    if not _sparse.is_available():
+        return []
+    q_sparse = _sparse.encode_sparse(query)
+    if not q_sparse:
+        return []
+
+    where = (
+        " WHERE embedding_sparse IS NOT NULL"
+        + (f" AND {extra_where}" if extra_where else "")
+    )
+    rows = conn.execute(
+        f"SELECT id, embedding_sparse FROM {base_table}{where}",
+        list(extra_params),
+    ).fetchall()
+    if not rows:
+        return []
+
+    scored: list[tuple[int, float]] = []
+    for r in rows:
+        d_sparse = _sparse.deserialize(bytes(r[1]))
+        score = _sparse.dot_product(q_sparse, d_sparse)
+        if score > 0:
+            scored.append((int(r[0]), score))
+    scored.sort(key=lambda x: x[1], reverse=True)
+    return scored[:top_k]
+
+
 # ─── Hybrid (linear) ─────────────────────────────────────────────────
 
 
@@ -528,22 +597,32 @@ def hybrid_search(
     fusion: str = "linear",
     extra_where: str = "",
     extra_params: Sequence = (),
+    use_sparse: bool = True,
 ) -> list[tuple[int, float]]:
-    """BM25 + dense, fused.
+    """BM25 + dense (+ optional SPLADE sparse), fused.
 
     `fusion="linear"` (default) — min-max normalize each path, then
     `score = alpha*dense + (1-alpha)*bm25`. Matches Onyx's Vespa rank
-    expression executed client-side.
+    expression executed client-side. The linear path ignores sparse —
+    blending three ranks with one `alpha` is ambiguous; opt into the
+    `rrf` path when sparse is enabled.
 
     `fusion="rrf"` (v1.31.0+) — reciprocal-rank-fusion: rank-only
     scoring `1 / (k + rank)`, no normalization step. More robust to
-    score-distribution differences between the two paths; doesn't
-    require an `alpha` choice. `alpha` is reinterpreted as a weight
-    pair `(alpha, 1-alpha)` over `(dense, bm25)` ranks. Set
-    `alpha=0.5` for balanced; tune higher to favor dense.
+    score-distribution differences between the paths; doesn't require
+    an `alpha` choice. With `use_sparse=True` (default), folds the
+    SPLADE sparse ranking in as a third source. Weights are
+    `[alpha, (1-alpha)/2, (1-alpha)/2]` for `[dense, bm25, sparse]`
+    when sparse has results; otherwise `[alpha, 1-alpha]` over
+    `[dense, bm25]` (back-compat with pre-E9).
 
     Each sub-retrieval pulls `candidate_pool` candidates (Onyx uses
-    1000; 50 is fine for SQLite-scale corpora)."""
+    1000; 50 is fine for SQLite-scale corpora).
+
+    use_sparse: when True, attempt sparse_search and fold into RRF if
+                non-empty. Off by default for linear fusion (see
+                above). The cost when sparse is unindexed is one
+                PRAGMA probe — cheap."""
     dense = dense_search(
         conn, base_table, query, candidate_pool,
         extra_where=extra_where, extra_params=extra_params,
@@ -551,11 +630,21 @@ def hybrid_search(
     bm25 = bm25_search(conn, base_table, query, candidate_pool)
 
     if fusion == "rrf":
+        rankings: list[Sequence[tuple[int, float]]] = [dense, bm25]
+        weights: list[float] = [alpha, 1.0 - alpha]
+        if use_sparse:
+            sparse = sparse_search(
+                conn, base_table, query, candidate_pool,
+                extra_where=extra_where, extra_params=extra_params,
+            )
+            if sparse:
+                # 3-way RRF: split the non-dense weight evenly between
+                # bm25 and sparse so dense weight stays at `alpha`.
+                non_dense = 1.0 - alpha
+                rankings.append(sparse)
+                weights = [alpha, non_dense / 2.0, non_dense / 2.0]
         return reciprocal_rank_fusion(
-            [dense, bm25],
-            weights=[alpha, 1.0 - alpha],
-            k=60,
-            top_k=top_k,
+            rankings, weights=weights, k=60, top_k=top_k,
         )
 
     dense_n = _minmax_normalize(dense)

@@ -303,6 +303,11 @@ _SCHEMA_SQL = """
         -- Empty string for non-ast paths. Populated by _ast_chunk's
         -- chunk_python_by_symbol when language='python'.
         symbol_name TEXT NOT NULL DEFAULT '',
+        -- E9 (v1.34): SPLADE sparse-embedding sidecar — JSON-encoded
+        -- {token_id: weight}. NULL when KAIZEN_SPARSE_ENABLE is off or
+        -- transformers/torch unavailable. _sparse.deserialize decodes it
+        -- at search time; sparse_search in _search.py fuses with dense.
+        embedding_sparse BLOB,
         UNIQUE(file_id, chunk_idx)
     );
     CREATE INDEX IF NOT EXISTS idx_chunk_file ON code_chunks(file_id);
@@ -420,6 +425,22 @@ def _migrate_symbol_name_column(conn: sqlite3.Connection) -> None:
     )
 
 
+def _migrate_embedding_sparse_column(conn: sqlite3.Connection) -> None:
+    """E9 migration — add `embedding_sparse` BLOB column on code_chunks.
+
+    Mirrors the _migrate_kind_column / _migrate_symbol_name_column
+    shape: PRAGMA-probe, ALTER if absent. NULL is the default for
+    pre-v1.34 rows; population is gated on KAIZEN_SPARSE_ENABLE so
+    existing indexes stay untouched until the user opts in + reindexes.
+    No index — sparse vectors are looked up by chunk_id (already the
+    PK on code_chunks), so the existing idx_chunk_file is enough."""
+    cols = {row[1] for row in conn.execute("PRAGMA table_info(code_chunks)")}
+    if "embedding_sparse" not in cols:
+        conn.execute(
+            "ALTER TABLE code_chunks ADD COLUMN embedding_sparse BLOB"
+        )
+
+
 def open_db(root: Path, create: bool = True) -> sqlite3.Connection:
     conn = _kz_sqlite.open_indexer_db(
         db_path(root), _SCHEMA_SQL,
@@ -429,6 +450,7 @@ def open_db(root: Path, create: bool = True) -> sqlite3.Connection:
         # Migrations (idempotent): bring older dbs up to current schema.
         _migrate_kind_column(conn)         # v1.32 — adds `kind`
         _migrate_symbol_name_column(conn)  # v1.33 — adds `symbol_name`
+        _migrate_embedding_sparse_column(conn)  # v1.34 — adds `embedding_sparse` (E9)
         # FTS5 mirror (separate from the SCHEMA_SQL executescript because
         # it uses triggers; _sqlite.open_indexer_db is schema-only).
         _kz_search.ensure_fts_mirror(conn, "code_chunks")
@@ -871,6 +893,7 @@ import _chunk as _kz_chunk  # v1.27.0+: sentence-boundary chunker
 import _ast_chunk as _kz_ast  # v1.33.0+: symbol-aware Python chunker (O2)
 import _search as _kz_search  # v1.27.0+: BM25+dense hybrid search
 import _quant as _kz_quant  # v1.31.0+: int8 quantization helpers
+import _sparse as _kz_sparse  # v1.34.0+: SPLADE sparse-embedding helpers (E9)
 
 
 def _has_embedding_q8_column(conn: sqlite3.Connection) -> bool:
@@ -897,6 +920,37 @@ def _maybe_quantize_batch(
     mat = np.stack([np.frombuffer(b, dtype=np.float32) for b in chunk_blobs])
     blobs, _ = _kz_quant.quantize_batch(mat)
     return blobs
+
+
+def _has_embedding_sparse_column(conn: sqlite3.Connection) -> bool:
+    """Pre-v1.34 dbs lack `embedding_sparse`. PRAGMA-probe so we only
+    write sparse blobs when the column exists."""
+    cols = {row[1] for row in conn.execute("PRAGMA table_info(code_chunks)")}
+    return "embedding_sparse" in cols
+
+
+def _maybe_sparse_batch(
+    conn: sqlite3.Connection, texts: list[str]
+) -> list[bytes | None] | None:
+    """E9 — return per-row JSON-encoded sparse blobs when:
+
+      1. `embedding_sparse` column exists (migration applied), AND
+      2. `KAIZEN_SPARSE_ENABLE=1` is set, AND
+      3. `_sparse.is_available()` reports True (transformers + torch +
+         SPLADE model load cleanly).
+
+    Returns `None` when sparse is disabled or unavailable (caller
+    falls through to the non-sparse INSERT branch). Returns a list of
+    `bytes | None` (same length as `texts`) otherwise — per-row None
+    means the encoder produced nothing for that text (empty input)."""
+    if not _has_embedding_sparse_column(conn):
+        return None
+    if not _kz_sparse.is_sparse_enabled():
+        return None
+    if not _kz_sparse.is_available():
+        return None
+    sparses = _kz_sparse.encode_sparse_batch(texts)
+    return [_kz_sparse.serialize(s) if s else None for s in sparses]
 from _progress import Progress as _Progress  # v1.30.0+: live stderr progress
 
 
@@ -1021,6 +1075,12 @@ def do_filter(root: Path) -> dict:
         # (4-byte scale + D-byte int8 array). Lazy: only computes when the
         # embedding_q8 column exists (back-compat with pre-v1.31 dbs).
         chunk_q8_blobs = _maybe_quantize_batch(conn, chunk_blobs, _dim)
+        # E9 (v1.34+): also write SPLADE sparse vectors when
+        # KAIZEN_SPARSE_ENABLE=1 AND transformers/torch are available.
+        # `_maybe_sparse_batch` returns None when sparse is disabled →
+        # we skip the sparse column entirely (same back-compat shape as
+        # the q8 branch above for pre-v1.31 dbs).
+        chunk_sparse_blobs = _maybe_sparse_batch(conn, chunk_texts)
         # Upsert the file row.
         conn.execute(
             """INSERT OR REPLACE INTO code_files
@@ -1042,32 +1102,41 @@ def do_filter(root: Path) -> dict:
         ).fetchone()["id"]
         conn.execute("DELETE FROM code_chunks WHERE file_id = ?", (file_id,))
         # NB: chunk_id cascades into code_chunks_xref via FK ON DELETE CASCADE
+        # Build the INSERT dynamically: `embedding_q8` and `embedding_sparse`
+        # are optional columns that may or may not exist depending on the
+        # db's migration tier (pre-v1.31 lacks q8; pre-v1.34 lacks sparse).
+        # Always-present columns first, then optional columns appended
+        # only when the helper returned a non-None list.
+        cols: list[str] = [
+            "file_id", "chunk_idx", "char_start", "char_end",
+            "text", "embedding",
+        ]
         if chunk_q8_blobs is not None:
-            conn.executemany(
-                """INSERT INTO code_chunks
-                   (file_id, chunk_idx, char_start, char_end, text, embedding, embedding_q8, language, kind, symbol_name)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-                [
-                    (file_id, c["chunk_idx"], c["char_start"], c["char_end"],
-                     c["text"], blob, q8, cleaned_rec["language"],
-                     c.get("kind") or "code",
-                     c.get("symbol_name") or "")
-                    for c, blob, q8 in zip(kept, chunk_blobs, chunk_q8_blobs)
-                ],
-            )
-        else:
-            conn.executemany(
-                """INSERT INTO code_chunks
-                   (file_id, chunk_idx, char_start, char_end, text, embedding, language, kind, symbol_name)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-                [
-                    (file_id, c["chunk_idx"], c["char_start"], c["char_end"],
-                     c["text"], blob, cleaned_rec["language"],
-                     c.get("kind") or "code",
-                     c.get("symbol_name") or "")
-                    for c, blob in zip(kept, chunk_blobs)
-                ],
-            )
+            cols.append("embedding_q8")
+        cols.extend(["language", "kind", "symbol_name"])
+        if chunk_sparse_blobs is not None:
+            cols.append("embedding_sparse")
+        sql = (
+            f"INSERT INTO code_chunks ({','.join(cols)}) "
+            f"VALUES ({','.join('?' for _ in cols)})"
+        )
+        rows: list[tuple] = []
+        for idx, c in enumerate(kept):
+            row: list = [
+                file_id, c["chunk_idx"], c["char_start"], c["char_end"],
+                c["text"], chunk_blobs[idx],
+            ]
+            if chunk_q8_blobs is not None:
+                row.append(chunk_q8_blobs[idx])
+            row.extend([
+                cleaned_rec["language"],
+                c.get("kind") or "code",
+                c.get("symbol_name") or "",
+            ])
+            if chunk_sparse_blobs is not None:
+                row.append(chunk_sparse_blobs[idx])
+            rows.append(tuple(row))
+        conn.executemany(sql, rows)
         # O6 (v1.33): populate code_chunks_xref from Python imports. Each
         # imported symbol becomes one xref row tied to whichever chunk
         # contains the source `import` statement. Heuristic: the module-
