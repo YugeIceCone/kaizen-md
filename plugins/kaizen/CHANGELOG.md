@@ -18,6 +18,14 @@ The plugin's iron laws become a managed SSOT system — `iron-laws.yaml` as the 
 - **Enforcement wiring** — `validate.py::check_iron_laws` now delegates to the `_iron_laws` checker (the dead `_check_no_modify_vendored` stub deleted; lazy import keeps validate.py runnable without PyYAML). `pre-commit.sh` gains Check 7.5 — runs the iron-laws checker over the staged diff (kaizen-md repo only; a no-op subprocess-skip in consumer repos). `git-discipline.yaml`: new `iron_laws` gate entry; the two overlapping gates (`no_volatile_data_in_claude_md`, `paired_test_for_new_code`) annotated with `canonical_definition: iron-law:<id>` — their portable bash forms stay (dependency-free / language-general for consumer repos), with the iron-laws registry as the canonical spec.
 - **Drift gate + delink** — CI (`test.yml`) runs `codegen.py --check` to fail the build if `references/iron-laws.md` ever drifts from the yaml — the SSOT auto-propagation mechanism. `plugin-development`'s SKILL.md + `CONTRIBUTING.md` no longer embed iron-law content; they link to the `iron-laws` skill. The skill is now complete: SSOT registry + schema + loader + codegen + checker + CLI + MCP + CI drift gate.
 
+### Performance — hook hot-path speed fixes (H1-H3)
+
+A trace-driven review found the hot-path hooks (PreToolUse / PostToolUse) spawned 2-6 `python3` per tool call — ~70ms interpreter startup each. Three targeted fixes cut that without changing behavior.
+
+- **H1 — `posttooluse-drain-inbox.sh`** fires on EVERY PostToolUse but the inbox is empty almost always; it still spawned `inbox.py` (~118ms) just to discover that. Now sources `_paths.sh` and `grep`s for a pending `"drained": false` message before spawning python3 — skips the drain entirely when there's nothing to do. Adds the `KAIZEN_INBOX_DISABLE` bypass knob.
+- **H2 — `_trace.sh`** (the shared trace helper, invoked by ~6 hooks) spawned 2 python3: one to parse `session_id` out of the event JSON, one to write the event. The parse is now shell-native (`grep`/`sed`); `trace.py` stays the single writer so rotation/pruning aren't duplicated into shell. Adds an early `KAIZEN_TRACE_DISABLE` check that skips the spawn.
+- **H3 — `pretooluse-bash-gate.sh`** spawned up to 6 python3 (command extraction, decision emit, a 3-process advisory scan). All gate logic moves into a new single-process module `hooks/claude/_bash_gate.py` (reuses `scan()` from `_bash_discipline_scan.py`); the hook is now a thin wrapper — spawns drop to 2. Fixes two latent bugs: the advisory scanner was pointed at a non-existent path (`hooks/_bash_discipline_scan.py`) so it never ran, and the `--force` regex never matched `git push --force-with-lease`. Adds the `KAIZEN_BASH_GATE_DISABLE` bypass knob. +26 tests (`tests/test_bash_gate.py`).
+
 ## [1.36.2] — 2026-05-14
 
 ### Fixed — handoff→brain bridge silently swallowed prose-heavy handoffs
