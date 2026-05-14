@@ -1,6 +1,6 @@
 """Regression test for bin/kaizen-* symlink-resolution.
 
-The `/kaizen:install` command symlinks every `bin/kaizen-*` into
+The `/kaizen:setup` command symlinks every `bin/kaizen-*` into
 `~/.local/bin/`. The wrappers must resolve `BASH_SOURCE[0]` through that
 symlink before computing the plugin root — otherwise the `source
 $_BIN_DIR/../skills/workflow/scripts/_plugin_root.sh` fails with
@@ -51,7 +51,7 @@ def _bin_runs_through_symlink(bin_name: str) -> tuple[bool, str]:
 
 class TestBinSymlinkResolution(unittest.TestCase):
     """Every bin/kaizen-* with the new symlink-safe pattern must work
-    when invoked via a symlink (mirrors /kaizen:install's behavior)."""
+    when invoked via a symlink (mirrors /kaizen:setup's behavior)."""
 
     PATCHED_BINS = ["kaizen-shim", "kaizen-loc", "kaizen-loop"]
 

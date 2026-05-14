@@ -18,7 +18,7 @@ The `kaizen` plugin eats its own dogfood — contributions go through the same g
 # 1. Clone + install locally
 git clone https://github.com/YugeIceCone/kaizen-md
 cd kaizen-md
-bash plugins/kaizen/scripts/install.sh
+bash plugins/kaizen/scripts/setup.sh
 
 # 2. Run the test pipeline before changing anything
 bash plugins/kaizen/skills/workflow/scripts/test-pipeline.sh

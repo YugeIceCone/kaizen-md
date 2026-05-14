@@ -1,6 +1,6 @@
 ---
 name: migrate-paths
-description: Migrate kaizen's pre-v1.22 scattered state into the unified ~/.claude/.kaizen/ layout (user-global) and <repo>/.kaizen/workflow/ (project-side). Idempotent — already-migrated paths are no-ops. Auto-invoked by /kaizen:install and /kaizen:enable-all so most users never need to run this directly.
+description: Migrate kaizen's pre-v1.22 scattered state into the unified ~/.claude/.kaizen/ layout (user-global) and <repo>/.kaizen/workflow/ (project-side). Idempotent — already-migrated paths are no-ops. Auto-invoked by /kaizen:setup and /kaizen:setup --enable-all so most users never need to run this directly.
 ---
 
 # kaizen migrate-paths
@@ -47,11 +47,11 @@ If both legacy AND new paths exist (e.g. you started using a new install before 
 
 ## When you'd run it manually
 
-- After upgrading from kaizen v1.21 or earlier to v1.22+, if `/kaizen:install` wasn't re-run.
+- After upgrading from kaizen v1.21 or earlier to v1.22+, if `/kaizen:setup` wasn't re-run.
 - To inspect what would change in a dry-run before committing.
 - To migrate the project side only on a multi-repo machine after the global side is already done.
 
-For all other cases, `/kaizen:install` and `/kaizen:enable-all` invoke this automatically.
+For all other cases, `/kaizen:setup` and `/kaizen:setup --enable-all` invoke this automatically.
 
 ## Idempotency
 

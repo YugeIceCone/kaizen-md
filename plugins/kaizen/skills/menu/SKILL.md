@@ -9,8 +9,7 @@ description: List all /kaizen:* slash commands with brief descriptions + suggest
 
 | Command | Purpose |
 |---|---|
-| `/kaizen:install` | Activate the pre-commit gate in this repo (local-only, idempotent) |
-| `/kaizen:uninstall` | Reverse install (dry-run default; preserves backlog + backups) |
+| `/kaizen:setup` | Activate / reverse / inspect kaizen in this repo — subcommands `install` (default), `uninstall`, `cache`; `--enable-all` adds the global stack |
 | `/kaizen:health` | Health diagnostic — broken symlinks, schema mismatch, missing scripts |
 | `/kaizen:status` | At-a-glance: config, hook, backlog, active routine, backups |
 | `/kaizen:gate` | Dry-run the pre-commit gate against staged changes |
@@ -29,7 +28,7 @@ Auto-loaded via the plugin's `.mcp.json` — exposes 10 backlog tools (list / sh
 ## First-time onboarding (3 steps)
 
 ```
-1. /kaizen:install              # activate per-repo hooks + config
+1. /kaizen:setup              # activate per-repo hooks + config
 2. /kaizen:disable-dupes        # see which loose skills duplicate plugin bundle
 3. /kaizen:status               # confirm everything green
 ```

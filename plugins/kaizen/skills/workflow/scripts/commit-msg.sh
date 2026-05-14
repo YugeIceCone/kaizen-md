@@ -2,7 +2,7 @@
 # kaizen commit-msg gate — message-dependent checks.
 #
 # Symlinked from the skill into a project's .kaizen/hooks/commit-msg via
-# scripts/install.sh. Receives the path to the message file as $1 (the
+# scripts/setup.sh. Receives the path to the message file as $1 (the
 # canonical commit-msg hook contract), which pre-commit does NOT — that
 # is why these two checks live here:
 #

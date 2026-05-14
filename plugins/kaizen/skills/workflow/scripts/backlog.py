@@ -259,7 +259,7 @@ def cmd_render(store, args, *, json_path: Path, md_path: Path):
     md = render_md(store)
     md_path.parent.mkdir(parents=True, exist_ok=True)
     md_path.write_text(md)
-    # Persist .json too so a fresh `render` seeds both files (install.sh path).
+    # Persist .json too so a fresh `render` seeds both files (setup.sh path).
     if not json_path.exists():
         save_store(json_path, store)
     print(f"rendered → {md_path}")

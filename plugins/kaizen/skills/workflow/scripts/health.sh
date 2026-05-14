@@ -31,7 +31,7 @@ echo ""
 # ─── Section 1: Config ────────────────────────────────────────────────
 echo "${BOLD}[ config ]${RESET}"
 if [ ! -f .kaizen.toml ]; then
-    check_fail ".kaizen.toml missing — run /kaizen:install"
+    check_fail ".kaizen.toml missing — run /kaizen:setup"
 else
     log_pass ".kaizen.toml present"
     # Validate referenced paths
@@ -57,7 +57,7 @@ HOOKS_PATH=$(git config core.hooksPath 2>/dev/null)
 if [ "$HOOKS_PATH" = ".kaizen/hooks" ]; then
     log_pass "core.hooksPath = .kaizen/hooks (local)"
     # pre-commit is required; commit-msg is optional for older installs
-    # that pre-date the v1.25.1 hook split. Re-running /kaizen:install
+    # that pre-date the v1.25.1 hook split. Re-running /kaizen:setup
     # adds it.
     for hook_name in pre-commit commit-msg; do
         HOOK_LINK=".kaizen/hooks/$hook_name"
@@ -72,22 +72,22 @@ if [ "$HOOKS_PATH" = ".kaizen/hooks" ]; then
             check_warn "$hook_name is a regular file, not a symlink (manual install?)"
         else
             if [ "$hook_name" = "pre-commit" ]; then
-                check_fail "pre-commit hook missing — re-run /kaizen:install"
+                check_fail "pre-commit hook missing — re-run /kaizen:setup"
             else
-                check_warn "commit-msg hook missing — re-run /kaizen:install for Conventional Commits + plan-mention checks"
+                check_warn "commit-msg hook missing — re-run /kaizen:setup for Conventional Commits + plan-mention checks"
             fi
         fi
     done
 else
     check_warn "core.hooksPath = '${HOOKS_PATH:-<unset>}' (expected .kaizen/hooks)"
-    log_info "run /kaizen:install to activate"
+    log_info "run /kaizen:setup to activate"
 fi
 
 echo ""
 
 # ─── Section 3: Scripts ───────────────────────────────────────────────
 echo "${BOLD}[ scripts ]${RESET}"
-for s in backlog.py pre-commit.sh commit-msg.sh install.sh migrate.sh backup.sh status.sh disable-skill.sh test-pipeline.sh health.sh; do
+for s in backlog.py pre-commit.sh commit-msg.sh setup.sh migrate.sh backup.sh status.sh disable-skill.sh test-pipeline.sh health.sh; do
     p="$_LIB_DIR/$s"
     if [ -x "$p" ]; then
         log_pass "$s"

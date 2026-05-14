@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# kaizen uninstall — reverse of install.sh.
+# kaizen uninstall — reverse of setup.sh install. Invoked as
+# `/kaizen:setup uninstall` (setup.sh dispatches the `uninstall` subcommand here).
 # Removes per-repo activation only — leaves the plugin itself + the data
 # (.workflow/backlog.{json,md}) in place. Plugin uninstall is via /plugin.
 
@@ -121,5 +122,5 @@ fi
 grep -qxF ".kaizen/" .gitignore 2>/dev/null && sed -i '/^\.kaizen\/$/d' .gitignore
 
 echo "${GREEN}${BOLD}✓ uninstalled${RESET}"
-echo "${DIM}Re-activate later: /kaizen:install${RESET}"
+echo "${DIM}Re-activate later: /kaizen:setup${RESET}"
 echo "${DIM}Restore from backup: /kaizen:backup list  →  /kaizen:backup restore <id>${RESET}"

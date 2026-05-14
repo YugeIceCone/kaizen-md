@@ -26,6 +26,15 @@ A trace-driven review found the hot-path hooks (PreToolUse / PostToolUse) spawne
 - **H2 — `_trace.sh`** (the shared trace helper, invoked by ~6 hooks) spawned 2 python3: one to parse `session_id` out of the event JSON, one to write the event. The parse is now shell-native (`grep`/`sed`); `trace.py` stays the single writer so rotation/pruning aren't duplicated into shell. Adds an early `KAIZEN_TRACE_DISABLE` check that skips the spawn.
 - **H3 — `pretooluse-bash-gate.sh`** spawned up to 6 python3 (command extraction, decision emit, a 3-process advisory scan). All gate logic moves into a new single-process module `hooks/claude/_bash_gate.py` (reuses `scan()` from `_bash_discipline_scan.py`); the hook is now a thin wrapper — spawns drop to 2. Fixes two latent bugs: the advisory scanner was pointed at a non-existent path (`hooks/_bash_discipline_scan.py`) so it never ran, and the `--force` regex never matched `git push --force-with-lease`. Adds the `KAIZEN_BASH_GATE_DISABLE` bypass knob. +26 tests (`tests/test_bash_gate.py`).
 
+### Changed — `/kaizen:setup` unifies the install/uninstall/enable-all/cache commands
+
+`/kaizen:install`, `/kaizen:uninstall`, `/kaizen:enable-all`, and `/kaizen:cache` collapse into one `/kaizen:setup` command with subcommands. Four command files become one; the install script is renamed.
+
+- **Command surface** — `commands/install.md` → `commands/setup.md` (a dispatcher doc); `uninstall.md`, `enable-all.md`, `cache.md` removed. `/kaizen:setup` (or `/kaizen:setup install`) runs the per-repo gate; `/kaizen:setup uninstall` reverses it; `/kaizen:setup cache [...]` is the per-repo hash-cache CRUD; `--enable-all` / `--with-*` / `--no-*` flags run the curated project + global stack (unchanged delegation to `enable_all.sh`).
+- **Script** — `scripts/install.sh` → `scripts/setup.sh`, gaining a first-positional dispatcher (`uninstall` → `uninstall.sh`, `cache` → `cache.py`, `install`/none → the install path). `enable_all.sh` and `uninstall.sh` keep their filenames as internal helpers `setup.sh` delegates to; `cache.py` is unchanged.
+- **Cache check folded into install** — the install path now ends with a `cache.py stats` summary of `<repo>/.kaizen/cache/`, so `/kaizen:setup install` surfaces the cache state the former `/kaizen:cache` reported.
+- **Sweep** — every `kaizen:install` / `:uninstall` / `:enable-all` / `:cache` and `install.sh` reference across README, CONTRIBUTING, SKILL.md (plugin-development, agent-brief, menu), the iron-laws registry (+ regenerated `references/iron-laws.md`), `feature-shape.yaml`, and the workflow scripts updated. `tests/test_install_enable_all_consolidation.py` → `tests/test_setup_consolidation.py`, rewritten for the dispatcher (10 tests: delegation, install path, `cache`/`uninstall` subcommands, docs).
+
 ## [1.36.2] — 2026-05-14
 
 ### Fixed — handoff→brain bridge silently swallowed prose-heavy handoffs

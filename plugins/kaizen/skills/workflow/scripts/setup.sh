@@ -1,13 +1,21 @@
 #!/usr/bin/env bash
-# kaizen installer.
-# Run inside a git repo:  bash ~/.claude/skills/workflow/scripts/install.sh
+# kaizen setup — unified entry point for /kaizen:setup.
+# Run inside a git repo:  bash ~/.claude/skills/workflow/scripts/setup.sh [subcommand]
 #
-# Does:
+# Subcommands (first positional):
+#   install      per-repo pre-commit gate (default when omitted) — see "Does"
+#   uninstall    reverse per-repo activation (delegates to uninstall.sh)
+#   cache        per-repo hash-cache CRUD (delegates to cache.py)
+# Flags --enable-all / --with-* / --no-* route to enable_all.sh (curated
+# project + global stack).
+#
+# Does (install path):
 #   1. mkdir .kaizen/hooks/
 #   2. symlink .kaizen/hooks/pre-commit → skill's pre-commit.sh
 #   3. git config core.hooksPath .kaizen/hooks  (LOCAL only)
 #   4. write a starter .kaizen.toml if absent
 #   5. add .kaizen/ to .gitignore if needed
+#   6. cache check — surface the per-repo .kaizen/cache/ state
 
 set -eu
 
@@ -15,20 +23,39 @@ SKILL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PLUGIN_ROOT="$(cd "$SKILL_DIR/../.." && pwd)"
 _SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+# ─── Subcommand dispatch (v1.37+) ────────────────────────────────────
+#
+# /kaizen:setup folds the former /kaizen:install + /kaizen:uninstall +
+# /kaizen:cache + /kaizen:enable-all into one command. The first
+# positional selects the path; no positional (or `install`) falls
+# through to the install path below. The --enable-all / --with-* /
+# --no-* FLAGS are handled by the delegation block right after.
+case "${1:-}" in
+  uninstall)
+    shift
+    exec bash "$_SCRIPT_DIR/uninstall.sh" "$@"
+    ;;
+  cache)
+    shift
+    exec python3 "$_SCRIPT_DIR/cache.py" "$@"
+    ;;
+  install)
+    shift  # explicit subcommand — continue into the install path
+    ;;
+esac
+
 # ─── --enable-all delegation (v1.33+) ────────────────────────────────
 #
-# Consolidates /kaizen:install + /kaizen:enable-all into one entry point.
 # When --enable-all (or any --with-* / --no-globals / --no-project flag)
 # appears, hand off the whole arg list to enable_all.sh which calls back
 # into THIS script (without the flag) for the per-repo install step.
-# /kaizen:enable-all still works as a top-level command (back-compat).
 
 for arg in "$@"; do
   case "$arg" in
     --enable-all|--with-index|--with-browser|--with-daemon|--with-trace-proxy|\
     --no-globals|--no-project|--dry-run|--yes|-y)
-      # Strip --enable-all (only meaningful at the install.sh entry); pass
-      # the rest. enable_all.sh re-invokes install.sh sans these flags.
+      # Strip --enable-all (only meaningful at the setup.sh entry); pass
+      # the rest. enable_all.sh re-invokes setup.sh sans these flags.
       _FORWARD=()
       for a in "$@"; do
         [ "$a" = "--enable-all" ] && continue
@@ -53,7 +80,7 @@ preflight_log() {
     printf '[%s] %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*" >> "$INSTALL_LOG"
 }
 
-preflight_log "=== /kaizen:install begin at $(pwd) ==="
+preflight_log "=== /kaizen:setup install begin at $(pwd) ==="
 
 REQUIRED=(git python3)
 MISSING_REQ=""
@@ -63,14 +90,14 @@ for cmd in "${REQUIRED[@]}"; do
     fi
 done
 if [ -n "$MISSING_REQ" ]; then
-    echo "kaizen install: required commands missing:$MISSING_REQ" >&2
-    echo "  install them, then re-run /kaizen:install" >&2
+    echo "kaizen setup: required commands missing:$MISSING_REQ" >&2
+    echo "  install them, then re-run /kaizen:setup" >&2
     preflight_log "FAIL: missing required: $MISSING_REQ"
     exit 1
 fi
 
 REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null) || {
-    echo "kaizen install: must run inside a git repo" >&2
+    echo "kaizen setup: must run inside a git repo" >&2
     preflight_log "FAIL: not inside git repo (pwd=$(pwd))"
     exit 1
 }
@@ -294,6 +321,15 @@ if [ "${KAIZEN_NO_BIN:-0}" = "0" ] && [ -d "$PLUGIN_BIN" ]; then
     fi
 fi
 
+# ─── Cache check (folded from /kaizen:cache) ─────────────────────────
+# /kaizen:setup folds in the per-repo hash-cache surface. Surface its
+# state at the end of an install so the user sees it exists + is
+# healthy; non-fatal.
+echo ""
+echo "Cache check (.kaizen/cache/ — manage via /kaizen:setup cache):"
+(cd "$REPO_ROOT" && python3 "$_SCRIPT_DIR/cache.py" stats 2>/dev/null | sed 's/^/  /') \
+    || echo "  (cache check skipped)"
+
 cat <<EOF
 ${BOLD:-}Install complete.${RESET:-}
 
@@ -313,7 +349,7 @@ Diagnostic:
   /kaizen:health
 
 Uninstall (per-repo only; keeps backlog + backups):
-  /kaizen:uninstall
+  /kaizen:setup uninstall
 
 Backup before risky ops:
   /kaizen:backup create --label <what>

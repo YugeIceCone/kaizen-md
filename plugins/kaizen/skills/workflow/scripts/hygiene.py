@@ -267,7 +267,7 @@ def _rmtree(p: Path) -> None:
 
 def _discover_kaizen_repos() -> list[Path]:
     """Find repos with .kaizen.toml. Reads ~/.kaizen-installs.txt if present
-    (daemon writes this on each kaizen:install)."""
+    (daemon writes this on each kaizen:setup)."""
     registry = HOME / ".kaizen-installs.txt"
     if registry.exists():
         out = []

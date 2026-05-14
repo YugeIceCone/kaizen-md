@@ -100,7 +100,7 @@ Tests sandbox via env vars (KAIZEN_<X>_PATH=<tmp>). Never touch real ~/.claude/.
 
 ### `bin-wrapper-per-cli` (hard · auto)
 
-Each CLI script gets its own bin/kaizen-* wrapper. /kaizen:install symlinks bin/ into ~/.local/bin/.
+Each CLI script gets its own bin/kaizen-* wrapper. /kaizen:setup symlinks bin/ into ~/.local/bin/.
 
 **Check:** `bin_wrapper_per_cli` (in `_iron_laws.py`)
 
@@ -172,7 +172,7 @@ Every Python script with an argparse main() under skills/workflow/scripts/ MUST 
 
 **Detect:** git diff shows new skills/workflow/scripts/<f>.py with `if __name__ == "__main__"` + argparse but no bin/kaizen-<feature>[-<op>] in the same commit
 
-**Why:** Hit twice this session: brain shipped only kaizen-brain (missing -index/-promote/-audit/-evolve, fixed in commit ed4b490); metrics shipped only kaizen-metrics. /kaizen:install symlinks bin/ entries into ~/.local/bin/, so a missing wrapper = 'command not found' from shell. The plugin-development validator's wiring-checklist enforces this via scripts/validate.py.
+**Why:** Hit twice this session: brain shipped only kaizen-brain (missing -index/-promote/-audit/-evolve, fixed in commit ed4b490); metrics shipped only kaizen-metrics. /kaizen:setup symlinks bin/ entries into ~/.local/bin/, so a missing wrapper = 'command not found' from shell. The plugin-development validator's wiring-checklist enforces this via scripts/validate.py.
 
 ### `slash-command-args-no-default-spaces` (hard · auto)
 

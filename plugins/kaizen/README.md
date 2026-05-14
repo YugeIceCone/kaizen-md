@@ -23,7 +23,7 @@
   - **Superpowers (14):** `:using-superpowers`, `:brainstorming`, `:writing-plans`, `:executing-plans`, `:subagent-driven-development`, `:dispatching-parallel-agents`, `:test-driven-development`, `:systematic-debugging`, `:verification-before-completion`, `:requesting-code-review`, `:receiving-code-review`, `:finishing-a-development-branch`, `:using-git-worktrees`, `:writing-skills` — © Jesse Vincent, github.com/obra/superpowers
   - **Workflow-routing (1):** `:workflow-routing` (the `/workflow` engine — multi-stage routines, state.json machine)
   - **Remember / Second Brain (5):** `:remember`, `:process`, `:evolve`, `:status`, `:init` — © Gabi Fratica, github.com/remember-md/remember — plus all supporting scripts at `${CLAUDE_PLUGIN_ROOT}/scripts/`
-- **Slash commands (38 total)** — `/kaizen:install`, `/kaizen:backlog`, `/kaizen:gate`, `/kaizen:models` (v1.26.0, Ollama lifecycle), `/kaizen:audit`, `/kaizen:review`, `/kaizen:knowledge`, `/kaizen:trace-search`, `/kaizen:onboard`, `/kaizen:scrape`, etc. Full list: `/kaizen:menu`.
+- **Slash commands (38 total)** — `/kaizen:setup`, `/kaizen:backlog`, `/kaizen:gate`, `/kaizen:models` (v1.26.0, Ollama lifecycle), `/kaizen:audit`, `/kaizen:review`, `/kaizen:knowledge`, `/kaizen:trace-search`, `/kaizen:onboard`, `/kaizen:scrape`, etc. Full list: `/kaizen:menu`.
 - **MCP servers (5)** — `kaizen-backlog`, `kaizen-browser` (Playwright), `kaizen-trace-search`, `kaizen-knowledge-search`, `kaizen-onboard-search`. Auto-wired via `.mcp.json`.
 - **Lifecycle hooks (6)** — SessionStart surfaces `## In flight` + `## Next up` backlog items; UserPromptSubmit captures input to inbox for mid-sequence visibility; PreToolUse(Bash) gates destructive commands; PostToolUse drains inbox + traces commits; Stop reminds about in_flight items; PreCompact snapshots state.
 
@@ -48,7 +48,7 @@ Optional peers (recommended but not required):
 1. /plugin marketplace add ~/.claude/local-marketplaces/kaizen-md
    /plugin install kaizen@kaizen-md           # one-time
 
-2. /kaizen:install                                  # per-project, idempotent
+2. /kaizen:setup                                  # per-project, idempotent
 
 3. /kaizen:disable-dupes && /kaizen:status    # confirm green
 ```
@@ -59,7 +59,7 @@ For the full command list: `/kaizen:menu`. For a diagnostic: `/kaizen:health`.
 
 ## Install (detail)
 
-`/kaizen:install` runs `scripts/install.sh`, which:
+`/kaizen:setup` runs `scripts/setup.sh`, which:
 
 1. Symlinks `.kaizen/hooks/{pre-commit,commit-msg}` → the plugin's hook scripts
 2. Sets `git config core.hooksPath .kaizen/hooks` **LOCALLY** (per-clone — never touches global config)
@@ -68,7 +68,7 @@ For the full command list: `/kaizen:menu`. For a diagnostic: `/kaizen:health`.
 5. Writes `.kaizen/.gitignore` (per-dir policy — ignores ephemeral `cache/`, `hooks/`, `trace/`; tracks durable `workflow/` artifacts)
 6. Symlinks `bin/kaizen-*` shims into `~/.local/bin/`
 
-`/kaizen:uninstall` reverses this cleanly; preserves backlog + backups by default.
+`/kaizen:setup uninstall` reverses this cleanly; preserves backlog + backups by default.
 
 ## Sizing rule
 
@@ -99,12 +99,12 @@ The plugin coexists with the bundled `workflow-routing` skill (the `/workflow` c
 
 No cross-write. Shared envelope (`schema_version`, `metadata.created`/`updated`) for future tooling that joins state across skills.
 
-Legacy `<repo>/.workflow/` is recognized for backward compat; `/kaizen:migrate-paths` (auto-invoked by `/kaizen:install`) moves it to the canonical location.
+Legacy `<repo>/.workflow/` is recognized for backward compat; `/kaizen:migrate-paths` (auto-invoked by `/kaizen:setup`) moves it to the canonical location.
 
 ## Uninstall
 
 ```
-/kaizen:uninstall                          # reverses hooks + symlinks
+/kaizen:setup uninstall                          # reverses hooks + symlinks
 # OR manually:
 git config --unset core.hooksPath          # per-repo
 rm -rf .kaizen/                            # per-repo (preserves workflow/ artifacts if you pin them first)

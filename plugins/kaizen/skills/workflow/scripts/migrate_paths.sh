@@ -172,7 +172,7 @@ if [ "$USER_ONLY" -eq 0 ]; then
   legacy="$PROJECT_ROOT/$KAIZEN_LEGACY_PROJECT_WORKFLOW"
   new="$(kaizen_project_workflow_dir "$PROJECT_ROOT")"
 
-  # The move is safe when paired with the install.sh .gitignore rule
+  # The move is safe when paired with the setup.sh .gitignore rule
   # `.kaizen/*` + `!.kaizen/workflow/` — durable artifacts under
   # .kaizen/workflow/ (progress.md, backlog.{json,md}, audits/) stay
   # tracked while ephemeral subdirs (cache/, hooks/, trace/, ...) stay

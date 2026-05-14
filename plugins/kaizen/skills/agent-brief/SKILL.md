@@ -165,7 +165,7 @@ State: single browser, single page, persists across tool calls within one MCP se
 
 Setup gate: `kaizen-browser check` confirms uv + deps + Chromium binary.
 
-### 8. Bin wrappers (in `~/.local/bin/`, on $PATH after `/kaizen:install`)
+### 8. Bin wrappers (in `~/.local/bin/`, on $PATH after `/kaizen:setup`)
 
 ```
 kaizen <subcmd> [args]    # multiplexer: kaizen flow . / kaizen docs scan / etc.

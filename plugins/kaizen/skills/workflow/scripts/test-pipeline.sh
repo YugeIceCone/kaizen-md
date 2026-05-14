@@ -93,7 +93,7 @@ START_TS=$(date +%s)
 # ──────────────────────────────────────────────────────────────────────
 # Stage 1 — install in sandbox
 # ──────────────────────────────────────────────────────────────────────
-tap "install.sh runs cleanly" bash "$GW_SCRIPTS/install.sh"
+tap "setup.sh runs cleanly" bash "$GW_SCRIPTS/setup.sh"
 assert ".kaizen.toml exists" $([ -f "$SANDBOX/.kaizen.toml" ] && echo 0 || echo 1)
 assert ".kaizen/hooks/pre-commit is a symlink" $([ -L "$SANDBOX/.kaizen/hooks/pre-commit" ] && echo 0 || echo 1)
 assert "core.hooksPath set to .kaizen/hooks" $([ "$(git config core.hooksPath)" = ".kaizen/hooks" ] && echo 0 || echo 1)

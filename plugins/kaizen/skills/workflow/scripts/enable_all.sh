@@ -3,7 +3,7 @@
 # best-default global installers. Each step is idempotent (the
 # underlying installer already handles "already installed").
 #
-# Default scope: project (kaizen:install + kaizen:onboard index).
+# Default scope: project (kaizen:setup install + kaizen:onboard index).
 # Default globals: disable-dupes + statusline + env + knowledge index
 # + trace-search index. These are the non-intrusive, broadly-useful
 # global setup steps.
@@ -150,7 +150,7 @@ echo "${BOLD}kaizen enable-all${RESET} — $mode"
 [ "$IS_GIT_REPO" -eq 1 ] && echo "  repo:  $REPO_ROOT"
 [ "$IS_GIT_REPO" -eq 0 ] && echo "  ${DIM}(not in a git repo — project-scope steps will be skipped)${RESET}"
 echo "  globals:  $([ "$SKIP_GLOBALS" -eq 1 ] && echo "${DIM}skipped${RESET}" || echo "default stack")"
-echo "  project:  $([ "$SKIP_PROJECT" -eq 1 ] && echo "${DIM}skipped${RESET}" || ([ "$IS_GIT_REPO" -eq 1 ] && echo "kaizen:install" || echo "${DIM}n/a (no git repo)${RESET}"))"
+echo "  project:  $([ "$SKIP_PROJECT" -eq 1 ] && echo "${DIM}skipped${RESET}" || ([ "$IS_GIT_REPO" -eq 1 ] && echo "kaizen:setup install" || echo "${DIM}n/a (no git repo)${RESET}"))"
 [ "$WITH_INDEX" -eq 1 ]      && echo "  opt-in:   ${YELLOW}+index (knowledge/trace/onboard)${RESET}"
 [ "$WITH_BROWSER" -eq 1 ]    && echo "  opt-in:   ${YELLOW}+browser${RESET}"
 [ "$WITH_DAEMON" -eq 1 ]     && echo "  opt-in:   ${YELLOW}+daemon${RESET}"
@@ -197,9 +197,9 @@ if [ "$SKIP_PROJECT" -eq 0 ]; then
   if [ "$IS_GIT_REPO" -eq 0 ]; then
     skip_step "kaizen pre-commit gate" "not in a git repo"
   else
-    # kaizen:install — wires .kaizen/hooks/pre-commit + core.hooksPath
+    # kaizen:setup install — wires .kaizen/hooks/pre-commit + core.hooksPath
     step "install pre-commit gate (this repo)" \
-      "bash '$PLUGIN_ROOT/skills/workflow/scripts/install.sh'"
+      "bash '$PLUGIN_ROOT/skills/workflow/scripts/setup.sh' install"
   fi
   echo ""
 else
@@ -268,7 +268,7 @@ echo "${DIM}Next:${RESET}"
 echo "  /kaizen:status              confirm everything green"
 echo "  /kaizen:menu                full command reference"
 if [ "$WITH_INDEX" -eq 0 ]; then
-  echo "  ${DIM}(indexers skipped — run /kaizen:enable-all --with-index when you${RESET}"
+  echo "  ${DIM}(indexers skipped — run /kaizen:setup --enable-all --with-index when you${RESET}"
   echo "  ${DIM} have a few minutes; or /kaizen:onboard index / /kaizen:knowledge${RESET}"
   echo "  ${DIM} index / /kaizen:trace-search index individually.)${RESET}"
 elif [ "$IS_GIT_REPO" -eq 1 ] && [ "$SKIP_PROJECT" -eq 0 ]; then

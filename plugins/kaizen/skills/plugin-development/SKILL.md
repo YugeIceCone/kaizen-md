@@ -171,7 +171,7 @@ plugins/kaizen/hooks/hooks.json             ← event-slot wiring for each hook
   `python3 brain.py` works without `mcp` installed.
 - **Bin wrappers as plain bash** — each CLI script gets its own
   symlink-target so `kaizen-<feature>-<op>` works from shell after
-  `/kaizen:install` symlinks them into `~/.local/bin/`.
+  `/kaizen:setup` symlinks them into `~/.local/bin/`.
 
 ### Sizing within the shape
 
@@ -536,7 +536,7 @@ commit (CONTRIBUTING.md rule).
 
 ### Bin wrapper symlinks
 
-`/kaizen:install` walks `bin/` and symlinks every executable into
+`/kaizen:setup` walks `bin/` and symlinks every executable into
 `~/.local/bin/`. Drop one wrapper per CLI script you want shell-
 addressable. Without a wrapper, the script is only reachable via
 `/kaizen:<feature>` slash command or direct path.
@@ -607,7 +607,7 @@ This rule applies to README.md and any rulebook-shaped file too.
 
 Specialized op scripts (e.g. `brain_index.py` / `brain_promote.py` /
 `brain_audit.py` / `brain_evolve.py` / `metrics.py`) each need their
-OWN `bin/kaizen-<feature>[-<op>]` wrapper. `/kaizen:install` symlinks
+OWN `bin/kaizen-<feature>[-<op>]` wrapper. `/kaizen:setup` symlinks
 `bin/` entries into `~/.local/bin/`; a missing wrapper means
 `kaizen-<feature>-<op>` returns `command not found` from any shell.
 
@@ -725,7 +725,7 @@ worked example — read it end-to-end before starting your own.
 7. **Sandbox tests via env vars.** Never touch real `~/.claude/`.
 8. **Bin wrapper per CLI script** — every argparse-main script gets
    its OWN `bin/kaizen-<feature>[-<op>]`. Symlinks land via
-   `/kaizen:install`. Specialized ops (index / promote / audit /
+   `/kaizen:setup`. Specialized ops (index / promote / audit /
    evolve / metrics) each need their own wrapper.
 9. **plugin.json + hooks.json + bin wrappers wired** in the same commit.
 10. **Commit per atomic unit** using the phased-work template.

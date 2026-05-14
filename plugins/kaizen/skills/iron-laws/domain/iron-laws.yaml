@@ -66,7 +66,7 @@ laws:
     why: "Test isolation; CI runs without polluting the user's brain or auto-memory."
 
   - id: bin-wrapper-per-cli
-    statement: "Each CLI script gets its own bin/kaizen-* wrapper. /kaizen:install symlinks bin/ into ~/.local/bin/."
+    statement: "Each CLI script gets its own bin/kaizen-* wrapper. /kaizen:setup symlinks bin/ into ~/.local/bin/."
     severity: hard
     enforcement: auto
     check: bin_wrapper_per_cli
@@ -125,7 +125,7 @@ laws:
     enforcement: auto
     check: bin_wrapper_per_cli_strict
     detect: "git diff shows new skills/workflow/scripts/<f>.py with `if __name__ == \"__main__\"` + argparse but no bin/kaizen-<feature>[-<op>] in the same commit"
-    why: "Hit twice this session: brain shipped only kaizen-brain (missing -index/-promote/-audit/-evolve, fixed in commit ed4b490); metrics shipped only kaizen-metrics. /kaizen:install symlinks bin/ entries into ~/.local/bin/, so a missing wrapper = 'command not found' from shell. The plugin-development validator's wiring-checklist enforces this via scripts/validate.py."
+    why: "Hit twice this session: brain shipped only kaizen-brain (missing -index/-promote/-audit/-evolve, fixed in commit ed4b490); metrics shipped only kaizen-metrics. /kaizen:setup symlinks bin/ entries into ~/.local/bin/, so a missing wrapper = 'command not found' from shell. The plugin-development validator's wiring-checklist enforces this via scripts/validate.py."
 
   - id: slash-command-args-no-default-spaces
     statement: "Slash command `${ARGUMENTS:-default}` template only bash-evaluates the `:-default` when the default has NO whitespace. For multi-word defaults, give the underlying script a no-arg fallback and pass bare `$ARGUMENTS` (no curly braces, no default)."

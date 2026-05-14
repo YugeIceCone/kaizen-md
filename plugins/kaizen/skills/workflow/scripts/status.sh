@@ -22,7 +22,7 @@ echo "── Config ──"
 if [ -f .kaizen.toml ]; then
     grep -vE '^#|^\s*$' .kaizen.toml | head -10
 else
-    echo "  (no .kaizen.toml — run /kaizen:install)"
+    echo "  (no .kaizen.toml — run /kaizen:setup)"
 fi
 echo ""
 

@@ -33,7 +33,7 @@ The mirroring shell module is `_paths.sh` (source-compatible export shape).
 `LEGACY_PATHS` maps each kaizen-owned location to its pre-1.22 sibling.
 The migrator `migrate_paths.sh` consults this to move OLD → NEW data
 without loss. Scripts no longer auto-fallback at read time; users either
-run the migrator (auto-invoked by `kaizen:install` and `kaizen:enable-all`)
+run the migrator (auto-invoked by `kaizen:setup` and `kaizen:setup --enable-all`)
 or set the override env var.
 
 ## Env overrides

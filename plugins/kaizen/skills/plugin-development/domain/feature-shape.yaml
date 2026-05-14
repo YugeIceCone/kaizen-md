@@ -99,7 +99,7 @@ slots:
     required: false
     when: feature_exposes_cli
     role: "shell symlink target — one per CLI script"
-    why: "Specialized op scripts (e.g. brain_index.py) need their own wrapper so kaizen-<feature>-<op> works from shell after /kaizen:install."
+    why: "Specialized op scripts (e.g. brain_index.py) need their own wrapper so kaizen-<feature>-<op> works from shell after /kaizen:setup."
 
   - id: tests
     path_pattern: "tests/test_<feature>*.py"

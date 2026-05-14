@@ -25,7 +25,7 @@ The kaizen plugin touches roughly 15 distinct data shapes. For each, two questio
 ### 1.2 `.kaizen.toml` — Weak SSOT ⚠️
 
 - **Source**: per-repo `.kaizen.toml`. Keys: `compile_check_cmd`, `verify_cmd`, `backlog_path`, `architecture_log`.
-- **Consumers**: `pre-commit.sh` (greps `^backlog_path`, `^compile_check_cmd`, etc. with regex), `install.sh` (writes initial state), `statusline.sh` (also greps).
+- **Consumers**: `pre-commit.sh` (greps `^backlog_path`, `^compile_check_cmd`, etc. with regex), `setup.sh` (writes initial state), `statusline.sh` (also greps).
 - **Gap**: every consumer reimplements TOML parsing as a bash regex. There's no `kaizen.toml` Python helper that all callers share. Three call sites each do `grep -E '^backlog_path' "$config" | sed -E 's/^[^=]*=[[:space:]]*"?([^"]*)"?.*$/\1/'`. If the schema gains a new key, every call site has to be updated independently.
 - **Fix shape**: `scripts/config.py` that all consumers call (bash via subprocess, Python via import). Becomes the SSOT for `.kaizen.toml` parsing.
 
@@ -110,7 +110,7 @@ The kaizen plugin touches roughly 15 distinct data shapes. For each, two questio
 
 ### 🔴 GAP-1 — `.kaizen.toml` parsing is duplicated across consumers
 
-**Where it hurts**: `pre-commit.sh`, `statusline.sh`, `install.sh`, daemon scripts all reimplement TOML parsing via `grep -E '^key' | sed`. A new config key requires changing every call site.
+**Where it hurts**: `pre-commit.sh`, `statusline.sh`, `setup.sh`, daemon scripts all reimplement TOML parsing via `grep -E '^key' | sed`. A new config key requires changing every call site.
 
 **Fix**: `scripts/config.py` with one parse function (`load_config() -> dict`). Bash callers run `python3 -c 'from config import load_config; print(load_config().get("backlog_path", ""))'`. Python callers `from config import load_config`. Test once, used everywhere.
 
@@ -175,7 +175,7 @@ exec python3 "$PLUGIN_ROOT/skills/workflow/scripts/<name>.py" "$@"
 
 ### OPP-A — `scripts/config.py` as `.kaizen.toml` SSOT
 
-**Files affected**: `scripts/config.py` (new ~80 LOC), `pre-commit.sh` (~5 line replacement), `statusline.sh` (~3 line replacement), `install.sh` (~2 line replacement). One commit. Tests: `tests/test_config.py` round-trips the seed config.
+**Files affected**: `scripts/config.py` (new ~80 LOC), `pre-commit.sh` (~5 line replacement), `statusline.sh` (~3 line replacement), `setup.sh` (~2 line replacement). One commit. Tests: `tests/test_config.py` round-trips the seed config.
 
 ### OPP-B — `scripts/schemas.py` for trace + inbox + daemon-state
 
@@ -298,7 +298,7 @@ schemas.py dataclasses (SSOT)
 
 ## Part 6 — Priority stack (no tables; ordered list)
 
-1. **OPP-A** — `scripts/config.py` as `.kaizen.toml` SSOT. **Why first**: smallest blast radius (one new file, 3 bash callers updated), unblocks several other improvements (statusline can read more keys, install.sh becomes cleaner). Quick win.
+1. **OPP-A** — `scripts/config.py` as `.kaizen.toml` SSOT. **Why first**: smallest blast radius (one new file, 3 bash callers updated), unblocks several other improvements (statusline can read more keys, setup.sh becomes cleaner). Quick win.
 2. **OPP-B** — `scripts/schemas.py` for trace + inbox + daemon + backlog. **Why second**: largest cascade effect (dataclasses → JSON schemas → published docs → external tools). Force-multiplier for OPP-F.
 3. **OPP-D** — gate Check #13 plugin.json ↔ CHANGELOG sync. **Why third**: tiny (~15 LOC), prevents version drift, validates the discipline kaizen preaches.
 4. **OPP-E** — DRY the `bin/kaizen-*` wrappers via `_resolve.sh`. **Why fourth**: classic DRY win, matches the v1.6.2 hooks pattern, prevents future foot-guns.
