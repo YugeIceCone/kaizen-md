@@ -282,6 +282,58 @@ def _should_use_multi_process(batch_size: int) -> bool:
     return _get_mp_workers() > 0 and batch_size >= _get_mp_threshold()
 
 
+# ─── E5 — matryoshka embeddings (truncatable dim) ─────────────────────
+#
+# Matryoshka-trained models (mxbai-embed-large-v1, nomic-embed-v2, …)
+# produce embeddings where prefix-truncations are still useful — a 1024-
+# dim vector truncated to 64 dims still preserves most semantic signal,
+# enabling coarse-to-fine retrieval pipelines.
+
+MATRYOSHKA_FAMILIES = (
+    "mxbai-embed-large",
+    "mxbai-embed",
+    "nomic-embed-v2",
+    "bge-m3",
+    "e5-mistral",
+)
+
+
+def _get_matryoshka_dim() -> int:
+    """KAIZEN_EMBED_MATRYOSHKA_DIM — when set to a positive integer,
+    truncate every embedding to this dim before storing. No-op when the
+    model's native dim is already ≤ this value, or when the model isn't
+    matryoshka-trained. Default 0 = disabled."""
+    raw = os.environ.get("KAIZEN_EMBED_MATRYOSHKA_DIM", "0")
+    try:
+        return max(0, int(raw))
+    except ValueError:
+        return 0
+
+
+def is_matryoshka_model(model_name: str) -> bool:
+    """Substring-match against known matryoshka-trained families."""
+    if not model_name:
+        return False
+    lower = model_name.lower()
+    return any(fam in lower for fam in MATRYOSHKA_FAMILIES)
+
+
+def maybe_truncate_matryoshka(vec, model_name: str = ""):
+    """If KAIZEN_EMBED_MATRYOSHKA_DIM is set AND the model is matryoshka,
+    return `vec[:dim]`. Otherwise return `vec` unchanged. Pure-numpy."""
+    dim = _get_matryoshka_dim()
+    if dim <= 0:
+        return vec
+    if not is_matryoshka_model(model_name):
+        return vec
+    try:
+        if len(vec) <= dim:
+            return vec
+        return vec[:dim]
+    except TypeError:
+        return vec
+
+
 # ─── Embedding API ───────────────────────────────────────────────────
 
 _local_model = None
