@@ -25,6 +25,11 @@ _HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$_HOOK_DIR/../../skills/workflow/scripts/_plugin_root.sh"
 PLUGIN_ROOT="$(kaizen_plugin_root 2>/dev/null)" || exit 0
 
+# Trace this hook's own firing — universal trace covers tool calls;
+# hook-internal lifecycle events get explicit logging.
+echo '{}' | bash "$PLUGIN_ROOT/hooks/claude/_trace.sh" \
+    SessionEnd-metrics-skip-check 2>/dev/null || true
+
 # Resolve brain root via the brain feature's own resolver.
 BRAIN_ROOT="${KAIZEN_BRAIN_PATH:-${REMEMBER_BRAIN_PATH:-$HOME/.claude/brain}}"
 BRAIN_ROOT="$(python3 -c "import os; print(os.path.expandvars('$BRAIN_ROOT'))" 2>/dev/null)"

@@ -22,6 +22,12 @@
 
 set -e
 
+# Trace this hook's own firing (best-effort, never blocks).
+_HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd 2>/dev/null || true)"
+if [ -n "$_HOOK_DIR" ] && [ -f "$_HOOK_DIR/_trace.sh" ]; then
+    echo '{}' | bash "$_HOOK_DIR/_trace.sh" karpathy-gate 2>/dev/null || true
+fi
+
 SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)/scripts"
 
 # Only run on git commit operations

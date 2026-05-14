@@ -27,6 +27,16 @@ fi
 # Read stdin envelope; tolerate missing input.
 INPUT="$(cat 2>/dev/null || true)"
 
+# Resolve plugin root + trace this hook's firing (best-effort).
+_HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=../../skills/workflow/scripts/_plugin_root.sh
+source "$_HOOK_DIR/../../skills/workflow/scripts/_plugin_root.sh" 2>/dev/null
+PLUGIN_ROOT="$(kaizen_plugin_root 2>/dev/null || true)"
+if [ -n "$PLUGIN_ROOT" ]; then
+    printf '%s' "$INPUT" | bash "$PLUGIN_ROOT/hooks/claude/_trace.sh" \
+        UserPromptSubmit-brain-trigger 2>/dev/null || true
+fi
+
 # Extract prompt text via python (jq may not be installed).
 PROMPT="$(python3 -c '
 import json, sys

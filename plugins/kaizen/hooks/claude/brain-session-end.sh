@@ -25,6 +25,12 @@ _HOOK_DIR="$(cd "$(dirname "$_SCRIPT_REAL")" && pwd)"
 source "$_HOOK_DIR/../../skills/workflow/scripts/_plugin_root.sh"
 PLUGIN_ROOT="$(kaizen_plugin_root 2>/dev/null)" || exit 0
 
+# Trace this hook's own firing — the universal trace covers tool calls,
+# but hook-internal lifecycle events benefit from explicit logging too.
+# Best-effort: never block on trace failures.
+echo '{}' | bash "$PLUGIN_ROOT/hooks/claude/_trace.sh" \
+    SessionEnd-brain-audit 2>/dev/null || true
+
 # Run with apply=true so candidates land as drafts. Suppress stdout
 # (hook output is noisy in the user's terminal); errors go to stderr.
 python3 "$PLUGIN_ROOT/skills/workflow/scripts/brain_audit.py" \

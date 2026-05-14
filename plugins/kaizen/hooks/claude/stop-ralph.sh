@@ -24,6 +24,12 @@ LEDGER_HELPER="$PLUGIN_ROOT/skills/workflow/scripts/loop_ledger.py"
 
 HOOK_INPUT=$(cat)
 
+# Trace this hook's own firing (best-effort, never blocks the loop).
+if [ -f "$PLUGIN_ROOT/hooks/claude/_trace.sh" ]; then
+    printf '%s' "$HOOK_INPUT" \
+        | bash "$PLUGIN_ROOT/hooks/claude/_trace.sh" Stop-ralph-loop 2>/dev/null || true
+fi
+
 frontmatter_value() {
   local key="$1"
   printf '%s\n' "$FRONTMATTER" | sed -n "s/^${key}:[[:space:]]*//p" | head -n 1
