@@ -197,3 +197,84 @@ def apply_passage_prefix(text: str, model: str = "") -> str:
 
 def apply_passage_prefix_batch(texts: Iterable[str], model: str = "") -> list[str]:
     return [apply_passage_prefix(t, model) for t in texts]
+
+
+# ─── O3 (v1.32) — metadata-rich passage prefix ───────────────────────
+
+
+def build_metadata_prefix(
+    *,
+    path: str = "",
+    language: str = "",
+    kind: str = "",
+    symbol: str = "",
+) -> str:
+    """Build a ~30-token provenance preamble for a passage embedding.
+
+    The embedding model learns associations between the metadata lines
+    and the chunk content, which improves both same-file recall ("find
+    chunks from x.py") and kind-discrimination ("prefer docstrings for
+    why queries"). Empty fields are skipped so the prefix stays compact.
+
+    Shape:
+        file: <path>
+        language: <lang>
+        kind: <code|doc>
+        symbol: <name>
+        ---
+    """
+    lines: list[str] = []
+    if path:
+        lines.append(f"file: {path}")
+    if language:
+        lines.append(f"language: {language}")
+    if kind:
+        lines.append(f"kind: {kind}")
+    if symbol:
+        lines.append(f"symbol: {symbol}")
+    if not lines:
+        return ""
+    return "\n".join(lines) + "\n---\n"
+
+
+def apply_passage_prefix_with_metadata(
+    text: str,
+    *,
+    path: str = "",
+    language: str = "",
+    kind: str = "",
+    symbol: str = "",
+    model: str = "",
+) -> str:
+    """Prepend metadata + the model-aware search_document: prefix.
+
+    Order: search_document: marker first (so the model sees its asymmetric
+    cue immediately), then the metadata lines, then the original text. If
+    the input already starts with PASSAGE_PREFIX it is preserved unchanged
+    (idempotent re-application)."""
+    if text.startswith(PASSAGE_PREFIX):
+        return text
+    meta = build_metadata_prefix(
+        path=path, language=language, kind=kind, symbol=symbol
+    )
+    return PASSAGE_PREFIX + meta + text
+
+
+def apply_passage_prefix_batch_with_metadata(
+    items: Iterable[dict],
+    model: str = "",
+) -> list[str]:
+    """Batch variant. Each `item` is a chunk dict with keys: text, path,
+    language, kind (optional), symbol (optional). Returns the prefixed
+    text per item, in input order."""
+    return [
+        apply_passage_prefix_with_metadata(
+            it["text"],
+            path=it.get("path", ""),
+            language=it.get("language", ""),
+            kind=it.get("kind", ""),
+            symbol=it.get("symbol", ""),
+            model=model,
+        )
+        for it in items
+    ]

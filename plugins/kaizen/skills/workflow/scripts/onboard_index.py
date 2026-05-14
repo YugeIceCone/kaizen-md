@@ -890,7 +890,11 @@ def do_filter(root: Path) -> dict:
             bar.tick(f"drop {raw_rec['path']} ({reason})")
             continue
         # Embed all kept chunks in a single batch.
-        chunk_texts = _kz_chunk.apply_passage_prefix_batch([c["text"] for c in kept])
+        # O3: metadata-rich passage prefix. Each chunk's embedded form
+        # carries file/language/kind provenance so the model learns same-
+        # file recall + kind discrimination. Original `text` in the DB is
+        # unchanged — only the embedded representation differs.
+        chunk_texts = _kz_chunk.apply_passage_prefix_batch_with_metadata(kept)
         chunk_blobs, _dim = _kz_embed.embed_batch(chunk_texts)
         file_emb = chunk_blobs[0]
         # v1.31.0+: also write the int8-quantized form for storage-efficient
