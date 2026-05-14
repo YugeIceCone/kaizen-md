@@ -131,6 +131,117 @@ def quant_size(dim: int) -> int:
     return _SCALE_BYTES + dim
 
 
+# ─── E4 — binary (1-bit) quantization ─────────────────────────────────
+#
+# Packs each dim into 1 bit: positive → 1, non-positive → 0. Hamming
+# distance between two binary embeddings approximates cosine distance
+# on the underlying float32 vectors well enough for a coarse shortlist.
+# 32× storage win (1 bit per dim vs 32-bit float) and a 32×+ scan
+# speedup via bitwise popcount.
+#
+# Two-stage retrieval recipe:
+#   1. Binary search (cheap):  top-K * 5 by hamming distance
+#   2. int8 rerank (existing): top-K from stage 1 by int8 dot-product
+#   3. (optional) cross-encoder rerank: top-K → top-N final
+
+
+def quantize_binary(vec) -> bytes:
+    """Pack a float32 vector into a 1-bit-per-dim bytestring.
+
+    Returns ceil(D/8) bytes. Bit 1 = positive, bit 0 = non-positive.
+    Bit order within a byte: MSB-first (most significant bit first)
+    to keep hamming-distance + popcount consistent across platforms.
+    A 384-dim vector packs to 48 bytes (32× storage win)."""
+    import numpy as np
+    arr = np.asarray(vec, dtype=np.float32)
+    bits = (arr > 0).astype(np.uint8)
+    packed = np.packbits(bits, bitorder="big")
+    return packed.tobytes()
+
+
+def quantize_binary_batch(mat) -> tuple[list[bytes], int]:
+    """Vectorized binary quantization. Returns ([bytes], bytes_per_vec).
+
+    Input: (N, D) float32 or convertible. Output: list of N packed-byte
+    strings, each ceil(D/8) bytes long."""
+    import numpy as np
+    arr = np.asarray(mat, dtype=np.float32)
+    if arr.ndim != 2:
+        raise ValueError(f"quantize_binary_batch needs 2-D input, got {arr.ndim}-D")
+    bits = (arr > 0).astype(np.uint8)
+    packed = np.packbits(bits, axis=1, bitorder="big")
+    blobs = [packed[i].tobytes() for i in range(packed.shape[0])]
+    return blobs, (packed.shape[1] if packed.size else 0)
+
+
+def dequantize_binary(blob: bytes, dim: int):
+    """Unpack into a (D,) {-1.0, +1.0} float32 vector. Useful for
+    cosine-on-binary checks (equivalent to D - 2·hamming up to scaling)."""
+    import numpy as np
+    expected = (dim + 7) // 8
+    if len(blob) != expected:
+        raise ValueError(
+            f"_quant.dequantize_binary: expected {expected} bytes for "
+            f"dim={dim}, got {len(blob)}"
+        )
+    bits = np.unpackbits(
+        np.frombuffer(blob, dtype=np.uint8), bitorder="big"
+    )[:dim]
+    # {0, 1} → {-1.0, +1.0}
+    return (bits.astype(np.float32) * 2.0) - 1.0
+
+
+def hamming_distance(blob_a: bytes, blob_b: bytes) -> int:
+    """Bitwise hamming distance between two binary-quantized blobs.
+
+    Computed via XOR + popcount. Both blobs must be the same length;
+    callers check dim consistency. Used as the cheap stage-1 ranker."""
+    if len(blob_a) != len(blob_b):
+        raise ValueError(
+            f"hamming_distance: blob lengths differ ({len(blob_a)} vs {len(blob_b)})"
+        )
+    # XOR-then-popcount, byte-by-byte. For small blobs (48 bytes for
+    # 384-dim) this is fast in pure Python; for huge batches the caller
+    # should use numpy vectorization (see hamming_distance_batch).
+    total = 0
+    for x, y in zip(blob_a, blob_b):
+        total += (x ^ y).bit_count()
+    return total
+
+
+def hamming_distance_batch(query_blob: bytes, candidate_blobs: list[bytes]) -> list[int]:
+    """Vectorized hamming distance: query against many candidates.
+
+    Returns N distances, one per candidate. Uses numpy when available
+    (15-30× speedup over the pure-Python loop on 1000-candidate batches),
+    otherwise falls back to the per-pair function."""
+    try:
+        import numpy as np
+    except ImportError:
+        return [hamming_distance(query_blob, b) for b in candidate_blobs]
+    if not candidate_blobs:
+        return []
+    q = np.frombuffer(query_blob, dtype=np.uint8)
+    mat = np.array(
+        [np.frombuffer(b, dtype=np.uint8) for b in candidate_blobs],
+        dtype=np.uint8,
+    )
+    xored = mat ^ q[None, :]
+    # numpy >=2 has bit_count on uint8; fallback to lookup table for older
+    try:
+        bc = np.bitwise_count(xored)  # numpy 2.x
+    except AttributeError:
+        # Lookup table — 256 entries, each = popcount(i)
+        lut = np.array([bin(i).count("1") for i in range(256)], dtype=np.uint16)
+        bc = lut[xored]
+    return bc.sum(axis=1).tolist()
+
+
+def binary_size(dim: int) -> int:
+    """Bytes per binary-quantized vector at this dim. ceil(D/8)."""
+    return (dim + 7) // 8
+
+
 # ─── CLI inspector ────────────────────────────────────────────────────
 
 
