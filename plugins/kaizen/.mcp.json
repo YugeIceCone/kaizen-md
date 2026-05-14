@@ -109,6 +109,14 @@
         "--script",
         "${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/rerank_mcp.py"
       ]
+    },
+    "audit": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--script",
+        "${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/audit_mcp.py"
+      ]
     }
   }
 }
