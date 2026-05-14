@@ -152,6 +152,34 @@ returns the markdown without persisting.
 - **Periodic** (weekly?) — track adoption + skill usage drift
 - **On-demand** — when something feels off
 
-The slash command + bin wrapper make on-demand cheap. The future
-`agent-self-audit` (proposed in the new-functionality output) will
-add an LLM stage that actually applies the skill checkpoints.
+The slash command + bin wrapper make on-demand cheap.
+
+## Agent-self-audit — the checkpoint executor
+
+The mechanical audit *emits* skill checkpoints; it cannot *apply*
+them (skill bodies are LLM judgment, not script-executable).
+`agent-self-audit` closes that loop in three phases:
+
+| Phase | Owner | What |
+|---|---|---|
+| A · `dispatch-plan` | `self_audit_agent.py` | Run the mechanical audit, render one self-contained subagent brief per checkpoint Finding, write `dispatch.json`. |
+| B · fan-out | the orchestrating **agent** | Dispatch one subagent per brief via the Agent tool — each loads its Skill, applies it read-only, writes a result JSON. |
+| C · `aggregate` | `self_audit_agent.py` | jsonschema-validate every result, merge into a unified Finding list, write `<utc>-agent-self.md`. |
+
+Python owns A + C (mechanical, reproducible); the agent owns B — the
+Agent tool is agent-runtime-only, so the fan-out cannot be scripted.
+
+```
+/kaizen:agent-self-audit                          # full A→B→C playbook
+kaizen-self-audit-agent dispatch-plan [--json]    # phase A standalone
+kaizen-self-audit-agent aggregate [--run-id ID]   # phase C standalone
+kaizen-self-audit-agent path                      # dirs + config paths
+```
+
+Runs land in `.kaizen/audits/agent/<run-id>/` — `dispatch.json`, one
+`<checkpoint-id>.json` per subagent, and the consolidated report.
+Phase A's briefs are schema-driven: edit `domain/agent-dispatch.yaml`
+(subagent type, prompt template, severity hint) to retune them — no
+Python change. Subagent output is validated against
+`domain/schemas/checkpoint-result.schema.json`; a missing or
+malformed result becomes a `medium` finding rather than aborting.

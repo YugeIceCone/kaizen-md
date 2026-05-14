@@ -3,6 +3,22 @@
 All notable changes to the `kaizen` plugin documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [SemVer](https://semver.org/).
 
+## [1.35.0] — 2026-05-14
+
+### Added — agent-self-audit (the self-audit checkpoint executor)
+
+The mechanical self-audit (`/kaizen:self-audit`) *emits* skill-checkpoint TODOs — "load Skill X, apply it to targets Y" — but a script can't *apply* a skill. `agent-self-audit` closes that loop in three phases: **A** `dispatch-plan` runs the mechanical audit and renders one self-contained subagent brief per checkpoint into a `dispatch.json` manifest; **B** the orchestrating agent fans out one subagent per brief (each loads its Skill, applies it read-only, writes a result JSON); **C** `aggregate` jsonschema-validates every result, merges them into a unified severity-sorted Finding list, and writes a consolidated `<utc>-agent-self.md`. Python owns A + C (mechanical, reproducible); the agent owns B — the Agent tool is agent-runtime-only, so the fan-out cannot be scripted.
+
+- **`skills/plugin-self-audit/domain/agent-dispatch.yaml`** — schema-driven phase-A config: `subagent_type`, `max_parallel`, `run_dir`, the self-contained subagent `prompt_template` (`{skill}`/`{targets_block}`/`{rationale}`/`{result_path}`/`{result_schema}` placeholders), and a `severity_hint`. Retune the briefs by editing yaml — no Python change.
+- **`skills/plugin-self-audit/domain/schemas/checkpoint-result.schema.json`** — strict (`additionalProperties: false`) contract every subagent writes; the untrusted-LLM-output boundary `aggregate` validates.
+- **`skills/workflow/scripts/self_audit_agent.py`** — the op-script: `dispatch-plan` + `aggregate` Node+Flows over the PocketFlow engine, with module-level pure functions (`build_briefs` / `_validate_result` / `merge_results`) so the logic unit-tests without running a flow. CLI: `dispatch-plan` / `aggregate` / `path`.
+- **`bin/kaizen-self-audit-agent`** — bin wrapper (covered by the existing `skills/workflow/scripts/*.py` permission wildcard).
+- **`commands/agent-self-audit.md`** — `/kaizen:agent-self-audit`, the A→B→C orchestration playbook (auto-runs phase A, guides the agent through B + C).
+- **`_self_audit.py`** — `load_agent_dispatch()` + `agent_audit_dir()` (env-overridable via `KAIZEN_SELF_AUDIT_AGENT_DIR` for test sandboxing).
+- 26 new tests (`tests/test_self_audit_agent.py`): pure logic, the aggregate flow against hand-crafted runs, and a PyYAML-gated dispatch-plan integration test. A missing / malformed / errored subagent result becomes a `medium` finding rather than aborting the run.
+
+This is the 2026-05-14 self-audit's own new-functionality proposal #3 (sized *large*), built against itself.
+
 ## [1.33.0] — 2026-05-12
 
 ### Changed — v1.32.0 absorbed plugins refactored to schema-driven (yaml + JSON Schema)
