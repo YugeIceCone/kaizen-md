@@ -101,6 +101,14 @@
         "--script",
         "${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/shim_mcp.py"
       ]
+    },
+    "rerank": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--script",
+        "${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/rerank_mcp.py"
+      ]
     }
   }
 }

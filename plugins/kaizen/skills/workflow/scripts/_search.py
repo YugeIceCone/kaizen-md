@@ -574,6 +574,80 @@ def hybrid_search(
 # ─── Reciprocal Rank Fusion (for multi-query expansion) ──────────────
 
 
+# ─── E2: cross-encoder reranking ─────────────────────────────────────
+#
+# Cross-encoders score (query, candidate) pairs directly — slower per
+# pair than bi-encoder cosine but materially better at relevance for
+# the top-K (typical +50-200ms / query but ~5-15% NDCG@10 win on
+# domain-specific corpora).
+#
+# This module is stub-friendly: pass `score_fn` for tests to avoid
+# loading a real model (CrossEncoder pulls ~80-130MB ST weights).
+
+_cross_encoder = None  # module-level cache; loaded on first use
+
+
+def _default_cross_encoder_model() -> str:
+    """KAIZEN_RERANK_MODEL — defaults to cross-encoder/ms-marco-MiniLM-L-6-v2
+    (90 MB, fast). For multilingual or domain-specific corpora, point at
+    BAAI/bge-reranker-base (~280 MB) or jinaai/jina-reranker-v2-base."""
+    import os as _os
+    return _os.environ.get(
+        "KAIZEN_RERANK_MODEL", "cross-encoder/ms-marco-MiniLM-L-6-v2"
+    )
+
+
+def _load_cross_encoder():
+    """Lazy load. Returns None when sentence-transformers isn't installed."""
+    global _cross_encoder
+    if _cross_encoder is not None:
+        return _cross_encoder
+    try:
+        from sentence_transformers import CrossEncoder  # type: ignore
+    except ImportError:
+        return None
+    _cross_encoder = CrossEncoder(_default_cross_encoder_model())
+    return _cross_encoder
+
+
+def cross_encoder_rerank(
+    query: str,
+    candidates: Sequence[tuple[int, str]],
+    *,
+    top_k: int = 10,
+    score_fn=None,
+) -> list[tuple[int, float]]:
+    """Rerank `(id, text)` pairs by cross-encoder relevance to `query`.
+
+    Returns sorted `[(id, score), ...]` top-K descending. Higher score =
+    more relevant. Stable for ties.
+
+    candidates: list of (row_id, candidate_text) pairs — typically the
+                top 30-50 from a hybrid bi-encoder search.
+    score_fn:   optional `(query, candidates_text_list) -> list[float]`
+                stub for tests. When None, the cross-encoder is lazy-
+                loaded; if sentence-transformers is unavailable, returns
+                candidates unchanged (preserving input order)."""
+    if not candidates:
+        return []
+    if score_fn is None:
+        ce = _load_cross_encoder()
+        if ce is None:
+            # No-rerank fallback — preserve input order as scored.
+            return [(rid, 0.0) for rid, _ in candidates[:top_k]]
+        score_fn = lambda q, texts: ce.predict([(q, t) for t in texts])
+    texts = [t for _, t in candidates]
+    scores = list(score_fn(query, texts))
+    if len(scores) != len(candidates):
+        raise ValueError(
+            f"cross_encoder_rerank: score_fn returned {len(scores)} "
+            f"scores for {len(candidates)} candidates"
+        )
+    scored = list(zip([rid for rid, _ in candidates], scores))
+    scored.sort(key=lambda x: x[1], reverse=True)
+    return scored[:top_k]
+
+
 def reciprocal_rank_fusion(
     rankings: Sequence[Sequence[tuple[int, float]]],
     *,
