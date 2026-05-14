@@ -440,5 +440,65 @@ class TestSourceWalker(unittest.TestCase):
             self.assertNotIn("bundle.min.js", names)
 
 
+class TestSingleFileEntryPoints(unittest.TestCase):
+    """index_one_file() + delete_file() — the watch-loop primitives."""
+
+    def _root(self):
+        import tempfile
+        td = tempfile.mkdtemp()
+        return Path(td)
+
+    def test_index_one_file_upserts_one_file(self):
+        import loc_index
+        root = self._root()
+        f = root / "sample.py"
+        f.write_text("def alpha():\n    return 1\n\ndef beta():\n    return 2\n")
+        conn = loc_index.open_db(root, create=True)
+        loc_index.index_one_file(conn, root, f)
+        conn.commit()
+        rows = conn.execute(
+            "SELECT symbol_name FROM loc_symbols WHERE path = ?",
+            ("sample.py",)).fetchall()
+        names = sorted(r["symbol_name"] for r in rows)
+        self.assertEqual(names, ["alpha", "beta"])
+        frow = conn.execute(
+            "SELECT symbol_count FROM loc_files WHERE path = ?",
+            ("sample.py",)).fetchone()
+        self.assertEqual(frow["symbol_count"], 2)
+
+    def test_index_one_file_replaces_on_rechange(self):
+        import loc_index
+        root = self._root()
+        f = root / "sample.py"
+        f.write_text("def alpha():\n    return 1\n")
+        conn = loc_index.open_db(root, create=True)
+        loc_index.index_one_file(conn, root, f)
+        conn.commit()
+        f.write_text("def gamma():\n    return 9\n")
+        loc_index.index_one_file(conn, root, f)
+        conn.commit()
+        rows = conn.execute(
+            "SELECT symbol_name FROM loc_symbols WHERE path = ?",
+            ("sample.py",)).fetchall()
+        self.assertEqual([r["symbol_name"] for r in rows], ["gamma"])
+
+    def test_delete_file_removes_rows(self):
+        import loc_index
+        root = self._root()
+        f = root / "sample.py"
+        f.write_text("def alpha():\n    return 1\n")
+        conn = loc_index.open_db(root, create=True)
+        loc_index.index_one_file(conn, root, f)
+        conn.commit()
+        loc_index.delete_file(conn, "sample.py")
+        conn.commit()
+        self.assertEqual(
+            conn.execute("SELECT COUNT(*) c FROM loc_files "
+                         "WHERE path = ?", ("sample.py",)).fetchone()["c"], 0)
+        self.assertEqual(
+            conn.execute("SELECT COUNT(*) c FROM loc_symbols "
+                         "WHERE path = ?", ("sample.py",)).fetchone()["c"], 0)
+
+
 if __name__ == "__main__":
     unittest.main()

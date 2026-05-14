@@ -842,6 +842,61 @@ def get_meta(conn: sqlite3.Connection, key: str, default: str = "") -> str:
 # ─── Data-returning helpers (also used by loc_mcp.py) ────────────────
 
 
+def index_one_file(conn: sqlite3.Connection, root: Path, fp: Path) -> int | None:
+    """Index a single file into an already-open connection. sha-deduped.
+    Returns the number of symbols (re)written, or None if the file was
+    skipped unchanged. Caller commits."""
+    metrics = analyze_file(fp, root)
+    if metrics is None:
+        return None
+    now = dt.datetime.now(dt.timezone.utc).isoformat()
+    prior = conn.execute(
+        "SELECT sha FROM loc_files WHERE path = ?", (metrics.path,)
+    ).fetchone()
+    if prior and prior["sha"] == metrics.sha:
+        return None
+    conn.execute("DELETE FROM loc_symbols WHERE path = ?", (metrics.path,))
+    for sym in metrics.symbols:
+        conn.execute(
+            """INSERT OR REPLACE INTO loc_symbols
+                (path, language, symbol_kind, symbol_name, qualified_name,
+                 parent_symbol, line_start, line_end, col_start, col_end,
+                 byte_start, byte_end, physical_lines, logical_lines,
+                 cyclomatic, cognitive, nesting_depth, has_docstring,
+                 is_test, is_async, is_public, signature, signature_hash,
+                 body_sha, parser, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+                        ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (sym.path, sym.language, sym.symbol_kind, sym.symbol_name,
+             sym.qualified_name, sym.parent_symbol, sym.line_start,
+             sym.line_end, sym.col_start, sym.col_end, sym.byte_start,
+             sym.byte_end, sym.physical_lines, sym.logical_lines,
+             sym.cyclomatic, sym.cognitive, sym.nesting_depth,
+             int(sym.has_docstring), int(sym.is_test), int(sym.is_async),
+             int(sym.is_public), sym.signature, sym.signature_hash,
+             sym.body_sha, sym.parser, now),
+        )
+    conn.execute(
+        """INSERT OR REPLACE INTO loc_files
+            (path, language, physical_lines, logical_lines, comment_lines,
+             blank_lines, symbol_count, test_symbol_count, god_tier,
+             max_function_lines, comment_density, sha, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+        (metrics.path, metrics.language, metrics.physical_lines,
+         metrics.logical_lines, metrics.comment_lines, metrics.blank_lines,
+         len(metrics.symbols), metrics.test_symbol_count, metrics.god_tier,
+         metrics.max_function_lines, metrics.comment_density,
+         metrics.sha, now),
+    )
+    return len(metrics.symbols)
+
+
+def delete_file(conn: sqlite3.Connection, rel_path: str) -> None:
+    """Remove all rows for a file no longer present. Caller commits."""
+    conn.execute("DELETE FROM loc_symbols WHERE path = ?", (rel_path,))
+    conn.execute("DELETE FROM loc_files WHERE path = ?", (rel_path,))
+
+
 def do_index(root: Path) -> dict:
     """Run an incremental index pass. Returns counts dict."""
     conn = open_db(root, create=True)
@@ -862,54 +917,12 @@ def do_index(root: Path) -> dict:
         if metrics is None:
             continue
         seen_paths.add(metrics.path)
-        # Sha-dedupe: skip if file unchanged
-        prior = conn.execute(
-            "SELECT sha FROM loc_files WHERE path = ?", (metrics.path,)
-        ).fetchone()
-        if prior and prior["sha"] == metrics.sha:
+        written = index_one_file(conn, root, fp)
+        if written is None:
             skipped_files += 1
-            continue
-        # Delete old symbols for this file (cheap on small per-file batches).
-        conn.execute("DELETE FROM loc_symbols WHERE path = ?", (metrics.path,))
-        for sym in metrics.symbols:
-            conn.execute(
-                """INSERT OR REPLACE INTO loc_symbols
-                    (path, language, symbol_kind, symbol_name, qualified_name,
-                     parent_symbol, line_start, line_end, col_start, col_end,
-                     byte_start, byte_end, physical_lines, logical_lines,
-                     cyclomatic, cognitive, nesting_depth, has_docstring,
-                     is_test, is_async, is_public, signature, signature_hash,
-                     body_sha, parser, updated_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-                            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-                (
-                    sym.path, sym.language, sym.symbol_kind, sym.symbol_name,
-                    sym.qualified_name, sym.parent_symbol, sym.line_start,
-                    sym.line_end, sym.col_start, sym.col_end, sym.byte_start,
-                    sym.byte_end, sym.physical_lines, sym.logical_lines,
-                    sym.cyclomatic, sym.cognitive, sym.nesting_depth,
-                    int(sym.has_docstring), int(sym.is_test), int(sym.is_async),
-                    int(sym.is_public), sym.signature, sym.signature_hash,
-                    sym.body_sha, sym.parser, now,
-                ),
-            )
-            new_symbols += 1
-        conn.execute(
-            """INSERT OR REPLACE INTO loc_files
-                (path, language, physical_lines, logical_lines, comment_lines,
-                 blank_lines, symbol_count, test_symbol_count, god_tier,
-                 max_function_lines, comment_density, sha, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-            (
-                metrics.path, metrics.language, metrics.physical_lines,
-                metrics.logical_lines, metrics.comment_lines,
-                metrics.blank_lines, len(metrics.symbols),
-                metrics.test_symbol_count, metrics.god_tier,
-                metrics.max_function_lines, metrics.comment_density,
-                metrics.sha, now,
-            ),
-        )
-        new_files += 1
+        else:
+            new_files += 1
+            new_symbols += written
     # Remove stale rows for files no longer present.
     existing = conn.execute("SELECT path FROM loc_files").fetchall()
     stale = [r["path"] for r in existing if r["path"] not in seen_paths]
