@@ -17,12 +17,12 @@ Routines are stage chains the kaizen workflow runs. Each stage maps to a skill v
 | Routine | Kind | Trigger words | Stages |
 |---|---|---|---|
 | `audit` | hardcoded | `audit`, `health check`, `find issues`, `what needs work` | explore → detect-stack → research → audit → analyze → review → create-plan → create-tasks |
-| `build-feature` | hardcoded | `build`, `add`, `implement`, `create`, `new` | explore → detect-stack → research → analyze → create-plan → create-tasks → execute-tasks → simplify → review → report |
-| `fix-bug` | hardcoded | `fix `, `bug`, `broken`, `flaky test`, `regression` | debug → analyze → fix → simplify → review → validate → report |
-| `refactor` | hardcoded | `refactor`, `clean up`, `restructure`, `extract`, `rename` | explore → analyze → create-plan → create-tasks → execute-tasks → simplify → review → validate |
+| `build-feature` | hardcoded | `build`, `add`, `implement`, `create`, `new` | explore → detect-stack → research → analyze → create-plan → create-tasks → execute-tasks → simplify → review → ci-gate → report |
+| `fix-bug` | hardcoded | `fix `, `bug`, `broken`, `flaky test`, `regression` | debug → analyze → fix → simplify → review → validate → ci-gate → report |
+| `refactor` | hardcoded | `refactor`, `clean up`, `restructure`, `extract`, `rename` | explore → analyze → create-plan → create-tasks → execute-tasks → simplify → review → validate → ci-gate |
 | `batch-migrate` | hardcoded | `batch migrate`, `batch refactor`, `across all`, `every file`, `sweep ` | research → explore → detect-stack → analyze → batch-fanout → report |
-| `migrate` | hardcoded | `migrate`, `upgrade`, `port to`, `switch from` | research → explore → analyze → create-plan → create-tasks → execute-tasks → simplify → review → validate |
-| `harden` | hardcoded | `harden`, `secure`, `threat model`, `lock down` | explore → audit → analyze → create-plan → create-tasks → execute-tasks → simplify → review → validate |
+| `migrate` | hardcoded | `migrate`, `upgrade`, `port to`, `switch from` | research → explore → analyze → create-plan → create-tasks → execute-tasks → simplify → review → validate → ci-gate |
+| `harden` | hardcoded | `harden`, `secure`, `threat model`, `lock down` | explore → audit → analyze → create-plan → create-tasks → execute-tasks → simplify → review → validate → ci-gate |
 | `custom` | hardcoded | — | — |
 | `kaizen-default` | schema | — | research → explore → analyze → plan → tasks → execute → review → validate |
 | `debug-with-pdb` | schema | — | reproduce → isolate → inspect → hypothesize → verify-cause → fix → regression → postmortem → investigate-deeper |
@@ -48,6 +48,7 @@ Every workflow stage with a 1:1 kaizen-plugin skill is listed below. Unmapped st
 |---|---|
 | `analyze` | `kaizen:analyze` |
 | `audit` | `kaizen:audit` |
+| `ci-gate` | `kaizen:ci-gate` |
 | `create-plan` | `kaizen:create-plan` |
 | `create-tasks` | `kaizen:create-tasks` |
 | `debug` | `kaizen:debug` |
@@ -89,7 +90,7 @@ goal) before commit.
 
 **Triggers:** 'build', 'add', 'implement', 'create', 'new'
 
-**Stages:** `explore` → `detect-stack` → `research` → `analyze` → `create-plan` → `create-tasks` → `execute-tasks` → `simplify` → `review` → `report`
+**Stages:** `explore` → `detect-stack` → `research` → `analyze` → `create-plan` → `create-tasks` → `execute-tasks` → `simplify` → `review` → `ci-gate` → `report`
 
 **End state:** Feature implemented + tested + reviewed + reported (auto=yes); plan + tasks ready for approval (auto=no)
 
@@ -101,7 +102,7 @@ Bug-fix loop with minimal-change discipline. Regression test is mandatory.
 
 **Triggers:** 'fix ', 'bug', 'broken', 'flaky test', 'regression'
 
-**Stages:** `debug` → `analyze` → `fix` → `simplify` → `review` → `validate` → `report`
+**Stages:** `debug` → `analyze` → `fix` → `simplify` → `review` → `validate` → `ci-gate` → `report`
 
 **End state:** Bug repaired with a regression test that fails before the fix and passes after
 
@@ -115,7 +116,7 @@ surgical-changes discipline during execute-tasks.
 
 **Triggers:** 'refactor', 'clean up', 'restructure', 'extract', 'rename'
 
-**Stages:** `explore` → `analyze` → `create-plan` → `create-tasks` → `execute-tasks` → `simplify` → `review` → `validate`
+**Stages:** `explore` → `analyze` → `create-plan` → `create-tasks` → `execute-tasks` → `simplify` → `review` → `validate` → `ci-gate`
 
 **End state:** Behavior preserved, structure improved. Each phase verifiable independently.
 
@@ -139,7 +140,7 @@ front-loads version-specific gotchas.
 
 **Triggers:** 'migrate', 'upgrade', 'port to', 'switch from'
 
-**Stages:** `research` → `explore` → `analyze` → `create-plan` → `create-tasks` → `execute-tasks` → `simplify` → `review` → `validate`
+**Stages:** `research` → `explore` → `analyze` → `create-plan` → `create-tasks` → `execute-tasks` → `simplify` → `review` → `validate` → `ci-gate`
 
 **End state:** Migration landed in slices, each slice green-build-safe
 
@@ -152,7 +153,7 @@ framing for threat modeling.
 
 **Triggers:** 'harden', 'secure', 'threat model', 'lock down'
 
-**Stages:** `explore` → `audit` → `analyze` → `create-plan` → `create-tasks` → `execute-tasks` → `simplify` → `review` → `validate`
+**Stages:** `explore` → `audit` → `analyze` → `create-plan` → `create-tasks` → `execute-tasks` → `simplify` → `review` → `validate` → `ci-gate`
 
 **End state:** Prioritized hardening fixes landed with security regression tests
 

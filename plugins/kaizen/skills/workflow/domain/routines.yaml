@@ -37,6 +37,7 @@ defaults:
 stage_skill_map:
   analyze: kaizen:analyze
   audit: kaizen:audit
+  ci-gate: kaizen:ci-gate
   create-plan: kaizen:create-plan
   create-tasks: kaizen:create-tasks
   debug: kaizen:debug
@@ -75,7 +76,7 @@ routines:
   - name: build-feature
     kind: hardcoded
     trigger_words: [build, add, implement, create, new]
-    stages: [explore, detect-stack, research, analyze, create-plan, create-tasks, execute-tasks, simplify, review, report]
+    stages: [explore, detect-stack, research, analyze, create-plan, create-tasks, execute-tasks, simplify, review, ci-gate, report]
     end_state: "Feature implemented + tested + reviewed + reported (auto=yes); plan + tasks ready for approval (auto=no)"
     coding_skills: [solid, kiss, yagni, karpathy]
     description: |
@@ -88,7 +89,7 @@ routines:
   - name: fix-bug
     kind: hardcoded
     trigger_words: ["fix ", bug, broken, "flaky test", regression]
-    stages: [debug, analyze, fix, simplify, review, validate, report]
+    stages: [debug, analyze, fix, simplify, review, validate, ci-gate, report]
     end_state: "Bug repaired with a regression test that fails before the fix and passes after"
     coding_skills: [kiss, dry]
     description: |
@@ -97,7 +98,7 @@ routines:
   - name: refactor
     kind: hardcoded
     trigger_words: [refactor, "clean up", restructure, extract, rename]
-    stages: [explore, analyze, create-plan, create-tasks, execute-tasks, simplify, review, validate]
+    stages: [explore, analyze, create-plan, create-tasks, execute-tasks, simplify, review, validate, ci-gate]
     end_state: "Behavior preserved, structure improved. Each phase verifiable independently."
     coding_skills: [dry, boy-scout-rule, kiss, separation-of-concerns, karpathy]
     description: |
@@ -122,7 +123,7 @@ routines:
   - name: migrate
     kind: hardcoded
     trigger_words: [migrate, upgrade, "port to", "switch from"]
-    stages: [research, explore, analyze, create-plan, create-tasks, execute-tasks, simplify, review, validate]
+    stages: [research, explore, analyze, create-plan, create-tasks, execute-tasks, simplify, review, validate, ci-gate]
     end_state: "Migration landed in slices, each slice green-build-safe"
     coding_skills: [convention-over-configuration, dry]
     description: |
@@ -132,7 +133,7 @@ routines:
   - name: harden
     kind: hardcoded
     trigger_words: [harden, secure, "threat model", "lock down"]
-    stages: [explore, audit, analyze, create-plan, create-tasks, execute-tasks, simplify, review, validate]
+    stages: [explore, audit, analyze, create-plan, create-tasks, execute-tasks, simplify, review, validate, ci-gate]
     end_state: "Prioritized hardening fixes landed with security regression tests"
     coding_skills: [law-of-demeter, separation-of-concerns]
     description: |

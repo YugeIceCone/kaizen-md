@@ -50,11 +50,11 @@ class TestLoader(unittest.TestCase):
         )
         self.assertEqual(
             _loader.get_stages("build-feature"),
-            ["explore", "detect-stack", "research", "analyze", "create-plan", "create-tasks", "execute-tasks", "simplify", "review", "report"],
+            ["explore", "detect-stack", "research", "analyze", "create-plan", "create-tasks", "execute-tasks", "simplify", "review", "ci-gate", "report"],
         )
         self.assertEqual(
             _loader.get_stages("fix-bug"),
-            ["debug", "analyze", "fix", "simplify", "review", "validate", "report"],
+            ["debug", "analyze", "fix", "simplify", "review", "validate", "ci-gate", "report"],
         )
 
     def test_get_stages_unknown_returns_defaults(self):
