@@ -130,6 +130,7 @@ def _load_scraper_cls():
 
 
 import _sqlite as _kz_sqlite  # noqa: E402
+import _crawl as _kz_crawl  # noqa: E402  — S1+S2+S3 crawler
 
 _SCHEMA_SQL = """
     CREATE TABLE IF NOT EXISTS scrape_items (
@@ -149,7 +150,7 @@ _SCHEMA_SQL = """
         key TEXT PRIMARY KEY,
         value TEXT
     );
-"""
+""" + _kz_crawl.SCRAPE_URLS_DDL  # S3: scrape_urls(canonical_url PK, last_scraped, ...)
 
 
 def open_db(create: bool = True) -> sqlite3.Connection:
@@ -856,6 +857,65 @@ def cmd_clear(args):
         print("kaizen-scrape: no index to clear", file=sys.stderr)
 
 
+def cmd_crawl(args):
+    """S1 — BFS crawl from a start URL.
+
+    The crawler walks links (depth-limited, max-page-capped, origin-pinned),
+    honors robots.txt (S2) + seeds with sitemap.xml when available (S2),
+    and skips URLs scraped within --max-age-days (S3 — durable via the
+    scrape_urls table).
+
+    Pages are NOT auto-scraped through ScrapeGraphAI yet — that's a
+    separate `--scrape` flag (deferred). Right now this is the discovery
+    + dedup layer; persisted URLs feed the existing `scrape` / `batch`
+    subcommands' do-not-redo guard."""
+    cfg = _kz_crawl.CrawlConfig(
+        start_url=args.url,
+        depth=args.depth,
+        max_pages=args.max_pages,
+        include_subdomains=args.include_subdomains,
+        rate_limit_ms=args.rate_limit_ms,
+        allow_pattern=args.allow_pattern,
+        block_pattern=args.block_pattern,
+        max_age_days=args.max_age_days,
+        respect_robots=not args.no_robots,
+    )
+    conn = open_db(create=True)
+    try:
+        result = _kz_crawl.crawl(cfg, conn=conn)
+        conn.commit()
+    finally:
+        conn.close()
+
+    if args.json:
+        print(json.dumps({
+            "crawled": result.crawled,
+            "skipped_robots": result.skipped_robots,
+            "skipped_origin": result.skipped_origin,
+            "skipped_pattern": result.skipped_pattern,
+            "skipped_recent": result.skipped_recent,
+            "fetch_errors": result.fetch_errors,
+        }, indent=2))
+        return
+
+    print(f"kaizen-scrape: crawled {len(result.crawled)} page(s) from {args.url}")
+    if result.skipped_robots:
+        print(f"  skipped (robots):   {result.skipped_robots}")
+    if result.skipped_origin:
+        print(f"  skipped (origin):   {result.skipped_origin}")
+    if result.skipped_pattern:
+        print(f"  skipped (pattern):  {result.skipped_pattern}")
+    if result.skipped_recent:
+        print(f"  skipped (recent):   {result.skipped_recent}")
+    if result.fetch_errors:
+        print(f"  fetch errors:       {result.fetch_errors}")
+    if result.crawled:
+        for url, depth in result.crawled[:20]:
+            print(f"  [d{depth}] {url}")
+        if len(result.crawled) > 20:
+            print(f"  ... and {len(result.crawled) - 20} more")
+
+
 def cmd_recommend(args):
     """List the Ollama-hosted chat-model picks for ScrapeGraphAI's
     JSON-extraction workload. Read-only — does not pull anything. To
@@ -961,6 +1021,33 @@ class ScrapeCLI(IndexerCLI):
         pl = sub.add_parser("list")
         pl.add_argument("--limit", type=int, default=20)
         pl.set_defaults(func=cmd_list)
+
+        # S1+S2+S3 — crawl subcommand
+        pcw = sub.add_parser(
+            "crawl",
+            help="BFS-crawl a start URL (S1) honoring robots.txt + sitemap (S2); "
+                 "skip recently-scraped URLs (S3, default --max-age-days 7).",
+        )
+        pcw.add_argument("url", help="start URL")
+        pcw.add_argument("--depth", type=int, default=2,
+                         help="max link depth (default: 2)")
+        pcw.add_argument("--max-pages", type=int, default=100,
+                         help="hard cap on crawled pages (default: 100)")
+        pcw.add_argument("--include-subdomains", action="store_true",
+                         help="follow subdomain links (default: same-origin only)")
+        pcw.add_argument("--rate-limit-ms", type=int, default=500,
+                         help="sleep between requests in ms (default: 500)")
+        pcw.add_argument("--allow-pattern",
+                         help="regex; only crawl URLs matching")
+        pcw.add_argument("--block-pattern",
+                         help="regex; skip URLs matching")
+        pcw.add_argument("--max-age-days", type=int, default=7,
+                         help="skip URLs scraped within N days (default: 7; "
+                              "S3 incremental — set 0 to force refresh)")
+        pcw.add_argument("--no-robots", action="store_true",
+                         help="bypass robots.txt (use only for sites you own)")
+        pcw.add_argument("--json", action="store_true")
+        pcw.set_defaults(func=cmd_crawl)
 
         pdl = sub.add_parser(
             "detect-llm",
