@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+# kaizen-brain — capture / detect / path / status for the kaizen Second Brain.
+# Symlinked to ~/.local/bin/kaizen-brain by /kaizen:install.
+#
+# Backed by ${PLUGIN_ROOT}/skills/workflow/scripts/brain.py. Subcommands:
+#   capture <text>   — classify, journal, route, write
+#   detect <text>    — show inferred type without writing
+#   path             — print resolved brain + project-memory paths
+#   status           — file counts per brain subdir
+#
+# Fold-in B2 — Python port of the retired remember plugin's capture
+# pipeline. Drives a PocketFlow AsyncNode graph (skills/workflow/scripts/flow.py)
+# end-to-end. Schema in skills/brain/domain/.
+
+set -euo pipefail
+
+_SCRIPT_REAL="$(readlink -f "${BASH_SOURCE[0]}" 2>/dev/null \
+  || python3 -c 'import os,sys; print(os.path.realpath(sys.argv[1]))' "${BASH_SOURCE[0]}")"
+_BIN_DIR="$(cd "$(dirname "$_SCRIPT_REAL")" && pwd)"
+# shellcheck source=../skills/workflow/scripts/_plugin_root.sh
+source "$_BIN_DIR/../skills/workflow/scripts/_plugin_root.sh"
+PLUGIN_ROOT="$(kaizen_plugin_root)" || {
+    echo "kaizen-brain: plugin root unresolved — set CLAUDE_PLUGIN_ROOT or KAIZEN_PLUGIN_ROOT" >&2
+    exit 1
+}
+
+exec python3 "$PLUGIN_ROOT/skills/workflow/scripts/brain.py" "$@"

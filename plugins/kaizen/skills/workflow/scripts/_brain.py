@@ -175,10 +175,16 @@ def _parse_yaml_scalar(s: str) -> Any:
 
 
 def brain_root() -> Path:
-    """Resolve the brain root path. Env > default."""
-    for env in ("REMEMBER_BRAIN_PATH", "KAIZEN_BRAIN_PATH"):
+    """Resolve the brain root path.
+
+    Priority: KAIZEN_BRAIN_PATH > REMEMBER_BRAIN_PATH > default.
+    KAIZEN_BRAIN_PATH wins so plugin-scoped overrides can shadow a
+    user's global REMEMBER_BRAIN_PATH (legacy compat). Handles both
+    literal ``$HOME``-style envvar references AND ``~`` expansion."""
+    for env in ("KAIZEN_BRAIN_PATH", "REMEMBER_BRAIN_PATH"):
         if env in os.environ and os.environ[env]:
-            return Path(os.environ[env]).expanduser().resolve()
+            raw = os.path.expandvars(os.environ[env])
+            return Path(raw).expanduser().resolve()
     return Path("~/.claude/brain").expanduser().resolve()
 
 
@@ -465,12 +471,15 @@ def _render_scalar(v: Any) -> str:
         return "true" if v else "false"
     if isinstance(v, (int, float)):
         return str(v)
+    if isinstance(v, (dt.date, dt.datetime)):
+        # ISO format — round-trip-compatible with PyYAML's date parse
+        return v.isoformat()
     if isinstance(v, str):
         # Quote when string contains special yaml chars
         if any(c in v for c in ":[]{}#&*!|>'\"%@`"):
             return json.dumps(v)
         return v
-    return json.dumps(v)
+    return json.dumps(v, default=str)
 
 
 def write_note(path: Path, fm: dict, body: str) -> None:

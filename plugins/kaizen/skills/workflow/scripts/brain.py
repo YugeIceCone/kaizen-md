@@ -1,0 +1,580 @@
+"""kaizen brain — capture flow + CLI.
+
+Top-level entry for the Second-Brain capture pipeline. Drives a
+PocketFlow AsyncNode graph through the canonical sequence:
+
+::
+
+   ParsePromptNode      ← user text + classification hints
+        │
+        ▼
+   DetectTypeNode       ← world-fact / belief / observation / experience
+        │
+        ▼
+   JournalNode          ← append verbatim quote to Journal/<date>.md FIRST
+        │
+        ▼
+   RouteNode            ← decide tier (brain vs project-memory) + file
+        │
+        ▼
+   DedupNode            ← search existing for near-duplicate; merge vs new
+        │
+        ▼
+   WriteNode            ← create/update the L2 file with frontmatter
+        │
+        ▼
+   ReportNode           ← surface what landed where
+
+The flow reads its routing decisions from
+``skills/brain/domain/routing.yaml`` via ``_brain.Config``. Behaviour
+is fully schema-driven; the node bodies are bookkeeping over the
+yaml-declared rules.
+
+## CLI
+
+::
+
+   kaizen-brain capture <text>           # single-shot capture
+   kaizen-brain capture <text> --type belief --confidence 0.8
+   kaizen-brain detect <text>             # show inferred type only
+   kaizen-brain path                      # print resolved paths
+   kaizen-brain status                    # brain stats
+"""
+
+from __future__ import annotations
+
+import argparse
+import asyncio
+import datetime as dt
+import json
+import os
+import sys
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any, Optional
+
+_SCRIPT_DIR = Path(__file__).resolve().parent
+sys.path.insert(0, str(_SCRIPT_DIR))
+
+import _brain  # noqa: E402
+import flow as _flow  # noqa: E402
+
+
+# ─── Capture flow nodes ──────────────────────────────────────────────
+
+
+class ParsePromptNode(_flow.AsyncNode):
+    """Stage 1 — normalize the input, surface explicit hints.
+
+    Inputs (store):
+      text:       raw captured text (required)
+      type_hint:  user-supplied type override (optional)
+      confidence: user-supplied confidence (optional, belief only)
+      tier_hint:  'brain' | 'project' | None
+      subject:    optional entity name (Person / Project / Area)
+      cwd:        Path for project-slug derivation (default: Path.cwd())
+    """
+
+    async def prep_async(self, store: dict) -> dict:
+        return {
+            "text": (store.get("text") or "").strip(),
+            "type_hint": store.get("type_hint"),
+            "confidence": store.get("confidence"),
+            "tier_hint": store.get("tier_hint"),
+            "subject": store.get("subject"),
+            "cwd": store.get("cwd") or Path.cwd(),
+        }
+
+    async def exec_async(self, prep: dict) -> dict:
+        # Surface any cli flags as overrides in the parsed record.
+        return prep
+
+    async def post_async(self, store: dict, prep: dict, exec_result: dict) -> str:
+        store["parsed"] = exec_result
+        if not exec_result["text"]:
+            store["error"] = "empty input — nothing to capture"
+            return "abort"
+        return "default"
+
+
+class DetectTypeNode(_flow.AsyncNode):
+    """Stage 2 — classify into one of four epistemic types.
+
+    Respects an explicit ``type_hint`` if present and valid; otherwise
+    runs ``_brain.detect_type`` against the loaded Config."""
+
+    async def prep_async(self, store: dict) -> dict:
+        return {
+            "text": store["parsed"]["text"],
+            "type_hint": store["parsed"]["type_hint"],
+            "cfg": store["cfg"],
+        }
+
+    async def exec_async(self, prep: dict) -> str:
+        if prep["type_hint"] and prep["type_hint"] in prep["cfg"].types:
+            return prep["type_hint"]
+        return _brain.detect_type(prep["text"], prep["cfg"])
+
+    async def post_async(self, store: dict, prep: dict, type_name: str) -> str:
+        store["type"] = type_name
+        return "default"
+
+
+class JournalNode(_flow.AsyncNode):
+    """Stage 3 — journal-first capture per the Remember discipline.
+
+    Appends the verbatim quote to ``<brain_root>/Journal/<today>.md``
+    before any L2 write. Creates the file if absent (matches the
+    daily template shape — H1 with date + "## Captures" section)."""
+
+    async def prep_async(self, store: dict) -> dict:
+        return {
+            "text": store["parsed"]["text"],
+            "type": store["type"],
+            "brain_root": store["brain_root"],
+            "subject": store["parsed"]["subject"],
+        }
+
+    async def exec_async(self, prep: dict) -> dict:
+        today = dt.date.today().isoformat()
+        journal_path = prep["brain_root"] / "Journal" / f"{today}.md"
+        # Ensure the file exists with a header
+        if not journal_path.is_file():
+            journal_path.parent.mkdir(parents=True, exist_ok=True)
+            journal_path.write_text(
+                f"---\ndate: {today}\ntype: experience\n---\n\n"
+                f"# Journal — {today}\n\n",
+                encoding="utf-8",
+            )
+        # Append the capture under a subject header
+        subject = prep["subject"] or prep["type"].title()
+        existing = journal_path.read_text(encoding="utf-8")
+        # Avoid duplicating the verbatim quote within the same day
+        quote_line = f'- "{prep["text"]}"'
+        if quote_line in existing:
+            return {"path": str(journal_path), "appended": False}
+        with journal_path.open("a", encoding="utf-8") as f:
+            # Insert a subject section if not already present that day
+            if f"\n## {subject}\n" not in existing:
+                f.write(f"\n## {subject}\n")
+            f.write(f"{quote_line}\n")
+        return {"path": str(journal_path), "appended": True}
+
+    async def post_async(self, store: dict, prep: dict, exec_result: dict) -> str:
+        store["journal_path"] = exec_result["path"]
+        store["journal_appended"] = exec_result["appended"]
+        return "default"
+
+
+class RouteNode(_flow.AsyncNode):
+    """Stage 4 — pick tier + target file from routing.yaml.
+
+    Tier rules iterate ``cfg.tier_rules`` in order; first match wins.
+    File rules within the chosen tier iterate the per-type list."""
+
+    async def prep_async(self, store: dict) -> dict:
+        return {
+            "parsed": store["parsed"],
+            "type": store["type"],
+            "cfg": store["cfg"],
+            "brain_root": store["brain_root"],
+            "project_memory_root": store["project_memory_root"],
+        }
+
+    async def exec_async(self, prep: dict) -> dict:
+        cfg = prep["cfg"]
+        type_name = prep["type"]
+        confidence = prep["parsed"]["confidence"]
+        tier_hint = prep["parsed"]["tier_hint"]
+        text = prep["parsed"]["text"]
+
+        # Tier selection
+        tier = "project-memory"  # default
+        if tier_hint == "brain":
+            tier = "brain"
+        elif tier_hint == "project":
+            tier = "project-memory"
+        else:
+            tier = _select_tier(cfg, type_name, confidence, text)
+
+        # File selection
+        if tier == "brain":
+            base = prep["brain_root"]
+            rules = (cfg.file_rules.get("brain") or {}).get(type_name, [])
+            subdir, filename = _apply_file_rules(rules, prep["parsed"], type_name)
+            target = base / subdir / filename if subdir else base / filename
+        else:
+            base = prep["project_memory_root"]
+            rules = (cfg.file_rules.get("project-memory") or {}).get(type_name, [])
+            subdir, filename = _apply_file_rules(rules, prep["parsed"], type_name)
+            target = base / subdir / filename if subdir else base / filename
+
+        return {"tier": tier, "target": target, "subdir": subdir, "filename": filename}
+
+    async def post_async(self, store: dict, prep: dict, exec_result: dict) -> str:
+        store["tier"] = exec_result["tier"]
+        store["target_path"] = exec_result["target"]
+        return "default"
+
+
+def _select_tier(cfg: "_brain.Config", type_name: str, confidence: Any, text: str) -> str:
+    """Walk cfg.tier_rules; first match wins."""
+    text_l = (text or "").lower()
+    for rule in cfg.tier_rules:
+        when = rule.when or {}
+        # keyword_any
+        kws = when.get("keyword_any") or []
+        if kws and not any(_pattern_match(k, text_l) for k in kws):
+            continue
+        # type_in
+        if when.get("type_in") and type_name not in when["type_in"]:
+            continue
+        # confidence_gte
+        if "confidence_gte" in when:
+            try:
+                if confidence is None or float(confidence) < float(when["confidence_gte"]):
+                    continue
+            except (TypeError, ValueError):
+                continue
+        # Empty when {} matches everything
+        return rule.route_to
+    return "project-memory"
+
+
+def _pattern_match(pattern: str, text_l: str) -> bool:
+    """Substring + simple regex-glob match. Triggers in yaml use
+    `.*` literals so we treat them as substring with that wildcard."""
+    if ".*" in pattern:
+        import re
+        try:
+            return re.search(pattern, text_l, re.IGNORECASE) is not None
+        except re.error:
+            return pattern.lower() in text_l
+    return pattern.lower() in text_l
+
+
+def _apply_file_rules(rules: list, parsed: dict, type_name: str) -> tuple[str, str]:
+    """Return (subdir, filename) for the first matching file rule.
+
+    ``subdir`` may contain placeholders like ``<project>`` / ``<area>``
+    which are substituted from the parsed record's ``subject`` field
+    or fall through to the catch-all when no subject is provided.
+
+    The filename template supports ``{slug}`` / ``{entity}`` /
+    ``{iso_date}`` substitutions."""
+    if not rules:
+        # No rule for this type → land at Notes/ root as a last resort
+        slug = _brain.slugify(parsed.get("subject") or parsed["text"][:80])
+        return "Notes", f"{slug}.md"
+    for rule in rules:
+        if not isinstance(rule, dict):
+            continue
+        when = rule.get("when") or {}
+        if when and not _file_rule_matches(when, parsed):
+            continue
+        subdir = rule.get("subdir") or ""
+        filename_template = rule.get("filename_template") or ""
+        subdir = _substitute(subdir, parsed)
+        filename = _substitute(filename_template, parsed) or f"{_brain.slugify(parsed.get('subject') or parsed['text'][:80])}.md"
+        return subdir, filename
+    # Fallthrough
+    slug = _brain.slugify(parsed.get("subject") or parsed["text"][:80])
+    return "Notes", f"{slug}.md"
+
+
+def _file_rule_matches(when: dict, parsed: dict) -> bool:
+    """Tiny matcher for file-rule predicates (project/area/person flags).
+    For now: only check `subject_is_person` / `subject_is_project` if
+    the parsed subject is supplied with a sentinel prefix. Most uses
+    pass {} (catch-all)."""
+    subject = parsed.get("subject") or ""
+    if when.get("subject_is_person"):
+        return subject.lower().startswith("person:") or "@" in subject
+    if when.get("subject_is_project"):
+        return subject.lower().startswith("project:")
+    return True
+
+
+def _substitute(template: str, parsed: dict) -> str:
+    """Replace {slug} / {entity} / {iso_date} / <project> / <area> /
+    <person> placeholders in a path template."""
+    if not template:
+        return ""
+    s = template
+    subject = parsed.get("subject") or ""
+    slug_source = subject or parsed["text"][:80]
+    s = s.replace("{slug}", _brain.slugify(slug_source))
+    s = s.replace("{entity}", _brain.slugify(subject.replace("person:", "").replace("project:", "").replace("@", "")))
+    s = s.replace("{iso_date}", dt.date.today().isoformat())
+    s = s.replace("<project>", _brain.slugify(subject.replace("project:", "")) if "project:" in subject else "")
+    s = s.replace("<area>", _brain.slugify(subject.replace("area:", "")) if "area:" in subject else "")
+    s = s.replace("<person>", _brain.slugify(subject.replace("person:", "")) if "person:" in subject else "")
+    # Strip any unresolved <...> placeholders
+    import re
+    s = re.sub(r"<[^>]+>", "", s)
+    s = s.replace("//", "/").strip("/")
+    return s
+
+
+class DedupNode(_flow.AsyncNode):
+    """Stage 5 — check the target path for an existing note with a
+    similar `name` or `description`. When found, increment the existing
+    note's sources_count and append-only update; otherwise mark for
+    fresh create."""
+
+    async def prep_async(self, store: dict) -> dict:
+        return {
+            "target": store["target_path"],
+            "text": store["parsed"]["text"],
+            "type": store["type"],
+            "subject": store["parsed"]["subject"],
+            "confidence": store["parsed"]["confidence"],
+        }
+
+    async def exec_async(self, prep: dict) -> dict:
+        target: Path = prep["target"]
+        existing: Optional[tuple[dict, str]] = None
+        if target.is_file():
+            existing = _brain.parse_note(target.read_text(encoding="utf-8"))
+        return {"existing": existing}
+
+    async def post_async(self, store: dict, prep: dict, exec_result: dict) -> str:
+        store["existing"] = exec_result["existing"]
+        return "default"
+
+
+class WriteNode(_flow.AsyncNode):
+    """Stage 6 — write the L2 file. Either CREATE or MERGE.
+
+    CREATE: brand-new file. Build frontmatter from the parsed record
+    + detected type + today's date. sources_count starts at 1.
+
+    MERGE: file exists. Bump sources_count, set updated=today, append
+    an evidence row tied to the journal entry. Body gains an "Evidence"
+    section if not present."""
+
+    async def prep_async(self, store: dict) -> dict:
+        return {
+            "target": store["target_path"],
+            "type": store["type"],
+            "tier": store["tier"],
+            "parsed": store["parsed"],
+            "existing": store["existing"],
+            "journal_path": store.get("journal_path"),
+        }
+
+    async def exec_async(self, prep: dict) -> dict:
+        target: Path = prep["target"]
+        type_name = prep["type"]
+        parsed = prep["parsed"]
+        today = dt.date.today().isoformat()
+        evidence_row = {
+            "source": prep["journal_path"] or "",
+            "quote": parsed["text"],
+            "date": today,
+        }
+        if prep["existing"]:
+            fm, body = prep["existing"]
+            fm.setdefault("name", parsed.get("subject") or _brain.slugify(parsed["text"][:80]))
+            fm.setdefault("description", parsed["text"][:200])
+            fm["type"] = type_name
+            if type_name == "belief":
+                fm["confidence"] = float(parsed["confidence"] or fm.get("confidence") or 0.7)
+            fm["sources_count"] = int(fm.get("sources_count") or 1) + 1
+            fm.setdefault("evidence", [])
+            fm["evidence"].append(evidence_row)
+            action = "merged"
+        else:
+            fm = {
+                "name": parsed.get("subject") or parsed["text"][:80].strip(),
+                "description": parsed["text"][:200],
+                "type": type_name,
+            }
+            if type_name == "belief":
+                fm["confidence"] = float(parsed["confidence"]) if parsed["confidence"] is not None else 0.7
+            fm["tags"] = []
+            fm["sources_count"] = 1
+            fm["freshness"] = "fresh"
+            fm["evidence"] = [evidence_row]
+            body = f"# {fm['name']}\n\n{parsed['text']}\n"
+            action = "created"
+        _brain.write_note(target, fm, body)
+        return {"action": action, "path": str(target), "sources_count": fm.get("sources_count")}
+
+    async def post_async(self, store: dict, prep: dict, exec_result: dict) -> str:
+        store["action"] = exec_result["action"]
+        store["written_path"] = exec_result["path"]
+        store["sources_count"] = exec_result["sources_count"]
+        return "default"
+
+
+class ReportNode(_flow.AsyncNode):
+    """Final stage — emit a JSON-able summary into the store for the
+    CLI / MCP / hook callers."""
+
+    async def prep_async(self, store: dict) -> dict:
+        return {}
+
+    async def exec_async(self, prep: dict) -> dict:
+        return {}
+
+    async def post_async(self, store: dict, prep: dict, exec_result: dict) -> str:
+        store["report"] = {
+            "type": store.get("type"),
+            "tier": store.get("tier"),
+            "action": store.get("action"),
+            "path": store.get("written_path"),
+            "journal": store.get("journal_path"),
+            "sources_count": store.get("sources_count"),
+        }
+        return "default"
+
+
+def build_capture_flow() -> _flow.AsyncFlow:
+    """Assemble the capture flow. Linear pipeline: Parse → Detect →
+    Journal → Route → Dedup → Write → Report. `abort` action from
+    ParsePromptNode short-circuits to None (no further nodes)."""
+    parse = ParsePromptNode()
+    detect = DetectTypeNode()
+    journal = JournalNode()
+    route = RouteNode()
+    dedup = DedupNode()
+    write = WriteNode()
+    report = ReportNode()
+    flow = _flow.AsyncFlow(parse)
+    flow.add_successor(parse, "default", detect)
+    flow.add_successor(detect, "default", journal)
+    flow.add_successor(journal, "default", route)
+    flow.add_successor(route, "default", dedup)
+    flow.add_successor(dedup, "default", write)
+    flow.add_successor(write, "default", report)
+    return flow
+
+
+async def capture_async(
+    text: str,
+    *,
+    type_hint: Optional[str] = None,
+    confidence: Optional[float] = None,
+    tier_hint: Optional[str] = None,
+    subject: Optional[str] = None,
+    cwd: Optional[Path] = None,
+    cfg: Optional["_brain.Config"] = None,
+    brain_root_override: Optional[Path] = None,
+    project_memory_root_override: Optional[Path] = None,
+) -> dict:
+    """Run the capture flow and return the report."""
+    cfg = cfg or _brain.Config.load()
+    store: dict = {
+        "text": text,
+        "type_hint": type_hint,
+        "confidence": confidence,
+        "tier_hint": tier_hint,
+        "subject": subject,
+        "cwd": cwd or Path.cwd(),
+        "cfg": cfg,
+        "brain_root": brain_root_override or _brain.brain_root(),
+        "project_memory_root": project_memory_root_override or _brain.project_memory_root(cwd),
+    }
+    await build_capture_flow().run_async(store)
+    if "error" in store:
+        return {"error": store["error"]}
+    return store.get("report") or {}
+
+
+def capture(text: str, **kwargs) -> dict:
+    """Sync wrapper around capture_async."""
+    return asyncio.run(capture_async(text, **kwargs))
+
+
+# ─── Status ──────────────────────────────────────────────────────────
+
+
+def status() -> dict:
+    """Brain stats — count files per directory."""
+    root = _brain.brain_root()
+    out: dict = {"brain_root": str(root)}
+    if not root.is_dir():
+        out["error"] = "brain root does not exist"
+        return out
+    for sub in ("Notes", "Journal", "Projects", "People", "Areas", "Inbox"):
+        p = root / sub
+        if p.is_dir():
+            out[sub] = sum(1 for _ in p.rglob("*.md"))
+        else:
+            out[sub] = 0
+    persona = root / "Persona.md"
+    out["persona_present"] = persona.is_file()
+    return out
+
+
+# ─── CLI ─────────────────────────────────────────────────────────────
+
+
+def _cmd_capture(args) -> int:
+    confidence = float(args.confidence) if args.confidence is not None else None
+    result = capture(
+        text=args.text,
+        type_hint=args.type,
+        confidence=confidence,
+        tier_hint=args.tier,
+        subject=args.subject,
+    )
+    print(json.dumps(result, indent=2, default=str))
+    return 0 if "error" not in result else 1
+
+
+def _cmd_detect(args) -> int:
+    cfg = _brain.Config.load()
+    t = _brain.detect_type(args.text, cfg)
+    print(json.dumps({"type": t}, indent=2))
+    return 0
+
+
+def _cmd_path(args) -> int:
+    out = {
+        "brain_root": str(_brain.brain_root()),
+        "project_memory_root": str(_brain.project_memory_root()),
+        "domain_dir": str(_brain._DOMAIN_DIR),
+    }
+    print(json.dumps(out, indent=2))
+    return 0
+
+
+def _cmd_status(args) -> int:
+    print(json.dumps(status(), indent=2))
+    return 0
+
+
+def main(argv: Optional[list[str]] = None) -> int:
+    p = argparse.ArgumentParser(
+        prog="kaizen-brain",
+        description="Capture / classify / route thoughts into the kaizen Second Brain.",
+    )
+    sub = p.add_subparsers(dest="cmd", required=True)
+
+    sc = sub.add_parser("capture", help="capture text into the brain")
+    sc.add_argument("text", help="thought to capture")
+    sc.add_argument("--type", choices=["world-fact", "belief", "observation", "experience"],
+                    help="override auto-detected type")
+    sc.add_argument("--confidence", type=float, help="belief confidence (0.0-1.0)")
+    sc.add_argument("--tier", choices=["brain", "project"], help="force tier")
+    sc.add_argument("--subject", help="entity name (Person / Project / Area)")
+    sc.set_defaults(func=_cmd_capture)
+
+    sd = sub.add_parser("detect", help="show inferred type without writing")
+    sd.add_argument("text", help="text to classify")
+    sd.set_defaults(func=_cmd_detect)
+
+    sp = sub.add_parser("path", help="print resolved paths")
+    sp.set_defaults(func=_cmd_path)
+
+    ss = sub.add_parser("status", help="brain stats")
+    ss.set_defaults(func=_cmd_status)
+
+    args = p.parse_args(argv)
+    return args.func(args)
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
