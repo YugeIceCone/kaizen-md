@@ -825,29 +825,38 @@ def chunk_record(cleaned_rec: dict) -> list[dict]:
             "kept": False,
             "kept_reason": "empty_after_clean",
         }]
-    # O2 (v1.33): symbol-aware chunking for Python — use the original
-    # (uncleaned) source so function/class boundaries align with the AST.
-    # Falls back to the generic sentence-boundary chunker on parse error
-    # (handled by chunk_python_by_symbol returning []) or non-Python.
+    # O2 (v1.33) / O8 (v1.34): symbol-aware chunking. Python uses
+    # stdlib ast; everything else routes through tree-sitter (O8) when
+    # available. Both fall back to the generic sentence-boundary
+    # chunker on empty return.
     out: list[dict] = []
     language = cleaned_rec.get("language", "")
+    raw_text = cleaned_rec.get("text") or cleaned
     if language == "python":
-        raw_text = cleaned_rec.get("text") or cleaned
         sym_chunks = _kz_ast.chunk_python_by_symbol(raw_text)
-        if sym_chunks:
-            for sc in sym_chunks:
-                out.append({
-                    "path": cleaned_rec["path"],
-                    "sha": cleaned_rec.get("sha"),
-                    "language": language,
-                    "chunk_idx": sc.chunk_idx,
-                    "char_start": sc.char_start,
-                    "char_end": sc.char_end,
-                    "text": sc.text,
-                    "kind": "code",
-                    "symbol_name": sc.symbol_name,
-                    "kept": True,
-                })
+    elif language:
+        # O8: tree-sitter universal chunker for non-Python languages.
+        # Returns [] when tree_sitter_languages isn't installed →
+        # falls through to the sentence-boundary chunker below. Same
+        # graceful-fallback shape as the Python path.
+        ts_chunks = _kz_ts.chunk_source_by_symbol(raw_text, language)
+        sym_chunks = ts_chunks
+    else:
+        sym_chunks = []
+    if sym_chunks:
+        for sc in sym_chunks:
+            out.append({
+                "path": cleaned_rec["path"],
+                "sha": cleaned_rec.get("sha"),
+                "language": language,
+                "chunk_idx": sc.chunk_idx,
+                "char_start": sc.char_start,
+                "char_end": sc.char_end,
+                "text": sc.text,
+                "kind": "code",
+                "symbol_name": sc.symbol_name,
+                "kept": True,
+            })
     if not out:
         # Non-Python OR Python that failed to parse — fall through to the
         # generic chunker. Same shape, symbol_name='' (sentinel for "not
@@ -922,6 +931,7 @@ def process_file(path: Path, root: Path) -> dict | None:
 import _embed as _kz_embed  # v1.25.0+: HTTP-first embedding backend
 import _chunk as _kz_chunk  # v1.27.0+: sentence-boundary chunker
 import _ast_chunk as _kz_ast  # v1.33.0+: symbol-aware Python chunker (O2)
+import _ts_chunk as _kz_ts  # v1.34.0+: tree-sitter universal chunker (O8)
 import _search as _kz_search  # v1.27.0+: BM25+dense hybrid search
 import _quant as _kz_quant  # v1.31.0+: int8 quantization helpers
 import _sparse as _kz_sparse  # v1.34.0+: SPLADE sparse-embedding helpers (E9)
