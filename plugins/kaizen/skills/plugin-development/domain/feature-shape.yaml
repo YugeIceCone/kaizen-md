@@ -1,0 +1,133 @@
+# Canonical 11-slot feature shape for kaizen-plugin-original code.
+#
+# Every plugin-original feature lands files into these slots. Each
+# slot is either required (always present), or conditional on a
+# `when` predicate evaluated against the feature's manifest.
+#
+# Used by:
+#   skills/plugin-development/scripts/validate.py
+#     — checks a touched feature against this shape and reports gaps
+#
+# Updated alongside the SKILL.md prose so the schema and the prose
+# are the same source of truth.
+
+version: 1
+
+slots:
+  - id: skill-body
+    path_pattern: "skills/<feature>/SKILL.md"
+    required: true
+    role: "navigable guide — Iron Law header + content"
+    why: "Routing target for the Skill tool; must declare triggers."
+
+  - id: skill-domain-yaml
+    path_pattern: "skills/<feature>/domain/*.yaml"
+    required: false
+    when: feature_has_routing_or_taxonomy
+    role: "schema-driven config (yaml)"
+    why: "Routing decisions / type taxonomies / convention catalogs live in yaml so users edit without touching code."
+
+  - id: skill-domain-schemas
+    path_pattern: "skills/<feature>/domain/schemas/*.schema.json"
+    required: false
+    when: feature_writes_validatable_artifacts
+    role: "JSONSchema for written artifacts"
+    why: "Round-trip validation for any markdown/json the feature emits."
+
+  - id: skill-scripts
+    path_pattern: "skills/<feature>/scripts/*.py"
+    required: false
+    when: feature_has_skill_scoped_tooling
+    role: "skill-private helpers (validators / generators)"
+    why: "Per-skill tooling that doesn't belong in workflow/scripts (e.g. a schema validator)."
+
+  - id: core
+    path_pattern: "skills/workflow/scripts/_<feature>.py"
+    required: false
+    when: feature_has_backing_code
+    role: "private core — paths/config/primitives/no side effects"
+    why: "Underscore prefix marks 'used only by sibling <feature>*.py modules'. Doc-only skills (instructions / patterns) have no core."
+
+  - id: public-cli
+    path_pattern: "skills/workflow/scripts/<feature>.py"
+    required: false
+    when: feature_exposes_cli
+    role: "argparse CLI + main Node+Flow assembly"
+
+  - id: indexer
+    path_pattern: "skills/workflow/scripts/<feature>_index.py"
+    required: false
+    when: feature_needs_search
+    role: "SQLite + (optional) semantic search; KAIZEN_<F>_DB env"
+
+  - id: specialized-flows
+    path_pattern: "skills/workflow/scripts/<feature>_<op>.py"
+    required: false
+    when: feature_has_multiple_ops
+    role: "one file per operation (audit/promote/evolve/...) — each owns one flow"
+
+  - id: mcp-server
+    path_pattern: "skills/workflow/scripts/<feature>_mcp.py"
+    required: false
+    when: feature_exposes_mcp
+    role: "FastMCP shebang script with PEP-723 dep block"
+    why: "Heavy mcp dep isolated; tool wrappers async via asyncio.to_thread."
+
+  - id: hook-scripts
+    path_pattern: "hooks/claude/<feature>-*.sh"
+    required: false
+    when: feature_uses_lifecycle_events
+    role: "CC lifecycle hook scripts (SessionStart/End / UserPromptSubmit / ...)"
+    why: "Bypass env knob; defensive stdin parse; always exit 0."
+
+  - id: slash-command
+    path_pattern: "commands/<feature>.md"
+    required: false
+    when: feature_exposes_cli
+    role: "/kaizen:<feature> dispatch — frontmatter + bash subcommand router"
+
+  - id: bin-wrapper
+    path_pattern: "bin/kaizen-<feature>*"
+    required: false
+    when: feature_exposes_cli
+    role: "shell symlink target — one per CLI script"
+    why: "Specialized op scripts (e.g. brain_index.py) need their own wrapper so kaizen-<feature>-<op> works from shell after /kaizen:install."
+
+  - id: tests
+    path_pattern: "tests/test_<feature>*.py"
+    required: false
+    when: feature_has_backing_code
+    role: "unit + flow + integration tests"
+    why: "Sandbox via env vars; mock heavy deps; @skipUnless for real-model integration. Doc-only skills have no scripts to test."
+
+# Conditional predicates — evaluated against the feature manifest
+# (a yaml file at skills/<feature>/domain/manifest.yaml when present;
+# otherwise inferred from filesystem presence of slot files).
+predicates:
+  feature_has_backing_code:
+    description: "Feature has Python scripts at skills/workflow/scripts/<feature>*.py or _<feature>.py."
+    detect: "any of {_<feature>.py, <feature>.py, <feature>_*.py} in skills/workflow/scripts/"
+  feature_has_routing_or_taxonomy:
+    description: "Feature classifies / routes inputs (e.g. brain's entity-types)."
+    detect: "any *.yaml in skills/<feature>/domain/"
+  feature_writes_validatable_artifacts:
+    description: "Feature creates/edits files with structured frontmatter."
+    detect: "manifest declares writes_artifacts: true"
+  feature_has_skill_scoped_tooling:
+    description: "Feature ships utilities scoped to the skill (validators, generators)."
+    detect: "any *.py in skills/<feature>/scripts/"
+  feature_exposes_cli:
+    description: "Feature has a user-facing CLI / slash-command surface."
+    detect: "skills/workflow/scripts/<feature>.py contains an argparse main"
+  feature_needs_search:
+    description: "Feature persists data and supports search/filter queries."
+    detect: "manifest declares uses_sqlite: true OR <feature>_index.py exists"
+  feature_has_multiple_ops:
+    description: "Feature has 2+ orthogonal operations (audit + promote + evolve)."
+    detect: "2+ files match <feature>_*.py (excluding _index, _mcp)"
+  feature_exposes_mcp:
+    description: "Feature exposes operations as MCP tools."
+    detect: "<feature>_mcp.py exists"
+  feature_uses_lifecycle_events:
+    description: "Feature responds to CC lifecycle events (SessionStart/End/etc.)."
+    detect: "hooks/claude/<feature>-*.sh exists"

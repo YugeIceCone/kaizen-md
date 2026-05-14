@@ -1,0 +1,95 @@
+# Wiring checklist — per artifact kind, the manifest + filesystem
+# entries that MUST land in the same commit.
+#
+# Used by scripts/validate.py to check that touched plugin features
+# are coherent. A missing entry means the user will see permission
+# prompts, dead bin paths, or a hook that never fires.
+
+version: 1
+
+artifacts:
+  new_python_script:
+    path_pattern: "skills/workflow/scripts/<feature>*.py"
+    required_wiring:
+      - artifact: plugin_manifest_permission
+        spec: 'Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/<script>:*)'
+        file: plugins/kaizen/.claude-plugin/plugin.json
+        key: permissions.allow
+    conditional_wiring:
+      - when: script_has_argparse_main
+        required:
+          - artifact: bin_wrapper
+            path: bin/kaizen-<feature>[-<op>]
+          - artifact: chmod_executable
+            check: "bin file has +x bit set"
+      - when: script_dispatches_via_slash
+        required:
+          - artifact: slash_command
+            path: commands/<feature>.md
+            referenced_in_arg_router: true
+
+  new_mcp_server:
+    path_pattern: "skills/workflow/scripts/<feature>_mcp.py"
+    required_wiring:
+      - artifact: plugin_manifest_permission
+        spec: 'Bash(uv run --script ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/<feature>_mcp.py:*)'
+      - artifact: pep_723_dep_block
+        check: "module starts with #!/usr/bin/env -S uv run --script + # /// script header"
+      - artifact: fastmcp_instance
+        check: "module instantiates FastMCP at module scope"
+      - artifact: async_tool_wrappers
+        check: "every @mcp.tool() function is `async def`"
+
+  new_hook_script:
+    path_pattern: "hooks/claude/<feature>-<event>.sh"
+    required_wiring:
+      - artifact: plugin_manifest_permission
+        spec: 'Bash(bash ${CLAUDE_PLUGIN_ROOT}/hooks/claude/<hook>.sh:*)'
+      - artifact: hooks_json_entry
+        file: plugins/kaizen/hooks/hooks.json
+        key: hooks.<EventName>
+        check: "hook script wired into matching event slot under the top-level 'hooks' wrapper"
+      - artifact: shebang_bypass_guard
+        check: "first 10 lines include `if [ \"${KAIZEN_<F>_DISABLE:-}\" = \"1\" ]`"
+      - artifact: plugin_root_resolver
+        check: "sources _plugin_root.sh; falls back to python3 realpath when readlink -f absent"
+      - artifact: defensive_stdin
+        check: "reads stdin via `INPUT=\"$(cat 2>/dev/null || true)\"` (jq-free parse)"
+      - artifact: always_exit_0
+        check: "script ends with `exit 0`"
+
+  new_bin_wrapper:
+    path_pattern: "bin/kaizen-<feature>*"
+    required_wiring:
+      - artifact: chmod_executable
+        check: "+x bit set"
+      - artifact: shebang
+        check: "first line is #!/usr/bin/env bash"
+      - artifact: set_pipefail
+        check: "uses `set -euo pipefail`"
+      - artifact: plugin_root_resolver
+        check: "sources skills/workflow/scripts/_plugin_root.sh"
+      - artifact: exec_python_script
+        check: "ends with `exec python3 ...<script>.py \"$@\"`"
+
+  new_skill:
+    path_pattern: "skills/<feature>/SKILL.md"
+    required_wiring:
+      - artifact: frontmatter_name
+        check: "name: <feature> matches dir"
+      - artifact: frontmatter_description
+        check: "description includes 'Triggers on' or 'Use when' phrases"
+      - artifact: version
+        check: "version: <semver> present"
+      - artifact: iron_law_header
+        check: "first 30 lines include '⚠ Iron Law' or equivalent mandatory-read marker"
+
+  new_slash_command:
+    path_pattern: "commands/<feature>.md"
+    required_wiring:
+      - artifact: frontmatter_name_description
+        check: "name + description present"
+      - artifact: argument_hint
+        check: "argument-hint frontmatter declares subcommands"
+      - artifact: dispatcher
+        check: "bash dispatcher routes to one of the feature's CLI scripts"

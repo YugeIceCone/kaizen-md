@@ -1,0 +1,91 @@
+# Iron Laws — the non-negotiable rules for kaizen-plugin-original
+# development. Each law has:
+#
+#   id          slug for cross-reference
+#   statement   one-line rule (the law itself)
+#   severity    hard (commit blocked) | soft (warning surfaced) | info
+#   detect      machine-checkable predicate, when one exists
+#   why         rationale link to canonical source or memory entry
+#
+# The SKILL.md prose explains; this yaml is the enforcement spec.
+
+version: 1
+
+laws:
+  - id: canonical-edit-path
+    statement: "Edit at ~/workspace/kaizen-md/, never the symlink ~/.claude/local-marketplaces/kaizen-md/"
+    severity: soft
+    detect: "modified-file path starts with ~/.claude/local-marketplaces/kaizen-md/"
+    why: "User stated preference; symlink confuses git status / IDE search / path-canonicalization helpers. See ~/.claude/projects/<slug>/memory/feedback_kaizen_plugin_canonical_path.md"
+
+  - id: no-modify-vendored
+    statement: "Don't modify vendored skills. Patch upstream first, then refresh via bundle-refresh."
+    severity: hard
+    detect: "modified file in skills/{kiss,solid,dry,yagni,karpathy,boy-scout-rule,convention-over-configuration,law-of-demeter,separation-of-concerns,brainstorming,executing-plans,writing-plans,using-superpowers,subagent-driven-development,test-driven-development,verification-before-completion,dispatching-parallel-agents,finishing-a-development-branch,using-git-worktrees,writing-skills,receiving-code-review,requesting-code-review,systematic-debugging,tdd,init,remember,process,evolve,reflect,synthesize,status}/"
+    why: "Upstream provenance. See CONTRIBUTING.md::Architecture rules and ATTRIBUTIONS.md."
+
+  - id: schema-driven-domain
+    statement: "Feature routing / taxonomies / conventions live in domain/*.yaml — not hardcoded in Python."
+    severity: soft
+    detect: "feature has hardcoded route table without corresponding domain/*.yaml"
+    why: "Users edit yaml without rebuilding; tests validate against jsonschema."
+
+  - id: node-flow-for-multi-step
+    statement: "Multi-step async ops use flow.AsyncNode + AsyncFlow. No ad-hoc orchestration."
+    severity: soft
+    detect: "module imports asyncio.gather more than once without subclassing AsyncParallelBatchNode"
+    why: "Consistent observability + retry/cycle guards; see skills/workflow/scripts/flow.py docstring."
+
+  - id: lazy-heavy-deps
+    statement: "Heavy deps (transformers, torch, tree-sitter, etc.) lazy-load with is_available() + graceful fallback."
+    severity: soft
+    detect: "top-level `import torch` or `import transformers` outside try/except"
+    why: "Default kaizen install must not require ~3GB ML stack. See ~/.claude/brain/Notes/pref-optional-feature-graceful-fallback.md"
+
+  - id: sandbox-tests
+    statement: "Tests sandbox via env vars (KAIZEN_<X>_PATH=<tmp>). Never touch real ~/.claude/."
+    severity: hard
+    detect: "test file writes to ~/.claude/ or ~/workspace/ without KAIZEN_<X>_PATH override"
+    why: "Test isolation; CI runs without polluting the user's brain or auto-memory."
+
+  - id: bin-wrapper-per-cli
+    statement: "Each CLI script gets its own bin/kaizen-* wrapper. /kaizen:install symlinks bin/ into ~/.local/bin/."
+    severity: hard
+    detect: "skills/workflow/scripts/<feature>_<op>.py with argparse main but no bin/kaizen-<feature>-<op>"
+    why: "Without a wrapper, kaizen-<feature>-<op> is 'command not found' from shell. See brain commit 2cfd234 + bin-wrapper hotfix."
+
+  - id: plugin-manifest-permissions
+    statement: "New script + hook entries land with matching plugin.json permission lines in the same commit."
+    severity: hard
+    detect: "git diff shows new skills/workflow/scripts/<feature>.py or hooks/claude/<feature>-*.sh without matching plugin.json::permissions.allow entry"
+    why: "Missing permission entries prompt the user on every invocation; structural cohesion."
+
+  - id: hook-bypass-knob
+    statement: "Every hook script reads KAIZEN_<FEATURE>_DISABLE env early and exits 0 when set."
+    severity: hard
+    detect: "hooks/claude/<feature>-*.sh missing `KAIZEN_*_DISABLE` guard"
+    why: "User must be able to disable any hook without uninstalling the plugin."
+
+  - id: claude-md-no-volatile-data
+    statement: "Don't write commit SHAs, dates, or LOC counts into CLAUDE.md / README.md. Use CHANGELOG / git log / progress.md."
+    severity: hard
+    detect: "claude-md-no-sha gate check"
+    why: "CLAUDE.md is the durable rulebook; volatile data rots."
+
+  - id: phased-commit-template
+    statement: "Atomic per-item commit using the phased-work template (subject / motivation / Files / env / test baseline / refs)."
+    severity: soft
+    detect: "git commit message length < 200 chars on a structural change"
+    why: "Phased commits read as a coherent rollout in git log. See ~/.claude/brain/Notes/pref-phased-work-commit-template.md"
+
+  - id: paired-tests
+    statement: "Every new .py / .sh script in plugin-original code has a matching test in tests/test_<x>.py."
+    severity: soft
+    detect: "git diff adds skills/workflow/scripts/<f>.py without adding/modifying tests/test_<f>*.py"
+    why: "Existing gate check (paired-test, severity=warn). See workflow skill PART 3."
+
+  - id: skill-cant-be-skipped
+    statement: "When touching plugin-original code, the plugin-development skill is mandatory-load."
+    severity: soft
+    detect: "session enters kaizen-md cwd without plugin-development in loaded-skills"
+    why: "User stated: 'the dev skill can't be skipped' — codified 2026-05-14."

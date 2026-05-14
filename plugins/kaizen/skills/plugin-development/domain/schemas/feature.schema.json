@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kaizen-md/plugin-development/feature.schema.json",
+  "title": "Kaizen feature manifest",
+  "description": "Optional manifest at skills/<feature>/domain/manifest.yaml. Declares which conditional slots apply to this feature, so validate.py can check only the relevant subset of the canonical shape. When absent, validate.py infers predicates from filesystem presence.",
+  "type": "object",
+  "required": ["name", "version"],
+  "properties": {
+    "name": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*$",
+      "description": "Feature slug (kebab-case). Matches the skill dir name."
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$",
+      "description": "Feature version (semver). Independent of plugin.json version."
+    },
+    "description": {
+      "type": "string",
+      "minLength": 10,
+      "maxLength": 500
+    },
+    "predicates": {
+      "type": "object",
+      "description": "Which feature-shape predicates apply. Drives validate.py's slot requirements.",
+      "properties": {
+        "feature_has_routing_or_taxonomy": {"type": "boolean"},
+        "feature_writes_validatable_artifacts": {"type": "boolean"},
+        "feature_has_skill_scoped_tooling": {"type": "boolean"},
+        "feature_exposes_cli": {"type": "boolean"},
+        "feature_needs_search": {"type": "boolean"},
+        "feature_has_multiple_ops": {"type": "boolean"},
+        "feature_exposes_mcp": {"type": "boolean"},
+        "feature_uses_lifecycle_events": {"type": "boolean"}
+      },
+      "additionalProperties": false
+    },
+    "ops": {
+      "type": "array",
+      "description": "When feature_has_multiple_ops: true, list the operation suffixes (e.g. ['promote', 'audit', 'evolve']).",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9-]*$"
+      }
+    },
+    "env_knobs": {
+      "type": "array",
+      "description": "Declared env variables the feature reads. Used by docs generators and the wiring-checklist.",
+      "items": {
+        "type": "object",
+        "required": ["name", "description"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "pattern": "^KAIZEN_[A-Z_]+$"
+          },
+          "description": {"type": "string"},
+          "default": {"type": "string"}
+        }
+      }
+    }
+  },
+  "additionalProperties": false
+}
