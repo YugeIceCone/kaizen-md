@@ -388,6 +388,106 @@ def never_used(kind: str = "skill") -> dict:
     raise ValueError(f"unknown kind: {kind!r}")
 
 
+# ─── Skip detection ──────────────────────────────────────────────────
+
+
+# Rules: skill-name → glob patterns whose presence in the session's
+# file-edit activity implies the skill SHOULD have been loaded.
+# Mirrors iron-laws.yaml::skill-cant-be-skipped, but encoded here
+# for fast machine evaluation.
+SKIP_RULES = [
+    {
+        "skill": "plugin-development",
+        "patterns": [
+            "plugins/kaizen/skills/workflow/scripts/",
+            "plugins/kaizen/skills/<>/",  # any feature dir under skills/
+            "plugins/kaizen/commands/",
+            "plugins/kaizen/hooks/",
+            "plugins/kaizen/bin/",
+            "plugins/kaizen/.claude-plugin/plugin.json",
+            "plugins/kaizen/hooks/hooks.json",
+        ],
+        "rationale": "iron-laws.yaml::skill-cant-be-skipped + pref-kaizen-plugin-dev",
+    },
+    {
+        "skill": "brain",
+        "patterns": [
+            "plugins/kaizen/skills/brain/",
+            "plugins/kaizen/skills/workflow/scripts/_brain.py",
+            "plugins/kaizen/skills/workflow/scripts/brain",  # prefix match
+            "~/.claude/brain/Notes/",
+            "~/.claude/brain/Persona.md",
+        ],
+        "rationale": "Touching brain Notes / pipeline without the brain skill loaded",
+    },
+    {
+        "skill": "workflow",
+        "patterns": [
+            "plugins/kaizen/skills/workflow/scripts/workflow",  # prefix
+            "plugins/kaizen/commands/workflow.md",
+        ],
+        "rationale": "Touching workflow scripts without loading workflow skill",
+    },
+]
+
+
+def detect_skips(sid: Optional[str] = None) -> list[dict]:
+    """For the given session (or the latest), return skill-skip
+    candidates: skills whose triggering files were touched but the
+    skill itself was never loaded.
+
+    Returns a list of {skill, rationale, touched_files} dicts.
+    Empty list when no skips detected."""
+    sid = sid or latest_session_id()
+    if not sid:
+        return []
+    # Files touched this session (via Edit / Write / NotebookEdit ident)
+    touched_paths: set[str] = set()
+    skills_loaded: set[str] = set()
+    for rec in iter_events(sid=sid):
+        evt = rec.get("evt", "")
+        if not evt.startswith("PreToolUse-"):
+            continue
+        tool = rec.get("tool", "")
+        data = rec.get("data") or {}
+        ident = data.get("ident", "")
+        if tool in {"Edit", "Write", "NotebookEdit"} and ident:
+            touched_paths.add(ident)
+        elif tool == "Skill" and ident:
+            skills_loaded.add(ident)
+    out: list[dict] = []
+    for rule in SKIP_RULES:
+        skill = rule["skill"]
+        if skill in skills_loaded:
+            continue
+        triggers = []
+        for path in touched_paths:
+            for pattern in rule["patterns"]:
+                # Wildcard <> placeholder = any single path component
+                if "<>" in pattern:
+                    parts = pattern.split("<>", 1)
+                    if path.startswith(parts[0]) and parts[1] in path:
+                        triggers.append(path)
+                        break
+                elif pattern.startswith("~/"):
+                    expanded = os.path.expanduser(pattern)
+                    if expanded in path or path.startswith(expanded):
+                        triggers.append(path)
+                        break
+                else:
+                    if pattern in path:
+                        triggers.append(path)
+                        break
+        if triggers:
+            out.append({
+                "skill": skill,
+                "rationale": rule["rationale"],
+                "touched_files": sorted(set(triggers))[:10],
+                "touched_count": len(set(triggers)),
+            })
+    return out
+
+
 # ─── Top-N helpers ───────────────────────────────────────────────────
 
 
@@ -468,6 +568,25 @@ def _cmd_path(args) -> int:
     return 0
 
 
+def _cmd_skips(args) -> int:
+    skips = detect_skips(sid=args.sid)
+    if args.json:
+        print(json.dumps({"sid": args.sid or latest_session_id(),
+                          "skips": skips}, indent=2))
+        return 0
+    sid = args.sid or latest_session_id()
+    print(f"\n[kaizen-metrics skips] session={sid}")
+    if not skips:
+        print("  ✓ no skill-skips detected — all triggered skills were loaded")
+        return 0
+    for s in skips:
+        print(f"  ∘ {s['skill']:<24} ({s['touched_count']} file(s) touched)")
+        print(f"      reason: {s['rationale']}")
+        for p in s["touched_files"][:5]:
+            print(f"        {p}")
+    return 0
+
+
 def _print_rollup(d: dict, title: str) -> None:
     print(f"\n[kaizen-metrics] {title}")
     print(f"  events     : {d['total_events']:>6}")
@@ -521,6 +640,14 @@ def main(argv: Optional[list[str]] = None) -> int:
 
     s_path = sub.add_parser("path", help="print trace log path")
     s_path.set_defaults(func=_cmd_path)
+
+    s_skips = sub.add_parser(
+        "skips",
+        help="detect skill-skips: touched files without loading the matching skill",
+    )
+    s_skips.add_argument("--sid", help="session id (default: latest)")
+    s_skips.add_argument("--json", action="store_true")
+    s_skips.set_defaults(func=_cmd_skips)
 
     args = p.parse_args(argv)
     return args.func(args)

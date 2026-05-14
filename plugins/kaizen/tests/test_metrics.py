@@ -215,6 +215,71 @@ class TestTopN(MetricsBase):
         self.assertEqual(top[0][1], 5)
 
 
+class TestSkipDetection(MetricsBase):
+    def test_skip_detected_when_files_touched_skill_not_loaded(self):
+        # Touched a brain file, never loaded the brain skill
+        _write_trace(self.trace_file, [
+            {"ts": "2026-05-14T00:00:00Z", "evt": "PreToolUse-Edit",
+             "tool": "Edit", "sid": "s1",
+             "data": {"ident": "plugins/kaizen/skills/brain/SKILL.md"}},
+        ])
+        skips = metrics.detect_skips(sid="s1")
+        # brain rule should fire
+        skill_names = [s["skill"] for s in skips]
+        self.assertIn("brain", skill_names)
+
+    def test_no_skip_when_skill_loaded(self):
+        # Touched + skill loaded → no skip
+        _write_trace(self.trace_file, [
+            {"ts": "2026-05-14T00:00:00Z", "evt": "PreToolUse-Skill",
+             "tool": "Skill", "sid": "s1", "data": {"ident": "brain"}},
+            {"ts": "2026-05-14T00:00:01Z", "evt": "PreToolUse-Edit",
+             "tool": "Edit", "sid": "s1",
+             "data": {"ident": "plugins/kaizen/skills/brain/SKILL.md"}},
+        ])
+        skips = metrics.detect_skips(sid="s1")
+        skill_names = [s["skill"] for s in skips]
+        self.assertNotIn("brain", skill_names)
+
+    def test_no_skip_when_no_touched_files(self):
+        # Only Bash events → nothing triggers skip detection
+        _write_trace(self.trace_file, [
+            {"ts": "2026-05-14T00:00:00Z", "evt": "PreToolUse-Bash",
+             "tool": "Bash", "sid": "s1"},
+        ])
+        skips = metrics.detect_skips(sid="s1")
+        self.assertEqual(skips, [])
+
+    def test_plugin_development_skip(self):
+        # Touched plugin code without loading plugin-development skill
+        _write_trace(self.trace_file, [
+            {"ts": "2026-05-14T00:00:00Z", "evt": "PreToolUse-Edit",
+             "tool": "Edit", "sid": "s1",
+             "data": {"ident": "plugins/kaizen/.claude-plugin/plugin.json"}},
+        ])
+        skips = metrics.detect_skips(sid="s1")
+        skill_names = [s["skill"] for s in skips]
+        self.assertIn("plugin-development", skill_names)
+
+    def test_skip_detection_returns_empty_on_no_session(self):
+        _write_trace(self.trace_file, [])
+        skips = metrics.detect_skips()
+        self.assertEqual(skips, [])
+
+    def test_skip_includes_touched_files(self):
+        _write_trace(self.trace_file, [
+            {"ts": "2026-05-14T00:00:00Z", "evt": "PreToolUse-Edit",
+             "tool": "Edit", "sid": "s1",
+             "data": {"ident": "plugins/kaizen/skills/brain/SKILL.md"}},
+            {"ts": "2026-05-14T00:00:01Z", "evt": "PreToolUse-Write",
+             "tool": "Write", "sid": "s1",
+             "data": {"ident": "plugins/kaizen/skills/brain/domain/x.yaml"}},
+        ])
+        skips = metrics.detect_skips(sid="s1")
+        brain_skip = next(s for s in skips if s["skill"] == "brain")
+        self.assertEqual(brain_skip["touched_count"], 2)
+
+
 class TestPaths(unittest.TestCase):
     def test_trace_log_path_env_override(self):
         orig = os.environ.get("KAIZEN_TRACE_DIR")
