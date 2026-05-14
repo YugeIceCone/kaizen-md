@@ -105,14 +105,33 @@ if [[ $MAX_ITERATIONS -gt 0 ]] && [[ $ITERATION -ge $MAX_ITERATIONS ]]; then
   exit 0
 fi
 
-# Promise exact-match path (legacy / alternate completion signal).
+# Structured-promise path (preferred — set by `loop_promise()` MCP tool
+# or `kaizen-loop promise <phrase>`). Tool calls can't be confused with
+# text mentions, so this is the unambiguous completion channel.
 if [[ "$COMPLETION_PROMISE" != "null" ]] && [[ -n "$COMPLETION_PROMISE" ]]; then
-  PROMISE_TEXT=$(printf '%s' "$LAST_OUTPUT" | perl -0777 -pe 's/.*?<promise>(.*?)<\/promise>.*/$1/s; s/^\s+|\s+$//g; s/\s+/ /g' 2>/dev/null || printf '')
-  if [[ -n "$PROMISE_TEXT" ]] && [[ "$PROMISE_TEXT" == "$COMPLETION_PROMISE" ]]; then
+  STRUCTURED_PROMISE=$(frontmatter_value "last_promise")
+  STRUCTURED_PROMISE=${STRUCTURED_PROMISE#\"}
+  STRUCTURED_PROMISE=${STRUCTURED_PROMISE%\"}
+  if [[ -n "$STRUCTURED_PROMISE" ]] && [[ "$STRUCTURED_PROMISE" == "$COMPLETION_PROMISE" ]]; then
     rm -f "$RALPH_STATE_FILE"
+    json_stop "Ralph loop completed: structured promise matched (via loop_promise tool)."
+    exit 0
+  fi
+fi
+
+# Text-promise fallback. Delegated to loop_ledger.py::check_completion_promise
+# which strips markdown code fences and requires the promise tag at
+# MESSAGE END — fixes the 2026-05-14 false-positive where a
+# `<promise>X</promise>` token in a fenced code example wrongly ended a loop.
+if [[ "$COMPLETION_PROMISE" != "null" ]] && [[ -n "$COMPLETION_PROMISE" ]]; then
+  PROMISE_TMP=$(mktemp -t kaizen-loop-output-XXXX)
+  printf '%s' "$LAST_OUTPUT" > "$PROMISE_TMP"
+  if python3 "$LEDGER_HELPER" promise-check "$PROMISE_TMP" "$COMPLETION_PROMISE" 2>/dev/null; then
+    rm -f "$PROMISE_TMP" "$RALPH_STATE_FILE"
     json_stop "Ralph loop completed: completion promise matched."
     exit 0
   fi
+  rm -f "$PROMISE_TMP"
 fi
 
 # Delegate ledger transition + body update to the Python helper.

@@ -105,6 +105,64 @@ def iso_now() -> str:
     return dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
+# ─── Promise matching (robust against code-fence + mid-text mentions) ─
+
+
+import re as _re
+
+_FENCED_CODE = _re.compile(r"```[\s\S]*?```", _re.MULTILINE)
+_INLINE_CODE = _re.compile(r"`[^`\n]*`")
+_TRAILING_PROMISE = _re.compile(
+    r"<promise>\s*(.*?)\s*</promise>\s*\Z",
+    _re.DOTALL,
+)
+_ANY_PROMISE = _re.compile(r"<promise>\s*(.*?)\s*</promise>", _re.DOTALL)
+
+
+def check_completion_promise(
+    last_output: str,
+    expected_phrase: str,
+) -> bool:
+    """Return True iff `last_output` legitimately emits the completion phrase.
+
+    Robust matching to prevent false positives like the 2026-05-14 incident
+    where a `<promise>DONE</promise>` token in a code-fence example
+    terminated the loop:
+
+    1. Strip ```fenced``` and `inline` code blocks (the agent may discuss
+       the promise pattern in code without intending to emit it).
+    2. After stripping, require the promise tag to be at the END of the
+       message (modulo trailing whitespace). Mid-text mentions don't
+       count — if the agent meant to emit, they'd put it last.
+    3. Exact-string match against the configured phrase (existing
+       contract — no glob, no regex).
+    """
+    if not last_output or not expected_phrase:
+        return False
+    stripped = _FENCED_CODE.sub("", last_output)
+    stripped = _INLINE_CODE.sub("", stripped)
+    m = _TRAILING_PROMISE.search(stripped)
+    if not m:
+        return False
+    found = " ".join(m.group(1).split())  # collapse whitespace
+    want = " ".join(expected_phrase.split())
+    return found == want
+
+
+def has_unsafe_promise_mention(last_output: str) -> bool:
+    """Diagnostic: True if the message contains a promise tag that is NOT
+    at the end (i.e. would have triggered the old buggy regex). The hook
+    surfaces this as a warning when present so the user can see why the
+    loop did NOT end despite a mention."""
+    if not last_output:
+        return False
+    stripped = _FENCED_CODE.sub("", last_output)
+    stripped = _INLINE_CODE.sub("", stripped)
+    if _TRAILING_PROMISE.search(stripped):
+        return False  # legitimate trailing promise — not unsafe
+    return bool(_ANY_PROMISE.search(stripped))
+
+
 def transition(ledger: dict, iteration: int) -> tuple[dict, list[dict]]:
     """Run verify on each pending item; move passing ones to completed.
 
@@ -218,9 +276,26 @@ def decide(state_path: Path, iteration: int) -> dict:
 
 
 def main(argv: list[str]) -> int:
+    # Subcommand mode: `loop_ledger.py promise-check <last_output_file> <expected_phrase>`
+    # Exit code 0 iff promise matched, 1 otherwise. Used by stop-ralph.sh
+    # to delegate the robust promise-match logic to Python.
+    if len(argv) >= 2 and argv[1] == "promise-check":
+        if len(argv) < 4:
+            sys.stderr.write(
+                "usage: loop_ledger.py promise-check <last-output-file> <expected-phrase>\n"
+            )
+            return 2
+        try:
+            last_output = Path(argv[2]).read_text()
+        except (OSError, UnicodeDecodeError):
+            return 1
+        expected = argv[3]
+        return 0 if check_completion_promise(last_output, expected) else 1
+
     if len(argv) < 3:
         sys.stderr.write(
             "usage: loop_ledger.py <state-file> <iteration>\n"
+            "       loop_ledger.py promise-check <last-output-file> <phrase>\n"
         )
         return 2
     state_path = Path(argv[1])

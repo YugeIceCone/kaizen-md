@@ -150,6 +150,26 @@ async def loop_complete_item(id_or_desc: str, note: str = "") -> dict:
 
 
 @mcp.tool()
+async def loop_promise(phrase: str) -> dict:
+    """Emit the completion promise as a structured tool call.
+
+    Unambiguous alternative to writing <promise>X</promise> in text:
+    tool calls cannot be confused with code-fence examples or
+    explanatory text mentions. Recommended over the text-tag form.
+
+    phrase: must exactly match the loop's configured completion_promise.
+
+    Returns {emitted, phrase, matches, configured_promise}. The Stop
+    hook checks the `last_promise` frontmatter field BEFORE the text-
+    based regex extraction, so a successful call here ends the loop on
+    the next Stop event."""
+    try:
+        return ls.emit_promise(phrase)
+    except (FileNotFoundError, ValueError) as e:
+        return {"error": str(e)}
+
+
+@mcp.tool()
 async def loop_cancel() -> dict:
     """Cancel the active loop (remove .kaizen/loop.state.md).
 

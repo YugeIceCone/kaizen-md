@@ -118,6 +118,19 @@ if [[ -z "$PROMPT" ]] && [[ ${#ITEMS[@]} -eq 0 ]] && [[ -z "$LEDGER_FILE" ]]; th
   die "No prompt, --item, or --ledger provided"
 fi
 
+# Auto-load file-path-as-prompt. When the bare PROMPT is a single token
+# that happens to be an existing readable file path (e.g.
+#   /kaizen:loop handoff.md --its 30
+# ), expand it to the file's contents. This prevents the 2026-05-14 mistake
+# where the literal string "handoff.md" became the iteration prompt.
+if [[ -n "$PROMPT" ]] && [[ ${#PROMPT_PARTS[@]} -eq 1 ]] \
+        && [[ -z "$LEDGER_FILE" ]] && [[ ${#ITEMS[@]} -eq 0 ]] \
+        && [[ -f "$PROMPT" ]] && [[ -r "$PROMPT" ]]; then
+  LOADED_PATH="$PROMPT"
+  PROMPT="$(cat "$LOADED_PATH")"
+  echo "[setup-ralph-loop] auto-loaded prompt from file: $LOADED_PATH ($(printf '%s' "$PROMPT" | wc -l) lines)" >&2
+fi
+
 mkdir -p .kaizen
 
 if [[ -n "$COMPLETION_PROMISE" ]] && [[ "$COMPLETION_PROMISE" != "null" ]]; then

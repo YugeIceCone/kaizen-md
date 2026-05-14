@@ -272,6 +272,58 @@ def complete_item(
     return entry
 
 
+def emit_promise(phrase: str, path: Path | None = None) -> dict:
+    """Structured completion signal — writes `phrase` to a `last_promise`
+    field in the state file's frontmatter. The Stop hook checks this
+    field BEFORE the regex-based promise extraction, so a tool call here
+    is unambiguous (cannot be confused with text content like a code-
+    fence example).
+
+    The phrase MUST exactly match the loop's configured `completion_promise`
+    or this is a no-op (the Stop hook will not end the loop on a mismatch).
+
+    Returns {emitted, matches, phrase} where `matches` is True iff the
+    phrase matched the configured completion_promise."""
+    if not phrase or not phrase.strip():
+        raise ValueError("phrase is required and cannot be empty")
+    p = path or state_path()
+    if not p.is_file():
+        raise FileNotFoundError(f"no loop state file at {p}")
+    text = p.read_text()
+    fm, body = _split(text)
+    # Parse frontmatter to read the configured promise
+    configured = ""
+    for line in fm.split("\n"):
+        s = line.strip()
+        if s.startswith("completion_promise:"):
+            configured = s.split(":", 1)[1].strip().strip('"')
+            if configured.lower() == "null":
+                configured = ""
+            break
+    # Inject (or replace) `last_promise:` line BEFORE the closing `---`.
+    new_fm_lines: list[str] = []
+    inserted = False
+    for line in fm.split("\n"):
+        s = line.strip()
+        if s.startswith("last_promise:"):
+            new_fm_lines.append(f'last_promise: "{phrase.strip()}"')
+            inserted = True
+        elif s == "---" and not inserted and len(new_fm_lines) > 1:
+            new_fm_lines.append(f'last_promise: "{phrase.strip()}"')
+            new_fm_lines.append(line)
+            inserted = True
+        else:
+            new_fm_lines.append(line)
+    new_fm = "\n".join(new_fm_lines)
+    p.write_text(f"{new_fm}\n{body}".rstrip() + "\n")
+    return {
+        "emitted": True,
+        "phrase": phrase.strip(),
+        "matches": phrase.strip() == configured.strip(),
+        "configured_promise": configured,
+    }
+
+
 def cancel(path: Path | None = None) -> dict:
     """Remove the state file (equivalent of /kaizen:loop --cancel)."""
     p = path or state_path()
@@ -339,6 +391,14 @@ def main(argv: list[str] | None = None) -> int:
     pc.add_argument("--note")
     pc.add_argument("--json", action="store_true")
 
+    pp = sub.add_parser(
+        "promise",
+        help="emit the completion promise via structured tool call "
+             "(unambiguous — cannot be confused with text mentions)",
+    )
+    pp.add_argument("phrase", help="must match the loop's configured completion_promise")
+    pp.add_argument("--json", action="store_true")
+
     px = sub.add_parser("cancel", help="remove the state file (end the loop)")
     px.add_argument("--json", action="store_true")
 
@@ -397,6 +457,19 @@ def main(argv: list[str] | None = None) -> int:
                 print(json.dumps(entry, indent=2))
             else:
                 print(f"completed: [{entry.get('id', '?')}] {entry['desc']}")
+            return 0
+        if args.cmd == "promise":
+            result = emit_promise(args.phrase)
+            if args.json:
+                print(json.dumps(result, indent=2))
+            else:
+                if result["matches"]:
+                    print(f"promise emitted: {result['phrase']!r} "
+                          f"(matches configured — loop will end on next Stop)")
+                else:
+                    print(f"promise emitted: {result['phrase']!r} "
+                          f"(does NOT match configured {result['configured_promise']!r})")
+                    return 1
             return 0
         if args.cmd == "cancel":
             result = cancel()

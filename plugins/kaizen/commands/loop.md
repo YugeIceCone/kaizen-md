@@ -106,7 +106,15 @@ validation and can break the loop. Use the controlled surface instead:
 | List completed (audit log) | `mcp__plugin_kaizen_loop__loop_list_completed()` | `kaizen-loop list --completed` |
 | Loop status / counts | `mcp__plugin_kaizen_loop__loop_status()` | `kaizen-loop status` |
 | Manually complete a `verify: null` item | `mcp__plugin_kaizen_loop__loop_complete_item(id, note)` | `kaizen-loop complete <id> [--note "..."]` |
+| **Emit the completion promise (structured)** | `mcp__plugin_kaizen_loop__loop_promise("PHRASE")` | `kaizen-loop promise PHRASE` |
 | Cancel the loop | `mcp__plugin_kaizen_loop__loop_cancel()` | `kaizen-loop cancel` |
+
+**Recommended completion signal: the `loop_promise(phrase)` MCP tool.**
+The text-tag form (`<promise>PHRASE</promise>`) still works but requires
+the tag to be at the message END (after stripping markdown code fences).
+The 2026-05-14 incident showed that mid-text mentions in code examples
+or Iron-Law docs can trigger the legacy regex; the tool path is
+unambiguous because tool calls can't be confused with text content.
 
 The tools enforce three guarantees the agent could otherwise circumvent
 via raw file edits:
