@@ -11,6 +11,7 @@ Run:
 """
 from __future__ import annotations
 
+import os
 import subprocess
 import tempfile
 import unittest
@@ -21,9 +22,10 @@ SETUP_SH = PLUGIN_ROOT / "skills" / "workflow" / "scripts" / "setup.sh"
 ENABLE_ALL_SH = PLUGIN_ROOT / "skills" / "workflow" / "scripts" / "enable_all.sh"
 
 
-def _run(cmd: list[str], cwd: Path) -> tuple[int, str, str]:
+def _run(cmd: list[str], cwd: Path, env=None) -> tuple[int, str, str]:
     result = subprocess.run(
         cmd, cwd=cwd, capture_output=True, text=True, timeout=30,
+        env=env or None,
     )
     return result.returncode, result.stdout, result.stderr
 
@@ -143,6 +145,44 @@ class TestDocs(unittest.TestCase):
             self.assertFalse(
                 (commands / stale).exists(),
                 f"{stale} should have been folded into setup.md")
+
+
+class TestPluginIndexSeed(unittest.TestCase):
+    """Bare setup.sh seeds the plugin loc index (idempotent)."""
+
+    def test_install_seeds_loc_db_for_plugin(self):
+        with tempfile.TemporaryDirectory() as td:
+            repo = _git_repo(td)
+            idx_root = Path(td) / "fake-plugin-root"
+            idx_root.mkdir()
+            (idx_root / "sample.py").write_text("def f():\n    return 1\n")
+            env = dict(os.environ, KAIZEN_PLUGIN_INDEX_ROOT=str(idx_root))
+            rc, out, err = _run(["bash", str(SETUP_SH)], repo, env=env)
+            self.assertEqual(rc, 0, err)
+            self.assertTrue((idx_root / ".kaizen" / "loc.db").exists(),
+                            "bare install should seed the plugin loc.db")
+
+    def test_install_seed_is_idempotent(self):
+        with tempfile.TemporaryDirectory() as td:
+            repo = _git_repo(td)
+            idx_root = Path(td) / "fake-plugin-root"
+            (idx_root / ".kaizen").mkdir(parents=True)
+            (idx_root / ".kaizen" / "loc.db").write_text("")  # pretend seeded
+            env = dict(os.environ, KAIZEN_PLUGIN_INDEX_ROOT=str(idx_root))
+            rc, out, err = _run(["bash", str(SETUP_SH)], repo, env=env)
+            self.assertEqual(rc, 0, err)
+            self.assertIn("plugin index", out.lower())  # prints a skip line
+
+    def test_disable_knob_skips_seed(self):
+        with tempfile.TemporaryDirectory() as td:
+            repo = _git_repo(td)
+            idx_root = Path(td) / "fake-plugin-root"
+            idx_root.mkdir()
+            env = dict(os.environ, KAIZEN_PLUGIN_INDEX_ROOT=str(idx_root),
+                       KAIZEN_PLUGIN_INDEX_DISABLE="1")
+            rc, out, err = _run(["bash", str(SETUP_SH)], repo, env=env)
+            self.assertEqual(rc, 0, err)
+            self.assertFalse((idx_root / ".kaizen" / "loc.db").exists())
 
 
 if __name__ == "__main__":

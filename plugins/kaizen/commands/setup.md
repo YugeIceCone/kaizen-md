@@ -40,6 +40,10 @@ global git config.
 5. Seeds `.kaizen/workflow/backlog.json` + renders `backlog.md` at the detected location
 6. Writes `.kaizen/.gitignore` per-dir policy (ignores ephemeral cache/hooks/trace/, tracks durable workflow/ artifacts)
 7. Cache check — surfaces the per-repo `.kaizen/cache/` state
+8. Seeds the **plugin loc index** — a fast, stdlib-only line/function
+   index of the kaizen plugin source itself (`KAIZEN_PLUGIN_INDEX_DISABLE=1`
+   to skip). `--enable-all` additionally starts the watch daemon that
+   keeps both the loc and semantic indexes continuously fresh.
 
 After install: smoke-test with `git commit --allow-empty -m 'test(gate): smoke'`. Reverse with `/kaizen:setup uninstall`.
 

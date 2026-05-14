@@ -321,6 +321,25 @@ if [ "${KAIZEN_NO_BIN:-0}" = "0" ] && [ -d "$PLUGIN_BIN" ]; then
     fi
 fi
 
+# ─── Plugin-index seed (fine-grained line editing) ───────────────────
+# Indexes the kaizen plugin source so Claude has line-level knowledge
+# of it from any repo. loc is stdlib-only + fast; idempotent (skips if
+# already seeded). Semantic + the watch daemon come with --enable-all.
+if [ "${KAIZEN_PLUGIN_INDEX_DISABLE:-}" != "1" ]; then
+    # shellcheck source=_paths.sh
+    source "$_SCRIPT_DIR/_paths.sh"
+    _PLUGIN_ROOT_IDX="$(kaizen_plugin_index_root)"
+    if [ -f "$_PLUGIN_ROOT_IDX/.kaizen/loc.db" ]; then
+        echo "  ∘ plugin index already seeded ($_PLUGIN_ROOT_IDX/.kaizen/loc.db)"
+    elif [ -d "$_PLUGIN_ROOT_IDX" ]; then
+        echo "  ▸ seeding plugin loc index ($_PLUGIN_ROOT_IDX)..."
+        python3 "$_SCRIPT_DIR/loc_index.py" index --root "$_PLUGIN_ROOT_IDX" \
+            >/dev/null 2>&1 \
+            && echo "  ✓ plugin loc index seeded" \
+            || echo "  ! plugin loc index seed failed (non-fatal)"
+    fi
+fi
+
 # ─── Cache check (folded from /kaizen:cache) ─────────────────────────
 # /kaizen:setup folds in the per-repo hash-cache surface. Surface its
 # state at the end of an install so the user sees it exists + is

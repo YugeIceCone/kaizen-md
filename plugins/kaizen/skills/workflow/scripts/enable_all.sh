@@ -184,6 +184,13 @@ if [ "$SKIP_GLOBALS" -eq 0 ]; then
   step "install shell env (KAIZEN_ROOT + aliases)" \
     "bash '$PLUGIN_ROOT/skills/workflow/scripts/kaizen-env.sh' install"
 
+  # plugin-index watch daemon — on by default; KAIZEN_DAEMON_INDEX_DISABLE
+  # opts out. watch-start is idempotent + cron-supervised (daemon install).
+  if [ "${KAIZEN_DAEMON_INDEX_DISABLE:-}" != "1" ]; then
+    step "start plugin-index watch daemon" \
+      "bash -c 'python3 \"$PLUGIN_ROOT/skills/workflow/scripts/daemon.py\" watch-start && python3 \"$PLUGIN_ROOT/skills/workflow/scripts/daemon.py\" install'"
+  fi
+
   echo ""
 else
   echo "${DIM}globals: skipped (--no-globals)${RESET}"
