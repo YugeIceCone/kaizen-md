@@ -313,6 +313,10 @@ else
 fi
 
 # ─── Check 6: No sha / date / LOC count in CLAUDE.md ─────────────────
+# Canonical definition: iron-laws.yaml::claude-md-no-volatile-data. This
+# pure-bash form is the portable, dependency-free implementation that
+# runs in consumer repos; Check 7.5 runs the iron-laws checker form in
+# the kaizen-md repo. Keep the two in sync — the iron law is the spec.
 if echo "$STAGED" | grep -qE "(^|/)CLAUDE\.md$"; then
     CLAUDE_DIFF=$(git diff --cached -- '*CLAUDE.md' 2>/dev/null | grep -E "^\+" | grep -v "^+++")
     SHA_PATTERN='[0-9a-f]{7,40}'
@@ -338,6 +342,10 @@ else
 fi
 
 # ─── Check 7: New code → paired test (SOFT by default) ───────────────
+# Canonical definition: iron-laws.yaml::paired-tests. This bash form is
+# the portable, language-general implementation (.rs/.ts/.go/.py) that
+# runs in consumer repos; the iron-laws checker form (Check 7.5, kaizen-md
+# repo only) is kaizen-plugin-Python-scoped. The iron law is the spec.
 # Brain-rule severity override: check-severity rule with check_id=paired-test.
 SKIP_TDD_VAL=${!SKIP_TDD_ENV:-}
 PAIRED_TEST_SEV="default"
@@ -371,6 +379,32 @@ elif [ "$SKIP_TDD_VAL" != "1" ]; then
     done
 else
     skip "TDD-paired-test check ($SKIP_TDD_ENV=1)"
+fi
+
+# ─── Check 7.5: iron-laws checker (kaizen-md plugin repo only) ───────
+# The iron-laws registry (skills/iron-laws/domain/iron-laws.yaml) is the
+# single source of truth for the kaizen-plugin iron laws; _iron_laws.py
+# is its checker. Run it over the staged diff when committing IN the
+# kaizen-md repo. Consumer repos have no plugins/kaizen/ tree — the
+# checker is a no-op there, so we skip the subprocess entirely.
+IRON_LAWS_CLI="$_SCRIPT_REAL_DIR/iron_laws.py"
+if [ -f "$REPO_ROOT/plugins/kaizen/skills/iron-laws/domain/iron-laws.yaml" ] \
+   && [ -f "$IRON_LAWS_CLI" ]; then
+    IRON_OUT=$(python3 "$IRON_LAWS_CLI" check --staged 2>&1)
+    IRON_RC=$?
+    IRON_HARD=$(echo "$IRON_OUT" | grep -cE '^hard ' || true)
+    IRON_SOFT=$(echo "$IRON_OUT" | grep -cE '^soft ' || true)
+    if [ "$IRON_RC" -ne 0 ] && [ "$IRON_HARD" -gt 0 ]; then
+        hard_fail "iron-laws: $IRON_HARD hard finding(s) in staged diff"
+        echo "$IRON_OUT" | grep -E '^hard ' | head -5 | sed 's/^/        /' >&2
+    elif [ "$IRON_SOFT" -gt 0 ]; then
+        warn "iron-laws: $IRON_SOFT soft finding(s) in staged diff"
+        echo "$IRON_OUT" | grep -E '^soft ' | head -3 | sed 's/^/        /' >&2
+    else
+        pass "iron-laws checker (no staged violations)"
+    fi
+else
+    skip "iron-laws checker: not the kaizen-md plugin repo"
 fi
 
 # ─── Check 8.5: Backlog drift (.md regenerated from .json) ───────────

@@ -136,6 +136,10 @@ pre_commit_gates:
     description: "New public function/class should have a paired test in the same commit"
     probe_logic: "ast-grep for new pub fn / new test fn; warn on mismatch"
     bypass_env: KAIZEN_SKIP_TDD_CHECK
+    # Canonical definition: iron-laws.yaml::paired-tests. The pre-commit.sh
+    # Check 7 bash form is the portable, language-general implementation;
+    # the iron-laws checker (Check 7.5) is the kaizen-plugin-scoped form.
+    canonical_definition: "iron-law:paired-tests"
 
   - id: no_volatile_data_in_claude_md
     severity: error
@@ -143,6 +147,21 @@ pre_commit_gates:
     probe_logic: |
       grep staged CLAUDE.md for: \b[a-f0-9]{7,40}\b (sha), \d{4}-\d{2}-\d{2}
       (date), \d+\s+LOC. Allow in code-fence examples.
+    # Canonical definition: iron-laws.yaml::claude-md-no-volatile-data. The
+    # pre-commit.sh Check 6 bash form is the portable, dependency-free
+    # implementation; the iron-laws checker (Check 7.5) is the checker form.
+    canonical_definition: "iron-law:claude-md-no-volatile-data"
+
+  - id: iron_laws
+    severity: error
+    description: "Staged diff checked against the auto-enforced iron laws (kaizen-md repo only)"
+    probe: "python3 ${SCRIPTS}/iron_laws.py check --staged"
+    probe_logic: |
+      In the kaizen-md plugin repo, run the iron-laws checker
+      (skills/iron-laws/ — the single source of truth for the iron laws)
+      over the staged diff. Hard findings block; soft findings warn.
+      In consumer repos there is no plugins/kaizen/ tree, so pre-commit.sh
+      skips the subprocess entirely.
 
   - id: conventional_commit_subject
     severity: error

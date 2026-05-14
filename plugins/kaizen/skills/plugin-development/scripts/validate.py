@@ -407,28 +407,32 @@ def _exists_with_glob(resolved: str) -> bool:
 
 
 def check_iron_laws(feature: Optional[str] = None) -> list[Finding]:
-    findings: list[Finding] = []
-    laws = _load_yaml(IRON_LAWS_YAML).get("laws", [])
+    """Delegate to the iron-laws skill's checker — skills/iron-laws/ owns
+    the registry + every `check_*` function; this validator just surfaces
+    its findings.
 
-    # Only implement the cheap, deterministic checks here. The
-    # heavier ones (commit-time analysis) belong in the pre-commit
-    # gate, not this script.
-    for law in laws:
-        if not isinstance(law, dict):
-            continue
-        lid = law.get("id", "")
-        severity = law.get("severity", "soft")
-        if lid == "no-modify-vendored":
-            findings.extend(_check_no_modify_vendored(law, severity))
-        # Other checks are runtime / commit-time; skipped here.
-    return findings
-
-
-def _check_no_modify_vendored(law: dict, severity: str) -> list[Finding]:
-    """Stub — actual diff check happens in the pre-commit gate.
-    Here we just verify the VENDORED_SKILLS list matches the law's
-    declared detect pattern roughly."""
-    return []
+    Lazy import so validate.py stays runnable in constrained environments
+    (its stdlib-only design): if the iron-laws checker or its PyYAML /
+    jsonschema deps are unavailable, iron-law checks are skipped with one
+    info finding rather than crashing."""
+    try:
+        sys.path.insert(0, str(SKILL_DIR.parent / "workflow" / "scripts"))
+        import _iron_laws  # noqa: E402
+    except ImportError as e:
+        return [Finding(
+            severity="info", kind="iron-law", feature="<global>",
+            message="iron-law checks skipped — iron-laws checker unavailable",
+            detail=str(e))]
+    raw = _iron_laws.run_checks(scope="all", repo_root=REPO_ROOT)
+    return [
+        Finding(
+            severity=f.severity, kind="iron-law",
+            feature=f.path or "<global>",
+            message=f"{f.law_id}: {f.message}",
+            detail=f.detail,
+        )
+        for f in raw
+    ]
 
 
 # ─── CLI ─────────────────────────────────────────────────────────────

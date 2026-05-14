@@ -57,7 +57,8 @@ class CheckContext:
     repo_root: Path
     plugin_root: Path
     scope: str                       # "staged" | "all"
-    changed: list[str] = field(default_factory=list)  # repo-relative paths
+    changed: list[str] = field(default_factory=list)  # added+modified, repo-relative
+    added: list[str] = field(default_factory=list)    # added-only, repo-relative
 
     def in_scope(self, rel_path: str) -> bool:
         return self.scope == "all" or rel_path in self.changed
@@ -76,8 +77,14 @@ class CheckContext:
         ]
 
     def changed_under(self, *prefixes: str) -> list[str]:
-        """Changed repo-relative paths under any of the given prefixes."""
+        """Changed (added+modified) repo-relative paths under any prefix."""
         return [c for c in self.changed if any(c.startswith(p) for p in prefixes)]
+
+    def added_under(self, *prefixes: str) -> list[str]:
+        """Newly-added repo-relative paths under any prefix. Use this for
+        'new file' laws — a modified file is not a new file."""
+        src = self.added if self.scope == "staged" else self.changed
+        return [c for c in src if any(c.startswith(p) for p in prefixes)]
 
 
 # ─── auto-law checks ─────────────────────────────────────────────────────
@@ -166,9 +173,18 @@ def check_bin_wrapper_per_cli(ctx: CheckContext) -> list[Finding]:
 
 
 def check_plugin_manifest_permissions(ctx: CheckContext) -> list[Finding]:
-    new = ctx.changed_under(
-        "plugins/kaizen/skills/workflow/scripts/", "plugins/kaizen/hooks/claude/")
-    new = [c for c in new if c.endswith((".py", ".sh"))]
+    # The law targets NEW invocable surfaces: skills/workflow/scripts/*.py
+    # OR hooks/claude/*.sh. NOT scripts/*.sh (infra: pre-commit.sh, lib.sh)
+    # and NOT `_`-prefixed modules (imported, never Bash-invoked).
+    scripts_py = [
+        c for c in ctx.added_under("plugins/kaizen/skills/workflow/scripts/")
+        if c.endswith(".py") and not Path(c).name.startswith("_")
+    ]
+    hook_sh = [
+        c for c in ctx.added_under("plugins/kaizen/hooks/claude/")
+        if c.endswith(".sh") and not Path(c).name.startswith("_")
+    ]
+    new = scripts_py + hook_sh
     if not new:
         return []
     pj = ctx.plugin_root / ".claude-plugin" / "plugin.json"
@@ -236,7 +252,7 @@ def check_claude_md_no_volatile_data(ctx: CheckContext) -> list[Finding]:
 
 
 def check_paired_tests(ctx: CheckContext) -> list[Finding]:
-    new = [c for c in ctx.changed_under("plugins/kaizen/skills/workflow/scripts/")
+    new = [c for c in ctx.added_under("plugins/kaizen/skills/workflow/scripts/")
            if c.endswith(".py")]
     out = []
     for c in new:
@@ -253,7 +269,7 @@ def check_paired_tests(ctx: CheckContext) -> list[Finding]:
 
 
 def check_bin_wrapper_per_cli_strict(ctx: CheckContext) -> list[Finding]:
-    new = [c for c in ctx.changed_under("plugins/kaizen/skills/workflow/scripts/")
+    new = [c for c in ctx.added_under("plugins/kaizen/skills/workflow/scripts/")
            if c.endswith(".py") and not Path(c).name.startswith("_")]
     out = []
     for c in new:
@@ -324,9 +340,15 @@ def check_skill_md_no_exec_markers(ctx: CheckContext) -> list[Finding]:
 def check_skill_md_no_external_script_paths(ctx: CheckContext) -> list[Finding]:
     out = []
     for p in ctx.plugin_files("skills/*/SKILL.md"):
+        in_bash = False  # the law targets bash blocks, not prose that mentions a path
         for i, line in enumerate(
                 p.read_text(encoding="utf-8", errors="ignore").splitlines(), 1):
-            if "if [ -f" in line:
+            stripped = line.strip()
+            if stripped.startswith("```"):
+                lang = stripped[3:].strip().lower()
+                in_bash = lang in ("bash", "sh", "shell")
+                continue
+            if not in_bash or "if [ -f" in line:
                 continue
             if "~/.claude/scripts/" in line or ".venv/bin/python" in line:
                 out.append(Finding(
@@ -381,10 +403,10 @@ def _detect_repo_root() -> Path:
         return Path.cwd()
 
 
-def _staged_paths(repo_root: Path) -> list[str]:
+def _git_staged(repo_root: Path, diff_filter: str) -> list[str]:
     try:
         out = subprocess.run(
-            ["git", "diff", "--cached", "--name-only", "--diff-filter=AM"],
+            ["git", "diff", "--cached", "--name-only", f"--diff-filter={diff_filter}"],
             capture_output=True, text=True, check=True, cwd=repo_root)
         return [ln for ln in out.stdout.splitlines() if ln.strip()]
     except (subprocess.CalledProcessError, FileNotFoundError):
@@ -393,12 +415,14 @@ def _staged_paths(repo_root: Path) -> list[str]:
 
 def build_context(scope: str = "staged", repo_root: Path | None = None) -> CheckContext:
     root = repo_root or _detect_repo_root()
-    changed = _staged_paths(root) if scope == "staged" else []
+    changed = _git_staged(root, "AM") if scope == "staged" else []
+    added = _git_staged(root, "A") if scope == "staged" else []
     return CheckContext(
         repo_root=root,
         plugin_root=root / "plugins" / "kaizen",
         scope=scope,
         changed=changed,
+        added=added,
     )
 
 

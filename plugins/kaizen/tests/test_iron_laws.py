@@ -81,13 +81,17 @@ def _mini_plugin(tmp: Path) -> Path:
     return pk
 
 
-def _ctx(tmp: Path, scope="all", changed=None):
+def _ctx(tmp: Path, scope="all", changed=None, added=None):
     import _iron_laws
+    changed = changed or []
     return _iron_laws.CheckContext(
         repo_root=tmp,
         plugin_root=tmp / "plugins" / "kaizen",
         scope=scope,
-        changed=changed or [],
+        changed=changed,
+        # in these fixtures the changed files ARE the added files unless
+        # a test overrides `added` explicitly.
+        added=added if added is not None else changed,
     )
 
 

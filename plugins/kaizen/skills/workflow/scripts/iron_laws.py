@@ -87,8 +87,11 @@ def build_parser() -> argparse.ArgumentParser:
     sp_show = sub.add_parser("show", help="show one law's full record")
     sp_show.add_argument("id", help="law id")
     sp_check = sub.add_parser("check", help="run the auto-law checks")
-    sp_check.add_argument("--all", action="store_true",
-                          help="audit the whole plugin (default: staged diff)")
+    scope_grp = sp_check.add_mutually_exclusive_group()
+    scope_grp.add_argument("--staged", action="store_true",
+                           help="check the staged diff (default)")
+    scope_grp.add_argument("--all", action="store_true",
+                           help="audit the whole plugin")
     sp_check.add_argument("--law", help="run only this law's check")
     sub.add_parser("render", help="regenerate references/iron-laws.md")
     return p
