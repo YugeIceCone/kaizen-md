@@ -48,27 +48,13 @@ from typing import Optional
 _SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(_SCRIPT_DIR))
 
-# Core primitives — see _metrics.py. __all__ there gates the surface.
-from _metrics import (  # noqa: F401  — re-exported for metrics_mcp.py + tests
-    Rollup,
-    SKIP_RULES,
-    VENDORED_SKILLS,
-    available_bins,
-    available_mcp_servers,
-    available_skills,
-    detect_skips,
-    graveyard,
-    iter_events,
-    latest_session_id,
-    never_used,
-    parse_duration,
-    plugin_root,
-    rollup_events,
-    smoke_mcp,
-    top_n,
-    trace_age_days,
-    trace_log_path,
-)
+# Core primitives — see _metrics.py. Its `__all__` gates exactly the
+# public surface; the star-import re-exports that surface onto the
+# `metrics.` namespace so metrics_mcp.py (`import metrics`) and the
+# CLI handlers below both reach it. A hand-maintained explicit list
+# was tried + dropped — it rotted into dead re-exports (boy-scout +
+# YAGNI: __all__ is the single source of truth, no list to maintain).
+from _metrics import *  # noqa: F401,F403
 
 
 # ─── CLI ─────────────────────────────────────────────────────────────

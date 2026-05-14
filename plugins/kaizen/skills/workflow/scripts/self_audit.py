@@ -44,7 +44,7 @@ import re
 import subprocess
 import sys
 from pathlib import Path
-from typing import Any, Optional
+from typing import Optional
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR))
@@ -107,8 +107,16 @@ def run_validator(stage: dict) -> list[Finding]:
 
 
 def run_metrics_coverage(stage: dict) -> list[Finding]:
-    """Run kaizen-metrics never-used --kind {skill,mcp,bin} and
-    flag categories with high never-used ratios."""
+    """Run kaizen-metrics never-used --kind {skill,mcp,bin,tool} and
+    flag categories with high never-used ratios.
+
+    Recency-guarded: a high never-used ratio on a YOUNG trace is a
+    measurement artifact (the universal trace hook is recent), not
+    a real adoption gap. We compute trace_age_days per kind and only
+    escalate to medium/high when the trace has watched that kind for
+    >= `adoption_min_trace_days` (default 14). Below that the finding
+    is `info` — surfaced, not alarming. Mirrors the graveyard
+    recency guard."""
     findings: list[Finding] = []
     metrics_py = _core.SCRIPT_DIR / "metrics.py"
     if not metrics_py.is_file():
@@ -116,6 +124,9 @@ def run_metrics_coverage(stage: dict) -> list[Finding]:
     threshold = (stage.get("threshold") or {})
     warn_pct = threshold.get("adoption_warn_pct", 10)
     systemic = threshold.get("systemic_threshold", 30)
+    min_trace_days = threshold.get("adoption_min_trace_days", 14)
+    # Import the core directly for trace_age_days (cheap; no subprocess).
+    import _metrics as _m  # noqa: E402  — local import keeps the runner self-contained
     for kind in ("skill", "mcp", "bin", "tool"):
         try:
             result = subprocess.run(
@@ -132,23 +143,41 @@ def run_metrics_coverage(stage: dict) -> list[Finding]:
         if available == 0:
             continue
         adoption = (used / available) * 100
-        sev = "low"
-        if len(never) >= systemic:
-            sev = "medium"
-        if adoption < warn_pct:
-            sev = "medium" if sev == "low" else sev
+        age = _m.trace_age_days(kind)  # None when no events of this kind
+        trace_old_enough = age is not None and age >= min_trace_days
+        if not trace_old_enough:
+            # Young trace → informational only. State the age so the
+            # reader knows WHY it's not escalated.
+            sev = "info"
+            age_note = (
+                f"trace too young to judge ({age:.1f}d watched"
+                f" < {min_trace_days}d threshold)" if age is not None
+                else "trace has captured zero events of this kind yet"
+            )
+        else:
+            sev = "low"
+            if len(never) >= systemic:
+                sev = "medium"
+            if adoption < warn_pct:
+                sev = "medium" if sev == "low" else sev
+            age_note = f"trace watched {age:.1f}d — judgment valid"
         findings.append(Finding(
             id=Finding.make_id(stage["id"], f"never-used-{kind}"),
             stage=stage["id"], kind="mechanical", severity=sev,
             title=f"{kind}: {len(never)}/{available} never invoked "
                   f"({adoption:.0f}% adoption)",
-            detail="\n".join(f"  - {n}" for n in never[:30])
-                    + ("\n  ..." if len(never) > 30 else ""),
+            detail=f"{age_note}\n"
+                   + "\n".join(f"  - {n}" for n in never[:30])
+                   + ("\n  ..." if len(never) > 30 else ""),
             remediation=(
                 f"Review the {len(never)} never-used {kind}(s); "
                 "retire what's dead, document what's load-bearing-but-rare, "
                 "or use `kaizen-metrics top --kind " + kind + "` to see "
                 "what IS hot."
+            ) if trace_old_enough else (
+                f"No action yet — let the trace mature past "
+                f"{min_trace_days}d, then re-audit. Use `kaizen-metrics "
+                f"graveyard --kind {kind}` for the recency-guarded view."
             ),
         ))
     return findings

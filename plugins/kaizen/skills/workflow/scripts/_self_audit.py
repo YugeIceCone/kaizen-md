@@ -14,7 +14,7 @@ import os
 import re
 import sys
 from pathlib import Path
-from typing import Any, Optional
+from typing import Optional
 
 
 SCRIPT_DIR = Path(__file__).resolve().parent
@@ -75,18 +75,14 @@ def load_pipeline() -> dict:
 
 
 # ─── Plugin tree helpers ─────────────────────────────────────────────
-
-
-def list_skills() -> list[Path]:
-    """Every skill dir (vendored + original)."""
-    out = []
-    skills = PLUGIN_ROOT / "skills"
-    if not skills.is_dir():
-        return out
-    for p in sorted(skills.iterdir()):
-        if p.is_dir() and (p / "SKILL.md").is_file():
-            out.append(p)
-    return out
+#
+# Only the helpers self_audit.py's runners actually consume live here.
+# An earlier scaffold carried list_skills / list_python_scripts /
+# script_underscore_main / script_referenced_in_bin /
+# script_in_plugin_permissions / read_hooks_json_text — all
+# zero-consumer speculation, removed per the YAGNI checkpoint
+# (self-audit found them; they had no caller in self_audit.py or
+# the tests).
 
 
 def list_bin_wrappers() -> list[Path]:
@@ -103,57 +99,12 @@ def list_hook_scripts() -> list[Path]:
     return sorted(p for p in hooks.glob("*.sh") if p.is_file())
 
 
-def list_python_scripts() -> list[Path]:
-    scripts = PLUGIN_ROOT / "skills" / "workflow" / "scripts"
-    if not scripts.is_dir():
-        return []
-    return sorted(p for p in scripts.glob("*.py") if p.is_file())
-
-
 def read_plugin_manifest_text() -> str:
     p = PLUGIN_ROOT / ".claude-plugin" / "plugin.json"
     return p.read_text(encoding="utf-8") if p.is_file() else ""
 
 
-def read_hooks_json_text() -> str:
-    p = PLUGIN_ROOT / "hooks" / "hooks.json"
-    return p.read_text(encoding="utf-8") if p.is_file() else ""
-
-
 # ─── Mechanical check helpers ────────────────────────────────────────
-
-
-def script_underscore_main(script_path: Path) -> bool:
-    """Does this Python script have an argparse main()? Quick text probe."""
-    try:
-        text = script_path.read_text(encoding="utf-8", errors="replace")
-    except OSError:
-        return False
-    return "if __name__" in text and ("argparse" in text or "ArgumentParser" in text)
-
-
-def script_referenced_in_bin(script_name: str) -> Optional[str]:
-    """Return the bin wrapper that execs `script_name`, or None."""
-    for b in list_bin_wrappers():
-        try:
-            text = b.read_text(encoding="utf-8")
-        except OSError:
-            continue
-        if script_name in text:
-            return b.name
-    return None
-
-
-def script_in_plugin_permissions(script_name: str) -> bool:
-    """Check whether the plugin.json::permissions allow-list contains
-    a Bash entry for this script (either explicit or via wildcard)."""
-    text = read_plugin_manifest_text()
-    if not text:
-        return False
-    if script_name in text:
-        return True
-    # Wildcard catch-all: skills/workflow/scripts/*.py
-    return "skills/workflow/scripts/*.py" in text
 
 
 def hook_fires_trace(hook_path: Path) -> bool:

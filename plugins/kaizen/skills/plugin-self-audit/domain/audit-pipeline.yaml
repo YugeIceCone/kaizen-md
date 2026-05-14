@@ -32,6 +32,12 @@ stages:
       adoption_warn_pct: 10
       # Categories with > this many never-used = systemic-issue finding
       systemic_threshold: 30
+      # Recency guard — the universal trace hook is recent, so a high
+      # never-used ratio on a young trace is a measurement artifact.
+      # Below this many days of trace-watching for a kind, the finding
+      # is emitted as `info` (surfaced, not alarming) instead of
+      # medium/high. Mirrors the graveyard recency guard.
+      adoption_min_trace_days: 14
 
   - id: metrics-skips
     kind: mechanical

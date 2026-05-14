@@ -63,12 +63,13 @@ import os
 import sqlite3
 import sys
 from pathlib import Path
-from typing import Any, Iterator, Optional
+from typing import Iterator, Optional
 
 _SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(_SCRIPT_DIR))
 
 import _brain  # noqa: E402
+import _sqlite as _kz_sqlite  # noqa: E402  — shared SQLite open/meta helpers
 import flow as _flow  # noqa: E402
 
 
@@ -122,29 +123,26 @@ CREATE TABLE IF NOT EXISTS brain_meta (
 
 
 def open_db(create: bool = True) -> sqlite3.Connection:
-    p = db_path()
+    """Open the brain index db via the shared `_sqlite.open_indexer_db`
+    helper — same path onboard_index / trace_index / knowledge_index
+    take. (DRY: brain_index used to reimplement open/schema; the
+    self-audit DRY checkpoint flagged the duplication.)"""
+    conn = _kz_sqlite.open_indexer_db(db_path(), _SCHEMA_SQL, create=create)
     if create:
-        p.parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(str(p))
-    conn.row_factory = sqlite3.Row
-    if create:
-        conn.executescript(_SCHEMA_SQL)
         conn.commit()
     return conn
 
 
 def set_meta(conn: sqlite3.Connection, key: str, value: str) -> None:
-    conn.execute(
-        "INSERT OR REPLACE INTO brain_meta (key, value) VALUES (?, ?)",
-        (key, value),
-    )
+    """Thin wrapper over the shared `_sqlite.set_meta` — pins the
+    brain-specific meta table name so callers stay 1-arg."""
+    _kz_sqlite.set_meta(conn, "brain_meta", key, value)
 
 
 def get_meta(conn: sqlite3.Connection, key: str, default: str = "") -> str:
-    row = conn.execute(
-        "SELECT value FROM brain_meta WHERE key = ?", (key,)
-    ).fetchone()
-    return row[0] if row else default
+    """Thin wrapper over the shared `_sqlite.get_meta` — pins the
+    brain-specific meta table name."""
+    return _kz_sqlite.get_meta(conn, "brain_meta", key, default)
 
 
 # ─── Brain walker ────────────────────────────────────────────────────
