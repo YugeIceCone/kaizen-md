@@ -389,7 +389,9 @@ def main() -> None:
     sub = p.add_subparsers(dest="cmd", required=False)
 
     ev = sub.add_parser("event", help="append an event")
-    ev.add_argument("--src", required=True, choices=["hook", "agent", "llm", "tool", "user", "cc", "plugin"])
+    ev.add_argument("--src", required=True,
+                    choices=["hook", "agent", "llm", "tool", "user", "cc",
+                             "plugin", "workflow"])
     ev.add_argument("--evt", required=True)
     ev.add_argument("--tool", default="")
     ev.add_argument("--sid", default="")

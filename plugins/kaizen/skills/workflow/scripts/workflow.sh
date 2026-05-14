@@ -28,6 +28,18 @@ mkdir -p "$STATE_DIR"
 
 now() { date -u +%Y-%m-%dT%H:%M:%SZ; }
 
+# Emit a workflow trace event. Best-effort — never fails the caller
+# (set -e is active). Covers the MCP path too: workflow_mcp.py shells
+# out to this script.
+_wf_trace() {
+  local evt="$1" stage="${2:-}"
+  local trace_py
+  trace_py="$(dirname "$0")/trace.py"
+  [ -f "$trace_py" ] || return 0
+  python3 "$trace_py" event --src workflow --evt "$evt" \
+    ${stage:+--tool "$stage"} >/dev/null 2>&1 || true
+}
+
 json_get() {
   # json_get <key> [file]  — extract a top-level scalar string field. Pure bash.
   local key="$1"
@@ -252,6 +264,7 @@ EOF
 Run the '$first_stage' skill now. When it finishes, run:
   $(realpath "$0" 2>/dev/null || echo "$0") advance $first_stage "<one-line result summary>"
 EOF
+  _wf_trace routine-start "$first_stage"
 }
 
 current_stage() {
@@ -269,7 +282,14 @@ PY
 }
 
 cmd_next() {
-  if ! current_stage; then echo "[workflow] no active workflow"; exit 1; fi
+  local stage
+  if stage="$(current_stage)"; then
+    printf '%s\n' "$stage"
+    _wf_trace stage-start "$stage"
+  else
+    echo "[workflow] no active workflow"
+    exit 1
+  fi
 }
 
 cmd_advance() {
@@ -351,6 +371,9 @@ else:
 PY
   local rc=$?
   set -e
+  if [ $rc -eq 0 ]; then
+    _wf_trace stage-complete "$stage"
+  fi
   if [ $rc -eq 4 ]; then
     return 1
   fi
