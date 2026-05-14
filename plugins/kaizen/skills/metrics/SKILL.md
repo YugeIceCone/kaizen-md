@@ -13,7 +13,7 @@ analysis means the same mistake repeats next session.
 
 ## What this skill does
 
-Surfaces three rollup reports + one diff:
+Surfaces rollup reports + diffs + a smoke check:
 
 | Report | What it answers |
 |---|---|
@@ -22,6 +22,8 @@ Surfaces three rollup reports + one diff:
 | `never-used` | "What features have I NEVER used?" — the dead-code-equivalent for capabilities |
 | `top` | "Top N most-used skills / tools / MCP servers" |
 | `skips` | "Which skills did I touch the trigger files for but never load?" — the discipline-violation report |
+| `graveyard` | "What's cold enough to archive?" — never-used AND the trace is old enough to judge |
+| `smoke` | "Does every MCP server still import?" — catches a broken server before a user hits it |
 
 ## Quick reference
 
@@ -45,10 +47,42 @@ kaizen-metrics top --kind tool
 # Skip-detection — did I forget to load a skill the touched files implied?
 kaizen-metrics skips
 
+# Graveyard — cold-artifact candidates (only flags once the trace is
+# old enough to judge — guards against false-dead on a young trace)
+kaizen-metrics graveyard --kind skill --stale-days 14
+kaizen-metrics graveyard --kind mcp
+
+# MCP smoke-test — import every *_mcp.py, verify FastMCP instance
+kaizen-metrics smoke --kind mcp
+
 # JSON output for machine readers
 kaizen-metrics lifetime --json
 kaizen-metrics skips --json
 ```
+
+## graveyard vs never-used — the recency guard
+
+`never-used` is a raw set difference: available minus invoked. On a
+YOUNG trace (the universal trace hook landed recently) almost
+everything shows as never-used — that's a measurement artifact, not
+dead code.
+
+`graveyard` adds the recency guard: it computes `trace_age_days(kind)`
+— how long the trace has actually been *watching* that artifact kind
+— and refuses to flag candidates until that age clears `--stale-days`.
+A `ready: false` result with a caveat means "trace too young, can't
+judge yet." Only `ready: true` results carry actionable candidates,
+and even then the caveat says verify each is genuinely dead (not just
+rare / indirectly-triggered) before archiving. graveyard NEVER
+archives — archiving is user-led (pre-deletion belief).
+
+## smoke — MCP server health
+
+`smoke --kind mcp` imports every `*_mcp.py` module and checks for a
+module-level `mcp` FastMCP instance. A server that `sys.exit()`s on a
+missing opt-in dep (e.g. `browser_mcp.py` without playwright) is
+recorded as a `failed` entry — not a crash of the smoke run. Exit
+code 2 when any server fails, so it's CI-gateable.
 
 ## What gets tracked (and what doesn't)
 

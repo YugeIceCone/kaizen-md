@@ -280,6 +280,93 @@ class TestSkipDetection(MetricsBase):
         self.assertEqual(brain_skip["touched_count"], 2)
 
 
+class TestTraceAge(MetricsBase):
+    def test_trace_age_none_when_no_matching_events(self):
+        _write_trace(self.trace_file, [
+            {"ts": "2026-05-14T00:00:00Z", "evt": "PreToolUse-Bash", "tool": "Bash"},
+        ])
+        # No PreToolUse-Skill events → skill trace age is None
+        self.assertIsNone(metrics.trace_age_days("skill"))
+
+    def test_trace_age_positive_when_events_exist(self):
+        # An event from well in the past → age should be large
+        _write_trace(self.trace_file, [
+            {"ts": "2026-01-01T00:00:00Z", "evt": "PreToolUse-Skill",
+             "tool": "Skill", "data": {"ident": "brain"}},
+        ])
+        age = metrics.trace_age_days("skill")
+        self.assertIsNotNone(age)
+        self.assertGreater(age, 30)  # Jan 1 → mid-May is >> 30 days
+
+
+class TestGraveyard(MetricsBase):
+    def test_graveyard_not_ready_when_no_events(self):
+        _write_trace(self.trace_file, [])
+        result = metrics.graveyard(kind="skill", stale_days=14)
+        self.assertFalse(result["ready"])
+        self.assertEqual(result["candidates"], [])
+        self.assertIn("caveat", result)
+
+    def test_graveyard_not_ready_when_trace_too_young(self):
+        # A skill event from "now" → trace age ~0 days < 14
+        _write_trace(self.trace_file, [
+            {"ts": dt_now_iso(), "evt": "PreToolUse-Skill",
+             "tool": "Skill", "data": {"ident": "brain"}},
+        ])
+        result = metrics.graveyard(kind="skill", stale_days=14)
+        self.assertFalse(result["ready"])
+        self.assertIn("too young", result["caveat"].lower())
+
+    def test_graveyard_ready_when_trace_old_enough(self):
+        # A skill event from Jan → trace age >> 14 days → ready
+        _write_trace(self.trace_file, [
+            {"ts": "2026-01-01T00:00:00Z", "evt": "PreToolUse-Skill",
+             "tool": "Skill", "data": {"ident": "brain"}},
+        ])
+        result = metrics.graveyard(kind="skill", stale_days=14)
+        self.assertTrue(result["ready"])
+        # 'brain' was used; the rest of available_skills are candidates
+        self.assertNotIn("brain", result["candidates"])
+        self.assertIn("archive_hint", result)
+
+
+def dt_now_iso() -> str:
+    import datetime as _dt
+    return _dt.datetime.now(_dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+class TestSmokeMcp(unittest.TestCase):
+    """smoke_mcp imports the real MCP modules — runs against the
+    actual plugin tree (not sandboxed). Tolerant of mcp-not-installed."""
+
+    def test_smoke_returns_expected_shape(self):
+        result = metrics.smoke_mcp()
+        self.assertIn("checked", result)
+        self.assertIn("passed", result)
+        self.assertIn("failed", result)
+        self.assertIn("skipped", result)
+
+    def test_smoke_skipped_or_checks(self):
+        result = metrics.smoke_mcp()
+        if result["skipped"]:
+            # mcp not installed — checked should be 0
+            self.assertEqual(result["checked"], 0)
+        else:
+            # mcp installed — should have checked the *_mcp.py files
+            self.assertGreater(result["checked"], 0)
+            # passed + failed should account for everything checked
+            self.assertEqual(
+                result["passed"] + len(result["failed"]),
+                result["checked"],
+            )
+
+    def test_smoke_failures_have_name_and_error(self):
+        result = metrics.smoke_mcp()
+        for f in result["failed"]:
+            self.assertIn("name", f)
+            self.assertIn("error", f)
+
+
 class TestPaths(unittest.TestCase):
     def test_trace_log_path_env_override(self):
         orig = os.environ.get("KAIZEN_TRACE_DIR")

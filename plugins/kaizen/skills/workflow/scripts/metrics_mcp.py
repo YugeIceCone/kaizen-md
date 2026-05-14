@@ -106,5 +106,27 @@ async def metrics_path() -> dict:
     return {"trace_log": str(metrics.trace_log_path())}
 
 
+@mcp.tool()
+async def metrics_graveyard(kind: str = "skill", stale_days: int = 14) -> dict:
+    """Cold-artifact candidates — never-used AND the trace has been
+    *watching* this kind for >= stale_days. Returns ready=False with
+    a caveat when the trace is too young to judge (guards against
+    false-dead flagging on a young trace). Does NOT archive anything.
+
+    kind: 'skill' | 'mcp' | 'bin' | 'tool'
+    """
+    return await asyncio.to_thread(metrics.graveyard, kind, stale_days)
+
+
+@mcp.tool()
+async def metrics_smoke_mcp() -> dict:
+    """Smoke-test every MCP server — import each *_mcp.py module,
+    verify a module-level FastMCP instance exists. Returns
+    {checked, passed, failed: [{name, error}], skipped}. A server
+    that sys.exit()s on a missing opt-in dep counts as a failure,
+    not a crash."""
+    return await asyncio.to_thread(metrics.smoke_mcp)
+
+
 if __name__ == "__main__":
     mcp.run()

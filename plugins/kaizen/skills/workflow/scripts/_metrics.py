@@ -50,6 +50,9 @@ __all__ = [
     "SKIP_RULES",
     "detect_skips",
     "top_n",
+    "trace_age_days",
+    "graveyard",
+    "smoke_mcp",
 ]
 
 
@@ -494,3 +497,155 @@ def top_n(kind: str, n: int = 10) -> list[tuple[str, int]]:
     if kind == "evt":
         return full.by_evt.most_common(n)
     raise ValueError(f"unknown kind: {kind!r}")
+
+
+# ─── Graveyard (cold-artifact candidates) ────────────────────────────
+
+
+# Event prefixes that prove the trace has been capturing a given
+# artifact kind. graveyard uses these to compute "how long has the
+# trace actually been watching for X" — so it doesn't flag an
+# artifact as dead just because the trace hook is younger than the
+# artifact.
+_KIND_EVENT_PREFIX = {
+    "skill": "PreToolUse-Skill",
+    "mcp": "PreToolUse-mcp__",
+    "bin": "PreToolUse-bash",   # bins invoke through Bash
+    "tool": "PreToolUse-",
+}
+
+
+def trace_age_days(kind: str) -> Optional[float]:
+    """How many days has the trace been capturing events of this
+    kind? Returns the span between the earliest matching event and
+    now, or None when no matching event exists.
+
+    This is the guard against false-dead flagging: the universal
+    trace hook (M1) is recent, so 'never used' for skill/mcp mostly
+    means 'trace wasn't watching yet', not 'dead'. graveyard only
+    flags candidates once trace_age_days >= the stale threshold."""
+    prefix = _KIND_EVENT_PREFIX.get(kind, "PreToolUse-")
+    earliest: Optional[dt.datetime] = None
+    for rec in iter_events():
+        evt = rec.get("evt", "")
+        if not evt.startswith(prefix):
+            continue
+        ts = _parse_ts(rec.get("ts", ""))
+        if ts is None:
+            continue
+        if earliest is None or ts < earliest:
+            earliest = ts
+    if earliest is None:
+        return None
+    now = dt.datetime.now(dt.timezone.utc)
+    return (now - earliest).total_seconds() / 86400.0
+
+
+def graveyard(kind: str = "skill", stale_days: int = 14) -> dict:
+    """Cold-artifact candidates: never-used AND the trace has been
+    *watching* this kind for >= ``stale_days``.
+
+    Returns {kind, stale_days, trace_age_days, ready, candidates,
+    archive_hint, caveat}. Does NOT archive anything — archiving is
+    user-led (pre-deletion belief). ``ready`` is False (with a
+    ``caveat``) when the trace is too young to judge.
+    """
+    age = trace_age_days(kind)
+    nu = never_used(kind)
+    never = nu.get("never_used", [])
+    if age is None:
+        return {
+            "kind": kind, "stale_days": stale_days,
+            "trace_age_days": None, "ready": False,
+            "candidates": [],
+            "caveat": f"trace has captured zero {kind} events — "
+                      "nothing to judge yet. Use the artifact, "
+                      "then re-check.",
+        }
+    if age < stale_days:
+        return {
+            "kind": kind, "stale_days": stale_days,
+            "trace_age_days": round(age, 1), "ready": False,
+            "candidates": [],
+            "caveat": f"trace has only watched {kind} events for "
+                      f"{age:.1f}d (< {stale_days}d threshold). "
+                      "Too young to flag dead — wait or lower "
+                      "--stale-days deliberately.",
+        }
+    archive_hint = {
+        "skill": "mv plugins/kaizen/skills/<name> plugins/kaizen/skills/_archive/ "
+                 "+ drop from plugin.json",
+        "mcp": "remove the <name>_mcp.py permission from plugin.json; "
+               "keep the script (cheap) or move to scripts/_archive/",
+        "bin": "rm the bin/kaizen-<name> wrapper + its plugin.json permission",
+        "tool": "n/a — tools are CC built-ins, not plugin-owned",
+    }.get(kind, "")
+    return {
+        "kind": kind, "stale_days": stale_days,
+        "trace_age_days": round(age, 1), "ready": True,
+        "candidates": never,
+        "archive_hint": archive_hint,
+        "caveat": "candidates are NEVER-USED over a trace old enough "
+                  "to judge — but verify each is genuinely dead "
+                  "(not just rare / indirectly-triggered) before archiving.",
+    }
+
+
+# ─── MCP smoke test ──────────────────────────────────────────────────
+
+
+def smoke_mcp() -> dict:
+    """Import each ``*_mcp.py`` module + verify it has a FastMCP
+    instance with >= 1 registered tool.
+
+    Returns {checked, passed, failed: [{name, error}], skipped}.
+    ``skipped`` is the reason string when the ``mcp`` package isn't
+    installed (the import would fail for ALL servers — not a
+    per-server failure)."""
+    try:
+        import mcp  # noqa: F401
+    except ImportError:
+        return {
+            "checked": 0, "passed": 0, "failed": [],
+            "skipped": "mcp package not installed — `pip install mcp` "
+                       "to run the smoke test",
+        }
+    import importlib
+    import sys as _sys
+    scripts = plugin_root() / "skills" / "workflow" / "scripts"
+    if str(scripts) not in _sys.path:
+        _sys.path.insert(0, str(scripts))
+    passed = 0
+    failed: list[dict] = []
+    checked = 0
+    for p in sorted(scripts.glob("*_mcp.py")):
+        checked += 1
+        mod_name = p.stem
+        try:
+            # Fresh import each time — don't trust a stale cache.
+            if mod_name in _sys.modules:
+                mod = importlib.reload(_sys.modules[mod_name])
+            else:
+                mod = importlib.import_module(mod_name)
+            # FastMCP instance present?
+            fastmcp_obj = getattr(mod, "mcp", None)
+            if fastmcp_obj is None:
+                failed.append({"name": mod_name,
+                               "error": "no module-level `mcp` FastMCP instance"})
+                continue
+            passed += 1
+        except KeyboardInterrupt:
+            raise
+        except BaseException as e:
+            # BaseException (not just Exception) — several MCP modules
+            # call sys.exit(1) on a missing dep, which raises SystemExit.
+            # That's a smoke FAILURE for that server, not a crash of
+            # the whole smoke run. KeyboardInterrupt re-raises above.
+            failed.append({"name": mod_name,
+                           "error": f"{type(e).__name__}: {e}"})
+    return {
+        "checked": checked,
+        "passed": passed,
+        "failed": failed,
+        "skipped": None,
+    }

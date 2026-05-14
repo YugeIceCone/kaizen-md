@@ -57,13 +57,16 @@ from _metrics import (  # noqa: F401  — re-exported for metrics_mcp.py + tests
     available_mcp_servers,
     available_skills,
     detect_skips,
+    graveyard,
     iter_events,
     latest_session_id,
     never_used,
     parse_duration,
     plugin_root,
     rollup_events,
+    smoke_mcp,
     top_n,
+    trace_age_days,
     trace_log_path,
 )
 
@@ -151,6 +154,53 @@ def _cmd_skips(args) -> int:
     return 0
 
 
+def _cmd_graveyard(args) -> int:
+    result = graveyard(kind=args.kind, stale_days=args.stale_days)
+    if args.json:
+        print(json.dumps(result, indent=2))
+        return 0
+    print(f"\n[kaizen-metrics graveyard] kind={result['kind']} "
+          f"stale_days={result['stale_days']}")
+    if not result["ready"]:
+        print(f"  ∘ not ready: {result['caveat']}")
+        return 0
+    cands = result["candidates"]
+    print(f"  trace age: {result['trace_age_days']}d  (>= threshold — judging is valid)")
+    print(f"  cold candidates: {len(cands)}")
+    if cands:
+        print()
+        for name in cands:
+            print(f"    - {name}")
+        print()
+        print(f"  archive hint: {result['archive_hint']}")
+        print(f"  caveat: {result['caveat']}")
+    return 0
+
+
+def _cmd_smoke(args) -> int:
+    if args.kind != "mcp":
+        print(json.dumps({"error": f"smoke --kind {args.kind} not implemented "
+                                   "(only 'mcp' for now)"}))
+        return 1
+    result = smoke_mcp()
+    if args.json:
+        print(json.dumps(result, indent=2))
+        return 0
+    print("\n[kaizen-metrics smoke] kind=mcp")
+    if result.get("skipped"):
+        print(f"  ∘ skipped: {result['skipped']}")
+        return 0
+    print(f"  checked: {result['checked']}  passed: {result['passed']}  "
+          f"failed: {len(result['failed'])}")
+    if result["failed"]:
+        print()
+        for f in result["failed"]:
+            print(f"    ✗ {f['name']}: {f['error']}")
+        return 2
+    print("  ✓ all MCP servers import + expose a FastMCP instance")
+    return 0
+
+
 def _print_rollup(d: dict, title: str) -> None:
     print(f"\n[kaizen-metrics] {title}")
     print(f"  events     : {d['total_events']:>6}")
@@ -216,6 +266,25 @@ def main(argv: Optional[list[str]] = None) -> int:
     s_skips.add_argument("--sid", help="session id (default: latest)")
     s_skips.add_argument("--json", action="store_true")
     s_skips.set_defaults(func=_cmd_skips)
+
+    s_grave = sub.add_parser(
+        "graveyard",
+        help="cold-artifact candidates: never-used over a trace old enough to judge",
+    )
+    s_grave.add_argument("--kind", choices=["skill", "mcp", "bin", "tool"],
+                         default="skill")
+    s_grave.add_argument("--stale-days", type=int, default=14,
+                         help="min trace-watch age before flagging (default 14)")
+    s_grave.add_argument("--json", action="store_true")
+    s_grave.set_defaults(func=_cmd_graveyard)
+
+    s_smoke = sub.add_parser(
+        "smoke",
+        help="smoke-test: import each MCP server, verify FastMCP instance + tools",
+    )
+    s_smoke.add_argument("--kind", choices=["mcp"], default="mcp")
+    s_smoke.add_argument("--json", action="store_true")
+    s_smoke.set_defaults(func=_cmd_smoke)
 
     args = p.parse_args(argv)
     if args.cmd is None:
