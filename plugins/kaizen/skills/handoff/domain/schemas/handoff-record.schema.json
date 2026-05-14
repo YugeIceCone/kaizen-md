@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kaizen-md/handoff/handoff-record.schema.json",
+  "title": "Handoff record",
+  "description": "One row in the handoff store (handoff.db). The filesystem YAML at file_path is the system of record; this is its queryable index entry. Emitted by `kaizen-handoff latest --json` / `list --json`.",
+  "type": "object",
+  "required": ["id", "session_id", "created_at", "file_path", "status"],
+  "properties": {
+    "id": {
+      "type": "integer",
+      "description": "Autoincrement row id."
+    },
+    "session_id": {
+      "type": "string",
+      "description": "The session/project grouping the handoff belongs to."
+    },
+    "created_at": {
+      "type": "string",
+      "description": "UTC ISO-8601 timestamp (millisecond precision) of the last save."
+    },
+    "file_path": {
+      "type": "string",
+      "description": "Absolute path to the canonical handoff YAML — the system of record. UNIQUE: re-saving the same file upserts this row."
+    },
+    "content": {
+      "type": "string",
+      "description": "Full YAML content, indexed at save time. Omitted from `list` output (metadata-only); present in `latest`/`get`."
+    },
+    "status": {
+      "type": "string",
+      "enum": ["partial", "complete", "blocked"],
+      "description": "Lifecycle state of the handoff's work."
+    }
+  },
+  "additionalProperties": false
+}

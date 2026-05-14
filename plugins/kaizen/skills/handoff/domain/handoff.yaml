@@ -1,0 +1,36 @@
+# Handoff feature — schema-driven config.
+#
+# The handoff skill (skills/handoff/SKILL.md) creates + resumes session
+# handoff documents. The filesystem YAML is the SYSTEM OF RECORD;
+# this config + the SQLite store (handoff.db) form the queryable INDEX.
+#
+# Refactored from the recovered ~/.claude/scripts/stores.py — the lost
+# handoff DB helper, now plugin-owned (see CHANGELOG 1.36.0).
+
+version: 1
+
+# Where things live. Both env-overridable — KAIZEN_HANDOFF_DB and
+# KAIZEN_HANDOFF_DIR — see _handoff.py for the resolution logic. These
+# are the documented defaults, not the source of truth for resolution.
+paths:
+  # SQLite queryable index. Global (handoffs span sessions + projects).
+  db: "~/.claude/.kaizen/handoff.db"
+  # Root for the canonical handoff YAML files — the system of record.
+  yaml_dir: "~/.claude/thoughts/handoffs"
+
+# status — the lifecycle state of the handoff's WORK. Written to the
+# YAML frontmatter `status:` field and the DB `status` column.
+status:
+  - partial      # work in progress, or the placeholder at write time
+  - complete     # the session's work is done
+  - blocked      # work stopped on an external blocker
+
+# outcome — how the SESSION went. Set in `create` Step 4 from the
+# user's answer; written to the YAML frontmatter `outcome:` field.
+# (Not a DB column — the DB tracks work-status, the YAML tracks both.)
+outcome:
+  - IN_PROGRESS    # placeholder written at create time, before Step 4
+  - SUCCEEDED      # task completed successfully
+  - PARTIAL_PLUS   # mostly done, minor issues remain
+  - PARTIAL_MINUS  # some progress, major issues remain
+  - FAILED         # task abandoned or blocked
