@@ -133,6 +133,14 @@
         "--script",
         "${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/drift_mcp.py"
       ]
+    },
+    "manifests": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--script",
+        "${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/manifests_mcp.py"
+      ]
     }
   }
 }
