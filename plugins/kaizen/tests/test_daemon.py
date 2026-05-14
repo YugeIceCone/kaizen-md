@@ -64,5 +64,29 @@ class TestIndexStatus(unittest.TestCase):
             self.assertIn("never", st["reason"].lower())
 
 
+class TestWatchBackendSelect(unittest.TestCase):
+    def test_watchdog_available_true_when_importable(self):
+        with mock.patch.dict("sys.modules", {"watchdog": mock.MagicMock()}):
+            self.assertTrue(daemon._watchdog_available())
+
+    def test_watchdog_available_false_when_missing(self):
+        real_import = __import__
+
+        def fake_import(name, *a, **k):
+            if name == "watchdog" or name.startswith("watchdog."):
+                raise ImportError("no watchdog")
+            return real_import(name, *a, **k)
+
+        with mock.patch("builtins.__import__", side_effect=fake_import):
+            self.assertFalse(daemon._watchdog_available())
+
+    def test_ignore_patterns_cover_kaizen_and_git(self):
+        # The self-trigger guard: .kaizen/ must be ignored.
+        joined = " ".join(daemon._WATCH_IGNORE)
+        self.assertIn(".kaizen", joined)
+        self.assertIn(".git", joined)
+        self.assertIn("__pycache__", joined)
+
+
 if __name__ == "__main__":
     unittest.main()

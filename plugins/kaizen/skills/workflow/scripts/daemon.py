@@ -39,6 +39,7 @@ import os
 import signal
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 HOME = Path(os.path.expanduser("~"))
@@ -378,6 +379,108 @@ def tick() -> dict:
 PID_FILE = STATE_DIR / "watcher.pid"
 DEFAULT_WATCH_INTERVAL_SEC = 5.0
 
+# Self-trigger guard: the index DBs live at <root>/.kaizen/*.db INSIDE
+# the watched root — without these ignores the watcher would see its
+# own DB write and loop forever. Also skip vcs / build noise.
+_WATCH_IGNORE = ["*/.kaizen/*", "*/.git/*", "*/__pycache__/*",
+                 "*/node_modules/*", "*/target/*"]
+_WATCH_DEBOUNCE_SEC = 0.05
+_SEMANTIC_THROTTLE_SEC = 5.0
+
+
+def _watchdog_available() -> bool:
+    try:
+        import watchdog  # noqa: F401
+        return True
+    except ImportError:
+        return False
+
+
+def _run_watchdog_foreground(stop_event) -> None:
+    """watchdog-backed watch path. Runs on the calling thread; the
+    observer runs callbacks on its own background thread which only
+    mutates `pending` under a lock. The loc.db conn is created and used
+    ONLY on this thread (sqlite3 conns are thread-affine)."""
+    import threading
+    from watchdog.observers import Observer
+    from watchdog.events import PatternMatchingEventHandler
+    sys.path.insert(0, str(scripts_dir()))
+    import loc_index  # noqa: E402
+
+    root = _p.plugin_index_root()
+    conn = loc_index.open_db(root, create=True)
+    conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute("PRAGMA busy_timeout=3000")
+
+    pending: set[str] = set()
+    lock = threading.Lock()
+
+    class _Handler(PatternMatchingEventHandler):
+        def on_any_event(self, event):
+            if event.is_directory:
+                return
+            with lock:
+                pending.add(event.src_path)
+                dest = getattr(event, "dest_path", None)
+                if dest:
+                    pending.add(dest)
+
+    handler = _Handler(ignore_patterns=_WATCH_IGNORE, ignore_directories=True)
+    observer = Observer()
+    observer.schedule(handler, str(root), recursive=True)
+    observer.start()
+    log_line("INFO", f"watchdog observer started on {root}")
+
+    # Initial catch-up tick (full loc + onboard) for offline drift.
+    tick()
+    last_semantic = time.monotonic()
+    semantic_dirty = False
+    try:
+        # The debounce window IS the wait interval — coalesces a burst.
+        while not stop_event.wait(_WATCH_DEBOUNCE_SEC):
+            with lock:
+                paths = list(pending)
+                pending.clear()
+            if not paths:
+                continue
+            for path in paths:
+                try:
+                    p = Path(path)
+                    if p.exists():
+                        loc_index.index_one_file(conn, root, p)
+                    else:
+                        rel = os.path.relpath(path, str(root))
+                        loc_index.delete_file(conn, rel)
+                except Exception as e:  # never let one bad file kill the loop
+                    log_line("ERROR", f"watch index {path}: {e}")
+            conn.commit()
+            semantic_dirty = True
+            # Throttled background semantic refresh — off the loc path.
+            if semantic_dirty and (time.monotonic() - last_semantic) > _SEMANTIC_THROTTLE_SEC:
+                _spawn_semantic_refresh(root)
+                last_semantic = time.monotonic()
+                semantic_dirty = False
+    finally:
+        observer.stop()
+        observer.join()
+        conn.close()
+        log_line("INFO", "watchdog observer stopped")
+
+
+def _spawn_semantic_refresh(root: Path) -> None:
+    """Fire-and-forget incremental onboard index — torch is seconds, so
+    it runs detached, never on the loc critical path."""
+    scripts = scripts_dir()
+    try:
+        subprocess.Popen(
+            ["uv", "run", "--script", str(scripts / "onboard_index.py"),
+             "index", "--root", str(root)],
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+            start_new_session=True,
+        )
+    except (FileNotFoundError, OSError) as e:
+        log_line("ERROR", f"semantic refresh spawn failed: {e}")
+
 
 def _pid_alive(pid: int) -> bool:
     try:
@@ -439,7 +542,7 @@ async def watch_loop(interval: float) -> None:
     signal.signal(signal.SIGTERM, shutdown)
     signal.signal(signal.SIGINT, shutdown)
 
-    last_hash = dir_hash(plugin_src())
+    last_hash = dir_hash(_p.plugin_index_root())
     log_line("INFO", f"watcher started (pid={os.getpid()}, interval={interval}s, hash={last_hash})")
 
     # Initial tick — catch any drift accumulated while watcher was offline
@@ -454,7 +557,7 @@ async def watch_loop(interval: float) -> None:
         except asyncio.TimeoutError:
             pass
 
-        h = dir_hash(plugin_src())
+        h = dir_hash(_p.plugin_index_root())
         if h != last_hash:
             log_line("INFO", f"hash drift {last_hash} → {h} — running tick")
             tick()
@@ -464,10 +567,13 @@ async def watch_loop(interval: float) -> None:
 
 
 def watch_foreground(interval: float) -> int:
-    """Run the watcher in foreground (this process). Writes PID file."""
+    """Run the watcher in foreground (this process). Writes PID file.
+    Uses watchdog (event-driven, ms-latency loc) when available; falls
+    back to the async hash-poll loop otherwise."""
     st = watch_status()
     if st.get("running"):
-        print(f"watcher already running (pid {st['pid']}). /kaizen:daemon watch-stop first.", file=sys.stderr)
+        print(f"watcher already running (pid {st['pid']}). "
+              f"/kaizen:daemon watch-stop first.", file=sys.stderr)
         return 1
     if st.get("stale_pid_file"):
         PID_FILE.unlink(missing_ok=True)
@@ -475,7 +581,20 @@ def watch_foreground(interval: float) -> int:
     STATE_DIR.mkdir(parents=True, exist_ok=True)
     PID_FILE.write_text(str(os.getpid()))
     try:
-        asyncio.run(watch_loop(interval))
+        if _watchdog_available():
+            import threading
+            stop_event = threading.Event()
+
+            def shutdown(*_):
+                log_line("INFO", "watcher received shutdown signal")
+                stop_event.set()
+
+            signal.signal(signal.SIGTERM, shutdown)
+            signal.signal(signal.SIGINT, shutdown)
+            _run_watchdog_foreground(stop_event)
+        else:
+            log_line("INFO", "watchdog not installed — using hash-poll fallback")
+            asyncio.run(watch_loop(interval))
         return 0
     finally:
         PID_FILE.unlink(missing_ok=True)
