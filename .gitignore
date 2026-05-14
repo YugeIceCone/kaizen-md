@@ -14,5 +14,9 @@ __pycache__/
 # Local install state
 plugins/*/CACHE/
 
+# Stray .kaizen/ written by subagents run with cwd inside a plugin dir;
+# the real workflow dir is the repo-root .kaizen/
+plugins/**/.kaizen/
+
 # Test sandboxes (the test script auto-cleans, but if --keep is used)
 gwtest-*/
