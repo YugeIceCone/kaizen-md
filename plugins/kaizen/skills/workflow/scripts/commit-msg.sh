@@ -79,6 +79,16 @@ PLAN_MENTIONS=$(echo "$RAW_MSG" | grep -oE "${PLAN_DIR}/[A-Za-z0-9._-]+\.md" | s
 
 if [ -n "$PLAN_MENTIONS" ]; then
     for plan_path in $PLAN_MENTIONS; do
+        # Cross-repo plan references: when the mentioned plan file doesn't
+        # exist in THIS repo (e.g. a kaizen-md commit referencing shodan's
+        # plans/), the gate has nothing to enforce locally — the plan
+        # checkbox tick happens in the OTHER repo's commit. Treat as
+        # informational; don't block. The original "I forgot to stage the
+        # plan file" intent still fires when the file exists locally.
+        if [ ! -f "$REPO_ROOT/$plan_path" ]; then
+            skip "plan ${plan_path}: not present in this repo (cross-repo reference)"
+            continue
+        fi
         if echo "$STAGED" | grep -qF "$plan_path"; then
             if echo "$DIFF_CONTENT" | grep -E "^\+- \[x\]" >/dev/null 2>&1; then
                 pass "plan ${plan_path}: checkbox tick present"
