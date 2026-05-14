@@ -788,7 +788,13 @@ def clean_for_embed(raw_rec: dict) -> dict:
     O1: also extract docstrings as a SIDECAR signal so "why does X exist"
     queries match prose, not just code identifiers. Stored on the record
     under `docstrings` — chunk_record then emits doc-chunks alongside
-    code-chunks."""
+    code-chunks.
+
+    O5 (v1.34+): the file snippet is no longer the first 2 KB of
+    cleaned text. ``_summary.smart_summary`` builds a dense signature
+    + docstring summary (Python ast / tree-sitter) with the same byte
+    budget. Falls back to first-2KB-cleaned when neither structural
+    summary is available."""
     if raw_rec.get("error") or "text" not in raw_rec:
         return dict(raw_rec)
     language = raw_rec.get("language", "")
@@ -798,7 +804,9 @@ def clean_for_embed(raw_rec: dict) -> dict:
     out = dict(raw_rec)
     out["cleaned"] = cleaned
     out["docstrings"] = docstrings
-    out["snippet"] = cleaned[:SNIPPET_MAX]
+    out["snippet"] = _kz_summary.smart_summary(
+        raw_rec["text"], language, cleaned, max_chars=SNIPPET_MAX,
+    )
     out["sloc"] = count_sloc(cleaned)
     return out
 
@@ -936,6 +944,7 @@ import _search as _kz_search  # v1.27.0+: BM25+dense hybrid search
 import _quant as _kz_quant  # v1.31.0+: int8 quantization helpers
 import _sparse as _kz_sparse  # v1.34.0+: SPLADE sparse-embedding helpers (E9)
 import _colbert as _kz_colbert  # v1.34.0+: ColBERT late-interaction helpers (E10)
+import _summary as _kz_summary  # v1.34.0+: smart file-level summary (O5)
 
 
 def _has_embedding_q8_column(conn: sqlite3.Connection) -> bool:
