@@ -260,7 +260,12 @@ CRON_MARKER = "# kaizen daemon (auto-installed by /kaizen:daemon install)"
 def cron_install(interval_min: int = 30) -> bool:
     """Install a crontab entry. Idempotent — removes existing first."""
     daemon = scripts_dir() / "daemon.py"
-    cron_line = f"*/{interval_min} * * * * python3 {daemon} run >/dev/null 2>&1  {CRON_MARKER}"
+    # Cron supervises the persistent watch daemon. `watch-start` is
+    # idempotent (pidfile check) — a no-op if alive, resurrect if dead.
+    periodic = (f"*/{interval_min} * * * * python3 {daemon} watch-start "
+                f">/dev/null 2>&1  {CRON_MARKER}")
+    reboot = f"@reboot python3 {daemon} watch-start >/dev/null 2>&1  {CRON_MARKER}"
+    cron_line = periodic + "\n" + reboot
 
     # Read existing crontab (may not exist)
     try:

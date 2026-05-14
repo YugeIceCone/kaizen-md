@@ -88,5 +88,26 @@ class TestWatchBackendSelect(unittest.TestCase):
         self.assertIn("__pycache__", joined)
 
 
+class TestCronSupervisor(unittest.TestCase):
+    def test_cron_install_supervises_watch_start(self):
+        captured = {}
+
+        def fake_run(argv, **kw):
+            if argv[:2] == ["crontab", "-l"]:
+                return mock.Mock(returncode=1, stdout="")
+            if argv[:2] == ["crontab", "-"]:
+                captured["crontab"] = kw.get("input", "")
+                return mock.Mock(returncode=0, stderr="")
+            return mock.Mock(returncode=0, stdout="")
+
+        with mock.patch.object(daemon.subprocess, "run", side_effect=fake_run):
+            ok = daemon.cron_install(interval_min=30)
+        self.assertTrue(ok)
+        cron = captured["crontab"]
+        self.assertIn("watch-start", cron)
+        self.assertIn("@reboot", cron)
+        self.assertNotRegex(cron, r"daemon\.py run\b")
+
+
 if __name__ == "__main__":
     unittest.main()
