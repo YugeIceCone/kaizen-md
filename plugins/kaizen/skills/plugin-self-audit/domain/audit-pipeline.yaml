@@ -1,0 +1,199 @@
+# Self-audit pipeline — schema-driven stage declarations.
+#
+# Each stage is one of:
+#   mechanical  — runs a Python check + emits Findings
+#   skill       — emits a "load this skill + apply" checkpoint Finding
+#                 the agent picks up after the report
+#
+# Mechanical stages run automatically. Skill stages are deliberately
+# not LLM-orchestrated — the audit produces a queue of skills to
+# load + targets to apply them to. Agents complete the checkpoints
+# manually after reading the report.
+
+version: 1
+
+stages:
+  # ─── Mechanical: cheap, deterministic checks ─────────────────────
+
+  - id: validator
+    kind: mechanical
+    description: "Run plugin-development validate.py --all"
+    runner: run_validator
+    severity_map:
+      hard: high
+      soft: low
+
+  - id: metrics-coverage
+    kind: mechanical
+    description: "Identify dead skills / MCP tools / bins (kaizen-metrics never-used)"
+    runner: run_metrics_coverage
+    threshold:
+      # Features with adoption < this percentage are flagged as cold
+      adoption_warn_pct: 10
+      # Categories with > this many never-used = systemic-issue finding
+      systemic_threshold: 30
+
+  - id: metrics-skips
+    kind: mechanical
+    description: "Detect skill-skips for the latest session"
+    runner: run_metrics_skips
+
+  - id: hook-trace-coverage
+    kind: mechanical
+    description: "Every hook script must fire _trace.sh or trace.py event"
+    runner: run_hook_trace_check
+
+  - id: bin-permission-coverage
+    kind: mechanical
+    description: "Every bin/kaizen-* must have a matching plugin.json permission"
+    runner: run_bin_permission_check
+
+  - id: vendored-modification-detect
+    kind: mechanical
+    description: "Detect modifications to vendored skills (no-modify-vendored iron law)"
+    runner: run_vendored_check
+
+  - id: claude-md-volatile-data
+    kind: mechanical
+    description: "CLAUDE.md / README.md must not contain commit SHAs / dates / LOC counts"
+    runner: run_claude_md_check
+    paths:
+      - "CLAUDE.md"
+      - "plugins/kaizen/README.md"
+
+  # ─── Skill checkpoints: load + apply, agent-driven ───────────────
+
+  - id: onion-ddd-checkpoint
+    kind: skill
+    description: "Load onion-ddd-workflow + audit kaizen plugin layering"
+    skill: onion-ddd-workflow
+    targets:
+      - "plugins/kaizen/skills/workflow/scripts/"
+    rationale: |
+      The plugin's Python modules implicitly form layers:
+      - core (_<feature>.py)              ← Domain (no IO)
+      - public CLI (<feature>.py)         ← Application (orchestration)
+      - indexer / promote / audit         ← Application/Adapter
+      - MCP server (<feature>_mcp.py)     ← Adapter (CC-side IO)
+      - hook scripts (.sh)                ← Adapter (CC lifecycle)
+      Audit checks: do dependencies flow inward? Are ports defined
+      where layers cross? Are adapters cleanly separated?
+
+  - id: kiss-checkpoint
+    kind: skill
+    description: "Load coding-skills:kiss + scan for over-engineering"
+    skill: kiss
+    targets:
+      - "plugins/kaizen/skills/workflow/scripts/"
+    focus: |
+      Check for: premature abstractions, unused parameters,
+      one-callsite helpers, deep call chains that could be
+      flattened, classes wrapping single functions.
+
+  - id: dry-checkpoint
+    kind: skill
+    description: "Load coding-skills:dry + scan for duplication"
+    skill: dry
+    targets:
+      - "plugins/kaizen/skills/workflow/scripts/"
+    focus: |
+      Check for: parallel implementations across modules
+      (e.g. brain_index.py vs onboard_index.py — should share),
+      copy-pasted blocks across the brain_*.py files,
+      duplicated yaml schemas.
+
+  - id: yagni-checkpoint
+    kind: skill
+    description: "Load coding-skills:yagni + scan for speculative features"
+    skill: yagni
+    targets:
+      - "plugins/kaizen/skills/workflow/scripts/"
+    focus: |
+      Check for: features added without a current consumer,
+      configuration knobs no one will tune, abstractions
+      anticipating hypothetical extensions.
+
+  - id: solid-checkpoint
+    kind: skill
+    description: "Load coding-skills:solid + check Single Responsibility / Interface Segregation"
+    skill: solid
+    targets:
+      - "plugins/kaizen/skills/workflow/scripts/"
+    focus: |
+      Check for: god-modules combining unrelated concerns
+      (workflow/mcp_server.py, brain.py — multiple flows),
+      classes where SRP is unclear, fat interfaces.
+
+  - id: separation-of-concerns-checkpoint
+    kind: skill
+    description: "Load coding-skills:separation-of-concerns + check layering"
+    skill: separation-of-concerns
+    targets:
+      - "plugins/kaizen/"
+    focus: |
+      Check for: schema mixed into code (should be yaml),
+      orchestration mixed with primitives, IO mixed with logic.
+
+  - id: law-of-demeter-checkpoint
+    kind: skill
+    description: "Load coding-skills:law-of-demeter + check coupling"
+    skill: law-of-demeter
+    targets:
+      - "plugins/kaizen/skills/workflow/scripts/"
+    focus: |
+      Check for: chains of getters across modules, modules
+      reaching into other modules' internals (vs going through
+      a stable interface).
+
+  - id: boy-scout-checkpoint
+    kind: skill
+    description: "Load coding-skills:boy-scout-rule + identify stale code"
+    skill: boy-scout-rule
+    targets:
+      - "plugins/kaizen/"
+    focus: |
+      Check for: comments referencing removed code, TODO markers
+      older than 30 days, dead imports, deprecated function aliases.
+
+  - id: convention-checkpoint
+    kind: skill
+    description: "Load coding-skills:convention-over-configuration + scan for inconsistencies"
+    skill: convention-over-configuration
+    targets:
+      - "plugins/kaizen/"
+    focus: |
+      Check for: deviations from the canonical 11-slot shape,
+      inconsistent module naming (some use _<feature>, some don't),
+      mismatched env-var prefixes (KAIZEN_X vs REMEMBER_Y).
+
+  - id: karpathy-checkpoint
+    kind: skill
+    description: "Load karpathy + check for AI-generated complexity"
+    skill: karpathy
+    targets:
+      - "plugins/kaizen/skills/workflow/scripts/"
+    focus: |
+      Check for: complexity beyond what the task needs,
+      diff noise (formatting churn alongside logic),
+      hidden assumptions (functions that work only with specific inputs),
+      goal-verification gaps (no tests proving the change matches the goal).
+
+# ─── Output configuration ────────────────────────────────────────
+
+output:
+  report_dir: ".kaizen/audits"
+  report_format: markdown
+  include_sections:
+    - executive-summary
+    - mechanical-findings
+    - skill-checkpoints
+    - remediation-plan
+    - new-functionality-suggestions
+
+# Severity ordering (lowest = informational, highest = block-merge)
+severity_order:
+  - info
+  - low
+  - medium
+  - high
+  - critical

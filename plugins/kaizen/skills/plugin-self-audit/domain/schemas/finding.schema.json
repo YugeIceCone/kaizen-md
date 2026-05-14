@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kaizen-md/self-audit/finding.schema.json",
+  "title": "Self-audit Finding",
+  "description": "One row in the structured audit report. Mechanical checks emit Findings directly; skill checkpoints emit Findings of kind=checkpoint.",
+  "type": "object",
+  "required": ["id", "stage", "kind", "severity", "title"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Stable id (sha-shortish) so the same finding across runs is comparable.",
+      "pattern": "^[a-z0-9-]+$"
+    },
+    "stage": {
+      "type": "string",
+      "description": "Pipeline stage that produced this finding (matches audit-pipeline.yaml::stages[].id)."
+    },
+    "kind": {
+      "type": "string",
+      "enum": ["mechanical", "checkpoint"],
+      "description": "mechanical = concrete violation; checkpoint = agent must apply a skill"
+    },
+    "severity": {
+      "type": "string",
+      "enum": ["info", "low", "medium", "high", "critical"]
+    },
+    "title": {
+      "type": "string",
+      "minLength": 5,
+      "maxLength": 200
+    },
+    "detail": {
+      "type": "string",
+      "description": "Multi-line context, paths, suggested fix"
+    },
+    "files": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "File paths the finding applies to (relative to repo root)"
+    },
+    "skill": {
+      "type": "string",
+      "description": "For checkpoint kind, the skill the agent should load."
+    },
+    "rationale": {
+      "type": "string"
+    },
+    "remediation": {
+      "type": "string",
+      "description": "Concrete one-line action the user/agent should take."
+    }
+  },
+  "additionalProperties": false
+}
