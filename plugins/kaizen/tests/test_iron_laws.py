@@ -293,6 +293,53 @@ class TestCLI(unittest.TestCase):
         self.assertEqual(r.returncode, 0)
 
 
+try:
+    import mcp as _mcp_pkg  # noqa: F401
+    _MCP_AVAILABLE = True
+except ImportError:
+    _MCP_AVAILABLE = False
+
+
+@unittest.skipUnless(_MCP_AVAILABLE, "mcp package not installed")
+class TestMCP(unittest.TestCase):
+    def _mod(self):
+        import asyncio
+        if "iron_laws_mcp" in sys.modules:
+            del sys.modules["iron_laws_mcp"]
+        import iron_laws_mcp
+        return iron_laws_mcp, asyncio
+
+    def test_list_returns_all_laws(self):
+        m, aio = self._mod()
+        laws = aio.run(m.iron_laws_list())
+        self.assertEqual(len(laws), 21)
+
+    def test_show_returns_one_law(self):
+        m, aio = self._mod()
+        law = aio.run(m.iron_laws_show("hook-bypass-knob"))
+        self.assertEqual(law["id"], "hook-bypass-knob")
+        self.assertEqual(law["enforcement"], "auto")
+
+    def test_show_unknown_returns_error(self):
+        m, aio = self._mod()
+        out = aio.run(m.iron_laws_show("no-such-law-xyz"))
+        self.assertIn("error", out)
+
+    def test_check_returns_findings_list(self):
+        m, aio = self._mod()
+        out = aio.run(m.iron_laws_check(scope="all"))
+        self.assertIn("findings", out)
+        self.assertIsInstance(out["findings"], list)
+
+
+class TestMCPRegistration(unittest.TestCase):
+    def test_mcp_json_lists_iron_laws_server(self):
+        data = json.loads((_PLUGIN_ROOT / ".mcp.json").read_text())
+        self.assertIn("iron-laws", data["mcpServers"])
+        joined = " ".join(data["mcpServers"]["iron-laws"]["args"])
+        self.assertIn("iron_laws_mcp.py", joined)
+
+
 class TestCodegen(unittest.TestCase):
     def test_render_is_deterministic(self):
         import codegen

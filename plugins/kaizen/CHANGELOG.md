@@ -14,6 +14,7 @@ The plugin's iron laws become a managed SSOT system — `iron-laws.yaml` as the 
 - **Application layer** — `_loader.py` (schema-validated, fail-fast registry loader) + `codegen.py` (renders the read-only `references/iron-laws.md`; `--check` mode is the CI drift gate; idempotent). 10 loader + codegen tests in `tests/test_iron_laws.py`.
 - **Checker core** — `skills/workflow/scripts/_iron_laws.py`: a `check_*` function per `auto` law (15), the `CHECKS` dispatch registry, `Finding` / `CheckContext` types, and `run_checks(scope, repo_root, law_id)`. `--staged` scope checks the staged diff; `--all` scope audits the whole plugin. 18 tests (positive + negative per check, registry integrity).
 - **CLI** — `kaizen-iron-laws` (`iron_laws.py` + `bin/` wrapper + `/kaizen:iron-laws` slash command): `list` / `show <id>` / `check [--staged|--all|--law <id>]` / `render`. `check` exits 1 on any `hard` finding.
+- **MCP server** — `iron-laws` (`iron_laws_mcp.py`, registered in `.mcp.json`): `iron_laws_list` / `iron_laws_show` / `iron_laws_check` tools so Claude can consult + check the laws mid-session. Async wrappers (`asyncio.to_thread`) over the same `_loader` + `_iron_laws` the CLI uses.
 
 ## [1.36.2] — 2026-05-14
 
