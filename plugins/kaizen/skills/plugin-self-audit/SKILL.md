@@ -93,6 +93,9 @@ to add stages; the runner dispatches on stage `runner` field.
 | `boy-scout-checkpoint` | boy-scout-rule | plugins/kaizen/ |
 | `convention-checkpoint` | convention-over-configuration | plugins/kaizen/ |
 | `karpathy-checkpoint` | karpathy | scripts/ |
+| `verification-before-completion-checkpoint` | verification-before-completion | scripts/ + tests/ |
+| `writing-plans-checkpoint` | writing-plans | plans/ + plugin-development SKILL.md |
+| `executing-plans-checkpoint` | executing-plans | plans/ + .kaizen/workflow/ |
 
 The audit DOES NOT load + apply these skills itself — they're
 LLM-applied, not script-executable. The audit emits one Finding

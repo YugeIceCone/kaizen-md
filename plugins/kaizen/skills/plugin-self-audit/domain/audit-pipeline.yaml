@@ -178,6 +178,88 @@ stages:
       hidden assumptions (functions that work only with specific inputs),
       goal-verification gaps (no tests proving the change matches the goal).
 
+  - id: verification-before-completion-checkpoint
+    kind: skill
+    description: "Load verification-before-completion + check for unverified done-claims"
+    skill: verification-before-completion
+    targets:
+      - "plugins/kaizen/skills/workflow/scripts/"
+      - "plugins/kaizen/tests/"
+    focus: |
+      Check that nothing claims completion without proof:
+      - Every feature module has a paired test file that ACTUALLY
+        exercises the happy path + at least one edge case (not just
+        an import-smoke).
+      - CLI subcommands have a test that runs them end-to-end and
+        asserts on output, not just exit code.
+      - Flows (Node+Flow pipelines) have a test that runs the full
+        AsyncFlow against a sandbox store + asserts the final report.
+      - Hooks have a test (or test_cc_hooks_wireup invariant) proving
+        they're wired AND fire.
+      - "Smoke verified" claims in commit bodies map to an actual
+        test or a reproducible command.
+      - No "TODO: add test" / "tested manually" left as the only
+        coverage for a shipped feature.
+    rationale: |
+      The plugin ships fast (phased-work commit cadence). The risk:
+      a commit body says "smoke verified" but the verification was a
+      one-off the next agent can't reproduce. This checkpoint audits
+      the gap between done-CLAIMED and done-PROVEN — the
+      verification-before-completion skill's core discipline applied
+      to the plugin's own codebase.
+
+  - id: writing-plans-checkpoint
+    kind: skill
+    description: "Load writing-plans + check plan-file quality + sizing discipline"
+    skill: writing-plans
+    targets:
+      - "plans/"
+      - "plugins/kaizen/skills/plugin-development/SKILL.md"
+    focus: |
+      Check the plugin's planning artifacts:
+      - Does every multi-phase feature (>= 3 phases / >= 16 files /
+        carve-out trigger) have a plan file, or did it get done
+        ad-hoc? (The brain fold-in, Phase 4, the metrics roadmap —
+        were they plan-file-driven or improvised?)
+      - Do existing plan files have a Status block, phase checkboxes,
+        verification commands, and a resume protocol?
+      - Is the sizing model (micro -> backlog, plan -> >=3 phases)
+        actually being followed, or are 16-file changes landing as
+        loose commits?
+      - Are completed plans archived per the Plans convention?
+    rationale: |
+      The plugin's own development should follow the planning
+      discipline it ships. The phased-work commit cadence is good,
+      but it's not a substitute for a plan file when the work crosses
+      the >=3-phase / carve-out threshold. This checkpoint audits
+      whether kaizen-md eats its own planning dogfood.
+
+  - id: executing-plans-checkpoint
+    kind: skill
+    description: "Load executing-plans + check plan-execution fidelity"
+    skill: executing-plans
+    targets:
+      - "plans/"
+      - ".kaizen/workflow/"
+    focus: |
+      Check plan-execution discipline:
+      - Do landed commits reference the plan phase they executed
+        (so `git log --grep` traces plan -> commit)?
+      - Were plan checkboxes ticked in the SAME commit that landed
+        the phase (the plan-phase-tick gate), or in follow-ups?
+      - Did any phase deviate from its plan without the deviation
+        being flagged + logged?
+      - Is the architecture log (.kaizen/workflow/progress.md) carrying
+        a row per structural change, or are carve-outs landing
+        unlogged?
+      - One-task-at-a-time: did each task pass its verification before
+        the next started, or were tasks batched past failures?
+    rationale: |
+      executing-plans is the discipline for turning a plan into
+      landed commits without drift. The plugin has a progress.md
+      architecture log + a plan-phase-tick gate — this checkpoint
+      audits whether they're actually load-bearing or ceremonial.
+
 # ─── Output configuration ────────────────────────────────────────
 
 output:

@@ -45,6 +45,9 @@ class TestPipelineLoad(unittest.TestCase):
             "yagni-checkpoint",
             "solid-checkpoint",
             "karpathy-checkpoint",
+            "verification-before-completion-checkpoint",
+            "writing-plans-checkpoint",
+            "executing-plans-checkpoint",
         ):
             self.assertIn(required, ids, f"missing stage: {required}")
 
