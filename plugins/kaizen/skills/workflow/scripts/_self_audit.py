@@ -74,6 +74,35 @@ def load_pipeline() -> dict:
         )
 
 
+def load_agent_dispatch() -> dict:
+    """Load domain/agent-dispatch.yaml — the agent-self-audit phase-A
+    config (subagent type, prompt template, run dir). Same
+    PyYAML-required contract as load_pipeline(): the prompt_template
+    uses multi-line `|` blocks the minimal parser can't handle."""
+    p = DOMAIN_DIR / "agent-dispatch.yaml"
+    text = p.read_text(encoding="utf-8")
+    try:
+        import yaml  # type: ignore
+        return yaml.safe_load(text) or {}
+    except ImportError:
+        raise RuntimeError(
+            "agent-self-audit requires PyYAML (`pip install pyyaml`); "
+            "agent-dispatch.yaml uses multi-line strings the minimal "
+            "parser doesn't handle."
+        )
+
+
+def agent_audit_dir() -> Path:
+    """Root dir for agent-self-audit runs. Each run gets a <run-id>
+    subdir under here. Env-overridable (KAIZEN_SELF_AUDIT_AGENT_DIR)
+    so tests sandbox writes instead of touching the real repo —
+    mirrors the env-aware path discipline in _brain.brain_root()."""
+    env = os.environ.get("KAIZEN_SELF_AUDIT_AGENT_DIR")
+    if env:
+        return Path(os.path.expandvars(env)).expanduser()
+    return REPO_ROOT / ".kaizen" / "audits" / "agent"
+
+
 # ─── Plugin tree helpers ─────────────────────────────────────────────
 #
 # Only the helpers self_audit.py's runners actually consume live here.
