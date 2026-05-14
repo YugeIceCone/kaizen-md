@@ -53,6 +53,7 @@
       "Bash(bash ${CLAUDE_PLUGIN_ROOT}/hooks/claude/posttooluse-trace.sh:*)",
       "Bash(bash ${CLAUDE_PLUGIN_ROOT}/hooks/claude/metrics-session-end.sh:*)",
       "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/metrics.py:*)",
+      "Bash(uv run --script ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/metrics_mcp.py:*)",
       "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/plugin-development/scripts/validate.py:*)",
       "Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/*.sh:*)",
       "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/config.py:*)",

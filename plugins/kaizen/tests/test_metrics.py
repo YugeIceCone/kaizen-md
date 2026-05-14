@@ -356,5 +356,41 @@ class TestCli(unittest.TestCase):
         self.assertEqual(out["kind"], "skill")
 
 
+def _mcp_available():
+    try:
+        import mcp  # noqa: F401
+        return True
+    except ImportError:
+        return False
+
+
+@unittest.skipUnless(_mcp_available(), "mcp package not installed")
+class TestMcpServer(MetricsBase):
+    """Smoke tests for metrics_mcp.py — verify the FastMCP server
+    registers its tools and they wrap the metrics helpers."""
+
+    def test_module_imports_cleanly(self):
+        import metrics_mcp  # noqa: F401
+
+    def test_tools_are_async(self):
+        import metrics_mcp
+        import asyncio as _aio
+        for name in ("metrics_session", "metrics_lifetime",
+                     "metrics_never_used", "metrics_top",
+                     "metrics_skips", "metrics_path"):
+            fn = getattr(metrics_mcp, name, None)
+            self.assertIsNotNone(fn, f"missing tool: {name}")
+            self.assertTrue(_aio.iscoroutinefunction(fn))
+
+
+class TestMcpModuleParses(unittest.TestCase):
+    """Even without mcp installed, the .py file should compile."""
+
+    def test_metrics_mcp_compiles(self):
+        path = _KZ_DIR / "skills/workflow/scripts/metrics_mcp.py"
+        with open(path, "r") as f:
+            compile(f.read(), str(path), "exec")
+
+
 if __name__ == "__main__":
     unittest.main()
