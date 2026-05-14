@@ -5,6 +5,17 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [S
 
 ## [Unreleased]
 
+### Added — never-stale continuous plugin index
+
+The kaizen plugin source is now kept continuously indexed — Claude gets complete semantic knowledge + fine-grained line/function locations of the plugin from any repo.
+
+- **`daemon.py` is the watcher** — its existing persistent `watch` subsystem now bakes in `watchdog` (real inotify/FSEvents; lazy-imported, the hash-poll loop is the fallback when `watchdog` is absent). On a file change it runs `loc_index.index_one_file()` **in-process** — single-digit-ms updates, no subprocess, no torch. A throttled background pass refreshes the semantic `onboard` index (seconds — torch can't be ms). `.kaizen/` / `.git/` / `__pycache__` are ignored to break the self-trigger loop.
+- **`tick()` step 5** — incremental `loc` + `onboard` refresh of the plugin root, gated by `KAIZEN_DAEMON_INDEX_DISABLE`. New `daemon.py index-status` reports freshness (`loc.db` `last_indexed_ts` vs newest source mtime).
+- **Cron supervises the watcher** — `daemon.py install` now schedules an idempotent `watch-start` on a periodic + `@reboot` line, so the watch daemon survives crashes and reboots.
+- **Seeded at install** — bare `/kaizen:setup install` seeds the fast `loc` index (idempotent); `/kaizen:setup --enable-all` starts the supervised watch daemon.
+- **Bug fix** — `daemon.py::scripts_dir()` pointed at a non-existent `skills/kaizen/scripts`; the entire `/kaizen:daemon` feature (cron + watch) was non-functional. Fixed.
+- **`loc_index.py`** gains `index_one_file()` + `delete_file()` — the single-file in-process primitives. **`_paths.py`/`_paths.sh`** gain `plugin_index_root()` — the SSOT for the index root.
+
 ### Added — workflow observability + Context7 wiring + ci-gate skill
 
 - **Workflow-stage trace events** — `trace.py` gains a `workflow`
