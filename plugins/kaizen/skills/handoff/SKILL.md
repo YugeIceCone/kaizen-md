@@ -2,14 +2,14 @@
 name: handoff-managing
 description: Creates and resumes session handoff documents for transferring work between sessions. Use to save context, resume from previous sessions, or manage handoff files.
 metadata:
-  version: "1.3"
+  version: "1.4"
 ---
 
 # Handoff Managing
 
 Creates and resumes session handoff documents for transferring work between sessions.
 
-- **`create`** — write a YAML handoff doc + persist to the DB so a future session can pick up cleanly.
+- **`create`** — write a YAML handoff doc, index it into the handoff store, and bridge its durable learnings to brain so a future session picks up cleanly.
 - **`resume`** — read the latest handoff (or one specified by path/ticket), verify the codebase still matches, then propose a continuation plan.
 
 If the user's intent is ambiguous, ask which one.
@@ -163,7 +163,32 @@ work is done (`partial` / `blocked` otherwise). `save` upserts, so this
 updates the Step 3 row in place. The YAML frontmatter stays
 authoritative; the store mirrors it for fast `latest` / `list`.
 
-### Step 5 — Confirm completion to the user
+### Step 5 — Bridge durable learnings to brain
+
+A handoff's `decisions` / `findings` / `worked` / `failed` sections are
+durable learnings — exactly what the **brain** (long-term memory)
+wants. The session-ephemeral sections (`goal` / `now` /
+`done_this_session` / `next` / `blockers`) are deliberately NOT
+bridged — they'd pollute brain's semantic index with state that decays.
+
+```bash
+python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/handoff.py \
+  bridge --file ~/.claude/thoughts/handoffs/{session-name}/{filename}.yaml
+```
+
+This lists the brain capture-candidates. **Review them** — capture the
+genuinely durable ones (a real decision, a confirmed pattern, a
+learned-the-hard-way failure) via:
+
+```bash
+python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/brain.py capture "<text>"
+```
+
+Skip the ones that were only true for this session. (`bridge --apply`
+captures the whole set at once — use it only when you're confident
+every candidate is brain-worthy.)
+
+### Step 6 — Confirm completion to the user
 
 ```
 Handoff saved: ~/.claude/thoughts/handoffs/{session-name}/{filename}.yaml
@@ -300,3 +325,4 @@ After the user confirms direction:
 - **Resume verifies, never assumes.** Codebase state can drift between sessions; always confirm `done_this_session` files still exist and the `worked:` patterns still hold.
 - **Create asks for outcome.** Do not skip Step 4 of `create` — write the answer to the YAML frontmatter (the system of record) AND re-index via `handoff.py save` so the store mirrors it.
 - **The store is plugin-owned + self-contained.** `handoff.py` + `_handoff.py` + `handoff.db` (at `~/.claude/.kaizen/handoff.db`; override `KAIZEN_HANDOFF_DB`) ship with the plugin — no external `~/.claude/scripts/` dependency. This skill was refactored off the recovered-but-lost `stores.py` in v1.36.0; the YAML files remain the durable system of record, the store is the queryable index.
+- **Handoff and brain are distinct, bridged — not merged.** A handoff is verbose, time-bound *session-state*; brain holds distilled, durable *knowledge*. They have separate systems-of-record and query models, so they stay separate features. The `create` Step 5 bridge moves only what's durable (decisions / findings / worked / failed) across — it never collapses the two concerns into one store.

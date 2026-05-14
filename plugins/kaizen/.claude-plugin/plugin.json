@@ -1,6 +1,6 @@
 {
   "name": "kaizen",
-  "version": "1.36.0",
+  "version": "1.36.1",
   "description": "Schema-driven workflow plugin for Claude Code. Ships discipline + orchestration in one skill: 14 routines (8 hardcoded + 6 declarative), 12 pre-commit gates, sizing model by trace+sem+grep, pre-deletion belief, ZWSP-safe ${CLAUDE_PLUGIN_ROOT} substitution, deletion audit log. Bundles 49 skills across families: 9 coding-skills (DRY/KISS/YAGNI/SOLID/LoD/SoC/Boy-Scout/Convention + Karpathy), onion-ddd-workflow, 14 superpowers, workflow + workflow-routing merge, 5 remember/Second-Brain (capture/process/evolve/reflect/synthesize/remember/status), self-improving auto-memory curator, code-tour persona walkthroughs, command-development, plugin-pitfalls, behaviour-config, publishing. 6 sub-agents (kaizen-reviewer / kaizen-backlog-curator / kaizen-debt-auditor / kaizen-karpathy-reviewer / kaizen-memory-analyst / kaizen-skill-extractor) with worktree isolation. 10 MCP servers (workflow / state / lint / backlog / browser / claude-docs / knowledge-search / onboard-search / scrape / trace-search). Self-contained: no external plugin dependencies.",
   "author": {
     "name": "YugeIceCone",

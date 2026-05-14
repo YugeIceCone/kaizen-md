@@ -17,6 +17,10 @@ record); this CLI indexes it into a SQLite store and answers
        The most recent handoff — what `resume` with no args reads.
    kaizen-handoff list [--limit N] [--session SID] [--json]
        Recent handoffs, metadata only (no YAML content).
+   kaizen-handoff bridge --file PATH [--apply]
+       Extract a handoff's durable learnings (decisions / findings /
+       worked / failed) as brain capture-candidates. Lists them for
+       review by default; --apply captures every one into brain.
    kaizen-handoff path
        Print the store DB + handoffs-dir + domain-config paths.
 
@@ -29,6 +33,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import subprocess
 import sys
 from pathlib import Path
 from typing import Optional
@@ -94,6 +99,54 @@ def _cmd_list(args) -> int:
     return 0
 
 
+def _cmd_bridge(args) -> int:
+    fp = Path(args.file).expanduser()
+    if not fp.is_file():
+        print(json.dumps({"error": f"file not found: {fp}"}))
+        return 1
+    candidates = _core.extract_brain_candidates(fp.read_text(encoding="utf-8"))
+
+    if args.apply:
+        # Onion-clean: handoff is a CLI *consumer* of brain — cross the
+        # process boundary, no `_brain` import.
+        brain_py = (_core.PLUGIN_ROOT / "skills" / "workflow"
+                    / "scripts" / "brain.py")
+        rows = []
+        for c in candidates:
+            try:
+                r = subprocess.run(
+                    ["python3", str(brain_py), "capture", c["text"]],
+                    capture_output=True, text=True, timeout=30,
+                )
+                captured = r.returncode == 0
+            except (subprocess.SubprocessError, OSError):
+                captured = False
+            rows.append({**c, "captured": captured})
+        result = {"applied": rows, "count": len(rows)}
+    else:
+        result = {"candidates": candidates, "count": len(candidates)}
+
+    if args.json:
+        print(json.dumps(result, indent=2))
+        return 0
+    if not candidates:
+        print("[kaizen-handoff bridge] no durable learnings — "
+              "decisions / findings / worked / failed are all empty.")
+        return 0
+    verb = "captured into brain" if args.apply else "brain capture-candidate(s)"
+    rows = result.get("applied") or result.get("candidates")
+    print(f"\n[kaizen-handoff bridge] {len(rows)} {verb}:")
+    for c in rows:
+        mark = ""
+        if args.apply:
+            mark = " ✓" if c.get("captured") else " ✗(failed)"
+        print(f"  [{c['section']}]{mark} {c['text'][:100]}")
+    if not args.apply:
+        print("\n  Review these — capture the genuinely durable ones via")
+        print("  `brain.py capture \"<text>\"`, or re-run with --apply for all.")
+    return 0
+
+
 def _cmd_path(args) -> int:
     print(json.dumps({
         "db": str(_core.handoff_db_path()),
@@ -131,6 +184,18 @@ def main(argv: Optional[list[str]] = None) -> int:
     s_list.add_argument("--session", help="filter by session/project")
     s_list.add_argument("--json", action="store_true")
     s_list.set_defaults(func=_cmd_list)
+
+    s_bridge = sub.add_parser(
+        "bridge",
+        help="extract a handoff's durable learnings as brain "
+             "capture-candidates")
+    s_bridge.add_argument("--file", required=True,
+                          help="path to the handoff YAML")
+    s_bridge.add_argument("--apply", action="store_true",
+                          help="capture every candidate into brain "
+                               "(default: just list them for review)")
+    s_bridge.add_argument("--json", action="store_true")
+    s_bridge.set_defaults(func=_cmd_bridge)
 
     s_path = sub.add_parser("path", help="print store + yaml-dir paths")
     s_path.set_defaults(func=_cmd_path)

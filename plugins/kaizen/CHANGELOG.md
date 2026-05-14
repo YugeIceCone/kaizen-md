@@ -3,6 +3,16 @@
 All notable changes to the `kaizen` plugin documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [SemVer](https://semver.org/).
 
+## [1.36.1] — 2026-05-14
+
+### Added — handoff → brain bridge
+
+`handoff` (session-state) and `brain` (durable knowledge) are distinct bounded contexts — different lifecycles, query models, and systems-of-record — so they stay separate features rather than being merged. But a handoff's `decisions` / `findings` / `worked` / `failed` sections *are* durable learnings brain wants. The bridge moves only those across.
+
+- **`_handoff.py`** — `extract_brain_candidates(yaml_text)` pulls the durable-learning sections out of a handoff YAML and skips the session-ephemeral ones (`goal` / `now` / `done_this_session` / `next` / `blockers`) — bridging those would pollute brain's semantic index with state that decays. Best-effort: `[]` when PyYAML is absent or the body doesn't parse.
+- **`handoff.py bridge --file PATH [--apply]`** — lists the brain capture-candidates for review by default; `--apply` captures every one by subprocessing `brain.py capture` (a clean process-boundary consumer relationship — no `_brain` import). +9 tests.
+- **`skills/handoff/SKILL.md`** — new `create` Step 5 ("Bridge durable learnings to brain"): runs `bridge`, the agent reviews + captures the genuinely durable ones via `brain.py capture`. The skill documents *why* handoff and brain stay separate but bridged.
+
 ## [1.36.0] — 2026-05-14
 
 ### Added — handoff promoted from prose-only skill to a real plugin-owned feature

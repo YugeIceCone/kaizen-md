@@ -169,6 +169,72 @@ def latest_handoffs(
             conn.close()
 
 
+# ─── Bridge to brain ─────────────────────────────────────────────────
+#
+# A handoff carries two kinds of content. Session-EPHEMERAL state
+# (goal / now / done_this_session / next / blockers) decays the moment
+# the next session starts — it must NOT reach brain's semantic index.
+# DURABLE learnings (decisions / findings / worked / failed) are
+# exactly what brain wants. The bridge extracts only the second kind;
+# it never auto-captures — handoffs are noisy, so the caller reviews.
+
+_BRAIN_SECTIONS = ("decisions", "findings", "worked", "failed")
+
+
+def _strip_frontmatter(text: str) -> str:
+    """Return the YAML body after a leading `---...---` frontmatter
+    block. `yaml.safe_load` reads only the first document, so the body
+    must be isolated before parsing."""
+    if not text.lstrip().startswith("---"):
+        return text
+    lines = text.splitlines()
+    fences = [i for i, ln in enumerate(lines) if ln.strip() == "---"]
+    if len(fences) >= 2:
+        return "\n".join(lines[fences[1] + 1:])
+    return text
+
+
+def _candidate_text(item: object) -> str:
+    """Normalise one handoff learning-item to a single capture string.
+    `decisions` / `findings` items are single-key dicts ({name: detail});
+    `worked` / `failed` items are plain strings."""
+    if isinstance(item, str):
+        return item.strip()
+    if isinstance(item, dict):
+        return "; ".join(f"{k}: {v}" for k, v in item.items()).strip()
+    return str(item).strip()
+
+
+def extract_brain_candidates(yaml_text: str) -> list[dict]:
+    """Pull the durable-learning items out of a handoff YAML — the
+    sections brain wants (decisions / findings / worked / failed).
+    The session-ephemeral sections are deliberately skipped.
+
+    Each item: ``{"section": str, "text": str}``. Returns ``[]`` when
+    PyYAML is unavailable or the body doesn't parse — the bridge is a
+    best-effort enhancement, never a hard dependency."""
+    try:
+        import yaml  # type: ignore
+    except ImportError:
+        return []
+    try:
+        body = yaml.safe_load(_strip_frontmatter(yaml_text)) or {}
+    except yaml.YAMLError:
+        return []
+    if not isinstance(body, dict):
+        return []
+    out: list[dict] = []
+    for section in _BRAIN_SECTIONS:
+        items = body.get(section)
+        if not items:
+            continue
+        for item in (items if isinstance(items, list) else [items]):
+            text = _candidate_text(item)
+            if text:
+                out.append({"section": section, "text": text})
+    return out
+
+
 def list_handoffs(
     limit: int = 20,
     *,

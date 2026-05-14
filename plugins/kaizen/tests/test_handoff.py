@@ -21,6 +21,39 @@ import _handoff  # noqa: E402
 import handoff as handoff_cli  # noqa: E402
 
 
+_SAMPLE_HANDOFF = """\
+---
+session: test-sess
+date: 2026-05-14
+status: complete
+outcome: SUCCEEDED
+---
+
+goal: built the thing
+now: ship it
+done_this_session:
+  - task: wrote code
+    files: [a.py]
+
+decisions:
+  - separate-store: handoff stays standalone, not merged into brain
+  - upsert-on-path: re-saving a handoff updates the row, no duplicates
+
+findings:
+  - the-real-bug: stores.py was never shipped with the plugin
+
+worked:
+  - discovery-first before any destructive sweep
+
+failed:
+  - a blanket -name build delete would have nuked Rust source
+
+next:
+  - wire the handoff to brain bridge
+blockers: []
+"""
+
+
 class SandboxBase(unittest.TestCase):
     """Sandboxes the handoff DB + YAML dir into a temp dir."""
 
@@ -153,6 +186,56 @@ class TestStore(SandboxBase):
         self.assertNotIn("content", only_a[0])
 
 
+class TestBridge(unittest.TestCase):
+    """extract_brain_candidates is pure — no sandbox needed."""
+
+    def setUp(self):
+        try:
+            import yaml  # noqa: F401
+        except ImportError:
+            self.skipTest("PyYAML not installed")
+
+    def test_pulls_only_durable_sections(self):
+        cands = _handoff.extract_brain_candidates(_SAMPLE_HANDOFF)
+        # 2 decisions + 1 finding + 1 worked + 1 failed = 5
+        self.assertEqual(len(cands), 5)
+        sections = sorted(c["section"] for c in cands)
+        self.assertEqual(
+            sections, ["decisions", "decisions", "failed", "findings", "worked"])
+
+    def test_skips_ephemeral_sections(self):
+        blob = " ".join(
+            c["text"] for c in _handoff.extract_brain_candidates(_SAMPLE_HANDOFF))
+        # session-state must NOT leak into brain candidates
+        for ephemeral in ("built the thing", "ship it", "wrote code",
+                          "wire the handoff"):
+            self.assertNotIn(ephemeral, blob)
+        # but durable learnings must be present
+        self.assertIn("handoff stays standalone", blob)
+        self.assertIn("stores.py was never shipped", blob)
+
+    def test_dict_items_normalised(self):
+        cands = _handoff.extract_brain_candidates(_SAMPLE_HANDOFF)
+        dec = [c for c in cands if c["section"] == "decisions"][0]
+        # single-key dict -> "name: detail"
+        self.assertIn(":", dec["text"])
+        self.assertTrue(dec["text"].startswith("separate-store"))
+
+    def test_empty_when_no_learning_sections(self):
+        bare = "---\nsession: x\n---\n\ngoal: just a goal\nnow: nothing durable\n"
+        self.assertEqual(_handoff.extract_brain_candidates(bare), [])
+
+    def test_bad_yaml_returns_empty_not_raise(self):
+        self.assertEqual(
+            _handoff.extract_brain_candidates("::: not : valid : yaml :::"), [])
+
+    def test_strip_frontmatter(self):
+        body = _handoff._strip_frontmatter(_SAMPLE_HANDOFF)
+        self.assertFalse(body.lstrip().startswith("---"))
+        self.assertIn("goal: built the thing", body)
+        self.assertNotIn("session: test-sess", body)
+
+
 class TestCli(SandboxBase):
     def _run(self, *args):
         script = _KZ_DIR / "skills/workflow/scripts/handoff.py"
@@ -197,6 +280,34 @@ class TestCli(SandboxBase):
         r = self._run()
         self.assertEqual(r.returncode, 0)
         self.assertIn("no handoffs", r.stdout)
+
+    def test_bridge_lists_candidates(self):
+        try:
+            import yaml  # noqa: F401
+        except ImportError:
+            self.skipTest("PyYAML not installed")
+        f = self._write_yaml("bridge.yaml", _SAMPLE_HANDOFF)
+        r = self._run("bridge", "--file", str(f), "--json")
+        self.assertEqual(r.returncode, 0)
+        out = json.loads(r.stdout)
+        self.assertEqual(out["count"], 5)
+        self.assertEqual(len(out["candidates"]), 5)
+        self.assertIn("section", out["candidates"][0])
+
+    def test_bridge_missing_file_exits_1(self):
+        r = self._run("bridge", "--file", "/nonexistent/h.yaml")
+        self.assertEqual(r.returncode, 1)
+        self.assertIn("error", json.loads(r.stdout))
+
+    def test_bridge_no_learnings_is_count_zero(self):
+        try:
+            import yaml  # noqa: F401
+        except ImportError:
+            self.skipTest("PyYAML not installed")
+        f = self._write_yaml("bare.yaml", "---\nsession: x\n---\n\ngoal: g\nnow: n\n")
+        r = self._run("bridge", "--file", str(f), "--json")
+        self.assertEqual(r.returncode, 0)
+        self.assertEqual(json.loads(r.stdout)["count"], 0)
 
 
 if __name__ == "__main__":
