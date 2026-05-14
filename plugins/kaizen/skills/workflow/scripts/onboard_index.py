@@ -1110,171 +1110,192 @@ def do_dump(root: Path, use_git: bool = True) -> dict:
     }
 
 
-def do_filter(root: Path) -> dict:
-    """Stage 2 — clean + chunk + embed from `code_files_raw` into
-    `code_files` + `code_chunks`.
+def _skip_reason(conn: sqlite3.Connection, raw_rec: dict) -> str | None:
+    """Incremental-skip predicate for do_filter's per-row loop.
 
-    Does NOT touch the filesystem. The raw table is the single source
-    of truth for "what we saw on disk" — re-running this stage after a
-    new comment-strip rule lands re-uses captured text. Error rows
-    (raw_rec.error IS NOT NULL) are counted into `errors_skipped` and
-    excluded from the chunked tables.
-
-    Returns {files_indexed, chunks, errors_skipped, dropped, db}.
+    Returns 'error' for capture-failure rows (raw_rec.error set),
+    'unchanged' when the path is already indexed at the same sha
+    (incremental re-run), or None when the row needs (re-)processing.
     """
-    conn = open_db(root, create=True)
-    raw_rows = conn.execute(
-        "SELECT path, sha, language, bytes, sloc_raw, mtime, text, error "
-        "FROM code_files_raw ORDER BY path"
-    ).fetchall()
-    bar = _Progress("onboard-filter", total=len(raw_rows))
-    seen_paths: set[str] = set()
-    files_indexed = 0
-    chunks_written = 0
-    errors_skipped = 0
-    dropped = 0
-    for r in raw_rows:
-        raw_rec = {k: r[k] for k in r.keys()}
-        seen_paths.add(raw_rec["path"])
-        if raw_rec.get("error"):
-            errors_skipped += 1
-            bar.tick(f"skip-err {raw_rec['path']}")
-            continue
-        # Skip rows whose sha matches an already-indexed file_row (incremental path).
-        existing = conn.execute(
-            "SELECT sha FROM code_files WHERE path = ?", (raw_rec["path"],)
-        ).fetchone()
-        if existing and existing["sha"] == raw_rec.get("sha"):
-            bar.tick(f"skip-unchanged {raw_rec['path']}")
-            continue
-        cleaned_rec = clean_for_embed(raw_rec)
-        chunk_records = chunk_record(cleaned_rec)
-        kept = [c for c in chunk_records if c.get("kept")]
-        if not kept:
-            dropped += 1
-            reason = chunk_records[0].get("kept_reason", "?") if chunk_records else "?"
-            bar.tick(f"drop {raw_rec['path']} ({reason})")
-            continue
-        # Embed all kept chunks in a single batch.
-        # O3: metadata-rich passage prefix. Each chunk's embedded form
-        # carries file/language/kind provenance so the model learns same-
-        # file recall + kind discrimination. Original `text` in the DB is
-        # unchanged — only the embedded representation differs.
-        chunk_texts = _kz_chunk.apply_passage_prefix_batch_with_metadata(kept)
-        chunk_blobs, _dim = _kz_embed.embed_batch(chunk_texts)
-        file_emb = chunk_blobs[0]
-        # v1.31.0+: also write the int8-quantized form for storage-efficient
-        # search paths. `_quant.quantize_batch` returns one blob per row
-        # (4-byte scale + D-byte int8 array). Lazy: only computes when the
-        # embedding_q8 column exists (back-compat with pre-v1.31 dbs).
-        chunk_q8_blobs = _maybe_quantize_batch(conn, chunk_blobs, _dim)
-        # E9 (v1.34+): also write SPLADE sparse vectors when
-        # KAIZEN_SPARSE_ENABLE=1 AND transformers/torch are available.
-        # `_maybe_sparse_batch` returns None when sparse is disabled →
-        # we skip the sparse column entirely (same back-compat shape as
-        # the q8 branch above for pre-v1.31 dbs).
-        chunk_sparse_blobs = _maybe_sparse_batch(conn, chunk_texts)
-        # E10 (v1.34+): also write ColBERT multi-vector sidecar when
-        # KAIZEN_COLBERT_ENABLE=1. Returns None when disabled; else
-        # list of (blob, seq_len, dim) tuples or None per row. Written
-        # AFTER the code_chunks INSERT below so chunk_ids exist.
-        chunk_colbert_payloads = _maybe_colbert_batch(conn, chunk_texts)
-        # Upsert the file row.
-        conn.execute(
-            """INSERT OR REPLACE INTO code_files
-               (path, language, bytes, sloc, snippet, embedding, sha, updated_at)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
-            (
-                cleaned_rec["path"],
-                cleaned_rec["language"],
-                cleaned_rec["bytes"],
-                cleaned_rec["sloc"],
-                cleaned_rec["snippet"],
-                file_emb,
-                cleaned_rec["sha"],
-                cleaned_rec.get("mtime", ""),
-            ),
-        )
-        file_id = conn.execute(
-            "SELECT id FROM code_files WHERE path = ?", (cleaned_rec["path"],)
-        ).fetchone()["id"]
-        conn.execute("DELETE FROM code_chunks WHERE file_id = ?", (file_id,))
-        # NB: chunk_id cascades into code_chunks_xref via FK ON DELETE CASCADE
-        # Build the INSERT dynamically: `embedding_q8` and `embedding_sparse`
-        # are optional columns that may or may not exist depending on the
-        # db's migration tier (pre-v1.31 lacks q8; pre-v1.34 lacks sparse).
-        # Always-present columns first, then optional columns appended
-        # only when the helper returned a non-None list.
-        cols: list[str] = [
-            "file_id", "chunk_idx", "char_start", "char_end",
-            "text", "embedding",
+    if raw_rec.get("error"):
+        return "error"
+    # Skip rows whose sha matches an already-indexed file_row (incremental path).
+    existing = conn.execute(
+        "SELECT sha FROM code_files WHERE path = ?", (raw_rec["path"],)
+    ).fetchone()
+    if existing and existing["sha"] == raw_rec.get("sha"):
+        return "unchanged"
+    return None
+
+
+def _build_chunk_payload(conn: sqlite3.Connection, raw_rec: dict) -> dict:
+    """Computation half of do_filter — clean -> chunk -> embed for one raw row.
+
+    Does no row writes; the only DB touch is the column-existence probes
+    inside the _maybe_* helpers (which gate the optional q8/sparse/colbert
+    representations against the db's migration tier). Returns a payload
+    dict consumed by `_persist_file_and_chunks`. When the file produced no
+    kept chunks, `kept` is [] and `drop_reason` carries why — the caller
+    drops it without persisting.
+    """
+    cleaned_rec = clean_for_embed(raw_rec)
+    chunk_records = chunk_record(cleaned_rec)
+    kept = [c for c in chunk_records if c.get("kept")]
+    if not kept:
+        reason = chunk_records[0].get("kept_reason", "?") if chunk_records else "?"
+        return {"cleaned_rec": cleaned_rec, "kept": [], "drop_reason": reason}
+    # Embed all kept chunks in a single batch.
+    # O3: metadata-rich passage prefix. Each chunk's embedded form
+    # carries file/language/kind provenance so the model learns same-
+    # file recall + kind discrimination. Original `text` in the DB is
+    # unchanged — only the embedded representation differs.
+    chunk_texts = _kz_chunk.apply_passage_prefix_batch_with_metadata(kept)
+    chunk_blobs, _dim = _kz_embed.embed_batch(chunk_texts)
+    # v1.31.0+: also compute the int8-quantized form for storage-efficient
+    # search paths. `_quant.quantize_batch` returns one blob per row
+    # (4-byte scale + D-byte int8 array). Lazy: only computes when the
+    # embedding_q8 column exists (back-compat with pre-v1.31 dbs).
+    chunk_q8_blobs = _maybe_quantize_batch(conn, chunk_blobs, _dim)
+    # E9 (v1.34+): also compute SPLADE sparse vectors when
+    # KAIZEN_SPARSE_ENABLE=1 AND transformers/torch are available.
+    # `_maybe_sparse_batch` returns None when sparse is disabled →
+    # the persister skips the sparse column entirely (same back-compat
+    # shape as the q8 branch for pre-v1.31 dbs).
+    chunk_sparse_blobs = _maybe_sparse_batch(conn, chunk_texts)
+    # E10 (v1.34+): also compute the ColBERT multi-vector sidecar when
+    # KAIZEN_COLBERT_ENABLE=1. Returns None when disabled; else a list
+    # of (blob, seq_len, dim) tuples or None per row.
+    chunk_colbert_payloads = _maybe_colbert_batch(conn, chunk_texts)
+    return {
+        "cleaned_rec": cleaned_rec,
+        "kept": kept,
+        "drop_reason": "",
+        "chunk_blobs": chunk_blobs,
+        "chunk_q8_blobs": chunk_q8_blobs,
+        "chunk_sparse_blobs": chunk_sparse_blobs,
+        "chunk_colbert_payloads": chunk_colbert_payloads,
+    }
+
+
+def _persist_file_and_chunks(conn: sqlite3.Connection, payload: dict) -> int:
+    """Persistence half of do_filter — write one file row + its chunk rows
+    from a `_build_chunk_payload` result. Owns the dynamic-column INSERT
+    (`embedding_q8` / `embedding_sparse` are optional columns whose
+    presence depends on the db's migration tier). Returns the chunk count.
+    """
+    cleaned_rec = payload["cleaned_rec"]
+    kept = payload["kept"]
+    chunk_blobs = payload["chunk_blobs"]
+    chunk_q8_blobs = payload["chunk_q8_blobs"]
+    chunk_sparse_blobs = payload["chunk_sparse_blobs"]
+    chunk_colbert_payloads = payload["chunk_colbert_payloads"]
+    file_emb = chunk_blobs[0]
+    # Upsert the file row.
+    conn.execute(
+        """INSERT OR REPLACE INTO code_files
+           (path, language, bytes, sloc, snippet, embedding, sha, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+        (
+            cleaned_rec["path"],
+            cleaned_rec["language"],
+            cleaned_rec["bytes"],
+            cleaned_rec["sloc"],
+            cleaned_rec["snippet"],
+            file_emb,
+            cleaned_rec["sha"],
+            cleaned_rec.get("mtime", ""),
+        ),
+    )
+    file_id = conn.execute(
+        "SELECT id FROM code_files WHERE path = ?", (cleaned_rec["path"],)
+    ).fetchone()["id"]
+    conn.execute("DELETE FROM code_chunks WHERE file_id = ?", (file_id,))
+    # NB: chunk_id cascades into code_chunks_xref via FK ON DELETE CASCADE
+    # Build the INSERT dynamically: `embedding_q8` and `embedding_sparse`
+    # are optional columns that may or may not exist depending on the
+    # db's migration tier (pre-v1.31 lacks q8; pre-v1.34 lacks sparse).
+    # Always-present columns first, then optional columns appended
+    # only when the helper returned a non-None list.
+    cols: list[str] = [
+        "file_id", "chunk_idx", "char_start", "char_end",
+        "text", "embedding",
+    ]
+    if chunk_q8_blobs is not None:
+        cols.append("embedding_q8")
+    cols.extend(["language", "kind", "symbol_name"])
+    if chunk_sparse_blobs is not None:
+        cols.append("embedding_sparse")
+    sql = (
+        f"INSERT INTO code_chunks ({','.join(cols)}) "
+        f"VALUES ({','.join('?' for _ in cols)})"
+    )
+    rows: list[tuple] = []
+    for idx, c in enumerate(kept):
+        row: list = [
+            file_id, c["chunk_idx"], c["char_start"], c["char_end"],
+            c["text"], chunk_blobs[idx],
         ]
         if chunk_q8_blobs is not None:
-            cols.append("embedding_q8")
-        cols.extend(["language", "kind", "symbol_name"])
+            row.append(chunk_q8_blobs[idx])
+        row.extend([
+            cleaned_rec["language"],
+            c.get("kind") or "code",
+            c.get("symbol_name") or "",
+        ])
         if chunk_sparse_blobs is not None:
-            cols.append("embedding_sparse")
-        sql = (
-            f"INSERT INTO code_chunks ({','.join(cols)}) "
-            f"VALUES ({','.join('?' for _ in cols)})"
-        )
-        rows: list[tuple] = []
-        for idx, c in enumerate(kept):
-            row: list = [
-                file_id, c["chunk_idx"], c["char_start"], c["char_end"],
-                c["text"], chunk_blobs[idx],
-            ]
-            if chunk_q8_blobs is not None:
-                row.append(chunk_q8_blobs[idx])
-            row.extend([
-                cleaned_rec["language"],
-                c.get("kind") or "code",
-                c.get("symbol_name") or "",
-            ])
-            if chunk_sparse_blobs is not None:
-                row.append(chunk_sparse_blobs[idx])
-            rows.append(tuple(row))
-        conn.executemany(sql, rows)
-        # O6 (v1.33): populate code_chunks_xref from Python imports. Each
-        # imported symbol becomes one xref row tied to whichever chunk
-        # contains the source `import` statement. Heuristic: the module-
-        # level prologue chunk (kind='code', symbol_name='<module>') owns
-        # them. Other languages skip (extractor returns []).
-        _populate_xref_imports(conn, file_id, cleaned_rec, kept)
-        # E10 (v1.34): ColBERT multi-vector sidecar. Re-query chunk_ids
-        # by (file_id, chunk_idx) because executemany doesn't expose them.
-        # Only runs when KAIZEN_COLBERT_ENABLE=1 + colbert available.
-        if chunk_colbert_payloads is not None:
-            id_rows = conn.execute(
-                "SELECT id, chunk_idx FROM code_chunks "
-                "WHERE file_id = ? ORDER BY chunk_idx",
-                (file_id,),
-            ).fetchall()
-            idx_to_id = {int(r["chunk_idx"]): int(r["id"]) for r in id_rows}
-            sidecar_rows = []
-            for i, c in enumerate(kept):
-                payload = chunk_colbert_payloads[i]
-                if payload is None:
-                    continue
-                chunk_id = idx_to_id.get(c["chunk_idx"])
-                if chunk_id is None:
-                    continue
-                blob, seq_len, dim = payload
-                sidecar_rows.append((chunk_id, blob, seq_len, dim))
-            if sidecar_rows:
-                # INSERT OR REPLACE — the DELETE FROM code_chunks above
-                # cascaded into code_chunks_colbert via FK, so this is
-                # really just INSERT. OR REPLACE guards against any
-                # racy partial-state leftover.
-                conn.executemany(
-                    """INSERT OR REPLACE INTO code_chunks_colbert
-                       (chunk_id, vectors, seq_len, dim)
-                       VALUES (?, ?, ?, ?)""",
-                    sidecar_rows,
-                )
-        chunks_written += len(kept)
-        files_indexed += 1
-        bar.tick(f"+ {cleaned_rec['path']} ({len(kept)} chunks)")
+            row.append(chunk_sparse_blobs[idx])
+        rows.append(tuple(row))
+    conn.executemany(sql, rows)
+    # O6 (v1.33): populate code_chunks_xref from Python imports. Each
+    # imported symbol becomes one xref row tied to whichever chunk
+    # contains the source `import` statement. Heuristic: the module-
+    # level prologue chunk (kind='code', symbol_name='<module>') owns
+    # them. Other languages skip (extractor returns []).
+    _populate_xref_imports(conn, file_id, cleaned_rec, kept)
+    # E10 (v1.34): ColBERT multi-vector sidecar. Re-query chunk_ids
+    # by (file_id, chunk_idx) because executemany doesn't expose them.
+    # Only runs when KAIZEN_COLBERT_ENABLE=1 + colbert available.
+    if chunk_colbert_payloads is not None:
+        id_rows = conn.execute(
+            "SELECT id, chunk_idx FROM code_chunks "
+            "WHERE file_id = ? ORDER BY chunk_idx",
+            (file_id,),
+        ).fetchall()
+        idx_to_id = {int(r["chunk_idx"]): int(r["id"]) for r in id_rows}
+        sidecar_rows = []
+        for i, c in enumerate(kept):
+            colbert_payload = chunk_colbert_payloads[i]
+            if colbert_payload is None:
+                continue
+            chunk_id = idx_to_id.get(c["chunk_idx"])
+            if chunk_id is None:
+                continue
+            blob, seq_len, dim = colbert_payload
+            sidecar_rows.append((chunk_id, blob, seq_len, dim))
+        if sidecar_rows:
+            # INSERT OR REPLACE — the DELETE FROM code_chunks above
+            # cascaded into code_chunks_colbert via FK, so this is
+            # really just INSERT. OR REPLACE guards against any
+            # racy partial-state leftover.
+            conn.executemany(
+                """INSERT OR REPLACE INTO code_chunks_colbert
+                   (chunk_id, vectors, seq_len, dim)
+                   VALUES (?, ?, ?, ?)""",
+                sidecar_rows,
+            )
+    return len(kept)
+
+
+def _finalize_filter(
+    conn: sqlite3.Connection, root: Path, seen_paths: set[str]
+) -> int:
+    """Closing half of do_filter — drop stale rows, refresh meta, compact.
+
+    Removes code_files rows whose path is no longer in the raw table
+    (the raw table is the source of truth for what exists on disk),
+    refreshes the code_meta counters, commits, and runs the FTS5 +
+    query-planner optimize pass. Returns the stale-removed count.
+    """
     # Remove stale entries (in db but not in raw table). The raw table
     # is the source of truth for what currently exists on disk.
     all_in_db = conn.execute("SELECT path FROM code_files").fetchall()
@@ -1311,14 +1332,72 @@ def do_filter(root: Path) -> dict:
     except sqlite3.OperationalError:
         # FTS5 mirror absent (pre-v1.28 db): skip.
         pass
+    return len(stale)
+
+
+def do_filter(root: Path) -> dict:
+    """Stage 2 — clean + chunk + embed from `code_files_raw` into
+    `code_files` + `code_chunks`.
+
+    Does NOT touch the filesystem. The raw table is the single source
+    of truth for "what we saw on disk" — re-running this stage after a
+    new comment-strip rule lands re-uses captured text. Error rows
+    (raw_rec.error IS NOT NULL) are counted into `errors_skipped` and
+    excluded from the chunked tables.
+
+    Thin coordinator: per raw row it consults `_skip_reason`, builds the
+    chunk payload via `_build_chunk_payload`, and writes it with
+    `_persist_file_and_chunks`; `_finalize_filter` closes out stale rows,
+    meta, and the compaction pass.
+
+    Returns {files_indexed, chunks, errors_skipped, dropped,
+    stale_removed, db}.
+    """
+    conn = open_db(root, create=True)
+    raw_rows = conn.execute(
+        "SELECT path, sha, language, bytes, sloc_raw, mtime, text, error "
+        "FROM code_files_raw ORDER BY path"
+    ).fetchall()
+    bar = _Progress("onboard-filter", total=len(raw_rows))
+    seen_paths: set[str] = set()
+    files_indexed = 0
+    chunks_written = 0
+    errors_skipped = 0
+    dropped = 0
+    for r in raw_rows:
+        raw_rec = {k: r[k] for k in r.keys()}
+        seen_paths.add(raw_rec["path"])
+        skip = _skip_reason(conn, raw_rec)
+        if skip == "error":
+            errors_skipped += 1
+            bar.tick(f"skip-err {raw_rec['path']}")
+            continue
+        if skip == "unchanged":
+            bar.tick(f"skip-unchanged {raw_rec['path']}")
+            continue
+        payload = _build_chunk_payload(conn, raw_rec)
+        if not payload["kept"]:
+            dropped += 1
+            bar.tick(f"drop {raw_rec['path']} ({payload['drop_reason']})")
+            continue
+        chunks_written += _persist_file_and_chunks(conn, payload)
+        files_indexed += 1
+        bar.tick(
+            f"+ {payload['cleaned_rec']['path']} "
+            f"({len(payload['kept'])} chunks)"
+        )
+    stale_removed = _finalize_filter(conn, root, seen_paths)
     conn.close()
-    bar.done(f"{files_indexed} indexed, {chunks_written} chunks, {errors_skipped} skipped, {dropped} dropped")
+    bar.done(
+        f"{files_indexed} indexed, {chunks_written} chunks, "
+        f"{errors_skipped} skipped, {dropped} dropped"
+    )
     return {
         "files_indexed": files_indexed,
         "chunks": chunks_written,
         "errors_skipped": errors_skipped,
         "dropped": dropped,
-        "stale_removed": len(stale),
+        "stale_removed": stale_removed,
         "db": str(db_path(root)),
     }
 
