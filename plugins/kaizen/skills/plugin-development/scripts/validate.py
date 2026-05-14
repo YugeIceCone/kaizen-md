@@ -457,7 +457,7 @@ def main(argv: Optional[list[str]] = None) -> int:
     p = argparse.ArgumentParser(
         prog="plugin-development-validate",
         description="Validate kaizen-plugin-original features against "
-                    "the canonical 11-slot shape + iron laws.",
+                    "the canonical feature shape + iron laws.",
     )
     g = p.add_mutually_exclusive_group(required=False)
     g.add_argument("--feature", help="check a single feature by name")

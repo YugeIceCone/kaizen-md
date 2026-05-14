@@ -30,8 +30,8 @@ The authoritative declarations live in `domain/`:
 
 | File | What it declares |
 |---|---|
-| `domain/feature-shape.yaml` | The 11 file slots + per-slot `required` / `when` predicates |
-| `domain/iron-laws.yaml` | 13 iron laws with `severity` (hard / soft / info) and machine-checkable `detect` patterns |
+| `domain/feature-shape.yaml` | The file slots + per-slot `required` / `when` predicates |
+| `domain/iron-laws.yaml` | The iron laws with `severity` (hard / soft / info) and machine-checkable `detect` patterns |
 | `domain/wiring-checklist.yaml` | Per-artifact wiring entries (plugin.json permissions, hooks.json events, bin chmod, etc.) |
 | `domain/schemas/feature.schema.json` | JSONSchema for optional `skills/<feature>/domain/manifest.yaml` |
 

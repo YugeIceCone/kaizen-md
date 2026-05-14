@@ -4,8 +4,8 @@ The `kaizen` plugin eats its own dogfood — contributions go through the same g
 
 > **Mandatory first step for any plugin-original code change:** load the
 > [`plugin-development`](skills/plugin-development/SKILL.md) skill via
-> the Skill tool. It encodes the 11-slot canonical feature shape,
-> 13 iron laws, and wiring checklist that this CONTRIBUTING.md assumes
+> the Skill tool. It encodes the canonical feature shape, the iron
+> laws, and the wiring checklist that this CONTRIBUTING.md assumes
 > you've absorbed. Schema at
 > [`skills/plugin-development/domain/`](skills/plugin-development/domain/);
 > validate with

@@ -1,4 +1,4 @@
-# Canonical 11-slot feature shape for kaizen-plugin-original code.
+# Canonical feature shape for kaizen-plugin-original code.
 #
 # Every plugin-original feature lands files into these slots. Each
 # slot is either required (always present), or conditional on a
