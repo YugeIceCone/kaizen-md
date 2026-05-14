@@ -13,6 +13,31 @@ set -eu
 
 SKILL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PLUGIN_ROOT="$(cd "$SKILL_DIR/../.." && pwd)"
+_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# ─── --enable-all delegation (v1.33+) ────────────────────────────────
+#
+# Consolidates /kaizen:install + /kaizen:enable-all into one entry point.
+# When --enable-all (or any --with-* / --no-globals / --no-project flag)
+# appears, hand off the whole arg list to enable_all.sh which calls back
+# into THIS script (without the flag) for the per-repo install step.
+# /kaizen:enable-all still works as a top-level command (back-compat).
+
+for arg in "$@"; do
+  case "$arg" in
+    --enable-all|--with-index|--with-browser|--with-daemon|--with-trace-proxy|\
+    --no-globals|--no-project|--dry-run|--yes|-y)
+      # Strip --enable-all (only meaningful at the install.sh entry); pass
+      # the rest. enable_all.sh re-invokes install.sh sans these flags.
+      _FORWARD=()
+      for a in "$@"; do
+        [ "$a" = "--enable-all" ] && continue
+        _FORWARD+=("$a")
+      done
+      exec bash "$_SCRIPT_DIR/enable_all.sh" "${_FORWARD[@]}"
+      ;;
+  esac
+done
 # v1.30.0+ — install log lives under the unified ~/.claude/.kaizen/ tree
 # (was ~/.claude/kaizen-install.log). Source _paths.sh as the SSOT.
 _SCRIPT_REAL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
