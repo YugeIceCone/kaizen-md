@@ -5,6 +5,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [S
 
 ## [Unreleased]
 
+### Changed — `daemon.py` is uv-native + `bootstrap` provisioner
+
+The `watchdog` dependency for the continuous-index watcher is now provisioned the kaizen way — uv, not `pip install`.
+
+- **`daemon.py` is a `uv run --script` script** — `#!/usr/bin/env -S uv run --script` + a `# /// script` block declaring `watchdog>=4.0`, exactly like `loc_index.py` / `onboard_index.py` / the MCP servers. uv auto-provisions + caches `watchdog` on first run; no manual install. Every invocation site (`bin/kaizen-daemon`, `bin/kaizen-watch`, `commands/daemon.md`, `enable_all.sh`, the cron lines, the `watch-start` Popen) re-invokes it through uv. The cron lines + Popen use an absolute uv path (resolved via `shutil.which` at import — cron's PATH does not include `~/.local/bin`).
+- **`/kaizen:bootstrap`** (`bootstrap.sh` + `bin/kaizen-bootstrap`) — the explicit "set everything up" entry point: verifies uv is installed, then pre-warms every PEP-723 `uv run --script` venv so the first real invocation is not a cold download. `--check` verifies uv only; `--list` enumerates the uv-script files. Wired into `/kaizen:setup --enable-all`.
+
 ### Added — never-stale continuous plugin index
 
 The kaizen plugin source is now kept continuously indexed — Claude gets complete semantic knowledge + fine-grained line/function locations of the plugin from any repo.

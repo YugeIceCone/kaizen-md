@@ -184,6 +184,13 @@ if [ "$SKIP_GLOBALS" -eq 0 ]; then
   step "install shell env (KAIZEN_ROOT + aliases)" \
     "bash '$PLUGIN_ROOT/skills/workflow/scripts/kaizen-env.sh' install"
 
+  # bootstrap — pre-warm every uv-script venv so first use is not a
+  # cold download. Idempotent (uv caches); KAIZEN_BOOTSTRAP_DISABLE=1
+  # skips the pre-warm. Runs before the watch daemon so daemon.py's
+  # watchdog venv is warm when watch-start spawns it.
+  step "bootstrap uv-script venvs" \
+    "bash '$PLUGIN_ROOT/skills/workflow/scripts/bootstrap.sh'"
+
   # plugin-index watch daemon — on by default; KAIZEN_DAEMON_INDEX_DISABLE
   # opts out. watch-start is idempotent + cron-supervised (daemon install).
   if [ "${KAIZEN_DAEMON_INDEX_DISABLE:-}" != "1" ]; then
