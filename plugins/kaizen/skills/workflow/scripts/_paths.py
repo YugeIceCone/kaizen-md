@@ -64,6 +64,25 @@ import config as _cfg  # noqa: E402  — relative import for self-contained scri
 
 HOME = Path(os.path.expanduser("~"))
 
+# ─── Plugin index root (SSOT for the kaizen-md repo root) ────────────
+# Consumed by daemon.py (watch + tick index refresh), setup.sh and
+# enable_all.sh. KAIZEN_PLUGIN_INDEX_ROOT wins; else the marketplace
+# dir, symlink-resolved (the default marketplace path is a symlink into
+# ~/workspace/kaizen-md).
+_DEFAULT_MARKETPLACE = HOME / ".claude" / "local-marketplaces" / "kaizen-md"
+
+
+def plugin_index_root() -> Path:
+    """Resolve the kaizen-md repo root to index. Override:
+    KAIZEN_PLUGIN_INDEX_ROOT; else realpath(KAIZEN_MARKETPLACE | default)."""
+    override = os.environ.get("KAIZEN_PLUGIN_INDEX_ROOT")
+    if override:
+        return Path(override).expanduser().resolve()
+    market = os.environ.get("KAIZEN_MARKETPLACE")
+    base = Path(market).expanduser() if market else _DEFAULT_MARKETPLACE
+    return base.resolve()
+
+
 # ─── User-global root ────────────────────────────────────────────────
 
 KAIZEN_USER_DIR = Path(

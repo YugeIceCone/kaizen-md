@@ -97,6 +97,21 @@ kaizen_project_kaizen_dir() {
     echo "$root/.kaizen"
 }
 
+# kaizen_plugin_index_root   →   prints the kaizen-md repo root to index.
+# KAIZEN_PLUGIN_INDEX_ROOT wins; else realpath of KAIZEN_MARKETPLACE
+# (or the default symlink). Mirrors _paths.py::plugin_index_root().
+kaizen_plugin_index_root() {
+    local base
+    if [ -n "${KAIZEN_PLUGIN_INDEX_ROOT:-}" ]; then
+        base="$KAIZEN_PLUGIN_INDEX_ROOT"
+    else
+        base="${KAIZEN_MARKETPLACE:-$HOME/.claude/local-marketplaces/kaizen-md}"
+    fi
+    # realpath, with a python fallback for portability
+    realpath "$base" 2>/dev/null \
+        || python3 -c 'import os,sys; print(os.path.realpath(sys.argv[1]))' "$base"
+}
+
 # ─── Legacy paths (for the migrator) ─────────────────────────────────
 
 KAIZEN_LEGACY_TRACE="$HOME/.claude/.kaizen-trace"
