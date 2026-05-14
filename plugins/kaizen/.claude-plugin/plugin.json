@@ -54,6 +54,7 @@
       "Bash(bash ${CLAUDE_PLUGIN_ROOT}/hooks/claude/metrics-session-end.sh:*)",
       "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/metrics.py:*)",
       "Bash(uv run --script ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/metrics_mcp.py:*)",
+      "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/iron_laws.py:*)",
       "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/plugin-development/scripts/validate.py:*)",
       "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/*.py:*)",
       "Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/*.sh:*)",

@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# kaizen-iron-laws — CLI over the iron-laws single-source-of-truth registry.
+# Symlinked to ~/.local/bin/kaizen-iron-laws by /kaizen:install.
+#
+# Subcommands: list | show <id> | check [--staged|--all|--law <id>] | render
+# See iron_laws.py docstring for the full surface.
+
+set -euo pipefail
+
+_SCRIPT_REAL="$(readlink -f "${BASH_SOURCE[0]}" 2>/dev/null \
+  || python3 -c 'import os,sys; print(os.path.realpath(sys.argv[1]))' "${BASH_SOURCE[0]}")"
+_BIN_DIR="$(cd "$(dirname "$_SCRIPT_REAL")" && pwd)"
+source "$_BIN_DIR/../skills/workflow/scripts/_plugin_root.sh"
+PLUGIN_ROOT="$(kaizen_plugin_root)" || {
+    echo "kaizen-iron-laws: plugin root unresolved" >&2
+    exit 1
+}
+
+exec python3 "$PLUGIN_ROOT/skills/workflow/scripts/iron_laws.py" "$@"

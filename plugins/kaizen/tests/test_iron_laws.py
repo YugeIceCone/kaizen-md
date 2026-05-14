@@ -255,6 +255,44 @@ class TestRegistryIntegrity(unittest.TestCase):
         self.assertIsInstance(result, list)
 
 
+class TestCLI(unittest.TestCase):
+    CLI = _SCRIPTS / "iron_laws.py"
+
+    def _run(self, *args):
+        return subprocess.run(
+            [sys.executable, str(self.CLI), *args],
+            capture_output=True, text=True, cwd=str(_PLUGIN_ROOT))
+
+    def test_list_prints_all_laws(self):
+        r = self._run("list")
+        self.assertEqual(r.returncode, 0)
+        rows = [ln for ln in r.stdout.splitlines() if ln.strip()]
+        self.assertEqual(len(rows), 21)
+
+    def test_no_arg_defaults_to_list(self):
+        r = self._run()
+        self.assertEqual(r.returncode, 0)
+        self.assertIn("no-modify-vendored", r.stdout)
+
+    def test_show_prints_one_law(self):
+        r = self._run("show", "hook-bypass-knob")
+        self.assertEqual(r.returncode, 0)
+        self.assertIn("hook-bypass-knob", r.stdout)
+        self.assertIn("KAIZEN", r.stdout)
+
+    def test_show_unknown_id_exits_nonzero(self):
+        r = self._run("show", "no-such-law-xyz")
+        self.assertNotEqual(r.returncode, 0)
+
+    def test_check_all_does_not_crash(self):
+        r = self._run("check", "--all")
+        self.assertIn(r.returncode, (0, 1))
+
+    def test_render_regenerates_cleanly(self):
+        r = self._run("render")
+        self.assertEqual(r.returncode, 0)
+
+
 class TestCodegen(unittest.TestCase):
     def test_render_is_deterministic(self):
         import codegen
