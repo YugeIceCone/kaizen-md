@@ -160,9 +160,13 @@ class TestRerankMcpRegistration(unittest.TestCase):
         import json
         with open(PLUGIN_ROOT / ".mcp.json") as f:
             data = json.load(f)
-        self.assertIn("rerank", data["mcpServers"])
-        joined = " ".join(data["mcpServers"]["rerank"]["args"])
-        self.assertIn("rerank_mcp.py", joined)
+        # All domain servers are composed through the kaizen gateway
+        self.assertIn("kaizen", data["mcpServers"])
+        joined = " ".join(data["mcpServers"]["kaizen"]["args"])
+        self.assertIn("gateway.py", joined)
+        import gateway
+        module_names = [m for _, m in gateway.SUBSERVERS]
+        self.assertIn("rerank_mcp", module_names)
 
 
 if __name__ == "__main__":

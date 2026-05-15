@@ -241,9 +241,13 @@ class TestAuditFindings(unittest.TestCase):
 class TestRegistration(unittest.TestCase):
     def test_mcp_json_lists_audit_server(self):
         data = json.loads((PLUGIN_ROOT / ".mcp.json").read_text())
-        self.assertIn("audit", data["mcpServers"])
-        joined = " ".join(data["mcpServers"]["audit"]["args"])
-        self.assertIn("audit_mcp.py", joined)
+        # All domain servers are composed through the kaizen gateway
+        self.assertIn("kaizen", data["mcpServers"])
+        joined = " ".join(data["mcpServers"]["kaizen"]["args"])
+        self.assertIn("gateway.py", joined)
+        import gateway
+        module_names = [m for _, m in gateway.SUBSERVERS]
+        self.assertIn("audit_mcp", module_names)
 
 
 if __name__ == "__main__":

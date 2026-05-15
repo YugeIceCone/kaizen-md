@@ -296,7 +296,11 @@ class TestManifestsMcp(_CwdMixin, unittest.TestCase):
 class TestRegistration(unittest.TestCase):
     def test_manifests_in_mcp_json(self):
         data = json.loads((PLUGIN_ROOT / ".mcp.json").read_text())
-        self.assertIn("manifests", data["mcpServers"])
+        # All domain servers are composed through the kaizen gateway
+        self.assertIn("kaizen", data["mcpServers"])
+        import gateway
+        module_names = [m for _, m in gateway.SUBSERVERS]
+        self.assertIn("manifests_mcp", module_names)
 
 
 if __name__ == "__main__":

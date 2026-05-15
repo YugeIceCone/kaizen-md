@@ -123,8 +123,10 @@ class TestPluginManifest(unittest.TestCase):
             "brain.py", "brain_index.py", "brain_promote.py",
             "brain_audit.py", "brain_evolve.py", "brain_mcp.py",
         ):
+            # Accept either a specific entry or a wildcard (*.py) that covers all scripts
+            covered = any(script in p or "*.py" in p for p in perms)
             self.assertTrue(
-                any(script in p for p in perms),
+                covered,
                 f"plugin.json missing permission for {script}",
             )
 

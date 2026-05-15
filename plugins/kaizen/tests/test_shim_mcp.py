@@ -66,12 +66,15 @@ class TestShimMcpModule(unittest.TestCase):
     def test_mcp_json_registers_shim(self):
         mcp_path = PLUGIN_ROOT / ".mcp.json"
         data = json.loads(mcp_path.read_text())
-        self.assertIn("shim", data["mcpServers"])
-        cmd = data["mcpServers"]["shim"]
+        # All domain servers are composed through the kaizen gateway
+        self.assertIn("kaizen", data["mcpServers"])
+        cmd = data["mcpServers"]["kaizen"]
         self.assertEqual(cmd["command"], "uv")
-        # The script path uses CLAUDE_PLUGIN_ROOT — sanity-check the arg.
         joined = " ".join(cmd["args"])
-        self.assertIn("shim_mcp.py", joined)
+        self.assertIn("gateway.py", joined)
+        import gateway
+        module_names = [m for _, m in gateway.SUBSERVERS]
+        self.assertIn("shim_mcp", module_names)
 
 
 class TestShimMcpDelegates(_CwdMixin, unittest.TestCase):

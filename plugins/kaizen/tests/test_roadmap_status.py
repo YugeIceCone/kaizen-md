@@ -284,9 +284,13 @@ class TestMcp(_CwdMixin, unittest.TestCase):
 class TestRegistration(unittest.TestCase):
     def test_mcp_json_lists_roadmap_server(self):
         data = json.loads((PLUGIN_ROOT / ".mcp.json").read_text())
-        self.assertIn("roadmap", data["mcpServers"])
-        joined = " ".join(data["mcpServers"]["roadmap"]["args"])
-        self.assertIn("roadmap_mcp.py", joined)
+        # All domain servers are composed through the kaizen gateway
+        self.assertIn("kaizen", data["mcpServers"])
+        joined = " ".join(data["mcpServers"]["kaizen"]["args"])
+        self.assertIn("gateway.py", joined)
+        import gateway
+        module_names = [m for _, m in gateway.SUBSERVERS]
+        self.assertIn("roadmap_mcp", module_names)
 
 
 if __name__ == "__main__":
