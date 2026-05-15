@@ -1,5 +1,13 @@
 {
   "mcpServers": {
+    "kaizen": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--script",
+        "${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/gateway.py"
+      ]
+    },
     "backlog": {
       "command": "python3",
       "args": [

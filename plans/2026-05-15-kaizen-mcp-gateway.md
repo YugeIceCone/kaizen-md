@@ -16,7 +16,7 @@
 
 ## Status
 
-- [ ] Phase 1 — Gateway skeleton + 3-server pilot
+- [x] Phase 1 — Gateway skeleton + 3-server pilot
 - [ ] Phase 2 — Migrate the remaining 16 servers
 - [ ] Phase 3 — Fold in brain + metrics
 - [ ] Phase 4 — Flip `.mcp.json` + `plugin.json` to the single entry
