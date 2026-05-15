@@ -42,6 +42,12 @@ class TestGatewayComposition(unittest.TestCase):
         for srv in phase2:
             self.assertIn(srv, names, f"{srv} should be mounted in phase 2")
 
+    def test_gateway_mounts_brain_and_metrics(self):
+        import gateway
+        names = {name for name, _ in gateway.MOUNTED}
+        for srv in ("brain", "metrics"):
+            self.assertIn(srv, names, f"{srv} should be mounted in phase 3")
+
 
 if __name__ == "__main__":
     unittest.main()

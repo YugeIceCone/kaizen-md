@@ -46,6 +46,8 @@ SUBSERVERS: list[tuple[str, str]] = [
     ("manifests", "manifests_mcp"),
     ("drift", "drift_mcp"),
     # Phase 2 — remaining servers
+    ("brain", "brain_mcp"),
+    ("metrics", "metrics_mcp"),
     ("backlog", "backlog_mcp"),
     ("browser", "browser_mcp"),
     ("trace", "trace_mcp"),
