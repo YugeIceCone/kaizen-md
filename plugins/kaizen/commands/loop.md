@@ -1,4 +1,5 @@
 ---
+name: loop
 description: "Start (or cancel) a self-correcting Ralph loop — cross-CLI"
 argument-hint: "PROMPT [--its N] [--promise TEXT] | --cancel"
 allowed-tools: ["Bash(${CLAUDE_PLUGIN_ROOT}/skills/loop/scripts/setup-ralph-loop.sh:*)", "Bash(test -f .kaizen/loop.state.md:*)", "Bash(rm .kaizen/loop.state.md)", "Read(.kaizen/loop.state.md)"]

@@ -17,10 +17,10 @@
 ## Status
 
 - [x] Phase 1 — Gateway skeleton + 3-server pilot
-- [ ] Phase 2 — Migrate the remaining 16 servers
-- [ ] Phase 3 — Fold in brain + metrics
-- [ ] Phase 4 — Flip `.mcp.json` + `plugin.json` to the single entry
-- [ ] Phase 5 — Curate core + tune search + CHANGELOG
+- [x] Phase 2 — Migrate the remaining 16 servers
+- [x] Phase 3 — Fold in brain + metrics
+- [x] Phase 4 — Flip `.mcp.json` + `plugin.json` to the single entry
+- [x] Phase 5 — Curate core + tune search + CHANGELOG
 
 **Resume protocol:** check the boxes above; each phase is a self-contained set of tasks ending with a commit. Start at the first unchecked phase.
 
