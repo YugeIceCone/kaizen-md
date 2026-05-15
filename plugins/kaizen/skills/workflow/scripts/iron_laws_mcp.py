@@ -2,7 +2,7 @@
 # /// script
 # requires-python = ">=3.10"
 # dependencies = [
-#     "mcp>=1.0",
+#     "fastmcp>=3.0",
 #     "pyyaml>=6.0",
 #     "jsonschema>=4.0",
 # ]
@@ -44,7 +44,7 @@ sys.path.insert(0, str(SCRIPT_DIR))
 sys.path.insert(0, str(APP_DIR))
 
 try:
-    from mcp.server.fastmcp import FastMCP
+    from fastmcp import FastMCP
 except ImportError as e:  # pragma: no cover
     sys.stderr.write(
         f"kaizen-iron-laws-mcp: missing dep: {e}\n"
