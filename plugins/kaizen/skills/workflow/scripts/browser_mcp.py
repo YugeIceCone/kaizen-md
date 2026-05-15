@@ -2,7 +2,7 @@
 # /// script
 # requires-python = ">=3.10"
 # dependencies = [
-#     "mcp>=1.0",
+#     "fastmcp>=3.0",
 #     "playwright>=1.40",
 # ]
 # ///
@@ -79,7 +79,7 @@ from __future__ import annotations
 import sys
 
 try:
-    from mcp.server.fastmcp import FastMCP
+    from fastmcp import FastMCP
     from playwright.async_api import async_playwright, Browser, Page, Playwright
 except ImportError as e:  # pragma: no cover
     sys.stderr.write(

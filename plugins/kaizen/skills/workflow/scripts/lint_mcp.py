@@ -2,7 +2,7 @@
 # /// script
 # requires-python = ">=3.10"
 # dependencies = [
-#     "mcp>=1.0",
+#     "fastmcp>=3.0",
 # ]
 # ///
 """kaizen lint-mcp — MCP server exposing ruff (lint+format) and ty
@@ -50,7 +50,7 @@ from pathlib import Path
 try:
     # ty: ignore[unresolved-import]  — ty can't resolve uv-script PEP 723 deps
     # at static-analysis time; the runtime resolves via `uv run --script`.
-    from mcp.server.fastmcp import FastMCP
+    from fastmcp import FastMCP
 except ImportError as e:
     sys.stderr.write(f"kaizen-lint-mcp: missing mcp dep: {e}\n")
     sys.exit(1)

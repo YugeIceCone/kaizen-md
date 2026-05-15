@@ -2,7 +2,7 @@
 # /// script
 # requires-python = ">=3.10"
 # dependencies = [
-#     "mcp>=1.0",
+#     "fastmcp>=3.0",
 # ]
 # ///
 """kaizen state-mcp — umbrella MCP server for kaizen's read-only state surface.
@@ -38,7 +38,7 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR))
 
 try:
-    from mcp.server.fastmcp import FastMCP
+    from fastmcp import FastMCP
 except ImportError as e:
     sys.stderr.write(f"kaizen-state-mcp: missing dep: {e}\n")
     sys.exit(1)

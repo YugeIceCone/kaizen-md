@@ -2,7 +2,7 @@
 # /// script
 # requires-python = ">=3.10"
 # dependencies = [
-#     "mcp>=1.0",
+#     "fastmcp>=3.0",
 # ]
 # ///
 """kaizen workflow-mcp — MCP server exposing workflow-routing's state machine.
@@ -47,7 +47,7 @@ from pathlib import Path
 
 try:
     # ty: ignore[unresolved-import]  — uv-script PEP 723 deps invisible to ty
-    from mcp.server.fastmcp import FastMCP
+    from fastmcp import FastMCP
 except ImportError as e:
     sys.stderr.write(f"kaizen-workflow-mcp: missing mcp dep: {e}\n")
     sys.exit(1)

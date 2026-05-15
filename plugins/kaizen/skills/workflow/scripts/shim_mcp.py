@@ -2,7 +2,7 @@
 # /// script
 # requires-python = ">=3.10"
 # dependencies = [
-#     "mcp>=1.0",
+#     "fastmcp>=3.0",
 # ]
 # ///
 """kaizen shim-mcp — MCP server exposing the `kaizen-shim` refactor surface.
@@ -55,7 +55,7 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR))
 
 try:
-    from mcp.server.fastmcp import FastMCP
+    from fastmcp import FastMCP
     import shim  # type: ignore
 except ImportError as e:
     sys.stderr.write(
