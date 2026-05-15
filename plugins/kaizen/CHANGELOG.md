@@ -5,6 +5,16 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [S
 
 ## [Unreleased]
 
+### Added — single-entry MCP gateway
+
+The plugin's 21 MCP servers (142 tools) are consolidated behind one FastMCP v3 gateway — the sole `.mcp.json` entry.
+
+- **`gateway.py`** imports + `mount()`s all 21 sub-servers in-process (bare mount — tool names are already globally unique, so they stay byte-identical to before). One `uv` process, one venv (the union of sub-server deps; `bootstrap.sh` pre-warms it).
+- **Curated core + search.** A `RegexSearchTransform` keeps a 13-tool hot-path core always-visible; the remaining ~130 tools are reachable via the synthetic `kaizen_search_tools` / `kaizen_call_tool`. Default context cost drops from 142 tool schemas to ~15 — with **zero capability loss**: the search transform controls discovery, not access, so every tool stays fully callable.
+- **All 21 sub-servers migrated** from the bundled `mcp` SDK to standalone `fastmcp>=3.0` (two-line change each). `mcp_server.py` normalized to `backlog_mcp.py` with a PEP-723 block.
+- **`browser_mcp.py`** now lazy-loads playwright — the gateway mounts it cleanly even when playwright is absent; `open_browser()` returns a friendly error instead of killing the process.
+- **plugin.json** updated to v1.37.0: per-server `uv run --script` permission entries collapsed to one `*.py` wildcard.
+
 ### Changed — `daemon.py` is uv-native + `bootstrap` provisioner
 
 The `watchdog` dependency for the continuous-index watcher is now provisioned the kaizen way — uv, not `pip install`.

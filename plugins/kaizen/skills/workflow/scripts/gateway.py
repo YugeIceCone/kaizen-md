@@ -78,6 +78,29 @@ for name, modname in SUBSERVERS:
     except BaseException as exc:  # one broken server must not kill the gateway
         MOUNT_ERRORS.append(f"{name}: {exc}")
 
+# Curated core — the hot-path read/search tools kept always-visible in
+# the default tool list. Everything else is reachable via the search
+# transform's kaizen_search_tools / kaizen_call_tool synthetic tools.
+# Discovery is curated; access is not — every tool stays fully callable.
+CURATED_CORE: list[str] = [
+    "loc_search", "knowledge_search", "onboard_search", "trace_search",
+    "state_status", "state_health_summary", "workflow_status",
+    "list_items", "iron_laws_check", "audit_latest",
+    "roadmap_next", "drift_status", "metrics_session",
+]
+
+SEARCH_TRANSFORM_APPLIED = False
+try:
+    from fastmcp.server.transforms.search import RegexSearchTransform
+    gw.add_transform(RegexSearchTransform(
+        search_tool_name="kaizen_search_tools",
+        call_tool_name="kaizen_call_tool",
+        always_visible=CURATED_CORE,
+    ))
+    SEARCH_TRANSFORM_APPLIED = True
+except BaseException as exc:  # never block the gateway on a transform issue
+    MOUNT_ERRORS.append(f"search-transform: {exc}")
+
 if __name__ == "__main__":
     if MOUNT_ERRORS:
         for e in MOUNT_ERRORS:

@@ -48,6 +48,17 @@ class TestGatewayComposition(unittest.TestCase):
         for srv in ("brain", "metrics"):
             self.assertIn(srv, names, f"{srv} should be mounted in phase 3")
 
+    def test_search_transform_applied(self):
+        import gateway
+        self.assertTrue(gateway.SEARCH_TRANSFORM_APPLIED,
+                        "RegexSearchTransform should be applied to the gateway")
+
+    def test_curated_core_is_defined(self):
+        import gateway
+        self.assertGreater(len(gateway.CURATED_CORE), 0)
+        self.assertLessEqual(len(gateway.CURATED_CORE), 20,
+                             "the curated core must stay small")
+
 
 if __name__ == "__main__":
     unittest.main()
