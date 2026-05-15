@@ -78,22 +78,15 @@ from __future__ import annotations
 
 import sys
 
+from fastmcp import FastMCP
+
 try:
-    from fastmcp import FastMCP
     from playwright.async_api import async_playwright, Browser, Page, Playwright
+    _PLAYWRIGHT_AVAILABLE = True
+    _PLAYWRIGHT_ERR = ""
 except ImportError as e:  # pragma: no cover
-    sys.stderr.write(
-        f"kaizen-browser-mcp: missing dependency: {e}\n"
-        "This script uses PEP 723 inline metadata — deps should auto-install\n"
-        "via uv when launched as `uv run --script <path>`.\n"
-        "\n"
-        "If you're running it directly with python3, install manually:\n"
-        "  pip install --user mcp playwright\n"
-        "  python -m playwright install chromium\n"
-        "\n"
-        "Or run: /kaizen:browser install (uses uv).\n"
-    )
-    sys.exit(1)
+    _PLAYWRIGHT_AVAILABLE = False
+    _PLAYWRIGHT_ERR = str(e)
 
 
 mcp = FastMCP("browser")
@@ -125,6 +118,11 @@ async def open_browser(headless: bool = False, viewport_width: int = 1280, viewp
     debugging); headless=True runs invisible (best for CI / batch work).
     Idempotent: calling again returns "already open" without relaunching.
     """
+    if not _PLAYWRIGHT_AVAILABLE:
+        return (
+            f"error: playwright not installed ({_PLAYWRIGHT_ERR}). "
+            "Run: uv run --with playwright python -m playwright install chromium"
+        )
     global _pw_cm, _pw, _browser, _page
     if _page is not None:
         return f"already open at {_page.url}"
@@ -277,4 +275,17 @@ async def evaluate(js_expression: str) -> str:
 
 
 if __name__ == "__main__":
+    if not _PLAYWRIGHT_AVAILABLE:
+        sys.stderr.write(
+            f"kaizen-browser-mcp: missing dependency: {_PLAYWRIGHT_ERR}\n"
+            "This script uses PEP 723 inline metadata — deps should auto-install\n"
+            "via uv when launched as `uv run --script <path>`.\n"
+            "\n"
+            "If you're running it directly with python3, install manually:\n"
+            "  pip install --user mcp playwright\n"
+            "  python -m playwright install chromium\n"
+            "\n"
+            "Or run: /kaizen:browser install (uses uv).\n"
+        )
+        sys.exit(1)
     mcp.run()

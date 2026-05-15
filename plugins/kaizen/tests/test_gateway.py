@@ -31,6 +31,17 @@ class TestGatewayComposition(unittest.TestCase):
         self.assertEqual(gateway.MOUNT_ERRORS, [],
                          f"no sub-server should fail to mount: {gateway.MOUNT_ERRORS}")
 
+    def test_gateway_mounts_all_phase2_servers(self):
+        import gateway
+        names = {name for name, _ in gateway.MOUNTED}
+        phase2 = (
+            "backlog", "browser", "trace", "knowledge", "onboard",
+            "claude_docs", "scrape", "state", "lint", "workflow",
+            "loc", "loop", "shim", "rerank", "audit", "roadmap",
+        )
+        for srv in phase2:
+            self.assertIn(srv, names, f"{srv} should be mounted in phase 2")
+
 
 if __name__ == "__main__":
     unittest.main()

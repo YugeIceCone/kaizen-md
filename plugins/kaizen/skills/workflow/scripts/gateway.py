@@ -41,9 +41,27 @@ from fastmcp import FastMCP
 # (name, module-import-name) for every sub-server to mount. Extended in
 # later phases. `name` is the short domain label used in diagnostics.
 SUBSERVERS: list[tuple[str, str]] = [
+    # Phase 1 pilots
     ("iron_laws", "iron_laws_mcp"),
     ("manifests", "manifests_mcp"),
     ("drift", "drift_mcp"),
+    # Phase 2 — remaining servers
+    ("backlog", "backlog_mcp"),
+    ("browser", "browser_mcp"),
+    ("trace", "trace_mcp"),
+    ("knowledge", "knowledge_mcp"),
+    ("onboard", "onboard_mcp"),
+    ("claude_docs", "claude_docs_mcp"),
+    ("scrape", "scrape_mcp"),
+    ("state", "state_mcp"),
+    ("lint", "lint_mcp"),
+    ("workflow", "workflow_mcp"),
+    ("loc", "loc_mcp"),
+    ("loop", "loop_mcp"),
+    ("shim", "shim_mcp"),
+    ("rerank", "rerank_mcp"),
+    ("audit", "audit_mcp"),
+    ("roadmap", "roadmap_mcp"),
 ]
 
 gw = FastMCP("kaizen")
@@ -55,7 +73,7 @@ for name, modname in SUBSERVERS:
         mod = __import__(modname)
         gw.mount(mod.mcp)
         MOUNTED.append((name, mod))
-    except Exception as exc:  # one broken server must not kill the gateway
+    except BaseException as exc:  # one broken server must not kill the gateway
         MOUNT_ERRORS.append(f"{name}: {exc}")
 
 if __name__ == "__main__":

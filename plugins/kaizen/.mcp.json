@@ -9,9 +9,11 @@
       ]
     },
     "backlog": {
-      "command": "python3",
+      "command": "uv",
       "args": [
-        "${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/mcp_server.py"
+        "run",
+        "--script",
+        "${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/backlog_mcp.py"
       ]
     },
     "browser": {
