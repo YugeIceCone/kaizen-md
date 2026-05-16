@@ -1,0 +1,107 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/YugeIceCone/kaizen-md/skills/audit/domain/schemas/audit-finding.schema.json",
+  "title": "Audit finding",
+  "description": "One concrete bug-candidate or boundary-violation surfaced during /kaizen:audit. The audit report is a JSON array of these (or a markdown rendering of one). Distinct from plugin-self-audit/finding.schema.json (which is about plugin-internal audit checkpoints) — this schema is for the user-facing audit of a project's code under review.",
+  "type": "object",
+  "required": ["id", "severity", "title", "file", "evidence", "rule_broken", "fix_shape"],
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^F-[0-9]{3,4}$",
+      "description": "Stable id within a single audit run: F-001, F-002, ... Used by Boy-Scout-trail records (verify-before-application.demoted_reason) to reference findings that were demoted."
+    },
+    "severity": {
+      "enum": ["P0", "P1", "P2", "P3"],
+      "description": "P0 = architectural violation (dependency-direction reversed, domain pollution). P1 = boundary leak. P2 = smell. P3 = cosmetic. Matches the boy-scout-rule + onion-ddd-workflow severity ladder."
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200,
+      "description": "One-line description suitable for the audit report's findings list."
+    },
+    "file": {
+      "type": "string",
+      "description": "Project-relative path to the file containing the finding. Use src/foo/bar.rs not absolute paths."
+    },
+    "line": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Optional line number. Required for P0/P1; recommended for P2/P3 when unambiguous."
+    },
+    "evidence": {
+      "$ref": "#/$defs/Evidence"
+    },
+    "rule_broken": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Which rule the finding violates. Cite the canonical source (e.g. 'The One Rule — domain depends on infrastructure', 'DRY — duplicated business logic', 'YAGNI — abstraction with no consumers'). Used by the audit reporter to group findings by principle."
+    },
+    "fix_shape": {
+      "type": "string",
+      "minLength": 1,
+      "description": "One-line remediation suggestion (NOT the full fix). E.g. 'extract UserRepository trait into domain/ports; impl in infrastructure'. The full plan goes into writing-plans/executing-plans output."
+    },
+    "candidate_class": {
+      "enum": [
+        "logic-bug",
+        "control-flow",
+        "state-leak",
+        "stale-cache",
+        "error-handling",
+        "boundary-empty-input",
+        "contract-mismatch",
+        "lod-violation",
+        "dry-violation",
+        "kiss-violation",
+        "yagni-violation",
+        "anemic-domain",
+        "layer-violation",
+        "port-leak",
+        "circular-dep",
+        "dead-code",
+        "magic-string",
+        "missing-test",
+        "other"
+      ],
+      "description": "Classification matches audit/SKILL.md 'Good Candidate Classes' + the onion-ddd-workflow violation matrix. Used by /kaizen:metrics to track distribution."
+    },
+    "proof_status": {
+      "enum": ["proved", "unproved", "speculative"],
+      "default": "unproved",
+      "description": "proved = failing test or concrete repro exists. unproved = grep / code-read evidence only. speculative = hypothesis. audit/SKILL.md Rule 'No fix without proof' applies — speculative findings should be discarded, not reported."
+    },
+    "disposition": {
+      "enum": ["applied", "trailed", "reported-only"],
+      "description": "How the finding was handled during the audit flow. applied = fixed in-flow (per audit Step 7 + boy-scout-rule Rule 5). trailed = filed to backlog/TODO. reported-only = listed in the findings report without action (the default for proved P0/P1 in 'report only' mode)."
+    },
+    "trail_ref": {
+      "type": "string",
+      "description": "When disposition=trailed: backlog id, TODO marker, or issue url. Mirrors verify-before-application's trail_ref."
+    }
+  },
+  "$defs": {
+    "Evidence": {
+      "type": "object",
+      "required": ["kind", "snippet"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "enum": ["code-excerpt", "grep-output", "test-failure", "log-line", "compiler-warning", "lint-output", "stack-trace"],
+          "description": "Type of evidence captured below."
+        },
+        "snippet": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Verbatim 1-5 line excerpt. Long evidence belongs in attached logs, not the finding record."
+        },
+        "language": {
+          "type": "string",
+          "description": "Optional syntax hint for rendering (rust, typescript, python, go, etc.)."
+        }
+      }
+    }
+  }
+}

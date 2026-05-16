@@ -1,0 +1,187 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/YugeIceCone/kaizen-md/skills/verify-before-application/domain/schemas/verification-record.schema.json",
+  "title": "Verify-before-application — gated change record",
+  "description": "One record per change considered in a discovery flow. Captures the candidate, the RED phase (proof of need), the application step, the GREEN phase (proof of safety), and the final disposition (applied / trailed / discarded). Consumed by audit/review/refactor reporters and by /kaizen:metrics to count rotting findings.",
+  "type": "object",
+  "required": ["candidate", "red", "disposition"],
+  "additionalProperties": false,
+  "properties": {
+    "candidate": {
+      "$ref": "#/$defs/Candidate"
+    },
+    "red": {
+      "$ref": "#/$defs/RedPhase"
+    },
+    "green": {
+      "$ref": "#/$defs/GreenPhase",
+      "description": "Required when disposition=applied. Optional otherwise (no GREEN if change was never applied)."
+    },
+    "disposition": {
+      "$ref": "#/$defs/Disposition"
+    },
+    "applied_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO-8601 timestamp the change actually landed (applies only when disposition=applied)."
+    },
+    "demoted_reason": {
+      "type": "string",
+      "description": "When disposition=trailed or =discarded: one-line cause (e.g. 'RED failed: 1 call site only', 'GREEN failed: regression test broke', 'out of scope: cross-module')."
+    },
+    "trail_ref": {
+      "type": "string",
+      "description": "When disposition=trailed: backlog id, TODO marker, or issue url where the deferred item is tracked."
+    },
+    "session_id": {
+      "type": "string",
+      "description": "Identifier of the discovery flow that produced this record (workflow run id, audit session, etc.). Used by /kaizen:metrics to group records by flow."
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "disposition": { "const": "applied" } } },
+      "then": { "required": ["candidate", "red", "green", "disposition", "applied_at"] }
+    },
+    {
+      "if": { "properties": { "disposition": { "enum": ["trailed", "discarded"] } } },
+      "then": { "required": ["candidate", "red", "disposition", "demoted_reason"] }
+    },
+    {
+      "if": { "properties": { "disposition": { "const": "trailed" } } },
+      "then": { "required": ["trail_ref"] }
+    }
+  ],
+  "$defs": {
+    "Candidate": {
+      "type": "object",
+      "required": ["change_class", "description"],
+      "additionalProperties": false,
+      "properties": {
+        "change_class": {
+          "enum": [
+            "boy-scout-cleanup",
+            "bug-fix",
+            "refactor-extraction",
+            "refactor-relocation",
+            "new-abstraction",
+            "new-port",
+            "plugin-edit",
+            "schema-migration",
+            "dependency-change",
+            "documentation-change"
+          ],
+          "description": "Matches the rows of the verify-before-application RED-matrix in SKILL.md."
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Free-text one-line description of what would change."
+        },
+        "target_path": {
+          "type": "string",
+          "description": "Primary file or directory the change would touch."
+        },
+        "scope_loc_estimate": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Estimated lines of code affected. boy-scout-cleanup demotes to trailed when >20."
+        }
+      }
+    },
+    "RedPhase": {
+      "type": "object",
+      "required": ["evidence_kind", "evidence", "passed"],
+      "additionalProperties": false,
+      "properties": {
+        "evidence_kind": {
+          "enum": [
+            "grep-count",
+            "call-site-count",
+            "failing-test",
+            "compiler-warning",
+            "audit-finding",
+            "user-quote",
+            "structural-lint",
+            "version-pin",
+            "cve",
+            "other"
+          ],
+          "description": "Type of RED evidence produced. 'other' requires a non-empty 'evidence' string explaining the kind."
+        },
+        "evidence": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The actual evidence: grep output, test name, citation, warning text, etc."
+        },
+        "evidence_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "For count-style evidence (grep-count, call-site-count): the numeric value. For refactor-extraction the threshold is >=2."
+        },
+        "ran_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When RED was last run. Stale evidence (run before unrelated changes landed) should be re-run before applying."
+        },
+        "passed": {
+          "type": "boolean",
+          "description": "Whether the RED gate passed. false => disposition cannot be 'applied'."
+        }
+      }
+    },
+    "GreenPhase": {
+      "type": "object",
+      "required": ["surfaces", "passed"],
+      "additionalProperties": false,
+      "properties": {
+        "surfaces": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/VerificationSurface" },
+          "description": "One entry per verification surface run after applying (compile barrier, tests, structural lint, etc.). At minimum the project's compile barrier."
+        },
+        "passed": {
+          "type": "boolean",
+          "description": "AND of all surface results. false => the change does not stand (fix or revert per SKILL.md)."
+        }
+      }
+    },
+    "VerificationSurface": {
+      "type": "object",
+      "required": ["kind", "command", "passed"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "enum": [
+            "compile-barrier",
+            "focused-tests",
+            "broad-tests",
+            "structural-lint",
+            "grep-verification",
+            "dep-graph",
+            "plugin-validator",
+            "regression-existing-suite",
+            "schema-validator",
+            "smoke-test"
+          ]
+        },
+        "command": {
+          "type": "string",
+          "description": "Verbatim command run for this surface (e.g. 'cargo check --workspace --offline')."
+        },
+        "passed": {
+          "type": "boolean"
+        },
+        "output_excerpt": {
+          "type": "string",
+          "description": "Last 1-3 lines of output. Empty when passed=true; non-empty + the failure cause when passed=false."
+        }
+      }
+    },
+    "Disposition": {
+      "enum": ["applied", "trailed", "discarded"],
+      "description": "applied = both gates passed, change landed. trailed = failed gate, filed for later. discarded = failed RED with no plan to revisit (speculative / YAGNI)."
+    }
+  }
+}

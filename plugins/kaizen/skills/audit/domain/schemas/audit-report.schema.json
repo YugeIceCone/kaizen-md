@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/YugeIceCone/kaizen-md/skills/audit/domain/schemas/audit-report.schema.json",
+  "title": "Audit report",
+  "description": "Output of one /kaizen:audit run. Wraps a list of findings plus the run-level summary (verdict, scope, counts). Mirrors the markdown template in onion-ddd-workflow Part 2 and boy-scout-rule's discovery-time application protocol.",
+  "type": "object",
+  "required": ["run_id", "scope", "verdict", "findings"],
+  "additionalProperties": false,
+  "properties": {
+    "run_id": {
+      "type": "string",
+      "pattern": "^audit-[0-9]{8}-[0-9]{6}$",
+      "description": "Auto-generated at audit start: audit-YYYYMMDD-HHMMSS (UTC). Matches workflow-state.schema.json id pattern style."
+    },
+    "scope": {
+      "type": "object",
+      "required": ["target"],
+      "additionalProperties": false,
+      "properties": {
+        "target": {
+          "type": "string",
+          "description": "What was audited: 'whole-repo', 'src/foo/', 'bounded-context:orders', etc."
+        },
+        "include_globs": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "exclude_globs": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "verdict": {
+      "enum": ["green", "leaks", "violated"],
+      "description": "green = no P0/P1 findings. leaks = P1 findings only. violated = at least one P0. Maps to the onion-ddd-workflow audit verdict."
+    },
+    "findings": {
+      "type": "array",
+      "items": { "$ref": "audit-finding.schema.json" },
+      "description": "All findings, in P0 → P3 severity order. Each item satisfies audit-finding.schema.json."
+    },
+    "counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "p0": { "type": "integer", "minimum": 0 },
+        "p1": { "type": "integer", "minimum": 0 },
+        "p2": { "type": "integer", "minimum": 0 },
+        "p3": { "type": "integer", "minimum": 0 },
+        "applied": { "type": "integer", "minimum": 0, "description": "Findings dispatched per audit Step 7 (apply in-flow)." },
+        "trailed": { "type": "integer", "minimum": 0, "description": "Findings demoted to backlog/TODO with a named failing gate check." },
+        "reported_only": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "recommended_next_step": {
+      "enum": ["ship-as-is", "plan-execute", "rerun-with-wider-scope"],
+      "description": "What audit suggests as the next routine. ship-as-is = no P0/P1 + no in-scope cleanups remaining. plan-execute = invoke writing-plans/executing-plans for P0/P1 fixes. rerun-with-wider-scope = scope was too narrow to be useful."
+    },
+    "completed_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}

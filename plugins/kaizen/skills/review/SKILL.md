@@ -2,7 +2,7 @@
 name: change-reviewing
 description: Reviews code, diffs, and plans for correctness, risk, and quality. Use to inspect changes before merge or critique implementation plans.
 metadata:
-  version: "1.1"
+  version: "1.2"
 ---
 
 # Change Reviewing
@@ -39,7 +39,7 @@ When the review scope includes code quality:
 - use **coupling-reducing** to surface deep coupling and train-wreck chains
 - use **logic-deduplicating** to surface duplicated business logic and shotgun-surgery risk
 - use **code-simplifying** to surface complexity that reduces readability or hides bugs
-- use **incremental-code-cleaning** to flag safe incremental improvements worth making alongside the change
+- use **incremental-code-cleaning** to *apply* (not flag) safe incremental improvements alongside the change — per **boy-scout-rule** Rule 5, in-scope findings are applied during discovery, not deferred to a follow-up
 - use **pattern-standardizing** to flag structural inconsistencies
 
 Run **stack-detecting** first if `.agents/stack-context.md` does not exist.
@@ -78,3 +78,4 @@ Use delegation only if the user explicitly asks for it.
 - Do not pad the answer with praise.
 - Prefer direct responses over output files.
 - Avoid Markdown tables.
+- Boy-Scout findings discovered during the review get applied inline (per **boy-scout-rule** Rule 5 + **verify-before-application** RED-GREEN gate). The review summary lists what was applied; only items that failed the gate appear as deferred next-steps, each annotated with the failing gate check.

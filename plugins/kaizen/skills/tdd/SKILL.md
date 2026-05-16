@@ -346,6 +346,10 @@ Mid-RED, mid-GREEN, or mid-Regression failures often signal a deeper problem tha
 
 ---
 
+## Related Skills
+
+- **verify-before-application** — generalises RED-GREEN to non-code artifacts (plugin edits, schema migrations, refactor relocations, structural changes). When the artifact is a test, this skill (tdd) IS the gate. When the artifact is anything else, `verify-before-application` is the gate. Pair them; they share the same kernel.
+
 ## References (On-Demand Only)
 
 - `references/python-pytest.md` — **load when** writing Python tests. pytest patterns, autospec mocks, hypothesis PBT, mutmut mutation testing, async test helpers
