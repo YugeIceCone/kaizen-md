@@ -25,7 +25,7 @@ from pathlib import Path
 
 BRAIN = Path(os.path.expanduser("~/.claude/brain"))
 SCRIPT_DIR = Path(__file__).resolve().parent
-SCHEMA = SCRIPT_DIR.parent / "domain" / "schemas" / "note.schema.json"
+SCHEMA = SCRIPT_DIR.parent.parent / "brain" / "domain" / "schemas" / "note.schema.json"
 
 try:
     import yaml
@@ -93,7 +93,7 @@ def cmd_validate() -> int:
 
 def cmd_links() -> int:
     if not BRAIN.exists():
-        print(f"OK: brain not present")
+        print("OK: brain not present")
         return 0
     # Find every [[name]] reference in Persona.md + all Notes
     files = [BRAIN / "Persona.md"] + list((BRAIN / "Notes").glob("*.md"))

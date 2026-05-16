@@ -18,6 +18,9 @@ from pathlib import Path
 SCRIPT_DIR = Path(__file__).resolve().parent
 DOMAIN = SCRIPT_DIR.parent / "domain"
 BRAIN_TOOLS = SCRIPT_DIR.parent / "brain"
+# Canonical note schema lives in the brain skill (not self-improving) — single
+# source of truth for ~/.claude/brain/Notes/*.md frontmatter.
+BRAIN_SCHEMA_DOMAIN = SCRIPT_DIR.parent.parent / "brain" / "domain"
 
 BRAIN = Path(os.path.expanduser("~/.claude/brain"))
 
@@ -53,7 +56,7 @@ def _read_frontmatter(path: Path) -> dict:
 
 class TestNotesSchema(unittest.TestCase):
     def setUp(self):
-        self.schema_path = DOMAIN / "schemas" / "note.schema.json"
+        self.schema_path = BRAIN_SCHEMA_DOMAIN / "schemas" / "note.schema.json"
 
     def test_schema_exists(self):
         self.assertTrue(self.schema_path.exists(), f"missing: {self.schema_path}")

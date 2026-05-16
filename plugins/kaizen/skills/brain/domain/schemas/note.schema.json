@@ -1,37 +1,65 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://kaizen-md/brain/note.schema.json",
+  "$id": "https://github.com/YugeIceCone/kaizen-md/skills/brain/domain/schemas/note.schema.json",
   "title": "Brain Note frontmatter",
-  "description": "JSON Schema for the frontmatter block at the head of every Brain Note (~/.claude/brain/Notes/*.md, ~/.claude/brain/People/*.md, etc.). Validator enforces required-by-type rules from entity-types.yaml.",
+  "description": "Canonical schema for the YAML frontmatter of every Brain Note (~/.claude/brain/Notes/*.md, ~/.claude/brain/People/*.md, etc.). Validated by skills/self-improving/brain/validator.py and skills/self-improving/application/_brain_tests.py. Replaces the prior duplicate at skills/self-improving/domain/schemas/note.schema.json (removed) — that copy had drifted from this one in required fields and enum values.",
   "type": "object",
-  "required": ["name", "description", "type"],
+  "required": ["created", "type"],
+  "additionalProperties": true,
   "properties": {
     "name": {
       "type": "string",
-      "description": "Human-readable title. Appears in the H1 and in cross-references.",
+      "description": "Human-readable title. Appears in the H1 and in cross-references. Strongly recommended — required for belief notes (enforced via the conditional below).",
       "minLength": 1,
       "maxLength": 200
     },
     "description": {
       "type": "string",
-      "description": "One-line summary used by Persona.md ## Top Beliefs and by the brain index.",
+      "description": "One-line summary used by Persona.md ## Top Beliefs and by the brain index. Strongly recommended — required for belief notes (enforced via the conditional below).",
       "minLength": 1,
       "maxLength": 500
     },
+    "created": {
+      "anyOf": [
+        { "type": "string", "format": "date" },
+        { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" }
+      ],
+      "description": "ISO date (YYYY-MM-DD) the note was first written."
+    },
+    "updated": {
+      "anyOf": [
+        { "type": "string", "format": "date" },
+        { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" }
+      ],
+      "description": "ISO date (YYYY-MM-DD). Auto-bumped on every write."
+    },
     "type": {
-      "type": "string",
-      "enum": ["world-fact", "belief", "observation", "experience"],
-      "description": "Epistemic category — see domain/entity-types.yaml."
+      "enum": [
+        "belief",
+        "feedback",
+        "audit",
+        "project",
+        "session",
+        "world-fact",
+        "reference",
+        "user",
+        "system",
+        "persona",
+        "observation",
+        "experience",
+        "behaviour"
+      ],
+      "description": "Epistemic / functional category. Union of brain's epistemic enum (world-fact, belief, observation, experience) and self-improving's operational types (feedback, audit, project, session, reference, user, system, persona, behaviour)."
     },
     "confidence": {
       "type": "number",
       "minimum": 0.0,
       "maximum": 1.0,
-      "description": "REQUIRED for type=belief. Best-estimate confidence 0.0-1.0. Distinguishes beliefs from world-facts."
+      "description": "Best-estimate confidence 0.0-1.0. REQUIRED for type=belief (see conditional below). Distinguishes beliefs from world-facts."
     },
     "tags": {
       "type": "array",
-      "items": {"type": "string"},
+      "items": { "type": "string" },
       "description": "Free-form tags for grouping / search."
     },
     "sources_count": {
@@ -40,19 +68,8 @@
       "description": "Number of evidence sources backing this note. Auto-incremented when evidence is appended; triggers brain promotion at >=2 for project-memory entries."
     },
     "freshness": {
-      "type": "string",
-      "enum": ["fresh", "stable", "stale"],
-      "description": "fresh=created/updated this week, stable=mature belief, stale=evolved/superseded."
-    },
-    "created": {
-      "type": "string",
-      "format": "date",
-      "description": "ISO date (YYYY-MM-DD)."
-    },
-    "updated": {
-      "type": "string",
-      "format": "date",
-      "description": "ISO date (YYYY-MM-DD). Auto-bumped on every write."
+      "enum": ["fresh", "stable", "hardened", "stale", "archived"],
+      "description": "fresh=created/updated this week, stable=mature belief, hardened=top-belief candidate, stale=evolved/superseded, archived=retired."
     },
     "evidence": {
       "type": "array",
@@ -70,7 +87,11 @@
           },
           "date": {
             "type": "string",
-            "format": "date"
+            "description": "ISO date the evidence was captured."
+          },
+          "context": {
+            "type": "string",
+            "description": "Free-form context describing the evidence."
           },
           "description": {
             "type": "string"
@@ -81,12 +102,19 @@
     "promote": {
       "type": "boolean",
       "description": "Project-memory only. Set to true to force brain promotion on the next /kaizen:brain promote run."
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Free-form metadata bag for skill-specific extensions."
     }
   },
   "allOf": [
     {
-      "if": {"properties": {"type": {"const": "belief"}}},
-      "then": {"required": ["name", "description", "type", "confidence"]}
+      "if": { "properties": { "type": { "const": "belief" } } },
+      "then": {
+        "required": ["name", "description", "type", "created", "confidence"],
+        "description": "Belief notes additionally require name, description, and confidence — they are the load-bearing fields for Persona.md ## Top Beliefs rendering."
+      }
     }
   ]
 }
