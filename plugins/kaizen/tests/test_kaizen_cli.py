@@ -110,6 +110,81 @@ class TestDispatcherCommands(unittest.TestCase):
         self.assertIn("iron-laws", r.stdout)
         self.assertIn("etu", r.stdout)
 
+    def test_commands_list_runs(self):
+        r = subprocess.run([str(_BIN_KAIZEN), "commands"],
+                           capture_output=True, text=True, timeout=5)
+        self.assertEqual(r.returncode, 0)
+        self.assertIn("slash commands", r.stdout)
+        # Canonical entries we know exist
+        self.assertIn("gatekeeper", r.stdout)
+        self.assertIn("audit", r.stdout)
+
+    def test_commands_list_json_is_valid(self):
+        r = subprocess.run([str(_BIN_KAIZEN), "commands", "list", "--json"],
+                           capture_output=True, text=True, timeout=5)
+        self.assertEqual(r.returncode, 0)
+        data = json.loads(r.stdout)
+        self.assertIsInstance(data, list)
+        # Every entry has the expected keys
+        for entry in data:
+            for k in ("name", "slug", "description", "has_bash_body", "bin_wrapper"):
+                self.assertIn(k, entry, f"missing key {k} in {entry}")
+
+    def test_commands_show_prints_body(self):
+        r = subprocess.run([str(_BIN_KAIZEN), "commands", "show", "gatekeeper"],
+                           capture_output=True, text=True, timeout=5)
+        self.assertEqual(r.returncode, 0)
+        self.assertIn("---", r.stdout)  # frontmatter delimiter
+        self.assertIn("name: gatekeeper", r.stdout)
+
+    def test_commands_show_unknown_exits_2(self):
+        r = subprocess.run([str(_BIN_KAIZEN), "commands", "show", "nonexistent"],
+                           capture_output=True, text=True, timeout=5)
+        self.assertEqual(r.returncode, 2)
+
+    def test_commands_show_without_name_errors(self):
+        r = subprocess.run([str(_BIN_KAIZEN), "commands", "show"],
+                           capture_output=True, text=True, timeout=5)
+        self.assertEqual(r.returncode, 2)
+
+
+class TestSlashCommandInventory(unittest.TestCase):
+    def setUp(self):
+        self.cli = _load("kaizen_cli_inv_test", _KAIZEN_CLI)
+
+    def test_inventory_returns_list_of_dicts(self):
+        cmds = self.cli._list_slash_commands()
+        self.assertGreater(len(cmds), 30, "expected many slash commands")
+        for c in cmds:
+            self.assertIsInstance(c, dict)
+            self.assertIn("name", c)
+            self.assertIn("slug", c)
+
+    def test_frontmatter_parser_handles_simple_yaml(self):
+        text = '---\nname: foo\ndescription: bar baz\n---\n# body\n'
+        fm = self.cli._parse_frontmatter(text)
+        self.assertEqual(fm["name"], "foo")
+        self.assertEqual(fm["description"], "bar baz")
+
+    def test_bash_body_detection(self):
+        cmds = self.cli._list_slash_commands()
+        # gatekeeper has a `!`-prefix bash body
+        gk = next(c for c in cmds if c["slug"] == "gatekeeper")
+        # audit.md is the canonical example of a bash-bodied command
+        audit = next(c for c in cmds if c["slug"] == "audit")
+        self.assertEqual(audit["has_bash_body"], "true")
+
+    def test_bin_wrapper_link_resolved_when_present(self):
+        cmds = self.cli._list_slash_commands()
+        audit = next(c for c in cmds if c["slug"] == "audit")
+        # audit has bin/kaizen-audit
+        self.assertEqual(audit["bin_wrapper"], "kaizen-audit")
+
+
+class TestTimeMode(unittest.TestCase):
+    """Standalone — `--time` is a subprocess-driven CLI mode, not
+    inventory or commands-discovery related."""
+
     def test_time_mode_emits_timing(self):
         # --time applies to dispatched WRAPPER subcommands (built-ins
         # like `version`/`list` short-circuit BEFORE the timing block —

@@ -5,6 +5,35 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [S
 
 ## [Unreleased]
 
+### Added — `kaizen commands`: slash-command inventory surface
+
+`_kaizen_dispatcher.py` v1.1.0. Closes the discoverability gap where the 48 slash commands at `commands/*.md` (the `/kaizen:<name>` surface Claude Code exposes) had no CLI inventory — users discovered them only via Claude Code's menu autocomplete.
+
+**New subcommand**:
+
+```bash
+$ kaizen commands              # text listing, grouped bash-bodied vs agent-only
+$ kaizen commands list         # same (explicit)
+$ kaizen commands list --json  # machine-readable inventory
+$ kaizen commands show <name>  # print the .md body (frontmatter + prose + bash)
+```
+
+**Output dimensions**:
+
+- **bash-bodied** (45/48) — slash commands containing a `!`-prefixed bash invocation OR a ```` ```bash ```` fenced block. Most have matching `bin/kaizen-<name>` wrappers, so they're also callable as `kaizen <name>`.
+- **agent-only** (3/48) — pure prompt/protocol slash commands with no bash body. Only invocable via `/kaizen:<name>` in Claude Code.
+- **`bin_wrapper`** field per entry — surfaces the `kaizen-X` mapping if present (so a user reading the JSON knows whether to use `kaizen <name>` or fall back to `/kaizen:<name>`).
+
+**Top-level `kaizen` listing also updated** — now ends with a "See also: kaizen commands" pointer so users discover both surfaces (CLI wrappers + slash commands).
+
+**Implementation**:
+
+- `_parse_frontmatter(text)` — stdlib-only YAML-subset parser (top-level scalar keys only — enough for `name`, `description`, `argument-hint`). Avoids PyYAML dep to keep the dispatcher stdlib-pure.
+- `_list_slash_commands()` — scans `commands/*.md`, parses frontmatter, detects bash bodies via `^!\`` regex OR `\`\`\`bash` fence, resolves `bin/kaizen-<slug>` if present.
+- `cmd_commands(args)` — dispatcher for the new subcommand. Sub-modes: `list` (text or `--json`), `show <name>` (print body).
+
+**Tests**: 7 new in `test_kaizen_cli.py` covering inventory shape, frontmatter parser, bash-body detection, bin-wrapper linking, all `commands` subcommand modes. Total dispatcher tests: 12 → 21.
+
 ### Added — `_kaizen_dispatcher.py`: unified dispatcher for the bash loop
 
 The `bin/kaizen` multiplexer (a 65-line bash dispatcher) promoted to a Python entry point with grouped discovery, full-docstring help, timing + trace hooks, and JSON output. Subcommand resolution unchanged — `kaizen <X>` still routes to `${BIN_DIR}/kaizen-<X>` via OS `execv` (zero-overhead vanilla dispatch).

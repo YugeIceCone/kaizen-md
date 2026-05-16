@@ -6,6 +6,9 @@ discoverable, machine-readable dispatcher. Subcommand resolution is
 unchanged (still `bin/kaizen-<sub>` wrapper lookup) — what's new:
 
   - `kaizen list [--json]` — grouped + categorized subcommand catalog
+  - `kaizen commands [list|show <name>] [--json]` — slash command inventory
+    (the `/kaizen:<name>` surface Claude Code exposes — separate from
+    the `bin/kaizen-*` CLI wrapper surface this dispatcher routes to)
   - `kaizen help <sub>` — full docstring pulled from the wrapper header
   - `kaizen --time <sub> [args]` — dispatch + wall-clock timing
   - `kaizen --trace <sub> [args]` — dispatch + kaizen-trace events
@@ -41,6 +44,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import subprocess
 import sys
 import time
@@ -49,8 +53,9 @@ from pathlib import Path
 _SCRIPT_DIR = Path(__file__).resolve().parent
 _PLUGIN_ROOT = _SCRIPT_DIR.parent.parent.parent  # plugins/kaizen/
 _BIN_DIR = _PLUGIN_ROOT / "bin"
+_COMMANDS_DIR = _PLUGIN_ROOT / "commands"
 
-DISPATCHER_VERSION = "1.0.0"
+DISPATCHER_VERSION = "1.1.0"
 
 
 # Category map: substring match against subcommand name → group label.
@@ -139,6 +144,62 @@ def _categorize(name: str) -> str:
     return "misc"
 
 
+# ─── Slash command inventory ────────────────────────────────────────────
+
+
+_FRONTMATTER_RX = re.compile(r"^---\n(.*?)\n---", re.DOTALL)
+
+
+def _parse_frontmatter(text: str) -> dict[str, str]:
+    """Lightweight YAML-frontmatter parser — extracts top-level scalar
+    keys only (sufficient for `name`, `description`, `argument-hint`).
+    Avoids a PyYAML dep so the dispatcher stays stdlib-only."""
+    m = _FRONTMATTER_RX.match(text)
+    if not m:
+        return {}
+    out: dict[str, str] = {}
+    for line in m.group(1).splitlines():
+        if ":" not in line or line.startswith(" "):
+            continue
+        k, _, v = line.partition(":")
+        out[k.strip()] = v.strip().strip('"').strip("'")
+    return out
+
+
+def _list_slash_commands() -> list[dict[str, str]]:
+    """Every commands/*.md file → {name, description, argument_hint,
+    has_bash_body, bin_wrapper}.
+
+    `has_bash_body`: True if the markdown body contains a `!`-prefixed
+    bash invocation (Claude Code's syntax for "execute this on /cmd").
+    `bin_wrapper`: name of the matching `bin/kaizen-<name>` if present
+    (most bash-bodied commands have one; pure-prompt commands don't).
+    """
+    if not _COMMANDS_DIR.is_dir():
+        return []
+    out = []
+    for p in sorted(_COMMANDS_DIR.glob("*.md")):
+        try:
+            text = p.read_text(errors="ignore")
+        except OSError:
+            continue
+        fm = _parse_frontmatter(text)
+        name = fm.get("name") or p.stem
+        # Detect a bash body — Claude Code `!`-prefix or fenced ```bash
+        has_bash = bool(re.search(r"^!`", text, re.MULTILINE)) or \
+            "```bash" in text
+        bin_wrapper = f"kaizen-{p.stem}" if (_BIN_DIR / f"kaizen-{p.stem}").is_file() else ""
+        out.append({
+            "name": name,
+            "slug": p.stem,
+            "description": fm.get("description", "")[:200],
+            "argument_hint": fm.get("argument-hint", ""),
+            "has_bash_body": str(has_bash).lower(),  # str for JSON friendliness
+            "bin_wrapper": bin_wrapper,
+        })
+    return out
+
+
 def _plugin_version() -> str:
     pj = _PLUGIN_ROOT / ".claude-plugin" / "plugin.json"
     if not pj.is_file():
@@ -172,6 +233,7 @@ def cmd_list(args: argparse.Namespace) -> int:
     print(f"  usage: kaizen <subcommand> [args]")
     print(f"         kaizen list [--json]")
     print(f"         kaizen help <subcommand>")
+    print(f"         kaizen commands [list|show <name>] [--json]")
     print(f"         kaizen --time <subcommand> [args]")
     print(f"         kaizen --trace <subcommand> [args]")
     print("")
@@ -179,6 +241,13 @@ def cmd_list(args: argparse.Namespace) -> int:
         print(f"  {cat}:")
         for name, desc, _ in sorted(catalog[cat]):
             print(f"    {name:24s} {desc[:60]}")
+        print("")
+    # Also surface the slash-command count so users discover both surfaces.
+    n_slash = len(_list_slash_commands())
+    if n_slash:
+        print(f"  See also: kaizen commands  ({n_slash} slash commands "
+              f"in commands/*.md — invoke via /kaizen:<name> in Claude Code,")
+        print(f"             or run `kaizen <name>` for any with a bin wrapper)")
         print("")
     print(f"  plugin root: {_PLUGIN_ROOT}")
     return 0
@@ -213,6 +282,59 @@ def cmd_help(args: argparse.Namespace) -> int:
         subprocess.run([str(wrapper), "--help"], timeout=5)
     except (subprocess.TimeoutExpired, FileNotFoundError, PermissionError):
         pass
+    return 0
+
+
+def cmd_commands(args: argparse.Namespace) -> int:
+    """Inventory the slash commands at commands/*.md — discovery surface
+    for the `/kaizen:<name>` menu Claude Code exposes. Separate from
+    `cmd_list` which inventories the bin/kaizen-* CLI wrappers.
+
+    Sub-modes:
+      list           text inventory (default)
+      list --json    machine-readable
+      show <name>    print the .md body
+    """
+    sub = getattr(args, "subcmd", "list") or "list"
+    cmds = _list_slash_commands()
+
+    if sub == "show":
+        target = args.name
+        match = next((c for c in cmds if c["slug"] == target or c["name"] == target), None)
+        if not match:
+            sys.stderr.write(f"kaizen: unknown slash command '{target}'\n")
+            return 2
+        text = (_COMMANDS_DIR / f"{match['slug']}.md").read_text()
+        print(text)
+        return 0
+
+    if args.json:
+        print(json.dumps(cmds, indent=2))
+        return 0
+
+    bash_n = sum(1 for c in cmds if c["has_bash_body"] == "true")
+    pure_n = len(cmds) - bash_n
+    print(f"kaizen v{_plugin_version()} — slash commands ({len(cmds)} total: "
+          f"{bash_n} executable, {pure_n} agent-only)")
+    print(f"  invoke via Claude Code: /kaizen:<name>")
+    print(f"  bash-bodied commands also have bin/kaizen-<name> wrappers (callable via "
+          f"`kaizen <name>`)")
+    print("")
+    # Group: bash-bodied (callable both ways) vs pure-agent (only via /)
+    bash_cmds = [c for c in cmds if c["has_bash_body"] == "true"]
+    pure_cmds = [c for c in cmds if c["has_bash_body"] != "true"]
+
+    if bash_cmds:
+        print(f"  bash-bodied (callable from CLI + agent):")
+        for c in bash_cmds:
+            link = "" if c["bin_wrapper"] else "  (no bin wrapper)"
+            print(f"    {c['slug']:24s} {c['description'][:60]}{link}")
+        print("")
+    if pure_cmds:
+        print(f"  agent-only (invoke via /kaizen:<name> in Claude Code):")
+        for c in pure_cmds:
+            print(f"    {c['slug']:24s} {c['description'][:60]}")
+        print("")
     return 0
 
 
@@ -290,6 +412,18 @@ def main(argv: list[str]) -> int:
         parser.add_argument("subcommand")
         ns = parser.parse_args(argv[1:])
         return cmd_help(ns)
+    if cmd == "commands":
+        parser = argparse.ArgumentParser(prog="kaizen commands")
+        parser.add_argument("subcmd", nargs="?", default="list",
+                            choices=["list", "show"])
+        parser.add_argument("name", nargs="?", default=None,
+                            help="slash command name (for `show`)")
+        parser.add_argument("--json", action="store_true")
+        ns = parser.parse_args(argv[1:])
+        if ns.subcmd == "show" and not ns.name:
+            sys.stderr.write("kaizen commands show: needs <name>\n")
+            return 2
+        return cmd_commands(ns)
     if cmd in ("version", "--version", "-v"):
         return cmd_version(argparse.Namespace())
     if cmd in ("-h", "--help"):
