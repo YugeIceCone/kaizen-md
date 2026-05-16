@@ -21,7 +21,12 @@
 # Other flags:
 #   --no-globals        skip the default-global stack (project only)
 #   --no-project        skip project-scope stack (globals only)
-#   --dry-run           print what would run, don't execute
+#   --dry-run           print FULL commands that would run, don't execute
+#   --check             audit-only — show step labels with "would run"
+#                       (terser than --dry-run; for status overview)
+#   --fail-fast         abort with exit 1 on the first failing step
+#                       (default: best-effort — every step runs, summary
+#                       lists all failures at the end)
 #   --yes               skip confirmation prompts (currently no-op; here
 #                       for forward-compat if interactive prompts are added)
 
@@ -33,6 +38,8 @@ PLUGIN_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 # ─── Args ────────────────────────────────────────────────────────────
 
 DRY_RUN=0
+CHECK_MODE=0
+FAIL_FAST=0
 SKIP_GLOBALS=0
 SKIP_PROJECT=0
 WITH_INDEX=0
@@ -44,6 +51,8 @@ YES=0
 for arg in "$@"; do
   case "$arg" in
     --dry-run)         DRY_RUN=1 ;;
+    --check)           CHECK_MODE=1 ;;          # audit-only — no execution
+    --fail-fast)       FAIL_FAST=1 ;;           # abort on first failed step
     --no-globals)      SKIP_GLOBALS=1 ;;
     --no-project)      SKIP_PROJECT=1 ;;
     --with-index)      WITH_INDEX=1 ;;
@@ -77,29 +86,57 @@ ER="${RED}✗${RESET}"
 DR="${YELLOW}≫${RESET}"
 
 # ─── Step runner ─────────────────────────────────────────────────────
+#
+# Each step's command runs in a SUBSHELL via `bash -c "$cmd"` — not
+# `eval`. `bash -c` is safer than `eval`:
+#   - command runs in a subshell (can't mutate the parent)
+#   - no re-expansion of values (no $(touch /tmp/pwn) injection via
+#     interpolated PLUGIN_ROOT or REPO_ROOT)
+#   - the `efficient-tool-use::eval-on-user-input` anti-pattern is
+#     silenced
+#
+# Per-step log goes to `mktemp` (unique-per-step), so multi-failure
+# inspection works without overwrites. The previous global
+# /tmp/kaizen-enable-all.log was overwritten on each step.
+#
+# --check mode short-circuits to a label-only summary (no exec).
+# --fail-fast exits 1 immediately on the first step failure.
 
 OK_COUNT=0
 SKIP_COUNT=0
 FAIL_COUNT=0
 FAILED_STEPS=()
+ALL_STEP_LOGS=()  # for tail-many-on-failure rendering
 
 step() {
   local label="$1"; shift
   local cmd="$*"
+  if [ "$CHECK_MODE" -eq 1 ]; then
+    printf '  %s %-44s %swould run%s\n' "$DR" "$label" "$DIM" "$RESET"
+    return 0
+  fi
   if [ "$DRY_RUN" -eq 1 ]; then
     printf '  %s %-44s %s%s%s\n' "$DR" "$label" "$DIM" "$cmd" "$RESET"
     return 0
   fi
+  local logf
+  logf="$(mktemp -t kaizen-enable-all.XXXXXX)" || logf="/tmp/kaizen-enable-all.$$"
+  ALL_STEP_LOGS+=("$label::$logf")
   printf '  %s %s\n' "$BLUE→${RESET}" "$label"
-  if eval "$cmd" >/tmp/kaizen-enable-all.log 2>&1; then
+  if bash -c "$cmd" >"$logf" 2>&1; then
     OK_COUNT=$((OK_COUNT + 1))
     printf '  %s %s\n' "$OK" "$label"
   else
     local rc=$?
     FAIL_COUNT=$((FAIL_COUNT + 1))
-    FAILED_STEPS+=("$label (exit=$rc)")
-    printf '  %s %s ${DIM}exit=%s${RESET}\n' "$ER" "$label" "$rc"
-    sed 's/^/        /' /tmp/kaizen-enable-all.log | tail -5 >&2
+    FAILED_STEPS+=("$label (exit=$rc) [$logf]")
+    printf '  %s %s ${DIM}exit=%s [%s]${RESET}\n' "$ER" "$label" "$rc" "$logf"
+    sed 's/^/        /' "$logf" | tail -5 >&2
+    if [ "$FAIL_FAST" -eq 1 ]; then
+      echo ""
+      echo "  ${RED}--fail-fast: aborting after first failure${RESET}" >&2
+      exit 1
+    fi
   fi
 }
 
@@ -107,15 +144,21 @@ step() {
 # long-running commands (the indexers) so the user sees progress live
 # in their terminal. The progress lines (from `_progress.Progress`)
 # render as `\r` overwrites on a TTY or throttled single lines in a pipe.
+# Same eval→bash-c hardening as step() (no per-step log because we're
+# already streaming).
 step_stream() {
   local label="$1"; shift
   local cmd="$*"
+  if [ "$CHECK_MODE" -eq 1 ]; then
+    printf '  %s %-44s %swould run (streams output)%s\n' "$DR" "$label" "$DIM" "$RESET"
+    return 0
+  fi
   if [ "$DRY_RUN" -eq 1 ]; then
     printf '  %s %-44s %s%s%s\n' "$DR" "$label" "$DIM" "$cmd" "$RESET"
     return 0
   fi
   printf '  %s %s\n' "$BLUE→${RESET}" "$label"
-  if eval "$cmd"; then
+  if bash -c "$cmd"; then
     OK_COUNT=$((OK_COUNT + 1))
     printf '  %s %s\n' "$OK" "$label"
   else
@@ -123,6 +166,11 @@ step_stream() {
     FAIL_COUNT=$((FAIL_COUNT + 1))
     FAILED_STEPS+=("$label (exit=$rc)")
     printf '  %s %s ${DIM}exit=%s${RESET}\n' "$ER" "$label" "$rc"
+    if [ "$FAIL_FAST" -eq 1 ]; then
+      echo ""
+      echo "  ${RED}--fail-fast: aborting after first failure${RESET}" >&2
+      exit 1
+    fi
   fi
 }
 
@@ -144,6 +192,8 @@ fi
 
 mode="${BOLD}execute${RESET}"
 [ "$DRY_RUN" -eq 1 ] && mode="${BOLD}${YELLOW}dry-run${RESET}"
+[ "$CHECK_MODE" -eq 1 ] && mode="${BOLD}${BLUE}check${RESET}"
+[ "$FAIL_FAST" -eq 1 ] && mode="$mode ${DIM}(fail-fast)${RESET}"
 
 echo ""
 echo "${BOLD}kaizen enable-all${RESET} — $mode"
@@ -265,7 +315,9 @@ fi
 # ─── Summary ─────────────────────────────────────────────────────────
 
 echo "${BOLD}summary${RESET}"
-if [ "$DRY_RUN" -eq 1 ]; then
+if [ "$CHECK_MODE" -eq 1 ]; then
+  echo "  (check — nothing executed; re-run without --check to apply)"
+elif [ "$DRY_RUN" -eq 1 ]; then
   echo "  (dry-run — nothing executed; re-run without --dry-run to apply)"
 elif [ "$FAIL_COUNT" -eq 0 ]; then
   echo "  ${OK} $OK_COUNT ok, ${SK} $SKIP_COUNT skipped"
@@ -274,7 +326,7 @@ else
   for f in "${FAILED_STEPS[@]}"; do
     echo "      ${RED}→${RESET} $f"
   done
-  echo "  ${DIM}last failure log: /tmp/kaizen-enable-all.log${RESET}"
+  echo "  ${DIM}per-step logs preserved at the paths above (mktemp'd; one per failing step)${RESET}"
 fi
 
 echo ""

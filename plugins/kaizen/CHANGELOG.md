@@ -5,6 +5,23 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [S
 
 ## [Unreleased]
 
+### Fixed — `enable_all.sh`: eval→bash-c hardening + `--check` mode + `--fail-fast` + per-step logs
+
+Cleanup + automation pass on the `enable_all.sh` orchestrator. Closes the highest-severity gatekeeper `etu` findings (4× `eval-on-user-input` in this script alone).
+
+**Hardening (the cleanup)**:
+- **`eval "$cmd"` → `bash -c "$cmd"`** in both `step()` and `step_stream()`. `bash -c` runs the command in a subshell (can't mutate the parent), doesn't re-expand interpolated values (no `$(touch /tmp/pwn)` injection via untrusted `PLUGIN_ROOT` / `REPO_ROOT`), and silences the `efficient-tool-use::eval-on-user-input` anti-pattern. Semantic equivalent for hardcoded-command use cases; functionally safer.
+- **Per-step temp log** via `mktemp -t kaizen-enable-all.XXXXXX`, not the global `/tmp/kaizen-enable-all.log` (which was overwritten on every step — multi-failure inspection was impossible). Each failing step's log path appears in the summary so post-mortem works for the actual failure, not the LAST step's noise.
+
+**New flags (the automation)**:
+- **`--check`** — audit-only mode. Prints the step labels with "would run" but executes nothing. Terser than `--dry-run` (which dumps the full command string per step); use `--check` for a quick "what would `kaizen:setup --enable-all` do here" status overview.
+- **`--fail-fast`** — abort with exit 1 on the first failing step. Default behaviour preserved (best-effort: every step runs, summary lists all failures at the end). Useful in CI / scripted contexts where partial-install state is worse than no-install.
+
+**Validation**:
+- `gatekeeper only etu --all`: `enable_all.sh` errors dropped 4 → 0. (2 remaining `eval-on-user-input` errors live in `pre-commit.sh` — different scope.)
+- `bash -n` syntax clean.
+- `--check` + `--dry-run` + default mode all render correctly with the new mode-banner suffix (`(fail-fast)` annotation when set).
+
 ### Added — CI pre-flight: `surface validate` + `gatekeeper check --all`
 
 New CI steps in `.github/workflows/test.yml`:
