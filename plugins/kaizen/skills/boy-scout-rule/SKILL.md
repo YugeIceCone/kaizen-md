@@ -1,6 +1,6 @@
 ---
 name: boy-scout-rule
-description: When touching existing code and wanting to leave it better. Use when the user says "clean this up while I'm here," "should I fix this," "tech debt," "while I'm in this file," or "incremental improvement." Also use during ANY audit/review/refactor flow to apply in-scope findings inline rather than deferring them. Pairs with verify-before-application (the RED-GREEN gate every Boy-Scout finding clears before applying). For full refactoring, see solid or separation-of-concerns.
+description: When touching existing code and wanting to leave it better. Use when the user says "clean this up while I'm here," "should I fix this," "tech debt," "while I'm in this file," or "incremental improvement." Also use during ANY audit/review/refactor flow to apply in-scope findings inline rather than deferring them. Pairs with verify-before-execution (the RED-GREEN gate every Boy-Scout finding clears before applying). For full refactoring, see solid or separation-of-concerns.
 metadata:
   version: 1.2.0
 ---
@@ -30,11 +30,11 @@ But this only works with discipline: improvements must be **small, safe, and sco
 3. **Don't refactor what you don't understand.** If you open an unfamiliar file and something looks wrong, investigate before "fixing" it. What looks like dead code might be a critical fallback. What looks like a typo might be intentional.
 4. **Scope your improvements.** Boy Scout Rule means fixing a confusing name or adding a missing type annotation. It does not mean redesigning a module you happened to walk past.
 5. **Within-scope findings: apply in the same flow that found them.** If a finding meets the criteria in "What Counts as A Little Better" AND passes the verification gate (Rule 6) below, execute it before claiming the discovery work is done. Do not list in-scope findings as "suggested next steps," "future cleanup," "Boy-Scout next step," or "want me to apply that pass?" — that is how findings rot. Discoveries left to rot are forgotten.
-6. **Verification gate — delegated to `verify-before-application`.** Each in-flow finding clears the **verify-before-application** RED-GREEN gate before landing:
+6. **Verification gate — delegated to `verify-before-execution`.** Each in-flow finding clears the **verify-before-execution** RED-GREEN gate before landing:
    - **RED (proof of need)** — the improvement is grounded in real repeated patterns or a clear violation: grep, call-site count (≥2), compiler warning, failing test. No speculative cleanups.
    - **GREEN (proof of safety)** — the project's compile barrier and any covering tests pass after the change. Plus the boy-scout-specific bounds: scope ≤ ~20 LOC, single module, revert independent of the primary task.
 
-   If RED fails, the finding wasn't real — discard. If GREEN fails, fix or revert. Demote to Rule 7 only when the finding is genuinely out of scope (not when you skipped the gate). See `verify-before-application` for the full RED-GREEN matrix and integration rules.
+   If RED fails, the finding wasn't real — discard. If GREEN fails, fix or revert. Demote to Rule 7 only when the finding is genuinely out of scope (not when you skipped the gate). See `verify-before-execution` for the full RED-GREEN matrix and integration rules.
 7. **Out-of-scope findings: leave a trail.** If a finding fails the verification gate (too large, too speculative, cross-module, would change behavior), file it as a backlog item or `TODO(ticket-number)` with enough context to act on later. **"Leave a trail" is the fallback for items that genuinely cannot be done in passing — it is not the default for items you simply don't feel like doing.** Default to apply; demote to trail only on a failed gate check.
 
 ## What Counts as "A Little Better"
@@ -83,7 +83,7 @@ When boy-scout-rule fires during an audit, review, refactor, or extraction flow,
 
 ## Related Skills
 
-- **verify-before-application**: The RED-GREEN gate every in-flow finding clears (Rule 6). MUST load alongside this skill in any discovery flow that produces applicable findings.
+- **verify-before-execution**: The RED-GREEN gate every in-flow finding clears (Rule 6). MUST load alongside this skill in any discovery flow that produces applicable findings.
 - **kiss**: For identifying what "simpler" looks like
 - **convention-over-configuration**: For knowing what the project's conventions are before "fixing" things
 - **dry**: For spotting duplication worth consolidating

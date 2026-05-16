@@ -78,4 +78,4 @@ Use delegation only if the user explicitly asks for it.
 - Do not pad the answer with praise.
 - Prefer direct responses over output files.
 - Avoid Markdown tables.
-- Boy-Scout findings discovered during the review get applied inline (per **boy-scout-rule** Rule 5 + **verify-before-application** RED-GREEN gate). The review summary lists what was applied; only items that failed the gate appear as deferred next-steps, each annotated with the failing gate check.
+- Boy-Scout findings discovered during the review get applied inline (per **boy-scout-rule** Rule 5 + **verify-before-execution** RED-GREEN gate). The review summary lists what was applied; only items that failed the gate appear as deferred next-steps, each annotated with the failing gate check.

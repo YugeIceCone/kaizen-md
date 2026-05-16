@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/YugeIceCone/kaizen-md/skills/verify-before-application/domain/schemas/verification-record.schema.json",
+  "$id": "https://github.com/YugeIceCone/kaizen-md/skills/verify-before-execution/domain/schemas/verification-record.schema.json",
   "title": "Verify-before-application — gated change record",
   "description": "One record per change considered in a discovery flow. Captures the candidate, the RED phase (proof of need), the application step, the GREEN phase (proof of safety), and the final disposition (applied / trailed / discarded). Consumed by audit/review/refactor reporters and by /kaizen:metrics to count rotting findings.",
   "type": "object",
@@ -71,7 +71,7 @@
             "dependency-change",
             "documentation-change"
           ],
-          "description": "Matches the rows of the verify-before-application RED-matrix in SKILL.md."
+          "description": "Matches the rows of the verify-before-execution RED-matrix in SKILL.md."
         },
         "description": {
           "type": "string",

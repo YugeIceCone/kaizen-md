@@ -40,7 +40,7 @@ the `Skill` tool when you reach the matching section:
   ports → regression-as-RED on the existing suite, pure relocations
   → regression-as-RED only (no new test). See Part 3 step 3 for the
   per-finding-type breakdown.
-- **`verify-before-application`** — the RED-GREEN gate that wraps
+- **`verify-before-execution`** — the RED-GREEN gate that wraps
   every architectural change in Part 3. Part 3 step ⓹ ("Verification
   commands") is the architectural-specific instantiation of this
   skill's GREEN matrix; the skill provides the general discipline

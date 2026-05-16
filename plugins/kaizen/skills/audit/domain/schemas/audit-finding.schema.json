@@ -10,7 +10,7 @@
     "id": {
       "type": "string",
       "pattern": "^F-[0-9]{3,4}$",
-      "description": "Stable id within a single audit run: F-001, F-002, ... Used by Boy-Scout-trail records (verify-before-application.demoted_reason) to reference findings that were demoted."
+      "description": "Stable id within a single audit run: F-001, F-002, ... Used by Boy-Scout-trail records (verify-before-execution.demoted_reason) to reference findings that were demoted."
     },
     "severity": {
       "enum": ["P0", "P1", "P2", "P3"],
@@ -79,7 +79,7 @@
     },
     "trail_ref": {
       "type": "string",
-      "description": "When disposition=trailed: backlog id, TODO marker, or issue url. Mirrors verify-before-application's trail_ref."
+      "description": "When disposition=trailed: backlog id, TODO marker, or issue url. Mirrors verify-before-execution's trail_ref."
     }
   },
   "$defs": {

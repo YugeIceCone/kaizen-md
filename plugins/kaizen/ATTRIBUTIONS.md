@@ -2,7 +2,7 @@
 
 The `kaizen` plugin is © 2026 YugeIceCone, MIT-licensed.
 
-Several skills in `plugins/kaizen/skills/` were **originally based on or inspired by** prior work by other authors. As of **2026-05-17** those skills are no longer tracked as live upstream bundles — extensive kaizen-local alterations (schema-driven domain refactors, the `verify-before-application` discipline, the onion-ddd-workflow integration, per-skill enhancements, etc.) made the upstream-patch-first round-trip impractical. The skills are now plugin-original derivatives that the kaizen maintainers own and evolve here.
+Several skills in `plugins/kaizen/skills/` were **originally based on or inspired by** prior work by other authors. As of **2026-05-17** those skills are no longer tracked as live upstream bundles — extensive kaizen-local alterations (schema-driven domain refactors, the `verify-before-execution` discipline, the onion-ddd-workflow integration, per-skill enhancements, etc.) made the upstream-patch-first round-trip impractical. The skills are now plugin-original derivatives that the kaizen maintainers own and evolve here.
 
 Original-author credit is preserved below. Gratitude to each of them — the foundational work is theirs.
 
@@ -23,7 +23,7 @@ Skills that began as adaptations of the `coding-skills` plugin:
 - **Original author:** Jordan Coin Jackson — https://github.com/JordanCoin
 - **Original source:** [github.com/JordanCoin/codingskills](https://github.com/JordanCoin/codingskills)
 - **Original license:** MIT (© 2026 Jordan Coin Jackson)
-- **Notes:** Foundational coding-principle skills, language-agnostic. The `boy-scout-rule` body has been substantially rewritten (Rules 5-7 added for apply-during-discovery + verify-before-application gate delegation). The other 8 retain their original principle wording with kaizen-specific routing additions.
+- **Notes:** Foundational coding-principle skills, language-agnostic. The `boy-scout-rule` body has been substantially rewritten (Rules 5-7 added for apply-during-discovery + verify-before-execution gate delegation). The other 8 retain their original principle wording with kaizen-specific routing additions.
 
 ## Originally based on `superpowers` by Jesse Vincent
 
@@ -47,7 +47,7 @@ Skills that began as adaptations of the `superpowers` plugin (v5.1.0):
 - **Original author:** Jesse Vincent — jesse@fsck.com — https://github.com/obra
 - **Original source:** [github.com/obra/superpowers](https://github.com/obra/superpowers)
 - **Original license:** MIT (© 2025 Jesse Vincent)
-- **Notes:** Process / discipline skills (TDD, debugging, planning, code review, git worktrees, skill authoring). `tdd/` has a kaizen-extended operational runbook (tiering, EDD, phase pipeline) and cross-references `verify-before-application`. Others carry kaizen-routing wiring atop the upstream discipline.
+- **Notes:** Process / discipline skills (TDD, debugging, planning, code review, git worktrees, skill authoring). `tdd/` has a kaizen-extended operational runbook (tiering, EDD, phase pipeline) and cross-references `verify-before-execution`. Others carry kaizen-routing wiring atop the upstream discipline.
 
 ## Originally based on `claude-code-skills` by alirezarezvani
 
@@ -83,7 +83,7 @@ Plus: `scripts/*.js` (build-index, extract, schema, promote, append-evidence, ev
 
 - `skills/workflow/` — the multi-stage routine engine + 12-check pre-commit gate + backlog CLI + semantic indexers. Drives `.kaizen/workflow/state.json`.
 - `skills/onion-ddd-workflow/` — the theory + audit + plan + execute layering discipline.
-- `skills/verify-before-application/` — the RED-GREEN gate generalising TDD to non-test artifacts.
+- `skills/verify-before-execution/` — the RED-GREEN gate generalising TDD to non-test artifacts.
 - `skills/iron-laws/`, `skills/brain/`, `skills/plugin-development/`, `skills/plugin-self-audit/`, `skills/handoff/`, `skills/audit/` (schemas), and most others not listed above.
 - `scripts/`, `commands/`, `hooks/`, `bin/` — plugin entry points.
 - `LICENSE`, `README.md`, `ATTRIBUTIONS.md`, `CHANGELOG.md`, `CONTRIBUTING.md`.

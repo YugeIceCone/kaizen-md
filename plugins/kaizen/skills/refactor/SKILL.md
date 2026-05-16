@@ -1,6 +1,6 @@
 ---
 name: code-refactoring
-description: Restructures and cleans up code across one or more files. Use for extracting methods, renaming variables, or cleaning up architecture while preserving behavior. Each step clears the verify-before-application RED-GREEN gate.
+description: Restructures and cleans up code across one or more files. Use for extracting methods, renaming variables, or cleaning up architecture while preserving behavior. Each step clears the verify-before-execution RED-GREEN gate.
 metadata:
   version: "1.2"
 ---
@@ -12,7 +12,7 @@ Restructures and cleans up code across one or more files while preserving behavi
 ## Core Flow
 1. Analyze the target before changing code.
 2. Create a small-step refactoring plan when the work is risky, multi-file, or not obviously reversible.
-3. Implement one **verify-before-application-gated** step at a time. Each step: RED (prove the change is grounded — duplication count, audit citation, leak grep) → apply → GREEN (compile barrier + focused tests + structural lints pass).
+3. Implement one **verify-before-execution-gated** step at a time. Each step: RED (prove the change is grounded — duplication count, audit citation, leak grep) → apply → GREEN (compile barrier + focused tests + structural lints pass).
 4. Review the result for regressions and design drift.
 5. Validate with focused checks and the project compile barrier.
 

@@ -129,7 +129,7 @@ MCP equivalents under the `kaizen-workflow` server: `workflow_init`, `workflow_a
 - **`auto=no`** (default) — pause for approval after `create-tasks`.
 - **`auto=yes`** — chain end-to-end; pair with the Stop-hook config in `references/orchestration.md`.
 - **`tdd=no`** (default) — normal verification only.
-- **`tdd=yes`** — enforce RED → GREEN → REFACTOR on every mutating stage. The stage's verify command becomes the GREEN gate. This flag is the workflow-level toggle for the **`verify-before-application`** discipline (apply nothing without RED proof of need + GREEN proof of safety); recommended for any routine that mutates production code or shared state. See `kaizen:verify-before-application` for the full RED-GREEN matrix and integration rules.
+- **`tdd=yes`** — enforce RED → GREEN → REFACTOR on every mutating stage. The stage's verify command becomes the GREEN gate. This flag is the workflow-level toggle for the **`verify-before-execution`** discipline (apply nothing without RED proof of need + GREEN proof of safety); recommended for any routine that mutates production code or shared state. See `kaizen:verify-before-execution` for the full RED-GREEN matrix and integration rules.
 
 ## Cross-link to coding-skills (the 8 principles + karpathy)
 
@@ -158,8 +158,8 @@ Each links to the corresponding `kaizen:*` skill (kaizen:solid, kaizen:kiss, etc
 | `create-plan` | `kaizen:writing-plans` / `create-plan` |
 | `create-tasks` | `create-tasks` |
 | `execute-plan` | `kaizen:executing-plans` |
-| `execute-tasks` | `execute-tasks` + **`kaizen:verify-before-application`** (RED-GREEN gate per task) |
-| `review` | `kaizen:review` / `review` (+ `kaizen:verify-before-application` for in-flow cleanups) |
+| `execute-tasks` | `execute-tasks` + **`kaizen:verify-before-execution`** (RED-GREEN gate per task) |
+| `review` | `kaizen:review` / `review` (+ `kaizen:verify-before-execution` for in-flow cleanups) |
 | `simplify` | bundled `/simplify` |
 | `validate` | `validate` |
 | `batch-fanout` | bundled `/batch` |

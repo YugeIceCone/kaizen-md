@@ -83,7 +83,7 @@ The plugin's own pre-commit gate enforces:
 
 ## Upstream provenance (retired 2026-05-17)
 
-The plugin originally bundled three upstream marketplaces (9 coding-skills, 14 superpowers, 5 remember skills + supporting Node scripts) under a bundle-refresh discipline. After extensive kaizen-local alterations — schema-driven domain refactors (v1.32.0+), discipline integrations (verify-before-application, onion-ddd-workflow), and per-skill enhancements — the upstream-patch-first round-trip became impractical and the skills are no longer one-to-one with their origins.
+The plugin originally bundled three upstream marketplaces (9 coding-skills, 14 superpowers, 5 remember skills + supporting Node scripts) under a bundle-refresh discipline. After extensive kaizen-local alterations — schema-driven domain refactors (v1.32.0+), discipline integrations (verify-before-execution, onion-ddd-workflow), and per-skill enhancements — the upstream-patch-first round-trip became impractical and the skills are no longer one-to-one with their origins.
 
 The bundles are now treated as plugin-original derivatives. Original-author attribution is preserved in `ATTRIBUTIONS.md` under the *originally based on / inspired by* framing. Future upstream changes from the source repos are no longer auto-pulled; if you want to selectively re-incorporate a specific upstream improvement, do it as a normal `feat(skills):` or `fix(skills):` commit with the upstream-sha cited in the body.
 

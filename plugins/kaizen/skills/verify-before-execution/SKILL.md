@@ -1,11 +1,12 @@
 ---
-name: verify-before-application
-description: Before applying ANY in-flow change (Boy-Scout finding, audit fix, refactor step, plugin edit, schema migration, structural relocation), prove the change is needed (RED) and verify the change is safe (GREEN). Test-driven discipline applied to every artifact, not just code. Triggers on phrases like "before I apply", "before I commit", "verify this change", "is this needed", "is this safe", and as the gate every other applying-class skill calls. Iron-Law skill — read in full.
+name: verify-before-execution
+description: Before EXECUTING any in-flow change (Boy-Scout finding, audit fix, refactor step, plugin edit, schema migration, structural relocation), prove the change is needed (RED) and verify the change is safe (GREEN). Test-driven discipline applied to every artifact, not just code. Triggers on phrases like "before I execute", "before I commit", "verify this change", "is this needed", "is this safe", and as the gate every other executing-class skill calls. Iron-Law skill — read in full.
 metadata:
-  version: 1.0.0
+  version: 1.1.0
+  renamed_from: verify-before-application
 ---
 
-# Verify Before Application
+# Verify Before Execution
 
 The gate that prevents speculative changes from landing and forgotten findings from rotting.
 
@@ -29,7 +30,7 @@ Without this discipline, two failure modes dominate:
 - **Speculative changes.** Application without RED proof. The change might be unnecessary (YAGNI violation), might introduce abstraction nobody asked for, might be a "looks better" with no measurable improvement. The codebase grows weight without gaining function.
 - **Unverified changes.** Application without GREEN check. The change compiles in isolation but breaks an obscure call site, fails a regression test, or violates a structural rule. Trees pass, forest doesn't. Hidden breakage ships.
 
-The verify-before-application gate makes both impossible: nothing applies without grounded need; nothing stays without verified effect.
+The verify-before-execution gate makes both impossible: nothing applies without grounded need; nothing stays without verified effect.
 
 ## RED — Prove the change is needed
 
@@ -79,9 +80,9 @@ If GREEN fails, three valid responses, in order:
 
 ## TDD as the kernel
 
-verify-before-application generalises TDD's RED-GREEN-REFACTOR cycle from "tests of behaviour" to "verifications of any artifact":
+verify-before-execution generalises TDD's RED-GREEN-REFACTOR cycle from "tests of behaviour" to "verifications of any artifact":
 
-| TDD step | verify-before-application step |
+| TDD step | verify-before-execution step |
 |---|---|
 | RED = failing test | RED = grounded evidence the change is needed (a failing test is *one* form of evidence) |
 | GREEN = test passes | GREEN = all relevant verifications pass after application |
@@ -93,7 +94,7 @@ Pair with **tdd** for code-behaviour changes (where the test IS the RED evidence
 
 ## Discovery-time integration
 
-verify-before-application is the gate every applying-class skill calls. The same skill, invoked at the same point in each flow:
+verify-before-execution is the gate every applying-class skill calls. The same skill, invoked at the same point in each flow:
 
 | Calling skill | Where the gate fires |
 |---|---|

@@ -5,6 +5,16 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [S
 
 ## [Unreleased]
 
+### Changed — `verify-before-application` → `verify-before-execution`
+
+Skill renamed to better reflect what the gate actually guards: the **execution** of a candidate change, not just its narrow "application" to source code. The discipline applies equally to plugin edits, schema migrations, refactor relocations, structural changes, etc. — "apply" suggested code-only.
+
+- **`skills/verify-before-application/`** → **`skills/verify-before-execution/`** (`git mv` — full history preserved). Frontmatter `name:` field + `$id` in `domain/schemas/verification-record.schema.json` updated. Description rewritten to lead with "EXECUTING any in-flow change" + trigger phrases shifted from "before I apply" → "before I execute".
+- Version bumped 1.0.0 → 1.1.0; `metadata.renamed_from: verify-before-application` added so consumers can grep their references.
+- All 29 references across 13 files updated via grep + sed (zero residual): `skills/{audit,boy-scout-rule,onion-ddd-workflow,refactor,review,tdd,workflow}/SKILL.md`, `skills/audit/domain/schemas/audit-finding.schema.json`, `CONTRIBUTING.md`, `ATTRIBUTIONS.md`. Title "Verify Before Application" → "Verify Before Execution" in the SKILL.md H1.
+
+No behavioural change. Plugin-validator: 51/51 features clean. Pre-commit gate clean.
+
 ### Added — `self-improving` promoted to first-class workflow citizen (system + subsystem)
 
 `kaizen:self-improving` (v1.1.0) was a standalone skill invoked ad-hoc; now wired into the workflow orchestrator at two levels:
