@@ -407,6 +407,48 @@ else
     skip "iron-laws checker: not the kaizen-md plugin repo"
 fi
 
+# ─── Check 7.6: gatekeeper pre-flight (non-blocking, ~300ms) ─────────
+# The gatekeeper aggregates iron-laws + efficient-tool-use anti-pattern
+# scanner + karpathy diff scanners + plugin-validator into one verdict.
+# Check 7.5 above already runs the iron-laws checker — this check adds
+# the other three Python sub-gates in one shot.
+#
+# NON-BLOCKING by design: pre-commit's role is to refuse bad commits;
+# the gatekeeper surfaces broader signal (smells, warnings) without
+# stopping the commit. Yellow/red surfaces as a `warn` line.
+#
+# Disabled with KAIZEN_GATEKEEPER_DISABLE=1 (hook-bypass-knob iron-law).
+GATEKEEPER_PY="$_SCRIPT_REAL_DIR/gatekeeper.py"
+if [ -z "${KAIZEN_GATEKEEPER_DISABLE:-}" ] \
+   && [ -f "$REPO_ROOT/plugins/kaizen/skills/iron-laws/domain/iron-laws.yaml" ] \
+   && [ -f "$GATEKEEPER_PY" ] \
+   && command -v python3 >/dev/null 2>&1; then
+    GK_OUT=$(python3 "$GATEKEEPER_PY" check --staged --json 2>/dev/null)
+    if [ -n "$GK_OUT" ]; then
+        GK_VERDICT=$(echo "$GK_OUT" | python3 -c "import json,sys; print(json.loads(sys.stdin.read()).get('overall','unknown'))" 2>/dev/null)
+        case "$GK_VERDICT" in
+            green)
+                pass "gatekeeper pre-flight (green: all sub-gates clean)" ;;
+            yellow)
+                GK_WARN=$(echo "$GK_OUT" | python3 -c "import json,sys; d=json.loads(sys.stdin.read()); print(d.get('counts',{}).get('warn',0))" 2>/dev/null)
+                warn "gatekeeper pre-flight (yellow: $GK_WARN warn finding(s) — see kaizen-gatekeeper check --staged)"
+                ;;
+            red)
+                GK_ERR=$(echo "$GK_OUT" | python3 -c "import json,sys; d=json.loads(sys.stdin.read()); print(d.get('counts',{}).get('error',0))" 2>/dev/null)
+                # NON-BLOCKING: surface as warn, never fail. Check 7.5
+                # already catches the iron-law hard failures.
+                warn "gatekeeper pre-flight (red: $GK_ERR error finding(s) outside iron-laws — see kaizen-gatekeeper check --staged)"
+                ;;
+            *)
+                skip "gatekeeper pre-flight: unparseable verdict" ;;
+        esac
+    else
+        skip "gatekeeper pre-flight: gatekeeper.py produced no output"
+    fi
+else
+    skip "gatekeeper pre-flight: not in kaizen-md repo OR disabled"
+fi
+
 # ─── Check 8.5: Backlog drift (.md regenerated from .json) ───────────
 BACKLOG_PATH=$(toml_get backlog_path "")
 if [ -n "$BACKLOG_PATH" ] && [ -f "$REPO_ROOT/$BACKLOG_PATH" ]; then
