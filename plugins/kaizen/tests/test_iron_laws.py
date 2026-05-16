@@ -162,13 +162,27 @@ class TestChecker(unittest.TestCase):
         self.assertTrue(_iron_laws.check_slash_command_args_no_default_spaces(_ctx(self.tmp)))
 
     def test_no_modify_vendored(self):
+        """After the 2026-05-17 upstream retirement, VENDORED is empty so the
+        check is a no-op for every real skill. The check's *machinery* still
+        works — we patch VENDORED to verify it would catch a future addition.
+        """
         import _iron_laws
+        # No real skill should currently be flagged (VENDORED is empty).
         clean = _ctx(self.tmp, scope="staged",
-                     changed=["plugins/kaizen/skills/demo/SKILL.md"])
+                     changed=["plugins/kaizen/skills/kiss/SKILL.md",
+                              "plugins/kaizen/skills/tdd/SKILL.md",
+                              "plugins/kaizen/skills/karpathy/SKILL.md"])
         self.assertEqual(_iron_laws.check_no_modify_vendored(clean), [])
-        dirty = _ctx(self.tmp, scope="staged",
-                     changed=["plugins/kaizen/skills/kiss/SKILL.md"])
-        self.assertTrue(_iron_laws.check_no_modify_vendored(dirty))
+        # Machinery still fires if a name is added to VENDORED.
+        original = set(_iron_laws.VENDORED)
+        try:
+            _iron_laws.VENDORED.add("hypothetical-future-vendored-skill")
+            dirty = _ctx(self.tmp, scope="staged",
+                         changed=["plugins/kaizen/skills/hypothetical-future-vendored-skill/SKILL.md"])
+            self.assertTrue(_iron_laws.check_no_modify_vendored(dirty))
+        finally:
+            _iron_laws.VENDORED.clear()
+            _iron_laws.VENDORED.update(original)
 
     def test_bin_wrapper_per_cli(self):
         import _iron_laws
@@ -241,13 +255,15 @@ class TestChecker(unittest.TestCase):
 
 class TestRegistryIntegrity(unittest.TestCase):
     def test_every_auto_law_has_a_check_fn(self):
-        import _loader, _iron_laws
+        import _loader
+        import _iron_laws
         for law in _loader.auto_laws():
             self.assertIn(law["check"], _iron_laws.CHECKS,
                           f"auto law {law['id']} has no check_* fn registered")
 
     def test_no_orphan_check_fns(self):
-        import _loader, _iron_laws
+        import _loader
+        import _iron_laws
         declared = {law["check"] for law in _loader.auto_laws()}
         for name in _iron_laws.CHECKS:
             self.assertIn(name, declared, f"check fn {name} maps to no auto law")

@@ -27,12 +27,12 @@ laws:
     why: "User stated preference; symlink confuses git status / IDE search / path-canonicalization helpers. See ~/.claude/projects/<slug>/memory/feedback_kaizen_plugin_canonical_path.md. Manual: the checker sees only repo-relative git paths — it cannot tell which path the agent edited through."
 
   - id: no-modify-vendored
-    statement: "Don't modify vendored skills. Patch upstream first, then refresh via bundle-refresh."
+    statement: "Don't modify actively-vendored skills. Patch upstream first, then refresh. (Currently no skills are vendored — list is empty after the 2026-05-17 retirement; see CHANGELOG. Law retained as infrastructure for any future upstream-tracked content.)"
     severity: hard
     enforcement: auto
     check: no_modify_vendored
-    detect: "modified file in skills/{kiss,solid,dry,yagni,karpathy,boy-scout-rule,convention-over-configuration,law-of-demeter,separation-of-concerns,brainstorming,executing-plans,writing-plans,using-superpowers,subagent-driven-development,test-driven-development,verification-before-completion,dispatching-parallel-agents,finishing-a-development-branch,using-git-worktrees,writing-skills,receiving-code-review,requesting-code-review,systematic-debugging,tdd,init,remember,process,evolve,reflect,synthesize,status}/"
-    why: "Upstream provenance. See CONTRIBUTING.md::Architecture rules and ATTRIBUTIONS.md."
+    detect: "modified file in skills/<vendored-skill>/ — vendored list is currently empty"
+    why: "Upstream provenance. The originally-bundled skills from coding-skills / superpowers / claude-code-skills / remember have been retired from active upstream-tracking after extensive kaizen-local alterations; they are now plugin-original derivatives. Original-author attribution preserved in ATTRIBUTIONS.md."
 
   - id: schema-driven-domain
     statement: "Feature routing / taxonomies / conventions live in domain/*.yaml — not hardcoded in Python."

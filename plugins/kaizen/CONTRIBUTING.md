@@ -64,11 +64,7 @@ The plugin's own pre-commit gate enforces:
 
 ## Architecture rules
 
-- **Bundled skills are vendored, not modified.** If a bundled skill needs a change, send the patch upstream first (Jordan Coin Jackson for coding-skills; Jesse Vincent for superpowers; Gabi Fratica for remember); the bundle here is a refresh of upstream.
-- **Plugin-original code** lives in:
-  - `skills/workflow/` (the discipline itself)
-  - `scripts/`, `commands/`, `hooks/` (plugin entry points)
-  - `LICENSE`, `README.md`, `ATTRIBUTIONS.md`, `CHANGELOG.md`, `CONTRIBUTING.md`
+- **All skills under `plugins/kaizen/skills/` are plugin-original derivatives.** As of 2026-05-17 the previously-vendored coding-skills / superpowers / claude-code-skills / remember bundles have been retired from active upstream-tracking — extensive kaizen-local alterations made the upstream-patch-first round-trip impractical. Original-author attribution is preserved in `ATTRIBUTIONS.md` (now framed as *originally based on / inspired by* rather than *bundled from*).
 - **Cross-platform first.** Linux GNU + macOS BSD both supported. `python3` is the only hard dependency beyond `bash` + `git`.
 
 ## Testing
@@ -81,50 +77,23 @@ The plugin's own pre-commit gate enforces:
 
 - `bug` — gate produced wrong verdict / hook output malformed
 - `feature` — new command, new check, new subcommand
-- `bundle-refresh` — pulling latest from coding-skills/superpowers/remember
 - `cross-platform` — macOS / BSD compatibility
 - `docs` — README / CHANGELOG / SKILL.md / command descriptions
 - `attribution` — fix author credit in `ATTRIBUTIONS.md`
 
-## Bundle-refresh procedure
+## Upstream provenance (retired 2026-05-17)
 
-The plugin vendors 9 coding-skills, 14 superpowers, 5 remember skills + remember's
-supporting Node scripts. To pull upstream changes:
+The plugin originally bundled three upstream marketplaces (9 coding-skills, 14 superpowers, 5 remember skills + supporting Node scripts) under a bundle-refresh discipline. After extensive kaizen-local alterations — schema-driven domain refactors (v1.32.0+), discipline integrations (verify-before-application, onion-ddd-workflow), and per-skill enhancements — the upstream-patch-first round-trip became impractical and the skills are no longer one-to-one with their origins.
 
-```bash
-# 1. Refresh the upstream cache (Claude Code's marketplace machinery)
-#    coding-skills:
-git -C ~/.claude/plugins/marketplaces/codingskills pull
-#    superpowers (Anthropic's official marketplace):
-git -C ~/.claude/plugins/marketplaces/claude-plugins-official pull
-#    remember (local marketplace — git pull only if you cloned it):
-#    (skip if you've made local edits — see "modified remember" section)
+The bundles are now treated as plugin-original derivatives. Original-author attribution is preserved in `ATTRIBUTIONS.md` under the *originally based on / inspired by* framing. Future upstream changes from the source repos are no longer auto-pulled; if you want to selectively re-incorporate a specific upstream improvement, do it as a normal `feat(skills):` or `fix(skills):` commit with the upstream-sha cited in the body.
 
-# 2. Identify what changed since last sync
-diff -rq plugins/kaizen/skills/kiss/ \
-         ~/.claude/plugins/cache/codingskills/coding-skills/*/skills/kiss/
-# repeat for each vendored skill; review the diff
+**Adding a NEW upstream-vendored skill.** If kaizen ever wires in fresh upstream-tracked content, restore the discipline:
 
-# 3. For each meaningful upstream change, copy the file with `cp -p`
-cp -rp ~/.claude/plugins/cache/codingskills/coding-skills/*/skills/kiss/. \
-       plugins/kaizen/skills/kiss/
+1. Add the skill dir name to the `VENDORED` set in `plugins/kaizen/skills/workflow/scripts/_iron_laws.py` (and document in `skills/iron-laws/domain/iron-laws.yaml::no-modify-vendored`).
+2. Mirror via `cp -rp` from the upstream cache, never hand-edit.
+3. Re-sync via `git commit -m "bundle-refresh: pull <upstream> @ <sha>"`.
 
-# 4. Test pipeline regression (must stay 29/29+ green)
-bash plugins/kaizen/skills/workflow/scripts/test-pipeline.sh
-
-# 5. Update ATTRIBUTIONS.md if upstream versioning shifted (rare)
-#    Update CHANGELOG.md with the refresh entry under [Unreleased]
-
-# 6. Commit with: bundle-refresh prefix
-git commit -m "bundle-refresh: pull coding-skills @ <upstream-sha>"
-```
-
-**Never edit vendored content in this repo.** Send patches upstream first:
-- coding-skills → github.com/JordanCoin/codingskills
-- superpowers → github.com/obra/superpowers
-- remember → github.com/remember-md/remember
-
-Then refresh here.
+The iron-law machinery remains in place as infrastructure; only the active list is empty.
 
 ## Code of conduct
 

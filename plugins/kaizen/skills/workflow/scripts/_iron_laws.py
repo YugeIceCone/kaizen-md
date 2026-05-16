@@ -28,17 +28,12 @@ sys.path.insert(0, str(_SKILLS_DIR / "iron-laws" / "application"))
 import _loader  # noqa: E402
 
 # Vendored skill dirs — never plugin-original (mirrors iron-laws.yaml::no-modify-vendored).
-VENDORED = {
-    "kiss", "solid", "dry", "yagni", "karpathy", "boy-scout-rule",
-    "convention-over-configuration", "law-of-demeter", "separation-of-concerns",
-    "brainstorming", "executing-plans", "writing-plans", "using-superpowers",
-    "subagent-driven-development", "test-driven-development",
-    "verification-before-completion", "dispatching-parallel-agents",
-    "finishing-a-development-branch", "using-git-worktrees", "writing-skills",
-    "receiving-code-review", "requesting-code-review", "systematic-debugging",
-    "tdd", "init", "remember", "process", "evolve", "reflect", "synthesize",
-    "status",
-}
+# Currently empty: the original coding-skills / superpowers / claude-code-skills /
+# remember bundles were retired from active upstream-tracking on 2026-05-17 after
+# extensive kaizen-local alterations. They are now plugin-original derivatives;
+# original-author attribution preserved in ATTRIBUTIONS.md. Add to this set only
+# when wiring a NEW upstream-tracked skill (with active bundle-refresh discipline).
+VENDORED: set[str] = set()
 ADDITIVE_EVENTS = {"SubagentStop", "SessionEnd", "Notification"}
 HEAVY_DEPS = ("torch", "transformers", "tree_sitter", "sentence_transformers")
 

@@ -5,6 +5,19 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [S
 
 ## [Unreleased]
 
+### Changed — Upstream vendoring retired (2026-05-17)
+
+The originally-bundled coding-skills / superpowers / claude-code-skills / remember skills are no longer tracked as live upstream content. After extensive kaizen-local alterations (schema-driven domain refactors in v1.32.0+, the `verify-before-application` discipline integration, per-skill enhancements), the upstream-patch-first round-trip became impractical and the skills had diverged enough to call them plugin-original derivatives.
+
+- **`skills/iron-laws/domain/iron-laws.yaml::no-modify-vendored`** — `detect` regex emptied; `statement` and `why` rewritten. The law stays as infrastructure for any future upstream-tracked content.
+- **`skills/workflow/scripts/_iron_laws.py`** — `VENDORED` set emptied with a comment naming the retirement date + procedure for re-vendoring future content. `check_no_modify_vendored()` machinery preserved.
+- **`skills/iron-laws/references/iron-laws.md`** — regenerated from yaml.
+- **`tests/test_iron_laws.py::test_no_modify_vendored`** — updated: clean case asserts no real skill is flagged anymore; dirty case patches `VENDORED` to verify the machinery still fires for hypothetical future entries.
+- **`CONTRIBUTING.md`** — "Architecture rules" reframed: all `skills/*` are plugin-original derivatives. "Bundle-refresh procedure" replaced with "Upstream provenance (retired 2026-05-17)" + re-wire instructions. `bundle-refresh` PR tag removed.
+- **`ATTRIBUTIONS.md`** — full rewrite. Framing shifted from *"bundled from upstream projects"* to *"originally based on / inspired by"*. Each section lists prior author + source repo + license, then notes the kaizen-specific alterations. Original-author credit fully preserved — only the *tracking discipline* is retired, not the gratitude.
+
+No functional impact on consumers. Skill bodies unchanged by this commit; only the policy around their evolution changes. Pre-commit gate's `no-modify-vendored` check is now a no-op (empty list) — kaizen edits to formerly-vendored skills will no longer trigger the iron-law violation.
+
 ### Added — single-entry MCP gateway
 
 The plugin's 21 MCP servers (142 tools) are consolidated behind one FastMCP v3 gateway — the sole `.mcp.json` entry.

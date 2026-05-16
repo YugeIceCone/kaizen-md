@@ -52,13 +52,13 @@ Edit at ~/workspace/kaizen-md/, never the symlink ~/.claude/local-marketplaces/k
 
 ### `no-modify-vendored` (hard · auto)
 
-Don't modify vendored skills. Patch upstream first, then refresh via bundle-refresh.
+Don't modify actively-vendored skills. Patch upstream first, then refresh. (Currently no skills are vendored — list is empty after the 2026-05-17 retirement; see CHANGELOG. Law retained as infrastructure for any future upstream-tracked content.)
 
 **Check:** `no_modify_vendored` (in `_iron_laws.py`)
 
-**Detect:** modified file in skills/{kiss,solid,dry,yagni,karpathy,boy-scout-rule,convention-over-configuration,law-of-demeter,separation-of-concerns,brainstorming,executing-plans,writing-plans,using-superpowers,subagent-driven-development,test-driven-development,verification-before-completion,dispatching-parallel-agents,finishing-a-development-branch,using-git-worktrees,writing-skills,receiving-code-review,requesting-code-review,systematic-debugging,tdd,init,remember,process,evolve,reflect,synthesize,status}/
+**Detect:** modified file in skills/<vendored-skill>/ — vendored list is currently empty
 
-**Why:** Upstream provenance. See CONTRIBUTING.md::Architecture rules and ATTRIBUTIONS.md.
+**Why:** Upstream provenance. The originally-bundled skills from coding-skills / superpowers / claude-code-skills / remember have been retired from active upstream-tracking after extensive kaizen-local alterations; they are now plugin-original derivatives. Original-author attribution preserved in ATTRIBUTIONS.md.
 
 ### `schema-driven-domain` (soft · manual)
 
