@@ -1,8 +1,8 @@
 ---
 name: self-improving
-description: Use to curate Claude Code's auto-memory into durable project knowledge. Analyze MEMORY.md for promotion candidates, graduate proven learnings to CLAUDE.md / .claude/rules/ / `~/.claude/brain/Notes/pref-*.md`, extract recurring solutions into reusable kaizen skills. Triggers on "review memory", "promote this learning", "extract a skill from", "graduate this pattern", "what has Claude learned", "memory health", "curate auto-memory". Pairs with `kaizen:remember` (capture), `kaizen:evolve` (consolidate), `kaizen:reflect` (think). Adapted from claude-code-skills/engineering-team/self-improving-agent — kaizen-namespaced and rewired to consume the brain/Persona/Notes structure already present.
-version: 1.0.0
-tags: [memory, curation, promotion, self-improvement, brain, rules]
+description: Use to curate Claude Code's auto-memory into durable project knowledge. Analyze MEMORY.md for promotion candidates, graduate proven learnings to CLAUDE.md / .claude/rules/ / `~/.claude/brain/Notes/pref-*.md`, extract recurring solutions into reusable kaizen skills. Triggers on "review memory", "promote this learning", "extract a skill from", "graduate this pattern", "what has Claude learned", "memory health", "curate auto-memory", "self-improve". Also implements the `self-analyze` workflow stage and the `self-improving` workflow routine (see "Workflow integration" section). Pairs with `kaizen:remember` (capture), `kaizen:evolve` (consolidate), `kaizen:reflect` (think). Originally based on claude-code-skills/engineering-team/self-improving-agent (per ATTRIBUTIONS.md) — now plugin-original.
+version: 1.1.0
+tags: [memory, curation, promotion, self-improvement, brain, rules, workflow]
 ---
 
 # Self-Improving — auto-memory curator
@@ -134,7 +134,42 @@ Both are dispatched via the Task tool with `subagent_type=general-purpose` and t
 - `kaizen:synthesize` — cross-session pattern recognition
 - `kaizen:workflow` — for promoting a rule into git-discipline.yaml or routines.yaml
 
+## Workflow integration (v1.1.0+)
+
+Promoted in v1.1.0 to a first-class workflow citizen at two levels:
+
+### System level — the `self-improving` routine
+
+Declared in `skills/workflow/domain/routines.yaml` as a hardcoded routine. Stage chain:
+
+```
+explore → self-analyze → review → create-plan → create-tasks → execute-tasks → report
+```
+
+End state: *promotion candidates surfaced; approved learnings graduated to durable rules / brain Notes / new kaizen skills; source memory entries archived.*
+
+Trigger phrases route to this routine via `/workflow`: `self-improve`, `curate memory`, `review memory`, `promote learnings`, `analyze memory`, `graduate this`, `what has claude learned`, `memory health`.
+
+Coding-skills weave: `boy-scout-rule` + `yagni` apply during the mutating stages — promote only patterns with sufficient evidence (≥2 sessions for rules, ≥3 for skill extraction), don't extract speculative patterns.
+
+### Subsystem level — the `self-analyze` stage
+
+Added to `stage_skill_map` in `routines.yaml`:
+
+```yaml
+self-analyze: kaizen:self-improving
+```
+
+Any routine can include `self-analyze` in its stage chain to invoke this skill's `review` sub-flow inline. Typical use: append `self-analyze` as the final stage of a long session to capture promotion candidates before context reset — read-only, no graduate-and-archive, just the report. Add it to a custom routine via:
+
+```yaml
+- name: my-routine
+  stages: [..., self-analyze, report]
+```
+
+The stage routes through the workflow orchestrator's standard advance/dispatch mechanics; this skill receives the standard stage context (current routine, session id, prior stage outputs).
+
 ## References
 
 - Claude Code memory docs — Memory Architecture in CLAUDE.md / global / per-project
-- `pskoett/self-improving-agent` — the upstream concept this skill adapts
+- `claude-code-skills/engineering-team/self-improving-agent` — the original concept this skill adapts (now plugin-original after the 2026-05-17 upstream retirement — see ATTRIBUTIONS.md)

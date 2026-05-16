@@ -23,6 +23,7 @@ Routines are stage chains the kaizen workflow runs. Each stage maps to a skill v
 | `batch-migrate` | hardcoded | `batch migrate`, `batch refactor`, `across all`, `every file`, `sweep ` | research → explore → detect-stack → analyze → batch-fanout → report |
 | `migrate` | hardcoded | `migrate`, `upgrade`, `port to`, `switch from` | research → explore → analyze → create-plan → create-tasks → execute-tasks → simplify → review → validate → ci-gate |
 | `harden` | hardcoded | `harden`, `secure`, `threat model`, `lock down` | explore → audit → analyze → create-plan → create-tasks → execute-tasks → simplify → review → validate → ci-gate |
+| `self-improving` | hardcoded | `self-improve`, `self improve`, `curate memory`, `review memory`, `promote learning`, `promote learnings`, `analyze memory`, `graduate this`, `what has claude learned`, `memory health` | explore → self-analyze → review → create-plan → create-tasks → execute-tasks → report |
 | `custom` | hardcoded | — | — |
 | `kaizen-default` | schema | — | research → explore → analyze → plan → tasks → execute → review → validate |
 | `debug-with-pdb` | schema | — | reproduce → isolate → inspect → hypothesize → verify-cause → fix → regression → postmortem → investigate-deeper |
@@ -62,6 +63,7 @@ Every workflow stage with a 1:1 kaizen-plugin skill is listed below. Unmapped st
 | `report` | `kaizen:report` |
 | `research` | `kaizen:research` |
 | `review` | `kaizen:review` |
+| `self-analyze` | `kaizen:self-improving` |
 | `supervisor` | `kaizen:supervisor` |
 | `task` | `kaizen:task` |
 | `validate` | `kaizen:validate` |
@@ -158,6 +160,31 @@ framing for threat modeling.
 **End state:** Prioritized hardening fixes landed with security regression tests
 
 **Coding skills cross-link:** `kaizen:law-of-demeter`, `kaizen:separation-of-concerns`
+
+### `self-improving` (hardcoded)
+
+System-level self-improvement routine. Analyzes project memory
+(~/.claude/projects/<slug>/memory/) + brain Notes
+(~/.claude/brain/Notes/pref-*.md), surfaces patterns ready for
+promotion (recur >= 2 sessions for rules / >= 3 for skill
+extraction), creates a plan for user approval, then executes the
+promotions (writes destination file with proper frontmatter,
+archives source, updates Persona.md `## Top Beliefs` linkage).
+
+Subsystem usage: any routine can add the `self-analyze` stage to
+invoke self-improving's `review` sub-flow inline — surfaces
+promotion candidates as a read-only report without committing to
+the full graduate-and-archive lifecycle. Typically run as the
+final stage of a long session to capture what should land in
+memory before the context window resets.
+
+**Triggers:** 'self-improve', 'self improve', 'curate memory', 'review memory', 'promote learning', 'promote learnings', 'analyze memory', 'graduate this', 'what has claude learned', 'memory health'
+
+**Stages:** `explore` → `self-analyze` → `review` → `create-plan` → `create-tasks` → `execute-tasks` → `report`
+
+**End state:** Promotion candidates surfaced; approved learnings graduated to durable rules / brain Notes / new kaizen skills; source memory entries archived
+
+**Coding skills cross-link:** `kaizen:boy-scout-rule`, `kaizen:yagni`
 
 ### `custom` (hardcoded)
 

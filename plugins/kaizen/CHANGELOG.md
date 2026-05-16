@@ -5,6 +5,17 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [S
 
 ## [Unreleased]
 
+### Added — `self-improving` promoted to first-class workflow citizen (system + subsystem)
+
+`kaizen:self-improving` (v1.1.0) was a standalone skill invoked ad-hoc; now wired into the workflow orchestrator at two levels:
+
+- **System level — new `self-improving` routine** in `skills/workflow/domain/routines.yaml`. Stage chain: `explore → self-analyze → review → create-plan → create-tasks → execute-tasks → report`. End state: *promotion candidates surfaced; approved learnings graduated to durable rules / brain Notes / new kaizen skills; source memory entries archived.* Trigger phrases: `self-improve`, `curate memory`, `review memory`, `promote learnings`, `analyze memory`, `graduate this`, `what has claude learned`, `memory health`. Coding-skills weave: `boy-scout-rule` + `yagni` (promote only patterns with sufficient evidence — ≥2 sessions for rules, ≥3 for skill extraction).
+- **Subsystem level — new `self-analyze` stage** in `stage_skill_map`, routing to `kaizen:self-improving`. Any routine can append `self-analyze` to its stage chain to run this skill's `review` sub-flow inline (read-only — surfaces promotion candidates without the full graduate-and-archive lifecycle). Typical use: final stage of a long session to capture what should land in memory before context reset.
+- **`skills/self-improving/SKILL.md`** — version bumped to 1.1.0; description updated to advertise both integration paths; new "Workflow integration (v1.1.0+)" section documents the routine + stage wiring + how to add `self-analyze` to a custom routine.
+- **`skills/workflow/references/routines.md`** — regenerated from yaml via `application/codegen.py`.
+
+Tests: 37/37 workflow application tests pass; codegen drift-check clean; plugin-validator 51/51 features clean.
+
 ### Changed — Upstream vendoring retired (2026-05-17)
 
 The originally-bundled coding-skills / superpowers / claude-code-skills / remember skills are no longer tracked as live upstream content. After extensive kaizen-local alterations (schema-driven domain refactors in v1.32.0+, the `verify-before-application` discipline integration, per-skill enhancements), the upstream-patch-first round-trip became impractical and the skills had diverged enough to call them plugin-original derivatives.

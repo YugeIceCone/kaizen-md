@@ -51,6 +51,7 @@ stage_skill_map:
   report: kaizen:report
   research: kaizen:research
   review: kaizen:review
+  self-analyze: kaizen:self-improving
   supervisor: kaizen:supervisor
   task: kaizen:task
   validate: kaizen:validate
@@ -139,6 +140,28 @@ routines:
     description: |
       Security / reliability hardening. Audit stage uses the `agent-aegis`
       framing for threat modeling.
+
+  - name: self-improving
+    kind: hardcoded
+    trigger_words: [self-improve, "self improve", "curate memory", "review memory", "promote learning", "promote learnings", "analyze memory", "graduate this", "what has claude learned", "memory health"]
+    stages: [explore, self-analyze, review, create-plan, create-tasks, execute-tasks, report]
+    end_state: "Promotion candidates surfaced; approved learnings graduated to durable rules / brain Notes / new kaizen skills; source memory entries archived"
+    coding_skills: [boy-scout-rule, yagni]
+    description: |
+      System-level self-improvement routine. Analyzes project memory
+      (~/.claude/projects/<slug>/memory/) + brain Notes
+      (~/.claude/brain/Notes/pref-*.md), surfaces patterns ready for
+      promotion (recur >= 2 sessions for rules / >= 3 for skill
+      extraction), creates a plan for user approval, then executes the
+      promotions (writes destination file with proper frontmatter,
+      archives source, updates Persona.md `## Top Beliefs` linkage).
+
+      Subsystem usage: any routine can add the `self-analyze` stage to
+      invoke self-improving's `review` sub-flow inline — surfaces
+      promotion candidates as a read-only report without committing to
+      the full graduate-and-archive lifecycle. Typically run as the
+      final stage of a long session to capture what should land in
+      memory before the context window resets.
 
   - name: custom
     kind: hardcoded
