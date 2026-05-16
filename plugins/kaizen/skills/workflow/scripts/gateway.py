@@ -64,6 +64,7 @@ SUBSERVERS: list[tuple[str, str]] = [
     ("rerank", "rerank_mcp"),
     ("audit", "audit_mcp"),
     ("roadmap", "roadmap_mcp"),
+    ("gatekeeper", "gatekeeper_mcp"),
 ]
 
 gw = FastMCP("kaizen")
@@ -83,10 +84,18 @@ for name, modname in SUBSERVERS:
 # transform's kaizen_search_tools / kaizen_call_tool synthetic tools.
 # Discovery is curated; access is not — every tool stays fully callable.
 CURATED_CORE: list[str] = [
+    # search — find code / docs / events / notes (4)
     "loc_search", "knowledge_search", "onboard_search", "trace_search",
+    # state inspection — what's the current workflow / health (3)
     "state_status", "state_health_summary", "workflow_status",
-    "list_items", "iron_laws_check", "audit_latest",
-    "roadmap_next", "drift_status", "metrics_session",
+    # backlog + audit (2)
+    "list_items", "audit_latest",
+    # gates — the "is this OK to ship" surface (3)
+    "iron_laws_check", "gatekeeper_check", "auto_fix_lint",
+    # observability (1)
+    "metrics_session",
+    # Dropped from earlier core: `roadmap_next` (low-traffic),
+    # `drift_status` (low-traffic) — both reachable via kaizen_search_tools.
 ]
 
 SEARCH_TRANSFORM_APPLIED = False
