@@ -5,6 +5,41 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [S
 
 ## [Unreleased]
 
+### Added — `_kaizen_dispatcher.py`: unified dispatcher for the bash loop
+
+The `bin/kaizen` multiplexer (a 65-line bash dispatcher) promoted to a Python entry point with grouped discovery, full-docstring help, timing + trace hooks, and JSON output. Subcommand resolution unchanged — `kaizen <X>` still routes to `${BIN_DIR}/kaizen-<X>` via OS `execv` (zero-overhead vanilla dispatch).
+
+**New surface:**
+
+```bash
+$ kaizen                              # categorized listing (10 groups, 49 subs)
+$ kaizen list --json                  # machine-readable inventory
+$ kaizen help <sub>                   # full wrapper docstring + passthrough --help
+$ kaizen --time <sub> [args]          # dispatch + wall-clock timing
+$ kaizen --trace <sub> [args]         # dispatch + kaizen-trace events
+$ kaizen version                      # plugin v + dispatcher v
+$ kaizen <sub> [args]                 # zero-overhead dispatch (execv)
+```
+
+**Files:**
+
+- **`skills/workflow/scripts/_kaizen_dispatcher.py`** (~290 LOC) — the dispatcher. Categorization via `_CATEGORIES` substring-match table (10 groups: gate / discovery / search / brain / workflow / maintenance / dev / config / lint / misc). Vanilla dispatch uses `os.execv` (no extra fork — exit code preserved via OS replacement). `--time` / `--trace` modes use `subprocess.run` (need a return code for post-hook).
+- **`bin/kaizen`** — replaced the prior 65-line bash dispatcher with a thin Python entry-invocation wrapper. SSOT moves to `_kaizen_dispatcher.py`.
+- **`tests/test_kaizen_cli.py`** — 12 tests (inventory, categorization, all CLI modes, dispatch end-to-end, `--time` mode, regression guard for the stdout-buffering bug where Python prints were flushing AFTER subprocess output, scrambling order).
+- **`.claude-plugin/plugin.json`** — permission entry for `_kaizen_dispatcher.py`.
+
+**Validation:**
+
+- `kaizen` → categorized list of 49 subcommands across 10 categories
+- `kaizen list --json` → valid JSON, every category populated
+- `kaizen help gatekeeper` → wrapper header + passthrough `--help` in correct order (the `sys.stdout.flush()` fix lands; regression test pins the order)
+- `kaizen gatekeeper list` → end-to-end dispatch via execv works
+- `kaizen --time gatekeeper list` → emits `completed in Nms` on stderr
+- `kaizen nonexistent` → exit 2 + "unknown subcommand" stderr
+- 12/12 tests pass
+- plugin-development validator: 52/52 features clean
+- `kaizen-surface validate` clean (_kaizen_dispatcher.py covered by `*.py` wildcard permission)
+
 ### Fixed — full etu anti-pattern sweep: 9 findings → 0 across the plugin
 
 Companion to the prior enable_all.sh sweep. Cleared every remaining `efficient-tool-use` anti-pattern across the plugin's shell scripts. `kaizen-gatekeeper only etu --all` now reports **GREEN** (0 findings — was 9 errors+warns+infos).
@@ -185,7 +220,7 @@ Tests: 37/37 workflow application tests pass; codegen drift-check clean; plugin-
 
 ### Changed — Upstream vendoring retired (2026-05-17)
 
-The originally-bundled coding-skills / superpowers / claude-code-skills / remember skills are no longer tracked as live upstream content. After extensive kaizen-local alterations (schema-driven domain refactors in v1.32.0+, the `verify-before-application` discipline integration, per-skill enhancements), the upstream-patch-first round-trip became impractical and the skills had diverged enough to call them plugin-original derivatives.
+The originally-bundled coding-skills / superpowers / claude-code-skills / remember skills are no longer tracked as live upstream content. After extensive kaizen-local alterations (schema-driven domain refactors in v1.32.0+, the `verify-before-execution` discipline integration, per-skill enhancements), the upstream-patch-first round-trip became impractical and the skills had diverged enough to call them plugin-original derivatives.
 
 - **`skills/iron-laws/domain/iron-laws.yaml::no-modify-vendored`** — `detect` regex emptied; `statement` and `why` rewritten. The law stays as infrastructure for any future upstream-tracked content.
 - **`skills/workflow/scripts/_iron_laws.py`** — `VENDORED` set emptied with a comment naming the retirement date + procedure for re-vendoring future content. `check_no_modify_vendored()` machinery preserved.
@@ -195,6 +230,142 @@ The originally-bundled coding-skills / superpowers / claude-code-skills / rememb
 - **`ATTRIBUTIONS.md`** — full rewrite. Framing shifted from *"bundled from upstream projects"* to *"originally based on / inspired by"*. Each section lists prior author + source repo + license, then notes the kaizen-specific alterations. Original-author credit fully preserved — only the *tracking discipline* is retired, not the gratitude.
 
 No functional impact on consumers. Skill bodies unchanged by this commit; only the policy around their evolution changes. Pre-commit gate's `no-modify-vendored` check is now a no-op (empty list) — kaizen edits to formerly-vendored skills will no longer trigger the iron-law violation.
+
+### Added — Taplo TOML Schema for `.kaizen.toml`
+
+`.kaizen.toml` files now get full IDE autocomplete + validation in any
+editor that uses [Taplo](https://taplo.tamasfe.dev/) (Even Better TOML
+in VS Code, `taplo lint` CLI, etc.) — typos in keys, wrong types, or
+malformed env-var names surface at edit time, not commit time.
+
+- **`assets/schemas/kaizen-config.schema.json`** — JSON Schema 2020-12
+  for the 9 fields setup.sh seeds (`compile_check_cmd`,
+  `architecture_log`, `plan_dir`, `backlog_path`, `verify_cmd`,
+  `allow_deletion_env`, `skip_tdd_check_env`, `brain_path`,
+  `project_memory_path`). `additionalProperties: false` so typos
+  surface immediately. Env-var fields carry a `^[A-Z][A-Z0-9_]*$`
+  pattern.
+- **`taplo.toml`** at the plugin root — declares the schema and binds
+  it to `**/.kaizen.toml` via `[[schema]]`. Sensible formatter
+  defaults (`align_entries=true`, `reorder_keys=false` so the
+  generator's grouping survives editor saves).
+- **`setup.sh`** — newly seeded `.kaizen.toml` files lead with a
+  `#:schema https://raw.githubusercontent.com/.../kaizen-config.schema.json`
+  directive so editors auto-bind even when the plugin isn't on their
+  Taplo include path (e.g. fresh clones of consumer repos).
+
+16 new unit tests (`tests/test_kaizen_config_schema.py`) cover:
+schema file integrity (parseable, 2020-12 draft, `$id`/`title`,
+`additionalProperties:false`), key coverage vs. setup.sh heredoc,
+jsonschema-validation of both good + bad configs (extra key, wrong
+type, malformed env-var pattern), taplo.toml presence + binding,
+heredoc emits the `#:schema` directive.
+
+Full plugin suite: **1386 passing** (up from 1370).
+
+### Fixed — `daemon.py watch` 99%-CPU spin + zombie children
+
+Two real bugs in the watchdog-backed watch loop. TDD-driven via
+`tests/test_daemon_helpers.py` (10 new unit tests).
+
+- **`_WATCH_DEBOUNCE_SEC` was 0.05s** (20 wake-ups/sec on the main
+  thread's `stop_event.wait(...)`). Even with empty pending, the
+  threading.Event + lock + iteration overhead alone burned sustained
+  CPU. Bumped to **0.5s** (4Hz) — indistinguishable to the user for
+  index-refresh latency; ~10× fewer wake-ups. New env override
+  `KAIZEN_WATCH_DEBOUNCE_SEC` (clamped to `[0.05, 5.0]`).
+- **`_spawn_semantic_refresh` was fire-and-forget** — the daemon
+  never reaped the spawned `onboard_index.py` children, so each
+  semantic-refresh tick left a `[uv] <defunct>` zombie behind. Now
+  the watch loop tracks the previous Popen handle and:
+    - skips the next spawn if the previous is still running
+      (`_should_spawn_semantic(prev_proc, last_spawn, now, throttle_sec)`),
+    - polls + clears the handle on the next iteration (zombie-free).
+- **`_resolve_debounce()`** + **`_should_spawn_semantic()`** are
+  pure helpers extracted so the loop body can stay readable + the
+  decision rules are unit-testable in isolation.
+- **`watch-diag` log line** — every 10s the loop now logs
+  `iter=N paths_processed=M sample=[...]` so operators can tell
+  whether the daemon is genuinely busy (event storm) or
+  pathologically spinning. Cheap (one line per 10s).
+
+Full plugin suite: **1370 passing** (up from 1360, +10 new daemon
+tests). No regressions in the existing 1360.
+
+### Added — `lint_fix_dispatch` per-repo prefs + LLM auto-setup
+
+Follow-up to the `auto_fix_lint` ship (below). Three additions:
+
+- **`skills/workflow/scripts/lint_fix_prefs.py`** — atomic per-repo
+  persistence at `.kaizen/lint_dispatch_prefs.json`. The user picks
+  subagent vs local_llm once, the rest of the session honors it.
+  `load_prefs(repo)` / `save_prefs(repo, data)` / `get_strategy(repo,
+  default='subagent')` / `set_strategy(repo, strategy)`. Schema
+  v1 + `updated_at` stamp. 10 tests.
+- **`skills/workflow/scripts/lint_fix_setup.py`** — local-LLM
+  detection + install-script generator (no auto-execute, returns
+  bash for `ollama` or `llama-server`). `detect_servers()` sweeps
+  `LLM_BASE_URL` env + ollama:11434 + llama-server:8080 via a TCP
+  probe followed by `GET /v1/models`. `setup_summary()` returns
+  either `{status='ready', recommended_url, recommended_model,
+  servers[]}` or `{status='setup_needed', install_script,
+  setup_command, default_model, default_url}`. 14 tests.
+- **`skills/workflow/scripts/setup-local-llm.sh`** — companion
+  one-liner users can run themselves: pipes
+  `lint_fix_setup.py --print-script` into bash. Single source of
+  truth = the Python script body, so tests can pin the bash content.
+
+**Dispatcher extensions** (`lint_fix_dispatch.py`):
+  - New `strategy='auto'` resolves the per-repo preference. When
+    saved=='local_llm' but no server reachable, falls back to
+    'subagent' and sets `local_llm_fallback=True` in the result.
+  - Explicit `strategy='local_llm'` + unreachable returns
+    `{status='setup_needed', install_script, setup_command, ...}`
+    instead of an opaque HTTP error.
+
+**`auto_fix_lint` MCP tool extensions** (`lint_mcp.py`):
+  - Default `strategy` changed from `'subagent'` to `'auto'` (uses
+    prefs).
+  - New `remember_choice: bool = False` kwarg. When True, persists
+    the resolved concrete strategy (never persists "auto" itself).
+
+**New MCP tool** `lint_fix_setup_local_llm()` — surfaces
+`setup_summary()` to Claude so it can offer setup interactively
+without invoking `bash` itself.
+
+7 wiring tests cover the prefs↔dispatch↔auto_fix_lint↔setup-tool
+round-trip + the unreachable-LLM degrade paths. Full plugin suite
+goes from 1324 → 1355 tests.
+
+### Added — `auto_fix_lint` MCP tool + `lint_fix_dispatch.py`
+
+Pair to `ruff_check` / `ty_check` — when those report findings, the
+new dispatcher routes them to a fix path instead of stopping at "here
+are the errors". TDD-built (21 unit + integration + contract +
+regression tests via `tests/test_lint_fix_dispatch.py`; full plugin
+suite of 1324 tests stays green).
+
+- **`skills/workflow/scripts/lint_fix_dispatch.py`** — two strategies
+  sharing the lint-finding shape `_normalize_ruff` / `_parse_ty_concise`
+  already produce:
+  - `strategy="subagent"` — emits structured task specs (`file`,
+    `findings`, `prompt`, short `description`), one per file. Caller —
+    typically the Claude session running the kaizen workflow — reads
+    `result["tasks"]` and dispatches each via the Agent tool. Pure;
+    no I/O.
+  - `strategy="local_llm"` — POSTs one OpenAI-compatible chat request
+    per file group to `LLM_BASE_URL` + `LLM_MODEL` (+ optional
+    `LLM_API_KEY`). Extracts a unified diff from the response (fenced
+    ```diff ... ``` OR bare). When `apply=True`, runs
+    `git apply --3way`; otherwise the patch is returned for inspection.
+  - `skip_ruff_fixable=True` (default) — drops findings ruff `--fix`
+    already handles, so the dispatcher never burns LLM tokens on
+    mechanical fixes.
+- **`auto_fix_lint(path, strategy, skip_ruff_fixable, apply, model, base_ref)`**
+  added to `lint_mcp.py` as the MCP-callable entry point. Runs
+  `ruff_check` + `ty_check` (or `lint_changed_files` if `base_ref` set),
+  then calls the dispatcher. Returns
+  `{strategy, dispatched_count, skipped_count, tasks[]}`.
 
 ### Added — single-entry MCP gateway
 

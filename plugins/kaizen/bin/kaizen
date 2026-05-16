@@ -1,20 +1,25 @@
 #!/usr/bin/env bash
-# kaizen — multiplexer for the bundled CLIs.
+# kaizen — unified CLI dispatcher (entry point for the bash loop).
 #
-# Symlinked to ~/.local/bin/kaizen by /kaizen:install (zero-config).
-# Subcommand routes to ${BIN_DIR}/kaizen-<subcmd>.
+# Thin wrapper around skills/workflow/scripts/_kaizen_dispatcher.py — the
+# Python dispatcher is the SSOT. This shell wrapper resolves the
+# plugin root (symlink-safe) and execs the dispatcher.
 #
 # Usage:
-#   kaizen flow [workspace]    → async Node+Flow demo
-#   kaizen docs scan           → workspace docs generator
-#   kaizen backlog list        → backlog CLI
-#   kaizen cache stats         → cache state
-#   kaizen context show        → context-window state
-#   kaizen inbox stats         → message inbox
-#   kaizen rules list          → brain-sourced behaviour rules
-#   kaizen env path            → location of kaizen-env.sh
+#   kaizen                       (or `kaizen list`) — list subcommands
+#   kaizen <subcommand> [args]   — dispatch (zero overhead, execv)
+#   kaizen list [--json]         — discovery (grouped catalog)
+#   kaizen help <subcommand>     — full docstring
+#   kaizen --time <sub> [args]   — dispatch + wall-clock timing
+#   kaizen --trace <sub> [args]  — dispatch + kaizen-trace events
+#   kaizen version               — plugin + dispatcher version
 #
-# Without args: prints subcommand list + plugin version.
+# Symlinked to ~/.local/bin/kaizen by /kaizen:setup install.
+#
+# History: prior to 2026-05-17 this was a 65-line bash dispatcher.
+# Promoted to a Python entry point for testability + grouped
+# discovery + timing/trace hooks. Subcommand resolution unchanged:
+# `kaizen <X>` still routes to `${BIN_DIR}/kaizen-<X>`.
 
 set -uo pipefail
 
@@ -30,36 +35,4 @@ SCRIPT_PATH=$(_resolve "${BASH_SOURCE[0]:-$0}")
 BIN_DIR=$(dirname "$SCRIPT_PATH")
 PLUGIN_ROOT=$(cd "$BIN_DIR/.." && pwd)
 
-if [ $# -eq 0 ]; then
-    VER="?"
-    if [ -f "$PLUGIN_ROOT/.claude-plugin/plugin.json" ]; then
-        VER=$(python3 -c "import json, sys; print(json.load(open(sys.argv[1])).get('version', '?'))" "$PLUGIN_ROOT/.claude-plugin/plugin.json" 2>/dev/null || echo "?")
-    fi
-    echo "kaizen v${VER}"
-    echo ""
-    echo "usage: kaizen <subcommand> [args]"
-    echo ""
-    echo "Subcommands:"
-    for f in "$BIN_DIR"/kaizen-*; do
-        [ -f "$f" ] || continue
-        name=${f##*/kaizen-}
-        # Pull first non-comment, non-shebang line as a description hint
-        desc=$(awk '/^#/ && !/^#!/ {sub(/^# */, ""); print; exit}' "$f")
-        printf "  %-12s %s\n" "$name" "$desc"
-    done
-    echo ""
-    echo "Plugin root: $PLUGIN_ROOT"
-    exit 0
-fi
-
-SUBCMD="$1"
-shift
-
-WRAPPER="$BIN_DIR/kaizen-$SUBCMD"
-if [ -x "$WRAPPER" ]; then
-    exec "$WRAPPER" "$@"
-fi
-
-echo "kaizen: unknown subcommand '$SUBCMD'" >&2
-echo "Run 'kaizen' (no args) to see available subcommands." >&2
-exit 1
+exec python3 "$PLUGIN_ROOT/skills/workflow/scripts/_kaizen_dispatcher.py" "$@"

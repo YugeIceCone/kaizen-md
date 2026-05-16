@@ -50,6 +50,7 @@
       "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/gatekeeper.py:*)",
       "Bash(uv run --script ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/gatekeeper_mcp.py:*)",
       "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/surface.py:*)",
+      "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/_kaizen_dispatcher.py:*)",
       "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/plugin-development/scripts/validate.py:*)",
       "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/*.py:*)",
       "Bash(uv run --script ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/*.py:*)",
