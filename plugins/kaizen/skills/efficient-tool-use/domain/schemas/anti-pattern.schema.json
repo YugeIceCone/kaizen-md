@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/YugeIceCone/kaizen-md/skills/efficient-tool-use/domain/schemas/anti-pattern.schema.json",
+  "title": "Efficient tool-use anti-pattern catalog",
+  "description": "Validates skills/efficient-tool-use/domain/anti-patterns.yaml — the canonical list of shell-toolbox anti-patterns. Consumed by any future scanner script that wants to grep staged scripts for these patterns as a pre-commit check.",
+  "type": "object",
+  "required": ["anti_patterns"],
+  "additionalProperties": false,
+  "properties": {
+    "anti_patterns": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/AntiPattern" }
+    }
+  },
+  "$defs": {
+    "AntiPattern": {
+      "type": "object",
+      "required": ["id", "tool", "bad_pattern", "why_bad", "replacement", "severity"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]*$",
+          "description": "Kebab-case stable id. Used in commit messages + scanner output."
+        },
+        "tool": {
+          "enum": ["grep", "rg", "sed", "awk", "find", "xargs", "bash", "jq", "shell-general"],
+          "description": "Primary tool the pattern abuses. `shell-general` for cross-tool patterns (useless cat, etc.)."
+        },
+        "bad_pattern": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Verbatim bad form. Use shell-quoted text; consumers may use this as a literal grep needle."
+        },
+        "why_bad": {
+          "type": "string",
+          "minLength": 1,
+          "description": "One-line explanation of the failure mode (speed / correctness / safety)."
+        },
+        "replacement": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Verbatim correct form. The 1:1 replacement an author should reach for instead."
+        },
+        "severity": {
+          "enum": ["error", "warn", "info"],
+          "description": "error = correctness / safety bug (silent corruption, broken on spaces, etc.). warn = perf / readability. info = stylistic."
+        },
+        "detect": {
+          "type": "string",
+          "description": "Optional regex (POSIX ERE) that a scanner can grep staged shell scripts for. Leave empty when the pattern is too context-dependent to mechanically detect."
+        },
+        "references": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Optional links to relevant docs / man pages / SKILL.md sections."
+        }
+      }
+    }
+  }
+}

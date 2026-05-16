@@ -40,6 +40,7 @@ Hunts for real bugs, weak contracts, and missing regression coverage in a target
 
 - **verify-before-execution** -> RED-GREEN gate for every in-scope finding applied during the audit (Step 7)
 - **boy-scout-rule** -> eligibility criteria for in-scope inline cleanups
+- **efficient-tool-use** -> grep/sed/find/bash discipline for the probes the audit runs (rg over grep, -l for files-only, -print0/-0 for safe paths, anti-pattern catalog)
 - **detect-stack** -> identify the stack before applying language-appropriate checks
 - **codebase-exploring** -> map the target area first
 - **change-analyzing** -> understand blast radius and invariants

@@ -5,6 +5,22 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [S
 
 ## [Unreleased]
 
+### Added — `efficient-tool-use` skill: grep/sed/find/bash/xargs/jq discipline + 23-pattern catalog
+
+New top-level discipline skill at `skills/efficient-tool-use/` covering best practices, anti-patterns, and tool-selection for the shell toolbox. Companion to `ast-grep-router` (which covers syntax-aware search) and `karpathy` (which covers surgical-change discipline) — this one covers the raw text / filesystem / process tools.
+
+- **`SKILL.md`** — tool-selection matrix (rg / fd / ast-grep / jq / awk / xargs / parallel / find / sed / bash); per-tool best-practice + anti-pattern sections for grep, ripgrep, sed, find, bash, xargs, awk, jq; parallelization patterns; "wait for condition" patterns; "when to abandon shell for python" break-even matrix; "when to load this skill" / "when NOT to" guidance. Iron-Law skill — body must be read in full before chaining 3+ shell commands.
+- **`domain/anti-patterns.yaml`** — 23-entry structured catalog (across 7 tools: grep, sed, find, bash, xargs, jq, shell-general). Each entry: `id` + `tool` + `bad_pattern` + `why_bad` + `replacement` + `severity` (error / warn / info) + optional `detect` regex. 15 of 23 entries ship a scanner-ready `detect` regex for future pre-commit integration.
+- **`domain/schemas/anti-pattern.schema.json`** — JSON Schema 2020-12, strict (`additionalProperties: false`), enum-typed for `tool` and `severity`.
+- **`application/_loader.py`** — stdlib-only PyYAML + jsonschema loader (mirrors `karpathy/application/_loader.py`). CLI: `validate | list | show <id> | by-tool <tool> | detect`. Degrades gracefully when `jsonschema` is absent (matches the workflow-loader pattern for constrained CI sandboxes).
+- **`skills/workflow/domain/routines.yaml::stage_skill_map`** — new `tool-use` stage entry routes to `kaizen:efficient-tool-use`. Any routine can append a `tool-use` stage to surface this discipline as a checkpoint.
+- **`skills/workflow/references/routines.md`** — regenerated.
+- **Cross-references** added in `skills/{audit,review,refactor}/SKILL.md` so those flows pull the discipline as a companion. `audit` Companion Skills list grows by one; `review` Rules section gains a probe-discipline bullet; `refactor` Core Flow step 3 adds a "Probe discipline" sub-rule covering `rg -l`, `find -print0`/`xargs -0`, ast-grep for syntax-aware renames.
+
+The 23 patterns range from must-fix (`find /`, unquoted `$foo` in `[ ]`, `rm -rf $unset/`, parsing JSON with grep) to readability hygiene (useless `cat | sed`, missing `pipefail`). 15 have machine-detectable `detect` regexes, ready for a future `pre-commit.sh` gate.
+
+Plugin-development validator: 51 → 52 features clean.
+
 ### Changed — `verify-before-application` → `verify-before-execution`
 
 Skill renamed to better reflect what the gate actually guards: the **execution** of a candidate change, not just its narrow "application" to source code. The discipline applies equally to plugin edits, schema migrations, refactor relocations, structural changes, etc. — "apply" suggested code-only.

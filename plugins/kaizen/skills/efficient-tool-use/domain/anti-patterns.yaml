@@ -1,0 +1,191 @@
+# yaml-language-server: $schema=./schemas/anti-pattern.schema.json
+#
+# Efficient tool-use anti-pattern catalog.
+# Consumed by:
+#   - skills/efficient-tool-use/SKILL.md (rendered as the per-tool anti-pattern tables)
+#   - any future pre-commit scanner that wants to grep staged scripts for these
+#     patterns (the `detect` regex is the scanner needle)
+
+anti_patterns:
+  # ── grep ────────────────────────────────────────────────────────────
+  - id: grep-chain-instead-of-rg-regex
+    tool: grep
+    bad_pattern: 'grep "X" | grep -v "Y" | grep "Z"'
+    why_bad: "3 forks + 3 reads of every line. A single regex pass + one inverse filter is one fork."
+    replacement: 'rg "X.*Z" | rg -v "Y"   # or: grep -E "X.*Z" | grep -v "Y"'
+    severity: warn
+    detect: "grep[^|]*\\|[ ]*grep[^|]*\\|[ ]*grep"
+
+  - id: grep-from-filesystem-root
+    tool: grep
+    bad_pattern: 'grep -rn "X" /'
+    why_bad: "Scans every mounted filesystem; can exhaust resources or hit unreadable system dirs and noise."
+    replacement: 'grep -rn "X" .   # or specific subtree'
+    severity: error
+    detect: "grep -[a-zA-Z]*r[a-zA-Z]* [^ ]* /( |$)"
+
+  - id: grep-pipe-wc-l-for-count
+    tool: grep
+    bad_pattern: 'grep "X" file | wc -l'
+    why_bad: "Spawns wc; loses per-file granularity. grep -c does it in one process per file."
+    replacement: 'grep -c "X" file   # or: rg -c "X" file'
+    severity: info
+    detect: "grep [^|]*\\| wc -l"
+
+  - id: grep-via-find-xargs-no-null
+    tool: grep
+    bad_pattern: 'find . -name "*.py" | xargs grep "X"'
+    why_bad: "Breaks on paths with spaces/newlines/quotes; also slower than rg's built-in --type or --glob."
+    replacement: 'rg "X" -g "*.py"   # or: grep -rn --include="*.py" "X" .   # or: find . -name "*.py" -print0 | xargs -0 grep "X"'
+    severity: error
+    detect: "find [^|]*\\| xargs grep"
+
+  # ── sed ─────────────────────────────────────────────────────────────
+  - id: sed-in-place-no-diff
+    tool: sed
+    bad_pattern: 'sed -i "s/X/Y/g" file'
+    why_bad: "If the regex is wrong, the file is silently corrupted. No backup, no diff, no recovery without git."
+    replacement: 'sed -i.bak "s/X/Y/g" file && diff file.bak file && rm file.bak   # or always git diff after'
+    severity: warn
+    detect: "sed -i [^.]"
+
+  - id: useless-cat-into-sed
+    tool: shell-general
+    bad_pattern: 'cat file | sed "s/X/Y/g"'
+    why_bad: "Useless cat — sed reads files directly. Extra fork + pipe."
+    replacement: 'sed "s/X/Y/g" file'
+    severity: info
+    detect: "cat [^|]*\\| sed"
+
+  - id: sed-portability-assumption
+    tool: sed
+    bad_pattern: 'sed -i "s/X/Y/" file   # in a script that may run on both Linux and macOS'
+    why_bad: "GNU sed needs no arg to -i; BSD/macOS sed requires sed -i '' ... — same command silently truncates the file on the wrong OS."
+    replacement: "Use python for cross-platform in-place edits, or detect: if sed --version >/dev/null 2>&1; then sed -i 's/X/Y/' file; else sed -i '' 's/X/Y/' file; fi"
+    severity: error
+
+  # ── find ────────────────────────────────────────────────────────────
+  - id: find-from-root
+    tool: find
+    bad_pattern: 'find / -name X'
+    why_bad: "Scans entire filesystem (network mounts, /proc, /sys). On large systems this is minutes-to-hours of wasted IO."
+    replacement: 'find . -name X   # or specific subtree'
+    severity: error
+    detect: "find / "
+
+  - id: find-exec-semicolon-not-plus
+    tool: find
+    bad_pattern: 'find . -name "*.py" -exec ruff check {} \\;'
+    why_bad: "Forks the command once per file. For 1000 files, that is 1000 process startups."
+    replacement: 'find . -name "*.py" -exec ruff check {} +   # batches arguments → 1 fork'
+    severity: warn
+    detect: "find[^;]*-exec [^;]*\\\\;"
+
+  - id: find-regex-shorter-alternative-first
+    tool: find
+    bad_pattern: 'find . -regex ".*\\.\\(ts\\|tsx\\)"'
+    why_bad: "Regex matches greedy-leftmost: .ts matches first, .tsx files are silently skipped. Subtle data-loss in any downstream pipeline."
+    replacement: 'find . -regex ".*\\.\\(tsx\\|ts\\)"   # longest alternative first'
+    severity: error
+
+  - id: for-loop-over-find-output
+    tool: shell-general
+    bad_pattern: 'for f in $(find ...); do ...; done'
+    why_bad: "Word-splits on every whitespace character → breaks on paths with spaces. Also subshell-strips trailing newlines."
+    replacement: 'while IFS= read -r -d "" f; do ...; done < <(find ... -print0)'
+    severity: error
+    detect: "for [a-zA-Z_]+ in \\$\\(find"
+
+  # ── bash ────────────────────────────────────────────────────────────
+  - id: unquoted-variable-in-test
+    tool: bash
+    bad_pattern: '[ $foo = "bar" ]'
+    why_bad: "Breaks if $foo is empty (becomes [ = bar ]) or contains spaces. Silent test-result corruption."
+    replacement: '[[ "$foo" = "bar" ]]'
+    severity: error
+    detect: "\\[ \\$[a-zA-Z_]+ ="
+
+  - id: cd-without-error-check
+    tool: bash
+    bad_pattern: 'cd $dir   # without set -e and without || exit'
+    why_bad: "If cd fails, the rest of the script runs in the wrong dir — usually deleting / modifying the wrong tree."
+    replacement: 'cd "$dir" || exit 1   # or set -e at top of script'
+    severity: error
+    detect: "^cd \\$[a-zA-Z_]+$"
+
+  - id: missing-pipefail
+    tool: bash
+    bad_pattern: 'set -eu   # without pipefail'
+    why_bad: "Without pipefail, false | true exits 0 — pipeline-stage failures are invisible."
+    replacement: 'set -euo pipefail'
+    severity: warn
+    detect: "^set -eu[^o]"
+
+  - id: blind-sleep-instead-of-poll
+    tool: bash
+    bad_pattern: 'sleep 30   # to wait for server to start'
+    why_bad: "Flaky (sometimes too short, sometimes wastes time). Polling is faster and reliable."
+    replacement: 'timeout 30 bash -c "until curl -sf localhost:8080/healthz; do sleep 1; done"'
+    severity: warn
+
+  - id: rm-rf-with-unset-var
+    tool: bash
+    bad_pattern: 'rm -rf $foo/bar   # if $foo is empty: rm -rf /bar'
+    why_bad: "If $foo is unset, this becomes rm -rf /bar (or worse, rm -rf / when the suffix is empty too)."
+    replacement: ': "${foo:?foo is required}"; rm -rf "$foo/bar"'
+    severity: error
+    detect: "rm -rf \\$[a-zA-Z_]+"
+
+  - id: eval-on-user-input
+    tool: bash
+    bad_pattern: 'eval "$user_input"'
+    why_bad: "Direct code injection. Any path that touches eval + user-influenced data is a vulnerability."
+    replacement: "Restructure to not need eval. If you genuinely need indirection, use a case statement or a function dispatch table."
+    severity: error
+    detect: "eval [\\$\"]"
+
+  - id: while-read-loop-shell
+    tool: bash
+    bad_pattern: 'while read line; do something_with "$line"; done < file'
+    why_bad: "One fork per iteration of something_with. For 10K lines, that is 10K forks. xargs batches."
+    replacement: 'xargs -I {} something_with {} < file   # or batched: xargs something_with < file'
+    severity: warn
+
+  # ── xargs ───────────────────────────────────────────────────────────
+  - id: xargs-no-null-separator
+    tool: xargs
+    bad_pattern: 'find ... | xargs cmd'
+    why_bad: "Breaks on any path with a space, newline, or quote. Has caused production data loss when ran against attacker-controlled filenames."
+    replacement: 'find ... -print0 | xargs -0 cmd'
+    severity: error
+    detect: "(find|ls)[^|]*\\| xargs [^-]"
+
+  - id: xargs-unbounded-parallel
+    tool: xargs
+    bad_pattern: 'xargs -P 100 cmd   # on a 4-core machine'
+    why_bad: "More processes than cores → context-switch thrashing. The point of -P is bounded parallelism."
+    replacement: 'xargs -P "$(nproc)" cmd   # or a fixed conservative -P 8'
+    severity: warn
+
+  # ── jq ──────────────────────────────────────────────────────────────
+  - id: grep-on-json
+    tool: shell-general
+    bad_pattern: 'grep "\"key\":" file.json'
+    why_bad: "Misses nested keys; breaks on whitespace variation; can match key-named values. JSON has a parser; use it."
+    replacement: 'jq ".key" file.json'
+    severity: error
+
+  - id: jq-bash-interpolation
+    tool: jq
+    bad_pattern: 'jq ".name = \"$NAME\"" file.json   # with $NAME from user input'
+    why_bad: "Quoting hell + injection (a $NAME containing \" breaks parsing or worse)."
+    replacement: 'jq --arg name "$NAME" ".name = $name" file.json'
+    severity: error
+
+  # ── shell-general ───────────────────────────────────────────────────
+  - id: fire-and-forget-background-no-wait
+    tool: shell-general
+    bad_pattern: 'for x in ...; do cmd "$x" &; done   # no `wait` at end'
+    why_bad: "Parent exits before children — child output lost, no error-aggregation."
+    replacement: 'for x in ...; do cmd "$x" &; done; wait'
+    severity: error

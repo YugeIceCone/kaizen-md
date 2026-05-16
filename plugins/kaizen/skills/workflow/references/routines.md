@@ -66,6 +66,7 @@ Every workflow stage with a 1:1 kaizen-plugin skill is listed below. Unmapped st
 | `self-analyze` | `kaizen:self-improving` |
 | `supervisor` | `kaizen:supervisor` |
 | `task` | `kaizen:task` |
+| `tool-use` | `kaizen:efficient-tool-use` |
 | `validate` | `kaizen:validate` |
 
 ## Routines

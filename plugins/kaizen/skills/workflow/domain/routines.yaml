@@ -54,6 +54,7 @@ stage_skill_map:
   self-analyze: kaizen:self-improving
   supervisor: kaizen:supervisor
   task: kaizen:task
+  tool-use: kaizen:efficient-tool-use
   validate: kaizen:validate
 
 routines:

@@ -18,6 +18,8 @@ Restructures and cleans up code across one or more files while preserving behavi
 
 **Refactor-specific RED forms:** for an *extraction*, the call-site count of the duplicated pattern (≥2). For a *relocation*, the layer-violation grep that motivates the move. For a *rename*, the misleading name in context. No RED → don't refactor.
 
+**Probe discipline:** the grep/sed/find/ast-grep commands the refactor relies on follow **efficient-tool-use** — use `rg -l` not `grep -rn | wc -l` for file counts, `find . -print0 | xargs -0` for safe path handling, `ast-grep` for syntax-aware renames (regex sed will miss / over-match comments and strings).
+
 ## Stage Map
 
 - Analyze -> local exploration first; if the user explicitly asks for delegation, use `codebase-pattern-scouting` for structure and `migration-planning` for refactor analysis.
