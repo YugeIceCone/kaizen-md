@@ -20,10 +20,37 @@ defaults:
 # Stage → skill mapping (Phase C consolidation, 2026-05-13).
 #
 # Wires every workflow stage to the kaizen-plugin skill that implements it.
-# Stages without a 1:1 skill (`simplify` = bundled `/simplify` slash command;
-# schema-routine internals like `red-test`, `green-impl`, `register-mcp-json`)
-# are intentionally absent — those resolve via per-schema artifacts or via
-# slash commands documented in references/orchestration.md.
+# Stages without a 1:1 skill are intentionally absent — they resolve via
+# per-schema artifacts or bundled slash commands. Three categories of
+# unmapped-by-design (auditable via _loader.py or by future linters; do not
+# treat as drift):
+#
+#   1. Bundled slash commands — Claude Code built-ins or `/<name>` shipped
+#      by the kaizen plugin's `commands/*.md`:
+#          simplify        → /simplify  (bundled, trims over-engineering)
+#          batch-fanout    → /batch     (bundled, parallel worktree dispatch)
+#
+#   2. Schema-routine internal stages — declared in
+#      `schemas/<routine>/schema.yaml`, NOT in this stage_skill_map:
+#          tasks, plan, execute, design, decisions, implement, reflect,
+#          handoff, specs, verify, iterate, start,
+#          red-test, green-impl, refactor, adapters, composition,
+#          trace-wire, design-layers, supervisor,
+#          reproduce, isolate, inspect, hypothesize, verify-cause,
+#          regression, postmortem, investigate-deeper,
+#          smoke-handshake, validate-cache, register-mcp-json,
+#          register-permissions, write-server-skeleton, write-tools,
+#          carve-with-shim, migrate-callers, drift-check, sweep,
+#          characterize
+#
+#   3. Aliases (would be redundant) — these COULD be added as aliases to
+#      their canonical implementers but currently are not:
+#          (none — no canonical stage is shadowed by an unmapped short form)
+#
+# To audit: `python3 application/_loader.py validate` validates this yaml;
+# the comment here is the design-intent record for "why is X used in a
+# routine but not in stage_skill_map". A scanner verifying "all stages
+# resolve" should consult both this map AND the schema-routine yamls.
 #
 # Consumed by:
 #   - skills/workflow/application/_loader.py::get_skill_for_stage()

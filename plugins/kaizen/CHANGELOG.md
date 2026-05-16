@@ -5,6 +5,42 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [S
 
 ## [Unreleased]
 
+### Added — `gatekeeper.py`: unified gate aggregating iron-laws + etu + karpathy + validator
+
+One entry point that runs every Python-callable kaizen check and emits a single verdict (`green` / `yellow` / `red`). Closes the gap where the user had 4 separate commands (`/kaizen:iron-laws check`, `validate.py`, etu manual grep, karpathy scanners individually) producing 4 separate finding lists. The bash `pre-commit.sh` stays the canonical commit-time gate; this is the orchestration-time "all Python gates in one verdict" view.
+
+**Files:**
+
+- **`skills/workflow/scripts/gatekeeper.py`** — orchestrator. `Verdict` (`overall`, `findings[]`, `durations_ms`, `counts`) wraps `GateFinding(gate, severity, rule_id, message, file, line)`. Severity normalized across sub-gates (iron-laws' `hard`/`soft` → `error`/`warn`). Each sub-gate is timed independently. CLI: `check [--staged|--all] [--json] | list | only <gate>`. Exit 1 on any `error`.
+- **`skills/efficient-tool-use/application/etu_scan.py`** — the new shell-script anti-pattern scanner. Loads `domain/anti-patterns.yaml`, runs the 15 `detect` regexes over staged `.sh` / `.bash` files (or all shell scripts in `--all` mode). Returns `Finding(pattern_id, severity, tool, file, line, matched, why_bad, replacement)`. Standalone CLI too.
+- **`bin/kaizen-gatekeeper`** — bin wrapper.
+- **`commands/gatekeeper.md`** — `/kaizen:gatekeeper` slash command.
+- **`tests/test_gatekeeper.py`** — 11 tests: etu happy-path / clean-file / missing-file / severity-mapping, gatekeeper sub-gate enumeration, severity normalization, verdict aggregation, JSON/text rendering, plus an explicit **collision-resistance regression** (iron-laws and efficient-tool-use both ship `application/_loader.py`; the gatekeeper must load each without poisoning the other's import cache).
+
+**Sub-gate inventory:**
+
+| Sub-gate | Source | What it covers |
+|---|---|---|
+| `iron-laws` | `_iron_laws.run_checks()` | 15 auto-enforced laws |
+| `etu` | `etu_scan.scan_files()` | 15 shell anti-patterns via regex |
+| `karpathy` | `karpathy/scripts/*.py` (subprocess on staged paths) | complexity / surgical / assumption / goal scanners (diff-oriented, skipped on `--all`) |
+| `validator` | `plugin-development/scripts/validate.py` (subprocess) | hard / soft finding counts |
+
+**Adding a new sub-gate:** register a `_gate_<name>(scope, repo_root)` function returning `list[GateFinding]`, add to the `SUB_GATES` dict. No schema changes.
+
+**Collision-resistance design:** every sub-gate loads its source module via explicit `importlib.util.spec_from_file_location` with a unique synthetic name (`kaizen_iron_laws`, `kaizen_etu_scan`, …) so the `_loader.py` name shared by multiple skills doesn't end up cached as the wrong instance. `etu_scan.py` itself uses the same pattern internally for the same reason. Regression test (`test_etu_loads_when_iron_laws_already_loaded`) pins the fix.
+
+### Added — `audit/application/_reporter.py`: wires the orphaned `audit-report.schema.json`
+
+The `audit-report.schema.json` shipped earlier this session had no consumer (orphan). Added a lightweight aggregator that takes N findings (each conforming to `audit-finding.schema.json`) and emits one report instance (conforming to `audit-report.schema.json`) with auto-computed `run_id`, `verdict` (`green` / `leaks` / `violated`), severity counts, and recommended next step.
+
+- **`skills/audit/application/_reporter.py`** — `aggregate(findings, scope_target='whole-repo')` library function + CLI: `python3 _reporter.py aggregate [--findings FILE] [--scope STR] [--out FILE]`. Validates input findings AND output report at the boundary using a local `referencing.Registry` (so the `$ref: audit-finding.schema.json` resolves locally instead of triggering a network fetch).
+- Both schemas now have a producer; orphan status resolved.
+
+### Changed — stage-map drift comment expanded (no functional change)
+
+The `routines.yaml::stage_skill_map` audit surfaced 39 "unmapped" stages used by routines; investigation confirmed all are intentional (bundled slash commands like `simplify` / `batch-fanout`, OR schema-routine internal stages like `red-test` / `green-impl` / `tasks` / `verify`). Expanded the in-yaml comment to categorize all three groups explicitly so future audits don't flag this as drift.
+
 ### Added — `efficient-tool-use` skill: grep/sed/find/bash/xargs/jq discipline + 23-pattern catalog
 
 New top-level discipline skill at `skills/efficient-tool-use/` covering best practices, anti-patterns, and tool-selection for the shell toolbox. Companion to `ast-grep-router` (which covers syntax-aware search) and `karpathy` (which covers surgical-change discipline) — this one covers the raw text / filesystem / process tools.
