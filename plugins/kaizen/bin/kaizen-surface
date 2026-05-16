@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+# kaizen-surface — unified MCP + hooks registry / validator.
+# Symlinked to ~/.local/bin/kaizen-surface by /kaizen:setup install.
+#
+# Subcommands: list [--kind mcp|hooks|both] [--json] | validate [--json]
+#              | diff | install [--dry-run]
+# See surface.py docstring for the full surface.
+
+set -euo pipefail
+
+_SCRIPT_REAL="$(readlink -f "${BASH_SOURCE[0]}" 2>/dev/null \
+  || python3 -c 'import os,sys; print(os.path.realpath(sys.argv[1]))' "${BASH_SOURCE[0]}")"
+_BIN_DIR="$(cd "$(dirname "$_SCRIPT_REAL")" && pwd)"
+source "$_BIN_DIR/../skills/workflow/scripts/_plugin_root.sh"
+PLUGIN_ROOT="$(kaizen_plugin_root)" || {
+    echo "kaizen-surface: plugin root unresolved" >&2
+    exit 1
+}
+
+exec python3 "$PLUGIN_ROOT/skills/workflow/scripts/surface.py" "$@"
