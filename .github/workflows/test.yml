@@ -57,3 +57,29 @@ jobs:
             echo "GNU-only find -printf found — use shell glob instead"
             exit 1
           fi
+
+      - name: kaizen-surface validate (registration drift)
+        # surface.py catches orphan hook scripts, unmounted MCP servers,
+        # missing permission entries. Exit 1 on `error` severity;
+        # `warn` severities (e.g. orphan-hook-script) surface but
+        # don't block — CI annotation visible in the GH UI.
+        run: |
+          python3 plugins/kaizen/skills/workflow/scripts/surface.py validate
+        continue-on-error: false
+
+      - name: kaizen-gatekeeper check --all (aggregate code findings)
+        # The unified Python gate: iron-laws + efficient-tool-use anti-
+        # patterns + karpathy diff scanners + plugin-validator. Currently
+        # NON-BLOCKING (continue-on-error: true) because the plugin's own
+        # scripts have ~29 pre-existing findings (eval-on-user-input in
+        # enable_all.sh, etc.) that need a dedicated cleanup session
+        # before the gate can be made blocking. CI output makes them
+        # visible.
+        #
+        # To make blocking later: flip continue-on-error to false. To
+        # silence noisy info-level patterns: --json | jq filter, or wire
+        # severity threshold into gatekeeper.py.
+        run: |
+          python3 plugins/kaizen/skills/workflow/scripts/gatekeeper.py check --all || true
+          # always exit 0 — informational for now
+        continue-on-error: true

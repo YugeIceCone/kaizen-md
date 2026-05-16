@@ -5,6 +5,58 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [S
 
 ## [Unreleased]
 
+### Added — CI pre-flight: `surface validate` + `gatekeeper check --all`
+
+New CI steps in `.github/workflows/test.yml`:
+
+- **`kaizen-surface validate`** (`continue-on-error: false`) — fails CI on missing-hook-script / missing-mcp-module / plugin-json-invalid errors. Warn-level findings (orphan hook scripts, unmounted MCP servers) surface in CI logs without blocking.
+- **`kaizen-gatekeeper check --all`** (`continue-on-error: true`) — runs the unified Python gate (iron-laws + etu + karpathy + validator) over the whole plugin tree. Currently non-blocking — the plugin's own scripts have ~29 pre-existing findings (4× `eval-on-user-input` in `enable_all.sh` + `pre-commit.sh`, etc.) that need a dedicated cleanup session before the gate can be made blocking. CI output makes them visible.
+
+To make `gatekeeper` blocking later: flip `continue-on-error` to `false`. To filter info-level only: pipe `--json` through `jq` for a severity threshold.
+
+### Fixed — `karpathy-gate.sh` registered as Stop-event hook
+
+The CHANGELOG entry for v1.32.0 claimed karpathy "ships a karpathy-gate.sh PostToolUse hook (non-blocking)" — but it had never been added to `hooks/hooks.json`. The kaizen audit (this session) flagged it as F-002 orphan via `kaizen-surface validate`.
+
+Registered under `Stop` event with matcher `*` and 10s timeout. Stop fires when the agent halts; `karpathy-gate.sh` runs `git diff --cached` which is the right semantics — by Stop time, the staged files are what's about to be committed (PostToolUse fires per-edit, when `git diff --cached` is mostly empty during agent operation).
+
+### Added — `kaizen-surface`: unified MCP+hooks registry / validator
+
+One CLI managing the kaizen plugin's extension surface (MCP tools + event hooks). Catches the kind of registration drift the audit pass surfaces.
+
+- **`skills/workflow/scripts/surface.py`** (378 LOC) — inventory primitives (`list_hook_entries`, `list_hook_files`, `list_mcp_servers`) + 8-rule `validate()` (orphan-hook-script, missing-hook-script, missing-mcp-module, mcp-no-tools, unmounted-mcp-server, empty-curated-core, missing-permission with wildcard-recognition, plugin-json-invalid).
+- **`bin/kaizen-surface`** — bin wrapper.
+- **`commands/surface.md`** — `/kaizen:surface` slash command. Subcommands: `list [--kind mcp|hooks|both] [--json]` / `validate [--json]` / `diff` / `install` (last two reserved for future regen-from-canonical flow).
+- **`tests/test_surface.py`** — 10 tests covering inventory, validator, wildcard recognition, renderers, plus a regression guard that asserts no orphan hook scripts exist (post-karpathy-gate fix).
+
+Three complementary lenses on plugin health now ship:
+
+| Lens | Layer |
+|---|---|
+| `/kaizen:gatekeeper` | Code-level findings (iron-laws + etu + karpathy + validator → one verdict) |
+| `/kaizen:surface`    | Extension-registration drift (NEW) |
+| `/kaizen:iron-laws`  | Narrow class of code findings |
+
+Surface dimensions surfaced: 22 MCP sub-servers, 146 tools, 18 hook registrations across 9 events.
+
+### Added — pre-commit Check 7.6: gatekeeper pre-flight (non-blocking)
+
+`pre-commit.sh` now invokes `gatekeeper.py check --staged --json` right after Check 7.5 (iron-laws). Non-blocking by design — surfaces yellow/red as `warn` lines but never blocks the commit (iron-laws path already handles hard fails). Bypass: `KAIZEN_GATEKEEPER_DISABLE=1` (hook-bypass-knob iron-law). ~300ms latency total.
+
+### Added — `gatekeeper` is now an MCP tool (`gatekeeper_check` in CURATED_CORE)
+
+Closes audit-finding F-001 (gatekeeper existed but had no MCP wrapper, forcing shell-invocations) + F-004 (CURATED_CORE was stale, missing new tools).
+
+- **`skills/workflow/scripts/gatekeeper_mcp.py`** — FastMCP wrapper exposing `gatekeeper_check(scope, only=None)` + `gatekeeper_list()`. Uses explicit `importlib.util.spec_from_file_location` to load `gatekeeper.py` without `sys.path` pollution (gatekeeper internally uses the same pattern for its sub-gates).
+- **`skills/workflow/scripts/gateway.py::SUBSERVERS`** — adds `("gatekeeper", "gatekeeper_mcp")`. The kaizen gateway now mounts **22 sub-servers / 146 tools**.
+- **`skills/workflow/scripts/gateway.py::CURATED_CORE`** rebalanced:
+  - Added: `gatekeeper_check`, `auto_fix_lint`
+  - Dropped: `roadmap_next`, `drift_status` (low-traffic; still reachable via `kaizen_search_tools`)
+  - Default context cost stays at ~15 schemas
+- **`.claude-plugin/plugin.json`** — explicit permission entry for `gatekeeper_mcp.py`.
+
+Agents can now call `mcp__plugin_kaizen_kaizen__gatekeeper_check(scope='all')` directly — structured return, no quoting hell, MCP context tracing.
+
 ### Added — `gatekeeper.py`: unified gate aggregating iron-laws + etu + karpathy + validator
 
 One entry point that runs every Python-callable kaizen check and emits a single verdict (`green` / `yellow` / `red`). Closes the gap where the user had 4 separate commands (`/kaizen:iron-laws check`, `validate.py`, etu manual grep, karpathy scanners individually) producing 4 separate finding lists. The bash `pre-commit.sh` stays the canonical commit-time gate; this is the orchestration-time "all Python gates in one verdict" view.

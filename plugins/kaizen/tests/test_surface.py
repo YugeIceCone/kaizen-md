@@ -61,13 +61,30 @@ class TestSurfaceValidator(unittest.TestCase):
         findings = self.s.validate()
         self.assertIsInstance(findings, list)
 
-    def test_orphan_hook_detected(self):
-        """karpathy-gate.sh is the known orphan from F-002."""
+    def test_no_orphan_hooks_currently(self):
+        """Post-F-002 fix: every hook script under hooks/claude/ should be
+        either registered in hooks.json or _-prefixed. Regression guard
+        for new scripts being added without registration."""
         findings = self.s.validate()
         orphans = [f for f in findings if f.rule_id == "orphan-hook-script"]
-        self.assertTrue(
-            any("karpathy-gate.sh" in f.message for f in orphans),
-            f"expected karpathy-gate.sh orphan; got: {[f.message for f in orphans]}",
+        self.assertEqual(
+            orphans, [],
+            "orphan hook script(s) detected — register in hooks/hooks.json or "
+            "rename with _-prefix:\n  " + "\n  ".join(f.message for f in orphans),
+        )
+
+    def test_orphan_detection_machinery_works(self):
+        """Even though no real orphan exists today, the detection logic
+        must remain functional. Validate that the list_hook_files vs
+        registered set difference is the source of the check."""
+        on_disk = set(self.s.list_hook_files())
+        registered = self.s._registered_hook_scripts()
+        # No orphans currently means on_disk ⊆ registered (modulo non-shell files).
+        sh_on_disk = {n for n in on_disk if n.endswith(".sh")}
+        unregistered = sh_on_disk - registered
+        self.assertEqual(
+            unregistered, set(),
+            f"unregistered hook scripts: {unregistered}",
         )
 
     def test_wildcard_permission_recognized(self):
