@@ -208,8 +208,12 @@ if [ ! -f "$CONFIG_PATH" ]; then
     fi
 
     cat > "$CONFIG_PATH" <<TOML
+#:schema https://raw.githubusercontent.com/YugeIceCone/kaizen-md/main/plugins/kaizen/assets/schemas/kaizen-config.schema.json
 # kaizen config — generated $(date +%Y-%m-%d) by skill installer.
-# See ~/.claude/skills/workflow/SKILL.md PART 4 for full schema.
+# Schema: kaizen-config.schema.json (Taplo / Even Better TOML auto-bind
+# via the `#:schema` directive above; offline editors can also use the
+# project-root taplo.toml shipped with the plugin).
+# See ~/.claude/skills/workflow/SKILL.md PART 4 for the full field reference.
 
 compile_check_cmd = "$DEFAULT_COMPILE"
 architecture_log  = "$DEFAULT_ARCH_LOG"
@@ -246,11 +250,22 @@ if [ ! -f "$KAIZEN_GITIGNORE" ]; then
 # tracked: progress.md (architecture log), backlog.{json,md},
 # audits/ (durable reports). This keeps the rule local to .kaizen/
 # so the repo root's .gitignore stays project-focused.
+#
+# Runtime artifacts (state.json, deletions.jsonl, snapshot.md) live
+# under workflow/ but ARE ephemeral — explicitly re-ignored via the
+# trailing rules below so the broad `!workflow/**` whitelist doesn't
+# pick them up. They regenerate every workflow run.
 
 *
 !.gitignore
 !workflow/
 !workflow/**
+
+# Re-ignore ephemeral runtime state under workflow/ that the broad
+# whitelist above would otherwise pick up.
+workflow/state.json
+workflow/deletions.jsonl
+workflow/snapshot.md
 KIGNORE
     echo "  ✓ wrote $KAIZEN_GITIGNORE (ignore ephemeral, track workflow/)"
 fi

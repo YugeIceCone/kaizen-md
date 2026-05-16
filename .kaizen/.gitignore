@@ -9,8 +9,19 @@
 # Note: audit reports live at .kaizen/audits/ (NOT under workflow/),
 # so they are ignored by the `*` rule below — only workflow/ is
 # whitelisted. Move them under workflow/ if they should be tracked.
+#
+# Runtime artifacts (state.json, deletions.jsonl, snapshot.md) live
+# under workflow/ but ARE ephemeral — explicitly re-ignored via the
+# trailing rules below so the broad `!workflow/**` whitelist doesn't
+# pick them up. They regenerate every workflow run.
 
 *
 !.gitignore
 !workflow/
 !workflow/**
+
+# Re-ignore ephemeral runtime state under workflow/ that the broad
+# whitelist above would otherwise pick up.
+workflow/state.json
+workflow/deletions.jsonl
+workflow/snapshot.md
