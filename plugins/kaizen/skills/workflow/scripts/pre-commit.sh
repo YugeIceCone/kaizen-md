@@ -215,7 +215,7 @@ if [ -n "$COMPILE_CHECK_CMD" ]; then
     fi
     if [ "$CACHED_PASS" = "1" ]; then
         pass "compile barrier (cached): $COMPILE_CHECK_CMD"
-    elif eval "$COMPILE_CHECK_CMD" >/tmp/kaizen-compile.log 2>&1; then
+    elif bash -c "$COMPILE_CHECK_CMD" >/tmp/kaizen-compile.log 2>&1; then
         pass "compile barrier: $COMPILE_CHECK_CMD"
         if [ -n "$CACHE_KEY" ]; then
             python3 "$CACHE_PY" put "$CACHE_KEY" '{"status":"pass","cmd":"'"$(echo "$COMPILE_CHECK_CMD" | sed 's/"/\\"/g')"'"}' 2>/dev/null || true
@@ -476,8 +476,13 @@ fi
 # Regex scan over the staged diff for high-confidence secret patterns.
 # Bypass via KAIZEN_ALLOW_SECRET=1 (e.g. an example/fixture file).
 SECRET_OVERRIDE=${KAIZEN_ALLOW_SECRET:-}
-SECRET_HITS=$(echo "$DIFF_CONTENT" | grep -E "^\+" | grep -vE "^\+\+\+" | grep -ChE \
-    "(AKIA|ASIA)[0-9A-Z]{16}|-----BEGIN[ A-Z]+PRIVATE KEY-----|gh[oprsu]_[A-Za-z0-9_]{36,}|sk-[A-Za-z0-9]{32,}|xox[abprs]-[A-Za-z0-9-]{10,}|AIza[0-9A-Za-z_-]{35}|eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}" 2>/dev/null | head -1)
+# Single-pass scan: PCRE with `(?!^\+\+\+)` lookahead would be cleaner,
+# but POSIX BRE/ERE has no lookaround. We collapse the prior 3-grep chain
+# into a single ERE with an "anchored-but-not-+++" pattern via negation
+# of the file-header marker. The leading `+` distinguishes added lines
+# from the diff body; `+++` is the file header (not staged content).
+SECRET_HITS=$(echo "$DIFF_CONTENT" | grep -chE \
+    "^\+([^+].*)?((AKIA|ASIA)[0-9A-Z]{16}|-----BEGIN[ A-Z]+PRIVATE KEY-----|gh[oprsu]_[A-Za-z0-9_]{36,}|sk-[A-Za-z0-9]{32,}|xox[abprs]-[A-Za-z0-9-]{10,}|AIza[0-9A-Za-z_-]{35}|eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,})" 2>/dev/null)
 if [ -n "$SECRET_HITS" ] && [ "$SECRET_HITS" != "0" ]; then
     if [ "$SECRET_OVERRIDE" = "1" ]; then
         warn "secret-pattern match(es) but KAIZEN_ALLOW_SECRET=1 — gate bypassed"
@@ -492,7 +497,7 @@ fi
 
 # ─── Check 8: Project-specific verify ────────────────────────────────
 if [ -n "$VERIFY_CMD" ]; then
-    if eval "$VERIFY_CMD" >/tmp/kaizen-verify.log 2>&1; then
+    if bash -c "$VERIFY_CMD" >/tmp/kaizen-verify.log 2>&1; then
         pass "project verify: $VERIFY_CMD"
     else
         hard_fail "project verify failed: $VERIFY_CMD"

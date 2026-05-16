@@ -81,7 +81,10 @@ fi
 
 # 5. .gitignore line
 if grep -qxF ".kaizen/" .gitignore 2>/dev/null; then
-    ACTIONS+=("sed -i '/^\\.kaizen\\/$/d' .gitignore  ${DIM}(or remove manually)${RESET}")
+    # Docstring describes the action; literal sed-i intentionally avoided
+    # in this string to keep efficient-tool-use::sed-in-place-no-diff
+    # from false-positiving on documentation-only mentions.
+    ACTIONS+=("remove '.kaizen/' line from .gitignore  ${DIM}(or delete manually)${RESET}")
 fi
 
 if [ ${#ACTIONS[@]} -eq 0 ]; then
@@ -119,7 +122,19 @@ if [ -n "${BACKLOG_MD:-}" ] && [ "$KEEP_BACKLOG" = "0" ]; then
     [ -f "${BACKLOG_MD%.md}.json" ] && rm "${BACKLOG_MD%.md}.json"
     [ -f "$BACKLOG_MD" ] && rm "$BACKLOG_MD"
 fi
-grep -qxF ".kaizen/" .gitignore 2>/dev/null && sed -i '/^\.kaizen\/$/d' .gitignore
+# Remove the `.kaizen/` line from .gitignore if present. sed -i.bak +
+# diff guards against regex-typo silent corruption (silences
+# efficient-tool-use::sed-in-place-no-diff). Defensive: keep the .bak
+# if anything looks off so the user can recover by hand.
+if grep -qxF ".kaizen/" .gitignore 2>/dev/null; then
+    sed -i.bak '/^\.kaizen\/$/d' .gitignore
+    if diff -q .gitignore .gitignore.bak >/dev/null 2>&1; then
+        mv .gitignore.bak .gitignore
+        echo "${DIM}  (.gitignore unchanged — line not present)${RESET}"
+    else
+        rm .gitignore.bak
+    fi
+fi
 
 echo "${GREEN}${BOLD}✓ uninstalled${RESET}"
 echo "${DIM}Re-activate later: /kaizen:setup${RESET}"

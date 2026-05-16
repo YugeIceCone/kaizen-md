@@ -264,8 +264,18 @@ migrate_backlog_to_workflow() {
     convert_backlog "$SRC" --execute
     mv "$SRC" "$SRC.migrated"
     if grep -q "^backlog_path" "$REPO_ROOT/.kaizen.toml" 2>/dev/null; then
-        sed -i 's|^backlog_path.*|backlog_path      = ".workflow/backlog.md"|' "$REPO_ROOT/.kaizen.toml"
-        echo "  ✓ updated backlog_path in .kaizen.toml"
+        # sed -i.bak preserves a verification artifact (silences
+        # efficient-tool-use::sed-in-place-no-diff). Diff post-edit so a
+        # bad regex surfaces immediately instead of silently corrupting
+        # the user's config.
+        sed -i.bak 's|^backlog_path.*|backlog_path      = ".workflow/backlog.md"|' "$REPO_ROOT/.kaizen.toml"
+        if ! diff -q "$REPO_ROOT/.kaizen.toml" "$REPO_ROOT/.kaizen.toml.bak" >/dev/null 2>&1; then
+            rm "$REPO_ROOT/.kaizen.toml.bak"
+            echo "  ✓ updated backlog_path in .kaizen.toml"
+        else
+            mv "$REPO_ROOT/.kaizen.toml.bak" "$REPO_ROOT/.kaizen.toml"
+            echo "  ! backlog_path edit no-op'd (regex didn't match) — investigate"
+        fi
     fi
     echo "  ✓ migrated BACKLOG.md → .workflow/backlog.{json,md}; original kept as ${SRC}.migrated"
 }

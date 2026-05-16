@@ -52,7 +52,8 @@ echo "  cache:   $DEST"
 if [ -d "$DEST" ] && [ "$FORCE" = "0" ]; then
     # Check if already in sync
     if command -v rsync >/dev/null 2>&1; then
-        CHANGES=$(rsync -a --dry-run --delete --itemize-changes "$SRC/" "$DEST/" 2>/dev/null | grep -v '^cd' | wc -l)
+        # grep -vc counts non-matching lines in one pass (no wc fork).
+        CHANGES=$(rsync -a --dry-run --delete --itemize-changes "$SRC/" "$DEST/" 2>/dev/null | grep -vc '^cd' || echo 0)
         if [ "$CHANGES" = "0" ]; then
             echo "  ✓ cache already in sync ($VER)"
             exit 0

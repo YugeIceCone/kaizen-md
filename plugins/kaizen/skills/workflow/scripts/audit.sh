@@ -120,6 +120,8 @@ fi
 # Onion-DDD violations: outer-ring crates imported from core (Rust-specific)
 if [ -d "$SCOPE_DIR/crates/core" ]; then
   for outer in clap tokio reqwest sqlx; do
+    # noqa: etu — grep -l + wc -l counts matching FILES (legitimate idiom);
+    # grep -c counts matching LINES per-file (different semantics).
     HITS=$(grep -rlE "^use[[:space:]]+$outer::" --include='*.rs' "$SCOPE_DIR/crates/core" 2>/dev/null | wc -l)
     [ "$HITS" -gt 0 ] && add "high" "architecture" \
       "onion violation: $HITS file(s) in crates/core/ import outer-ring crate '$outer'"
@@ -131,6 +133,9 @@ fi
 
 # Dead module mod-declarations not in any other file (rough check)
 if find "$SCOPE_DIR" -name '*.rs' -print -quit | grep -q .; then
+  # noqa: etu — counting total `pub mod` lines across the tree, not
+  # per-file matches. The /10 heuristic immediately downstream confirms
+  # the intent is a rough total, not actionable per-file output.
   ORPHAN_MODS=$(grep -rE '^pub mod [a-z_]+;' --include='*.rs' "$SCOPE_DIR" 2>/dev/null | wc -l)
   ORPHAN_MODS=$((ORPHAN_MODS / 10))  # very rough; pretend / 10 to suppress most noise
   [ "$ORPHAN_MODS" -gt 5 ] && add "low" "architecture" \

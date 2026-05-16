@@ -114,6 +114,34 @@ def scan_files(
                 f"etu_scan: skipping pattern {ap.get('id')} — bad regex: {e}\n"
             )
 
+    # `# noqa: etu` suppresses the etu scanner for the next non-comment
+    # non-blank line. Looks back up to 5 lines to allow a multi-line
+    # justification comment block above the line being suppressed.
+    # Mirrors the Python `# noqa` / ESLint `// eslint-disable-line`
+    # pattern, extended to multi-line justifications.
+    _NOQA_RX = re.compile(r"#\s*noqa\s*:\s*etu\b", re.IGNORECASE)
+    _NOQA_LOOKBACK = 5
+
+    def _suppressed(idx: int, lines: list[str]) -> bool:
+        """Line at index `idx` (0-based) is suppressed if a `# noqa: etu`
+        marker appears within the previous _NOQA_LOOKBACK lines AND every
+        intervening line is a comment or blank (no other code between the
+        marker and the suppressed line)."""
+        if _NOQA_RX.search(lines[idx]):
+            return True
+        for back in range(1, _NOQA_LOOKBACK + 1):
+            prev_idx = idx - back
+            if prev_idx < 0:
+                break
+            prev = lines[prev_idx].strip()
+            if _NOQA_RX.search(prev):
+                return True
+            # If we hit a non-comment non-blank line before finding the
+            # marker, the suppression chain is broken.
+            if prev and not prev.lstrip().startswith("#"):
+                return False
+        return False
+
     findings: list[Finding] = []
     for path in files:
         if not path.is_file():
@@ -129,7 +157,10 @@ def scan_files(
                 rel = str(path)
         else:
             rel = str(path)
-        for lineno, line in enumerate(text.splitlines(), 1):
+        lines = text.splitlines()
+        for lineno, line in enumerate(lines, 1):
+            if _suppressed(lineno - 1, lines):
+                continue
             for ap, rx in compiled:
                 m = rx.search(line)
                 if m:
