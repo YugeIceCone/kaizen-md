@@ -137,6 +137,57 @@ class TestPromote(GoldBase):
         self.assertEqual(r.returncode, 1)
 
 
+class TestPromoteBrain(GoldBase):
+    """`promote --brain` creates a Note file with proper frontmatter
+    when the target doesn't exist. Existing-file path stays append."""
+
+    def test_brain_creates_note_with_frontmatter(self):
+        self._run("capture", "pattern that became a belief",
+                   "--tag", "skill-routing",
+                   "--source", "skills/skill-suggest/SKILL.md",
+                   "--learned", "discovered building frontmatter axis")
+        note = self.tmp / "Notes" / "gold-skill-routing.md"
+        r = self._run("promote", "1", "--to", str(note), "--brain")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertTrue(note.is_file())
+        body = note.read_text()
+        # Frontmatter block
+        self.assertTrue(body.startswith("---\n"))
+        self.assertIn("type: belief", body)
+        self.assertIn("confidence:", body)
+        self.assertIn("sources_count: 1", body)
+        self.assertIn("tags:", body)
+        self.assertIn("gold", body)  # tag list mentions gold
+        # H1 title = the pattern
+        self.assertIn("# pattern that became a belief", body)
+        # Body carries provenance
+        self.assertIn("skills/skill-suggest/SKILL.md", body)
+        self.assertIn("discovered building frontmatter axis", body)
+
+    def test_brain_existing_note_appends_under_sources(self):
+        """If the target note exists, --brain appends a `- [gold #N]`
+        line at the end (keeps the create-new-only semantics simple)."""
+        note = self.tmp / "existing.md"
+        note.write_text("---\ntype: belief\n---\n\n# Existing\n\nbody\n")
+        self._run("capture", "second pattern")
+        r = self._run("promote", "1", "--to", str(note), "--brain")
+        self.assertEqual(r.returncode, 0)
+        body = note.read_text()
+        # Original preserved
+        self.assertIn("# Existing", body)
+        # Appended
+        self.assertIn("[gold #1]", body)
+        self.assertIn("second pattern", body)
+
+    def test_brain_marks_promoted_with_destination(self):
+        self._run("capture", "x")
+        note = self.tmp / "Notes" / "n.md"
+        self._run("promote", "1", "--to", str(note), "--brain")
+        rec = json.loads(self.store.read_text().strip().splitlines()[0])
+        self.assertTrue(rec["promoted"])
+        self.assertEqual(rec["promoted_to"], str(note))
+
+
 class TestPath(GoldBase):
     def test_path_prints_storage_location(self):
         r = self._run("path")

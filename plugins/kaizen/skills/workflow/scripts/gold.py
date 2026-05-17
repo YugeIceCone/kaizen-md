@@ -182,12 +182,50 @@ def _cmd_show(args) -> int:
     return 1
 
 
+def _brain_note_body(rec: dict) -> str:
+    """Build a brain-Note file body (frontmatter + h1 + provenance).
+
+    Mirrors the shape under ~/.claude/.kaizen/brain/Notes/ — type=belief,
+    confidence=0.5 (fresh promotion, not yet reinforced), tags carry
+    'gold' + the entry's own tag. The pattern becomes the h1; source
+    + learned context land as labeled lines beneath.
+    """
+    today = _dt.date.today().isoformat()
+    tags = ["gold"]
+    if rec.get("tag"):
+        tags.append(rec["tag"])
+    tags_yaml = "[" + ", ".join(tags) + "]"
+    lines = [
+        "---",
+        f"created: {today}",
+        f"updated: {today}",
+        "type: belief",
+        "confidence: 0.5",
+        f"tags: {tags_yaml}",
+        "sources_count: 1",
+        "---",
+        "",
+        f"# {rec['pattern']}",
+        "",
+    ]
+    if rec.get("source"):
+        lines.append(f"**Source:** `{rec['source']}`")
+    if rec.get("learned"):
+        lines.append(f"**Learned:** {rec['learned']}")
+    lines.append("")
+    lines.append(f"_Promoted from gold #{rec['id']} ({rec['ts']})._")
+    lines.append("")
+    return "\n".join(lines)
+
+
 def _cmd_promote(args) -> int:
     """Atomic-append the gold pattern to <target> and mark promoted.
 
-    The append shape: `- [gold #<id>] <pattern>` (with optional
-    --note context line). Use this to graduate a pattern from gold
-    into CLAUDE.md or a brain Note.
+    Default append shape: `- [gold #<id>] <pattern>` (with optional
+    --note context). With `--brain`, when the target file does NOT
+    yet exist, the file is created with a brain Note frontmatter
+    block + h1 + provenance lines. Use --brain to graduate a pattern
+    into ~/.claude/.kaizen/brain/Notes/.
     """
     p = _patterns_path()
     recs = _read_all(p)
@@ -205,10 +243,20 @@ def _cmd_promote(args) -> int:
         return 1
 
     dest = Path(args.to).expanduser()
-    line = f"- [gold #{target['id']}] {target['pattern']}"
-    if args.note:
-        line += f"  ({args.note})"
-    _atomic_append(dest, line)
+
+    if args.brain and not dest.exists():
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            sys.path.insert(0, str(_SCRIPT_DIR))
+            import _atomic
+            _atomic.atomic_write(dest, _brain_note_body(target))
+        except (OSError, ImportError):
+            dest.write_text(_brain_note_body(target), encoding="utf-8")
+    else:
+        line = f"- [gold #{target['id']}] {target['pattern']}"
+        if args.note:
+            line += f"  ({args.note})"
+        _atomic_append(dest, line)
 
     # Mark promoted by rewriting the JSONL (read-all + atomic_write)
     new_recs = []
@@ -275,6 +323,10 @@ def main(argv=None) -> int:
     pp.add_argument("--to", required=True,
                      help="target file (CLAUDE.md / brain Note / plan file)")
     pp.add_argument("--note", default="", help="optional context to append")
+    pp.add_argument("--brain", action="store_true",
+                     help="when --to is a non-existent path, create it as "
+                          "a brain Note (frontmatter + h1 + provenance) "
+                          "instead of appending a bare bullet")
     pp.add_argument("--json", action="store_true")
     pp.set_defaults(func=_cmd_promote)
 
