@@ -22,16 +22,36 @@ _BINS = _KZ_DIR / "bin"
 
 def _bin_errors_empty_args(bin_path: Path) -> bool:
     """True iff invoking the bin with no args produces an argparse
-    'required subcommand' error."""
+    'required subcommand' error WITHIN 2 seconds.
+
+    Argparse errors are immediate (sub-100ms). Any bin that takes
+    longer is doing real work — by definition not a "subcommand
+    required" offender, so we return False. Uses Popen +
+    start_new_session so on timeout we can killpg() the specific
+    child's process group (and any grandchildren it spawned)."""
+    import os as _os
     try:
-        out = subprocess.run(
-            [str(bin_path)], capture_output=True, text=True, timeout=5,
+        proc = subprocess.Popen(
+            [str(bin_path)],
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            text=True, start_new_session=True,
         )
-    except (subprocess.TimeoutExpired, OSError):
+    except OSError:
         return False
-    return out.returncode != 0 and bool(re.search(
+    try:
+        out, err = proc.communicate(timeout=2)
+    except subprocess.TimeoutExpired:
+        try:
+            _os.killpg(_os.getpgid(proc.pid), 9)
+        except (ProcessLookupError, OSError):
+            pass
+        proc.wait(timeout=1)
+        return False
+    if proc.returncode == 0:
+        return False
+    return bool(re.search(
         r"the following arguments are required|required:|missing required",
-        out.stderr + out.stdout,
+        (err or "") + (out or ""),
     ))
 
 
@@ -55,16 +75,31 @@ class TestNoBareArgumentsPassthrough(unittest.TestCase):
     to the user."""
 
     def test_no_slash_has_unprotected_args_passthrough_to_strict_bin(self):
-        offenders: list[str] = []
+        # Two-stage optimization:
+        # (1) cheap I/O FIRST — filter to slashes that pass $ARGUMENTS
+        #     through without the `${ARGUMENTS:-<default>}` safety net.
+        # (2) parallelize the remaining subprocess spawns. ThreadPool
+        #     since subprocess.run is I/O bound (waiting on the child).
+        # Pre-opt: ~50 sequential spawns (~15s). Post-opt: ~14 in parallel
+        # → ~1s.
+        from concurrent.futures import ThreadPoolExecutor
+
+        candidates: list[tuple[str, Path]] = []
         for cmd_md in sorted(_CMDS.glob("*.md")):
+            if not _slash_passes_through_args(cmd_md):
+                continue
             name = cmd_md.stem
             bin_path = _BINS / f"kaizen-{name}"
             if not bin_path.is_file() or not bin_path.stat().st_mode & 0o111:
-                continue  # no matching bin → can't apply
-            if not _bin_errors_empty_args(bin_path):
-                continue  # bin handles empty args itself → safe
-            if _slash_passes_through_args(cmd_md):
-                offenders.append(name)
+                continue
+            candidates.append((name, bin_path))
+
+        with ThreadPoolExecutor(max_workers=8) as pool:
+            results = list(pool.map(
+                lambda pair: (pair[0], _bin_errors_empty_args(pair[1])),
+                candidates,
+            ))
+        offenders = [name for name, errs in results if errs]
         self.assertEqual(
             offenders, [],
             "These slashes pass-through $ARGUMENTS to a bin that errors "
