@@ -145,6 +145,96 @@ class TestListSubcommand(_Sandbox):
                 self.assertEqual(len(s["triggers"]), 0)
 
 
+class TestFromDxmPostHoc(_Sandbox):
+    """`from-dxm` reads dxm events + inbox post-hoc and reports
+    prompt-vs-skill misses. Zero UserPromptSubmit latency cost."""
+
+    def setUp(self):
+        super().setUp()
+        # Add a sandboxed dxm dir + inbox dir
+        self.dxm = self.tmp / "dxm"
+        self.dxm.mkdir()
+        self.inbox = self.tmp / "inbox"
+        self.inbox.mkdir()
+        os.environ["KAIZEN_DXM_DIR"] = str(self.dxm)
+        os.environ["KAIZEN_INBOX_DIR"] = str(self.inbox)
+
+    def tearDown(self):
+        os.environ.pop("KAIZEN_DXM_DIR", None)
+        os.environ.pop("KAIZEN_INBOX_DIR", None)
+        super().tearDown()
+
+    def _seed_inbox_prompt(self, session_id: str, prompt: str, ts: str):
+        path = self.inbox / f"{ts.replace(':', '-').replace('T', '-')}-001.json"
+        path.write_text(json.dumps({
+            "ts":         ts,
+            "session_id": session_id,
+            "prompt":     prompt,
+            "drained":    False,
+        }))
+
+    def _seed_dxm_event(self, session_id: str, evt: str, tool_name: str = "",
+                         ts_unix: float = 0):
+        f = self.dxm / f"events-{session_id}.jsonl"
+        rec = {"ts_unix": ts_unix, "session_id": session_id, "evt_type": evt}
+        if tool_name:
+            rec["tool_name"] = tool_name
+        with f.open("a") as fh:
+            fh.write(json.dumps(rec) + "\n")
+
+    def test_reports_miss_when_prompt_matched_no_skill_loaded(self):
+        self._add_skill("alpha-skill", 'Triggers on "alpha-trigger".')
+        sid = "sess-miss"
+        self._seed_inbox_prompt(sid, "use alpha-trigger now",
+                                  "2026-05-17T08:00:00Z")
+        self._seed_dxm_event(sid, "UserPromptSubmit", ts_unix=1747465200)
+        # NO Skill load follows
+        r = self._run("from-dxm", "--session", sid, "--json")
+        data = json.loads(r.stdout)
+        self.assertEqual(data["count"], 1)
+        self.assertEqual(data["misses"][0]["skill"], "alpha-skill")
+        self.assertFalse(data["misses"][0]["any_skill_loaded_after"])
+
+    def test_skill_loaded_after_prompt_marks_loaded(self):
+        self._add_skill("beta-skill", 'Triggers on "beta-trigger".')
+        sid = "sess-loaded"
+        # ISO "2026-05-17T08:00:00Z" = 1779004800 UTC. Skill load 10s later.
+        self._seed_inbox_prompt(sid, "use beta-trigger now",
+                                  "2026-05-17T08:00:00Z")
+        self._seed_dxm_event(sid, "PreToolUse", tool_name="Skill",
+                              ts_unix=1779004810)
+        r = self._run("from-dxm", "--session", sid, "--json")
+        data = json.loads(r.stdout)
+        # Still recorded as a miss candidate, but flag indicates a load happened
+        self.assertEqual(data["count"], 1)
+        self.assertTrue(data["misses"][0]["any_skill_loaded_after"])
+
+    def test_no_matching_prompts_returns_zero(self):
+        self._add_skill("any-skill", 'Triggers on "totally-unrelated".')
+        sid = "sess-clean"
+        self._seed_inbox_prompt(sid, "do something completely different",
+                                  "2026-05-17T08:00:00Z")
+        r = self._run("from-dxm", "--session", sid, "--json")
+        data = json.loads(r.stdout)
+        self.assertEqual(data["count"], 0)
+
+    def test_no_session_returns_error_no_crash(self):
+        # No session-id supplied + no cwd discovery → graceful empty
+        r = self._run("from-dxm", "--json")
+        self.assertEqual(r.returncode, 0)
+        data = json.loads(r.stdout)
+        self.assertEqual(data["misses"], [])
+
+    def test_text_output_format(self):
+        self._add_skill("text-skill", 'Triggers on "text-tag".')
+        sid = "sess-text"
+        self._seed_inbox_prompt(sid, "use text-tag here",
+                                  "2026-05-17T08:00:00Z")
+        r = self._run("from-dxm", "--session", sid)
+        self.assertIn("text-skill", r.stdout)
+        self.assertIn("matched: text-tag", r.stdout)
+
+
 class TestRealCatalogParses(unittest.TestCase):
     """Smoke test against the REAL skills/ — confirms the parser
     doesn't crash on any production SKILL.md."""

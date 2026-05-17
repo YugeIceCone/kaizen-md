@@ -61,7 +61,6 @@
       "Bash(bash ${CLAUDE_PLUGIN_ROOT}/hooks/claude/session-intake.sh:*)",
       "Bash(bash ${CLAUDE_PLUGIN_ROOT}/bin/kaizen-session-mode:*)",
       "Bash(bash ${CLAUDE_PLUGIN_ROOT}/hooks/claude/userprompt-skills-reminder.sh:*)",
-      "Bash(bash ${CLAUDE_PLUGIN_ROOT}/hooks/claude/userprompt-skill-suggest.sh:*)",
       "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/kaizen_write.py:*)",
       "Bash(bash ${CLAUDE_PLUGIN_ROOT}/bin/kaizen-write:*)",
       "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/intent.py:*)",

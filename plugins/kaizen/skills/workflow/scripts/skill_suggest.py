@@ -151,6 +151,167 @@ def _cmd_match(args) -> int:
     return 0
 
 
+def _dxm_dir() -> Path:
+    env = os.environ.get("KAIZEN_DXM_DIR")
+    if env:
+        return Path(os.path.expandvars(env)).expanduser()
+    return Path.home() / ".claude" / ".kaizen" / "dxm"
+
+
+def _iter_dxm_events(session_id: str):
+    """Yield dxm events for the given session (best-effort, no raise)."""
+    path = _dxm_dir() / f"events-{session_id}.jsonl"
+    if not path.is_file():
+        return
+    try:
+        with path.open("r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    yield json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+    except OSError:
+        return
+
+
+def _read_inbox_prompts(session_id: str) -> list[tuple[float, str]]:
+    """Return [(ts_unix, prompt_text), ...] for the session's inbox
+    captures. Inbox writes one JSON per UserPromptSubmit at capture
+    time, with session_id + prompt + ISO ts."""
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    try:
+        import inbox as _inbox
+    except ImportError:
+        return []
+    import datetime as _dt
+    out = []
+    d = _inbox.inbox_dir()
+    if not d.is_dir():
+        return []
+    for f in sorted(d.glob("*.json")):
+        if f.name.startswith("."):
+            continue
+        try:
+            data = json.loads(f.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        if data.get("session_id") != session_id:
+            continue
+        ts_str = data.get("ts") or ""
+        try:
+            # ISO with trailing "Z" → UTC. Naive datetime defaults to
+            # local TZ in .timestamp(), so explicitly attach UTC when
+            # the input ended with Z (the inbox convention).
+            naive = _dt.datetime.fromisoformat(ts_str.rstrip("Z"))
+            if naive.tzinfo is None:
+                naive = naive.replace(tzinfo=_dt.timezone.utc)
+            ts = naive.timestamp()
+        except (ValueError, AttributeError):
+            ts = 0.0
+        prompt = data.get("prompt") or ""
+        if prompt:
+            out.append((ts, prompt))
+    return out
+
+
+def audit_misses(session_id: str, back_seconds: float | None = None) -> list[dict]:
+    """Cross-reference inbox prompts with dxm Skill loads. Returns a
+    list of misses — prompts that matched a skill the agent did not
+    subsequently load. Empty when nothing missed.
+
+    Each miss: {ts, prompt (truncated), skill_matched, skill_loaded?}.
+    Pure read-side — no side effects.
+    """
+    import time as _t
+    cutoff = (_t.time() - back_seconds) if back_seconds else 0.0
+
+    prompts = [(ts, p) for ts, p in _read_inbox_prompts(session_id)
+               if ts >= cutoff]
+    if not prompts:
+        return []
+
+    # Collect all Skill loads from dxm in (ts, skill_name) form.
+    skill_loads: list[tuple[float, str]] = []
+    for e in _iter_dxm_events(session_id):
+        if e.get("evt_type") not in ("PreToolUse", "PostToolUse"):
+            continue
+        if e.get("tool_name") != "Skill":
+            continue
+        ts = e.get("ts_unix") or 0
+        # The skill name lives in the tool_input — dxm shell hot path
+        # doesn't capture tool_input (only tool_name / tool_use_id),
+        # so we can't know WHICH skill was loaded from dxm alone. Use
+        # bare "Skill" loads as a presence signal; the audit reports
+        # "matched skills + at least one Skill load happened" vs "no
+        # Skill loads at all" rather than per-skill load-vs-match.
+        skill_loads.append((float(ts), "Skill"))
+
+    out = []
+    for ts, prompt in prompts:
+        matches = match_prompt(prompt, max_results=5)
+        if not matches:
+            continue
+        # Any Skill load after this prompt?
+        loaded_after = any(slts >= ts for slts, _ in skill_loads)
+        for m in matches:
+            out.append({
+                "ts_unix":          ts,
+                "prompt":           prompt[:120],
+                "skill":            m["name"],
+                "match_count":      m["match_count"],
+                "trigger_count":    m["trigger_count"],
+                "matched_phrases":  m["matched"][:5],
+                "any_skill_loaded_after": loaded_after,
+            })
+    return out
+
+
+def _cmd_from_dxm(args) -> int:
+    """Post-hoc miss-detector — reads dxm + inbox, reports prompts
+    that matched skills the agent likely should have loaded.
+
+    Zero UserPromptSubmit latency cost — runs from already-captured
+    trace data, on-demand or via Stop-hook later.
+    """
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    try:
+        import _session_jsonl as _sj
+    except ImportError:
+        if args.json:
+            print(json.dumps({"misses": [], "error": "no _session_jsonl"}))
+        return 0
+    sid = args.session or _sj.discover_active_session_id()
+    if not sid:
+        if args.json:
+            print(json.dumps({"misses": [], "error": "no session"}))
+        return 0
+    misses = audit_misses(sid, back_seconds=args.back)
+    if args.json:
+        print(json.dumps({
+            "session_id": sid,
+            "misses":     misses,
+            "count":      len(misses),
+        }, indent=2))
+    else:
+        if not misses:
+            print(f"no skill-suggest misses in session {sid}")
+            return 0
+        # Group by skill for readable output
+        by_skill: dict[str, list[dict]] = {}
+        for m in misses:
+            by_skill.setdefault(m["skill"], []).append(m)
+        print(f"kaizen-skill-suggest: {len(misses)} miss(es) in session {sid}")
+        for skill, items in sorted(by_skill.items(), key=lambda x: -len(x[1])):
+            print(f"\n  Skill: {skill} ({len(items)} prompts matched)")
+            for m in items[:3]:
+                print(f"    - matched: {', '.join(m['matched_phrases'])}")
+                print(f"      prompt: {m['prompt']}")
+    return 0
+
+
 def _cmd_list(args) -> int:
     catalog = index_all()
     if args.json:
@@ -181,6 +342,18 @@ def main(argv=None) -> int:
     pl = sub.add_parser("list", help="list all indexed skills + trigger counts")
     pl.add_argument("--json", action="store_true")
     pl.set_defaults(func=_cmd_list)
+
+    pd = sub.add_parser("from-dxm",
+                          help="post-hoc miss-detector — reads dxm + inbox, "
+                               "reports prompts that matched skills (zero "
+                               "UserPromptSubmit latency)")
+    pd.add_argument("--session", default=None,
+                     help="session-id override (default: discover from cwd)")
+    pd.add_argument("--back", type=float, default=None,
+                     help="only consider prompts from last N seconds "
+                          "(default: no limit — whole session)")
+    pd.add_argument("--json", action="store_true")
+    pd.set_defaults(func=_cmd_from_dxm)
 
     args = p.parse_args(argv)
     return args.func(args)
