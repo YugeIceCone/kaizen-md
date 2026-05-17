@@ -28,6 +28,27 @@
         "files_changed":   { "type": "integer", "minimum": 0 },
         "since":           { "type": "string" }
       }
+    },
+    "mined_from_session": {
+      "type": "boolean",
+      "description": "True when the active Claude Code session JSONL was discovered AND mined for pre-fill data."
+    },
+    "session_jsonl": {
+      "type": "string",
+      "description": "Path to the session JSONL that was mined (when mined_from_session is true)."
+    },
+    "mined_summary": {
+      "type": "object",
+      "description": "Summary of what was mined from the session.",
+      "additionalProperties": true,
+      "properties": {
+        "ai_title":           { "type": ["string", "null"] },
+        "completed_count":    { "type": "integer", "minimum": 0 },
+        "pending_count":      { "type": "integer", "minimum": 0 },
+        "files_touched":      { "type": "integer", "minimum": 0 },
+        "skills_used":        { "type": "array", "items": { "type": "string" } },
+        "session_started_at": { "type": ["string", "null"] }
+      }
     }
   }
 }

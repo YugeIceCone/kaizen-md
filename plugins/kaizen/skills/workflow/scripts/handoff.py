@@ -45,6 +45,7 @@ sys.path.insert(0, str(_SCRIPT_DIR))
 import _handoff as _core  # noqa: E402
 import _envelope  # noqa: E402
 import schema_cli  # noqa: E402
+import _session_jsonl as _sj  # noqa: E402
 
 _emit = _envelope.emitter("kaizen-handoff", tool_version="1.0.0")
 
@@ -506,8 +507,34 @@ def _git_created_files(repo: Path, since: str) -> list[str]:
     return sorted({line.strip() for line in r.stdout.splitlines() if line.strip()})
 
 
+def _discover_active_session(cwd: Path):
+    """Find the active Claude Code session JSONL for this cwd. Returns
+    (jsonl_path, mined_dict) or (None, None) if unreachable. Graceful
+    no-op when not running under Claude Code (e.g. CI, tests with no
+    ~/.claude/projects/<slug>/)."""
+    slug = _sj.cwd_to_slug(cwd)
+    projects_root = Path.home() / ".claude" / "projects" / slug
+    jsonl = _sj.discover_session_jsonl(projects_root)
+    if jsonl is None:
+        return None, None
+    try:
+        return jsonl, _sj.mine_session(jsonl)
+    except Exception:
+        return jsonl, None
+
+
 def _cmd_scaffold(args) -> int:
-    """Write a partially-filled handoff YAML; agent finishes the prose."""
+    """Write a partially-filled handoff YAML; agent finishes the prose.
+
+    When the Claude Code session JSONL is reachable AND --no-session-mine
+    is not set, mines the JSONL to enrich the pre-fill:
+      - latest ai-title → default --goal (if not supplied)
+      - top pending TaskList item → default --now
+      - completed TaskUpdate subjects → done_this_session entries
+      - pending tasks → next[] entries
+      - session_started_at → --since default for git queries
+    Slashes ~80% of the agent's compose-from-memory cost.
+    """
     import datetime as _dt
     repo = Path(args.repo_root or ".").resolve()
     session = args.session
@@ -516,10 +543,49 @@ def _cmd_scaffold(args) -> int:
               file=sys.stderr)
         return 2
 
-    slug = args.description_slug or _derive_slug(args.goal)
+    # ─── Optional: mine the active Claude Code session ────────────
+    jsonl_path = None
+    mined: dict = {}
+    if not args.no_session_mine:
+        jsonl_path, m = _discover_active_session(repo)
+        if m:
+            mined = m
+
+    # ─── Resolve goal / now ──────────────────────────────────────
+    goal = args.goal
+    if not goal:
+        goal = mined.get("ai_title")
+    if not goal:
+        print("[kaizen-handoff scaffold] --goal required (or run under "
+              "a Claude Code session where ai-title is available)",
+              file=sys.stderr)
+        return 2
+
+    now_text = args.now
+    if not now_text:
+        pending = mined.get("pending_tasks") or []
+        if pending:
+            now_text = pending[0]
+    if not now_text:
+        print("[kaizen-handoff scaffold] --now required (or run under a "
+              "Claude Code session with a pending TaskList entry)",
+              file=sys.stderr)
+        return 2
+
+    slug = args.description_slug or _derive_slug(goal)
     timestamp = args.at or _dt.datetime.now(_dt.timezone.utc).strftime("%Y-%m-%d_%H-%M")
     date_str = timestamp.split("_", 1)[0]  # YYYY-MM-DD
-    since = args.since or "7.days.ago"
+
+    # Use session-started_at as the git --since default when available
+    # (more accurate than 7.days.ago for in-session work).
+    since = args.since
+    if not since:
+        sa = mined.get("session_started_at")
+        if sa:
+            # Take just the YYYY-MM-DD portion for git --since.
+            since = sa.split("T", 1)[0]
+        else:
+            since = "7.days.ago"
 
     handoffs_root = _core.handoffs_dir()
     session_dir = handoffs_root / session
@@ -538,19 +604,34 @@ def _cmd_scaffold(args) -> int:
         "outcome: IN_PROGRESS",
         "---",
         "",
-        f"goal: {args.goal}",
-        f"now: {args.now}",
+        f"goal: {_quote_if_unsafe(goal)}",
+        f"now: {_quote_if_unsafe(now_text)}",
         "test: TBD",
         "",
     ]
-    if changed:
+
+    # done_this_session: prefer mined completed-tasks (per-task entries),
+    # else fall back to one umbrella task with the git-touched files.
+    completed = mined.get("completed_tasks") or []
+    if completed:
+        body_lines.append("done_this_session:")
+        for task in completed:
+            body_lines.append(f"  - task: {_quote_if_unsafe(task)}")
+            body_lines.append(f"    files: []")
+        if changed:
+            # Stash a final synthetic entry holding the git-touched
+            # files so reviewers can see what moved this session.
+            body_lines.append(
+                "  - task: (git-touched files this session)")
+            body_lines.append(
+                f"    files: [{', '.join(changed)}]")
+    elif changed:
         body_lines.append("done_this_session:")
         body_lines.append("  - task: TBD (scaffolded — agent fills)")
-        body_lines.append(
-            "    files: [" + ", ".join(changed) + "]"
-        )
+        body_lines.append(f"    files: [{', '.join(changed)}]")
     else:
         body_lines.append("done_this_session: []")
+
     body_lines += [
         "",
         "blockers: []",
@@ -559,22 +640,44 @@ def _cmd_scaffold(args) -> int:
         "findings: []",
         "worked: []",
         "failed: []",
-        "next: []",
+    ]
+
+    pending = mined.get("pending_tasks") or []
+    if pending:
+        body_lines.append("next:")
+        for task in pending:
+            body_lines.append(f"  - {_quote_if_unsafe(task)}")
+    else:
+        body_lines.append("next: []")
+
+    body_lines += [
         "",
         "files:",
+        f"  created: [{', '.join(created)}]",
+        f"  modified: [{', '.join(modified)}]",
+        "",
     ]
-    body_lines.append("  created: [" + ", ".join(created) + "]")
-    body_lines.append("  modified: [" + ", ".join(modified) + "]")
-    body_lines.append("")
 
     yaml_path.write_text("\n".join(body_lines), encoding="utf-8")
 
-    prefilled = ["date", "test"]
-    if changed:
-        prefilled += ["done_this_session.files"]
-    prefilled += ["files.created", "files.modified"]
-    must_fill = ["goal", "now", "test", "decisions", "findings",
-                  "worked", "failed", "next"]
+    prefilled = ["date", "test", "files.created", "files.modified"]
+    if changed or completed:
+        prefilled.append("done_this_session")
+    if mined.get("ai_title") and not args.goal:
+        prefilled.append("goal")
+    if pending and not args.now:
+        prefilled.append("now")
+    if pending:
+        prefilled.append("next")
+
+    # agent_must_fill drops items the JSONL miner already populated.
+    must_fill = ["test", "decisions", "findings", "worked", "failed"]
+    if not (mined.get("ai_title") and not args.goal):
+        must_fill.insert(0, "goal")
+    if not pending:
+        must_fill.append("next")
+    if not (pending and not args.now):
+        must_fill.insert(1 if "goal" in must_fill else 0, "now")
 
     data = {
         "yaml_path": str(yaml_path.resolve()),
@@ -587,6 +690,17 @@ def _cmd_scaffold(args) -> int:
             "since": since,
         },
     }
+    if jsonl_path:
+        data["mined_from_session"] = bool(mined)
+        data["session_jsonl"] = str(jsonl_path)
+        data["mined_summary"] = {
+            "ai_title":           mined.get("ai_title"),
+            "completed_count":    len(completed),
+            "pending_count":      len(pending),
+            "files_touched":      len(mined.get("files_touched") or set()),
+            "skills_used":        sorted(mined.get("skills_used") or set()),
+            "session_started_at": mined.get("session_started_at"),
+        }
     if args.json:
         try:
             schema_cli.lens_emit(
@@ -963,16 +1077,24 @@ def main(argv: Optional[list[str]] = None) -> int:
              "YAML so the agent only writes the qualitative sections",
     )
     s_scaffold.add_argument("--session", required=True)
-    s_scaffold.add_argument("--goal", required=True)
-    s_scaffold.add_argument("--now", required=True)
+    s_scaffold.add_argument("--goal", default=None,
+                             help="one-line summary; default: latest ai-title "
+                                  "from active Claude Code session JSONL")
+    s_scaffold.add_argument("--now", default=None,
+                             help="next-step pointer; default: top pending "
+                                  "TaskList item from session JSONL")
     s_scaffold.add_argument("--description-slug", default=None,
                              help="kebab-case slug; defaults to derived-from-goal")
     s_scaffold.add_argument("--since", default=None,
-                             help="git --since filter (default 7.days.ago)")
+                             help="git --since filter (default: session_started_at "
+                                  "from JSONL, else 7.days.ago)")
     s_scaffold.add_argument("--at", default=None,
                              help="override UTC timestamp YYYY-MM-DD_HH-MM (test aid)")
     s_scaffold.add_argument("--repo-root", default=None,
                              help="git working tree (default: cwd)")
+    s_scaffold.add_argument("--no-session-mine", action="store_true",
+                             help="skip mining the active Claude Code session "
+                                  "JSONL (use git-only pre-fill)")
     s_scaffold.add_argument("--json", action="store_true")
     s_scaffold.set_defaults(func=_cmd_scaffold)
 

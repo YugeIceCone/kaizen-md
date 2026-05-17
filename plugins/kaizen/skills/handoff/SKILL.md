@@ -67,17 +67,33 @@ The scaffold subcommand:
 - Derives the session name from `git rev-parse --show-toplevel`
   (override with `--session NAME`; falls back to ticket ID when
   you're working a ticket).
+- **Mines the active Claude Code session JSONL** at
+  `~/.claude/projects/<cwd-slug>/<sid>.jsonl` (most-recent-mtime
+  file) to pre-fill:
+  - `goal` ← latest `ai-title` line (the running session-summary
+    AI maintains; usually a tight one-liner)
+  - `now` ← top pending TaskList item (status pending/in_progress)
+  - `done_this_session` ← per-completed-task entries (one per
+    TaskUpdate→completed flip; subjects from the originating
+    TaskCreate)
+  - `next` ← pending TaskList items in creation order
+  - `--since` default ← session_started_at (first JSONL timestamp,
+    more accurate than 7.days.ago for in-session work)
+  - `--goal` / `--now` flags become OPTIONAL — supply them only
+    when overriding the mined defaults. Pass `--no-session-mine`
+    to skip the JSONL pass (git-only pre-fill).
 - Reads git state (`log --since`, `--diff-filter=A`, `--name-only`)
-  to pre-fill `date`, `files.created`, `files.modified`, and
-  `done_this_session.files` (one umbrella task — you split into
-  per-task entries via Edit).
+  to pre-fill `date`, `files.created`, `files.modified`.
 - Writes the partial YAML to
   `<handoffs_dir>/<session>/YYYY-MM-DD_HH-MM_<slug>.yaml`.
   Slug auto-derived from `--goal` (kebab-case, ≤40 chars) unless
   `--description-slug` overrides.
 - Returns envelope with `yaml_path`, `prefilled_sections[]`,
-  `agent_must_fill[]`, and `stats {commits_since, files_changed,
-  since}`.
+  `agent_must_fill[]` (typically reduced to `test`, `decisions`,
+  `findings`, `worked`, `failed` when JSONL mining hit), `stats`,
+  and `mined_summary` (ai_title / completed_count / pending_count /
+  files_touched / skills_used / session_started_at) when mining
+  succeeded.
 
 Read the returned `agent_must_fill[]` — it lists exactly which
 sections you have to write (typically `goal`, `now`, `test`,

@@ -172,5 +172,169 @@ class TestScaffoldHelp(unittest.TestCase):
         self.assertEqual(r.returncode, 0)
 
 
+class ScaffoldSessionMineBase(ScaffoldBase):
+    """Sandbox HOME so cwd_to_slug points into our tempdir's fake CC tree."""
+
+    def setUp(self):
+        super().setUp()
+        # Fake ~/.claude/projects/<slug>/ under the tempdir
+        self.fake_home = self.tmp / "home"
+        self.fake_home.mkdir()
+        slug = str(self.repo.resolve()).replace("/", "-")
+        self.fake_proj = self.fake_home / ".claude" / "projects" / slug
+        self.fake_proj.mkdir(parents=True)
+
+        self._orig_home = os.environ.get("HOME")
+        os.environ["HOME"] = str(self.fake_home)
+
+    def tearDown(self):
+        if self._orig_home is None:
+            os.environ.pop("HOME", None)
+        else:
+            os.environ["HOME"] = self._orig_home
+        super().tearDown()
+
+    def _seed_jsonl(self, records: list[dict]) -> Path:
+        p = self.fake_proj / "sess-test.jsonl"
+        with p.open("w", encoding="utf-8") as f:
+            for r in records:
+                f.write(json.dumps(r) + "\n")
+        return p
+
+
+_FIXTURE_RECORDS = [
+    {"type": "ai-title",
+      "aiTitle": "Build the streamlined scaffold flow"},
+    {"type": "user", "timestamp": "2026-05-17T03:00:00.000Z",
+      "message": {"role": "user", "content": [{"type": "text", "text": "go"}]}},
+    {"type": "assistant", "timestamp": "2026-05-17T03:00:05.000Z",
+      "message": {"role": "assistant", "content": [
+          {"type": "tool_use", "id": "tu1", "name": "TaskCreate",
+            "input": {"subject": "scaffold v2 plumbing", "description": "..."}}]}},
+    {"type": "user", "timestamp": "2026-05-17T03:00:06.000Z",
+      "message": {"role": "user", "content": [
+          {"type": "tool_result", "tool_use_id": "tu1",
+            "content": "Task #1 created successfully: scaffold v2 plumbing"}]}},
+    {"type": "assistant", "timestamp": "2026-05-17T03:00:10.000Z",
+      "message": {"role": "assistant", "content": [
+          {"type": "tool_use", "id": "tu2", "name": "TaskUpdate",
+            "input": {"taskId": "1", "status": "completed"}}]}},
+    {"type": "assistant", "timestamp": "2026-05-17T03:00:20.000Z",
+      "message": {"role": "assistant", "content": [
+          {"type": "tool_use", "id": "tu3", "name": "TaskCreate",
+            "input": {"subject": "wire flag into scaffold CLI", "description": "..."}}]}},
+    {"type": "user", "timestamp": "2026-05-17T03:00:21.000Z",
+      "message": {"role": "user", "content": [
+          {"type": "tool_result", "tool_use_id": "tu3",
+            "content": "Task #2 created successfully: wire flag into scaffold CLI"}]}},
+]
+
+
+class TestScaffoldSessionMineSurfaces(ScaffoldSessionMineBase):
+    def test_goal_filled_from_ai_title_when_omitted(self):
+        self._commit("a", "1")
+        self._seed_jsonl(_FIXTURE_RECORDS)
+        r = self._run(
+            "--session", "s",
+            # no --goal supplied — should mine ai_title
+            "--now", "do thing",
+            "--since", "2000-01-01",
+            "--at", "2026-05-17_03-00", "--json",
+        )
+        self.assertEqual(r.returncode, 0, r.stderr)
+        env = json.loads(r.stdout)
+        body = Path(env["data"]["yaml_path"]).read_text(encoding="utf-8")
+        self.assertIn("goal: Build the streamlined scaffold flow", body)
+        self.assertTrue(env["data"].get("mined_from_session"))
+
+    def test_completed_tasks_become_done_this_session_entries(self):
+        self._commit("a", "1")
+        self._seed_jsonl(_FIXTURE_RECORDS)
+        r = self._run(
+            "--session", "s",
+            "--goal", "explicit goal", "--now", "n",
+            "--since", "2000-01-01",
+            "--at", "2026-05-17_03-00", "--json",
+        )
+        body = Path(json.loads(r.stdout)["data"]["yaml_path"]).read_text(encoding="utf-8")
+        self.assertIn("- task: scaffold v2 plumbing", body)
+
+    def test_pending_tasks_become_next_entries(self):
+        self._commit("a", "1")
+        self._seed_jsonl(_FIXTURE_RECORDS)
+        r = self._run(
+            "--session", "s",
+            "--goal", "g", "--now", "n",
+            "--since", "2000-01-01",
+            "--at", "2026-05-17_03-00", "--json",
+        )
+        body = Path(json.loads(r.stdout)["data"]["yaml_path"]).read_text(encoding="utf-8")
+        self.assertIn("- wire flag into scaffold CLI", body)
+
+    def test_now_defaults_to_top_pending_task(self):
+        self._commit("a", "1")
+        self._seed_jsonl(_FIXTURE_RECORDS)
+        r = self._run(
+            "--session", "s",
+            "--goal", "g",
+            # no --now — top pending wins
+            "--since", "2000-01-01",
+            "--at", "2026-05-17_03-00", "--json",
+        )
+        body = Path(json.loads(r.stdout)["data"]["yaml_path"]).read_text(encoding="utf-8")
+        self.assertIn("now: wire flag into scaffold CLI", body)
+
+    def test_no_session_mine_flag_skips_jsonl(self):
+        self._commit("a", "1")
+        self._seed_jsonl(_FIXTURE_RECORDS)
+        r = self._run(
+            "--session", "s",
+            "--goal", "explicit",
+            "--now", "explicit-now",
+            "--since", "2000-01-01",
+            "--at", "2026-05-17_03-00",
+            "--no-session-mine",
+            "--json",
+        )
+        env = json.loads(r.stdout)
+        # mined_from_session should NOT appear in the envelope
+        self.assertFalse(env["data"].get("mined_from_session"))
+        body = Path(env["data"]["yaml_path"]).read_text(encoding="utf-8")
+        # The ai-title and tasks should NOT appear
+        self.assertNotIn("Build the streamlined scaffold flow", body)
+        self.assertNotIn("scaffold v2 plumbing", body)
+
+    def test_no_jsonl_gracefully_falls_back(self):
+        self._commit("a", "1")
+        # No jsonl seeded — discovery returns None
+        r = self._run(
+            "--session", "s",
+            "--goal", "g", "--now", "n",
+            "--since", "2000-01-01",
+            "--at", "2026-05-17_03-00", "--json",
+        )
+        self.assertEqual(r.returncode, 0, r.stderr)
+        env = json.loads(r.stdout)
+        # mined_from_session is False / absent
+        self.assertFalse(env["data"].get("mined_from_session"))
+
+    def test_missing_goal_and_no_ai_title_errors(self):
+        self._commit("a", "1")
+        # JSONL with no ai-title
+        self._seed_jsonl([
+            {"type": "user", "timestamp": "2026-05-17T03:00:00.000Z",
+              "message": {"role": "user",
+                          "content": [{"type": "text", "text": "go"}]}},
+        ])
+        r = self._run(
+            "--session", "s",
+            # no --goal, no ai-title → error
+            "--now", "n",
+            "--since", "2000-01-01",
+            "--at", "2026-05-17_03-00", "--json",
+        )
+        self.assertNotEqual(r.returncode, 0)
+
+
 if __name__ == "__main__":
     unittest.main()
