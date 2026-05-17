@@ -224,8 +224,12 @@ verify_cmd        = ""
 allow_deletion_env = "KAIZEN_ALLOW_DELETE"
 skip_tdd_check_env = "KAIZEN_SKIP_TDD_CHECK"
 
-brain_path           = "$HOME/.claude/.kaizen/brain"
-project_memory_path  = "$PMEM"
+# brain_path + project_memory_path omitted — defaults from _paths.py
+# take over (~/.claude/.kaizen/brain and the per-cwd project-memory
+# slug). Uncomment + set ONLY if you need a custom location for your
+# machine (don't commit personal paths).
+# brain_path           = "$HOME/.claude/.kaizen/brain"
+# project_memory_path  = "$PMEM"
 TOML
     echo "  ✓ wrote starter $CONFIG_PATH"
 else
