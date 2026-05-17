@@ -20,6 +20,24 @@
       "type": "string",
       "description": "Optional one-line summary of what this feature surfaces."
     },
+    "paths": {
+      "type": "object",
+      "description": "Documentation-only path manifest. Feature code reads paths via env vars + _paths.py; this section is for human readers + downstream tooling discovering where the feature stores data."
+    },
+    "status": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "Documentation-only enum of valid work-status values. Code holds the authoritative tuple."
+    },
+    "outcome": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "Documentation-only enum of valid outcome values."
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Freeform per-feature metadata that isn't part of the contract."
+    },
     "subcommands": {
       "type": "object",
       "description": "Map of subcommand name → contract.",

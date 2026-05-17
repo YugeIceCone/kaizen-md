@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/YugeIceCone/kaizen-md/skills/handoff/verify-in.schema.json",
+  "title": "Handoff verify input",
+  "description": "Input contract for kaizen-handoff verify — points the verifier at a handoff YAML file. Optional `repo_root` lets the caller pin git operations to a specific working tree (defaults to cwd).",
+  "type": "object",
+  "required": ["file"],
+  "additionalProperties": false,
+  "properties": {
+    "file": {
+      "type": "string",
+      "description": "Absolute or relative path to the handoff YAML to verify."
+    },
+    "repo_root": {
+      "type": "string",
+      "description": "Git working tree root for the verification checks. Defaults to the current working directory."
+    }
+  }
+}

@@ -1,36 +1,64 @@
-# Handoff feature — schema-driven config.
+# Handoff feature — schema-driven v2 manifest.
 #
-# The handoff skill (skills/handoff/SKILL.md) creates + resumes session
-# handoff documents. The filesystem YAML is the SYSTEM OF RECORD;
-# this config + the SQLite store (handoff.db) form the queryable INDEX.
+# Declares subcommands → input/output JSON Schemas, walked by
+# lens.py (skills/schema-driven-cli/). Each subcommand's contract
+# lives in domain/schemas/; rule-driven behaviors live in their own
+# rule yamls (verify-rules.yaml, outcome-rubric.yaml, etc.).
 #
 # Refactored from the recovered ~/.claude/scripts/stores.py — the lost
 # handoff DB helper, now plugin-owned (see CHANGELOG 1.36.0).
 
-version: 1
+version: 2
+feature: handoff
+description: >-
+  Create + resume + verify session handoff documents. The filesystem
+  YAML at <handoffs_dir>/<session>/<ts>.yaml is the system of record;
+  the SQLite store (handoff.db) is the queryable index.
 
 # Where things live. Both env-overridable — KAIZEN_HANDOFF_DB and
-# KAIZEN_HANDOFF_DIR — see _handoff.py for the resolution logic. These
-# are the documented defaults, not the source of truth for resolution.
+# KAIZEN_HANDOFF_DIR — see _handoff.py for the resolution logic.
+# Documentation-only; not consumed by code.
 paths:
-  # SQLite queryable index. Global (handoffs span sessions + projects).
   db: "~/.claude/.kaizen/data/handoff.db"
-  # Root for the canonical handoff YAML files — the system of record.
   yaml_dir: "~/.claude/thoughts/handoffs"
 
-# status — the lifecycle state of the handoff's WORK. Written to the
-# YAML frontmatter `status:` field and the DB `status` column.
+# Documentation-only — the authoritative tuples live in
+# _handoff.py::VALID_STATUS / VALID_OUTCOME.
 status:
   - partial      # work in progress, or the placeholder at write time
   - complete     # the session's work is done
   - blocked      # work stopped on an external blocker
 
-# outcome — how the SESSION went. Set in `create` Step 4 from the
-# user's answer; written to the YAML frontmatter `outcome:` field.
-# (Not a DB column — the DB tracks work-status, the YAML tracks both.)
 outcome:
   - IN_PROGRESS    # placeholder written at create time, before Step 4
   - SUCCEEDED      # task completed successfully
   - PARTIAL_PLUS   # mostly done, minor issues remain
   - PARTIAL_MINUS  # some progress, major issues remain
   - FAILED         # task abandoned or blocked
+
+# v2 lens contract — subcommands declare their input/output schemas.
+# Schema paths resolve relative to THIS manifest file.
+#
+# Migration policy: schemas land incrementally. A subcommand with no
+# declared schemas no-ops in the lens (passthrough). Existing
+# _cmd_save / latest / list / bridge / path / auto-finalize keep
+# emitting via _envelope.emitter() directly until they migrate.
+subcommands:
+  verify:
+    description: >-
+      Mechanical structural verification of a handoff YAML against
+      the current tree — file existence, git modification deltas,
+      pattern presence/regression, commit count since handoff date.
+      Replaces resume Step 3's sub-agent fan-out.
+    input_schema:  schemas/verify-in.schema.json
+    output_schema: schemas/verify-report.schema.json
+
+  # Pre-existing subcommands — declared for discovery; schemas land
+  # in their own migration commits per the lens skill's "incremental"
+  # guidance.
+  save: {}
+  latest: {}
+  list: {}
+  bridge: {}
+  path: {}
+  auto-finalize: {}

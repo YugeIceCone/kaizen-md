@@ -97,7 +97,13 @@ class TestModuleAndDomain(unittest.TestCase):
         import yaml
         d = yaml.safe_load(
             (_KZ_DIR / "skills/handoff/domain/handoff.yaml").read_text())
-        self.assertEqual(d["version"], 1)
+        # Bumped to v2 when the lens skill landed — the manifest now
+        # declares subcommands → schema map; status/outcome live as
+        # documentation-only sections (authoritative in _handoff.py).
+        self.assertEqual(d["version"], 2)
+        self.assertEqual(d["feature"], "handoff")
+        self.assertIn("subcommands", d)
+        self.assertIn("verify", d["subcommands"])
         self.assertEqual(tuple(d["status"]), _handoff.VALID_STATUS)
         self.assertIn("SUCCEEDED", d["outcome"])
         self.assertIn("IN_PROGRESS", d["outcome"])

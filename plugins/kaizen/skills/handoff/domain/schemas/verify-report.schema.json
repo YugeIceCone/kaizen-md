@@ -1,0 +1,102 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/YugeIceCone/kaizen-md/skills/handoff/verify-report.schema.json",
+  "title": "Handoff verify report",
+  "description": "Structured output of kaizen-handoff verify — mechanical checks against the current tree plus a list of qualitative items the agent must look at directly. Verdict rolls up from finding severities per verify-rules.yaml::verdict_rollup.",
+  "type": "object",
+  "required": [
+    "verdict",
+    "handoff_file",
+    "handoff_date",
+    "file_checks",
+    "pattern_checks",
+    "commit_delta",
+    "qualitative_residue"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "verdict": {
+      "enum": ["clean", "drift", "regression"],
+      "description": "Top-level rollup: clean = no findings, drift = warn-level findings, regression = red-level findings (e.g. failed-pattern reintroduced)."
+    },
+    "handoff_file": {
+      "type": "string",
+      "description": "Absolute path of the handoff YAML that was verified."
+    },
+    "handoff_date": {
+      "type": "string",
+      "description": "Date from the handoff's frontmatter (YYYY-MM-DD). Drives git --since filters."
+    },
+    "file_checks": {
+      "type": "array",
+      "description": "One entry per file in done_this_session.files (deduplicated).",
+      "items": { "$ref": "#/$defs/FileCheck" }
+    },
+    "pattern_checks": {
+      "type": "array",
+      "description": "One entry per worked/failed list item — git grep results.",
+      "items": { "$ref": "#/$defs/PatternCheck" }
+    },
+    "commit_delta": {
+      "type": "object",
+      "required": ["count", "since", "commits"],
+      "additionalProperties": false,
+      "properties": {
+        "count": { "type": "integer", "minimum": 0 },
+        "since": { "type": "string", "description": "ISO date used for the --since filter." },
+        "commits": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["sha", "subject"],
+            "properties": {
+              "sha":     { "type": "string" },
+              "subject": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "qualitative_residue": {
+      "type": "array",
+      "description": "Items the verifier cannot check mechanically — for agent attention.",
+      "items": {
+        "type": "object",
+        "required": ["section", "reason", "items"],
+        "properties": {
+          "section": { "type": "string" },
+          "reason":  { "type": "string" },
+          "items":   { "type": "array" }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "FileCheck": {
+      "type": "object",
+      "required": ["path", "status", "severity"],
+      "additionalProperties": false,
+      "properties": {
+        "path":     { "type": "string" },
+        "status":   { "enum": ["present", "missing", "modified", "deleted"] },
+        "severity": { "enum": ["info", "warn", "red"] },
+        "modified_since": {
+          "type": "string",
+          "description": "If status=modified, the timestamp of the most recent commit touching this path since the handoff date."
+        }
+      }
+    },
+    "PatternCheck": {
+      "type": "object",
+      "required": ["section", "pattern", "hit_count", "severity", "verdict"],
+      "additionalProperties": false,
+      "properties": {
+        "section":   { "enum": ["worked", "failed"] },
+        "pattern":   { "type": "string" },
+        "hit_count": { "type": "integer", "minimum": 0 },
+        "severity":  { "enum": ["info", "warn", "red"] },
+        "verdict":   { "enum": ["confirmed", "stale", "reintroduced", "clean"] }
+      }
+    }
+  }
+}

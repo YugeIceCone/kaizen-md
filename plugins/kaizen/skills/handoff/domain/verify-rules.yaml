@@ -1,0 +1,54 @@
+# Handoff verify checks — declarative rule set walked by _cmd_verify.
+#
+# Each check declares WHICH part of the handoff YAML it applies to,
+# WHICH mechanical method runs, and HOW its severity rolls into the
+# top-level verdict. The verify subcommand walks this list against
+# the current git tree + filesystem and emits a typed report.
+
+checks:
+  - id: file-exists
+    applies_to: done_this_session.files
+    method: stat
+    severity: warn        # missing files = warning
+    notes: "A done_this_session file that no longer exists indicates the work was reverted or moved post-handoff."
+
+  - id: file-modified-since-handoff
+    applies_to: done_this_session.files
+    method: git_log_since
+    since_field: date     # the handoff's date frontmatter
+    severity: info        # modified is informational, not bad
+    notes: "Touched files since the handoff date are flagged — agent decides if the modification matters."
+
+  - id: pattern-still-present
+    applies_to: worked
+    method: git_grep
+    severity: warn
+    notes: "A `worked:` pattern that no longer appears in the tree may have been removed."
+
+  - id: failed-pattern-reintroduced
+    applies_to: failed
+    method: git_grep
+    severity: red         # failed-pattern came back = regression
+    notes: "If a `failed:` pattern reappears, the session's lesson was lost — escalates to regression verdict."
+
+  - id: commits-since-handoff
+    applies_to: meta
+    method: git_log_range
+    severity: info
+    notes: "Count + oneline list of commits between the handoff's date and HEAD."
+
+# Items the verify CAN'T check mechanically — agent must look at them.
+qualitative_markers:
+  - { applies_to: next,        reason: "forward-looking — needs agent judgment" }
+  - { applies_to: questions,   reason: "open by definition; needs follow-up" }
+  - { applies_to: decisions,   reason: "still-in-force check is qualitative" }
+  - { applies_to: findings,    reason: "validity is qualitative" }
+
+# Verdict rollup — first matching condition wins (severity-ranked):
+#   regression: any `red` finding (failed-pattern-reintroduced fires)
+#   drift:      any `warn` finding (missing file, missing worked-pattern)
+#   clean:      no warn or red findings
+verdict_rollup:
+  - { if_any: red,  verdict: regression }
+  - { if_any: warn, verdict: drift }
+  - { default:  clean }

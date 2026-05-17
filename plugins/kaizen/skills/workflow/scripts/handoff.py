@@ -33,6 +33,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -43,8 +44,16 @@ sys.path.insert(0, str(_SCRIPT_DIR))
 
 import _handoff as _core  # noqa: E402
 import _envelope  # noqa: E402
+import lens  # noqa: E402
 
 _emit = _envelope.emitter("kaizen-handoff", tool_version="1.0.0")
+
+# v2 lens manifest — loaded once at import time so a malformed manifest
+# fails fast (not at first call). Verify + future migrations dispatch
+# through this.
+_MANIFEST_PATH = _core.DOMAIN_DIR / "handoff.yaml"
+_MANIFEST = lens.Manifest.load(_MANIFEST_PATH)
+_VERIFY_RULES_PATH = _core.DOMAIN_DIR / "verify-rules.yaml"
 
 
 def _cmd_save(args) -> int:
@@ -156,6 +165,263 @@ def _cmd_path(args) -> int:
         "yaml_dir": str(_core.handoffs_dir()),
         "domain": str(_core.DOMAIN_DIR / "handoff.yaml"),
     })
+    return 0
+
+
+# ─── verify — lens-wired structural verification (Task 6) ────────────
+
+
+def _parse_handoff_yaml(text: str) -> dict:
+    """Minimal handoff YAML parser — split frontmatter (between the two
+    `---` markers) from body, then load each independently. PyYAML's
+    safe_load can't handle the bare-document-with-frontmatter shape
+    (sees two documents); using safe_load_all preserves order without
+    forcing a multi-doc wrapper."""
+    fm_text = ""
+    body_text = text
+    if text.startswith("---"):
+        parts = text.split("---", 2)
+        if len(parts) >= 3:
+            fm_text = parts[1]
+            body_text = parts[2]
+
+    # Frontmatter date — line-based, avoids forcing PyYAML on simple
+    # k:v pairs (matches _handoff.update_frontmatter's parser).
+    fm_date = ""
+    for line in fm_text.splitlines():
+        if line.strip().startswith("date:"):
+            fm_date = line.split(":", 1)[1].strip()
+            break
+
+    try:
+        import yaml as _yaml
+        body = _yaml.safe_load(body_text) or {}
+    except ImportError:
+        body = {}
+    except Exception:
+        body = {}
+
+    if not isinstance(body, dict):
+        body = {}
+
+    done_files: list[str] = []
+    for entry in (body.get("done_this_session") or []):
+        if isinstance(entry, dict):
+            files = entry.get("files") or []
+            if isinstance(files, list):
+                done_files.extend(str(f) for f in files if f)
+
+    def _string_list(key: str) -> list[str]:
+        raw = body.get(key) or []
+        return [str(x) for x in raw if isinstance(x, (str, int, float))]
+
+    return {
+        "date": fm_date or str(body.get("date", "")),
+        "done_files": list(dict.fromkeys(done_files)),  # dedupe, preserve order
+        "worked":    _string_list("worked"),
+        "failed":    _string_list("failed"),
+        "next":      _string_list("next"),
+        "questions": _string_list("questions"),
+        "decisions": body.get("decisions") or [],
+        "findings":  body.get("findings")  or [],
+    }
+
+
+def _git(repo_root: Path, *args: str) -> subprocess.CompletedProcess:
+    return subprocess.run(
+        ["git", "-C", str(repo_root), *args],
+        capture_output=True, text=True, timeout=30,
+    )
+
+
+def _check_files(parsed: dict, repo_root: Path) -> list[dict]:
+    """file-exists + file-modified-since-handoff checks per verify-rules.yaml."""
+    out: list[dict] = []
+    for path in parsed["done_files"]:
+        full = repo_root / path
+        if not full.exists():
+            out.append({
+                "path": path,
+                "status": "missing",
+                "severity": "warn",
+            })
+            continue
+        # Check git log for modifications since handoff date.
+        modified_since = None
+        if parsed["date"]:
+            r = _git(
+                repo_root, "log", f"--since={parsed['date']}",
+                "-1", "--format=%cI", "--", path,
+            )
+            if r.returncode == 0 and r.stdout.strip():
+                modified_since = r.stdout.strip()
+        entry: dict = {
+            "path": path,
+            "status": "modified" if modified_since else "present",
+            "severity": "info" if modified_since else "info",
+        }
+        if modified_since:
+            entry["modified_since"] = modified_since
+        out.append(entry)
+    return out
+
+
+def _check_patterns(parsed: dict, repo_root: Path) -> list[dict]:
+    """pattern-still-present (worked) + failed-pattern-reintroduced (failed)."""
+    out: list[dict] = []
+
+    def _grep_count(pattern: str) -> int:
+        # Use git grep — respects .gitignore + tree state. -F = fixed string.
+        r = _git(repo_root, "grep", "-Fc", pattern)
+        if r.returncode > 1:
+            return 0  # git error
+        if not r.stdout.strip():
+            return 0
+        # Per-file hit-count lines: "path:N"
+        total = 0
+        for line in r.stdout.strip().splitlines():
+            if ":" in line:
+                _, n = line.rsplit(":", 1)
+                try:
+                    total += int(n)
+                except ValueError:
+                    pass
+        return total
+
+    for pattern in parsed["worked"]:
+        hits = _grep_count(pattern)
+        if hits > 0:
+            out.append({
+                "section": "worked", "pattern": pattern,
+                "hit_count": hits, "severity": "info", "verdict": "confirmed",
+            })
+        else:
+            out.append({
+                "section": "worked", "pattern": pattern,
+                "hit_count": 0, "severity": "warn", "verdict": "stale",
+            })
+
+    for pattern in parsed["failed"]:
+        hits = _grep_count(pattern)
+        if hits > 0:
+            out.append({
+                "section": "failed", "pattern": pattern,
+                "hit_count": hits, "severity": "red", "verdict": "reintroduced",
+            })
+        else:
+            out.append({
+                "section": "failed", "pattern": pattern,
+                "hit_count": 0, "severity": "info", "verdict": "clean",
+            })
+
+    return out
+
+
+def _commit_delta(parsed: dict, repo_root: Path) -> dict:
+    """commits-since-handoff — count + oneline summary."""
+    since = parsed["date"] or ""
+    if not since:
+        return {"count": 0, "since": "", "commits": []}
+    r = _git(repo_root, "log", f"--since={since}", "--oneline")
+    if r.returncode != 0:
+        return {"count": 0, "since": since, "commits": []}
+    commits: list[dict] = []
+    for line in r.stdout.strip().splitlines():
+        if not line.strip():
+            continue
+        sha, _, subject = line.partition(" ")
+        commits.append({"sha": sha, "subject": subject})
+    return {"count": len(commits), "since": since, "commits": commits}
+
+
+def _qualitative_residue(parsed: dict) -> list[dict]:
+    """Sections the verify can't check mechanically — for agent attention.
+
+    The list of qualitative sections is data-driven from verify-rules.yaml,
+    but we keep the section→data lookup here since verify-rules is read
+    once at module-load and not re-parsed per call."""
+    out: list[dict] = []
+    sections = [
+        ("next",      "forward-looking — needs agent judgment",  parsed["next"]),
+        ("questions", "open by definition; needs follow-up",     parsed["questions"]),
+        ("decisions", "still-in-force check is qualitative",     parsed["decisions"]),
+        ("findings",  "validity is qualitative",                 parsed["findings"]),
+    ]
+    for section, reason, items in sections:
+        if items:
+            out.append({"section": section, "reason": reason, "items": items})
+    return out
+
+
+def _rollup_verdict(file_checks: list[dict], pattern_checks: list[dict]) -> str:
+    """First red → regression; else first warn → drift; else clean."""
+    severities = (
+        [c["severity"] for c in file_checks]
+        + [c["severity"] for c in pattern_checks]
+    )
+    if "red" in severities:
+        return "regression"
+    if "warn" in severities:
+        return "drift"
+    return "clean"
+
+
+def _cmd_verify(args) -> int:
+    fp = Path(args.file).expanduser()
+    if not fp.is_file():
+        msg = f"file not found: {fp}"
+        if args.json:
+            print(json.dumps({"error": msg}), file=sys.stderr)
+        else:
+            print(f"[kaizen-handoff verify] {msg}", file=sys.stderr)
+        return 1
+
+    repo_root = Path(args.repo_root or ".").resolve()
+    parsed = _parse_handoff_yaml(fp.read_text(encoding="utf-8"))
+
+    file_checks    = _check_files(parsed, repo_root)
+    pattern_checks = _check_patterns(parsed, repo_root)
+    commit_delta   = _commit_delta(parsed, repo_root)
+    qualitative    = _qualitative_residue(parsed)
+    verdict        = _rollup_verdict(file_checks, pattern_checks)
+
+    data = {
+        "verdict": verdict,
+        "handoff_file": str(fp.resolve()),
+        "handoff_date": parsed["date"],
+        "file_checks":  file_checks,
+        "pattern_checks": pattern_checks,
+        "commit_delta": commit_delta,
+        "qualitative_residue": qualitative,
+    }
+
+    if args.json:
+        # The lens validates output against verify-report.schema.json
+        # before emit — failing closed if the data shape doesn't match.
+        try:
+            lens.lens_emit(
+                "kaizen-handoff", _MANIFEST, "verify",
+                data=data,
+                verdict=("green" if verdict == "clean" else
+                         "yellow" if verdict == "drift" else "red"),
+                counts={
+                    "missing":      sum(1 for c in file_checks if c["status"] == "missing"),
+                    "stale":        sum(1 for c in pattern_checks if c["verdict"] == "stale"),
+                    "reintroduced": sum(1 for c in pattern_checks if c["verdict"] == "reintroduced"),
+                },
+                tool_version="1.0.0",
+            )
+        except lens.SchemaValidationError as exc:
+            print(f"[kaizen-handoff verify] internal: {exc}", file=sys.stderr)
+            return 2
+    else:
+        print(f"[kaizen-handoff verify] {fp.resolve()}")
+        print(f"  verdict: {verdict}")
+        print(f"  file_checks: {len(file_checks)}, "
+              f"pattern_checks: {len(pattern_checks)}, "
+              f"commits_since: {commit_delta['count']}")
+        if qualitative:
+            print(f"  qualitative_residue: {[q['section'] for q in qualitative]}")
     return 0
 
 
@@ -300,6 +566,19 @@ def main(argv: Optional[list[str]] = None) -> int:
 
     s_path = sub.add_parser("path", help="print store + yaml-dir paths")
     s_path.set_defaults(func=_cmd_path)
+
+    s_verify = sub.add_parser(
+        "verify",
+        help="mechanical structural verification of a handoff YAML "
+             "(replaces resume Step 3 sub-agent fan-out)",
+    )
+    s_verify.add_argument("--file", required=True, help="path to the handoff YAML")
+    s_verify.add_argument(
+        "--repo-root", default=None,
+        help="git working tree root (default: cwd)",
+    )
+    s_verify.add_argument("--json", action="store_true")
+    s_verify.set_defaults(func=_cmd_verify)
 
     s_auto = sub.add_parser(
         "auto-finalize",
