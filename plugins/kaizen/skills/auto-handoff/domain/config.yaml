@@ -22,30 +22,13 @@ on_fire:
   # When rubric.yaml exists, on_bucket overrides this for each bucket.
   decision: "block"
 
-  # Template for the reason text. Substitution:
-  #   {pct}        — current context % at fire time
-  #   {threshold}  — the user-chosen threshold (25/50/75/85)
-  #   {tokens}     — absolute current_tokens (for context)
+  # Template for the reason text. Substitution: {pct} {threshold} {tokens}.
+  # KEEP TIGHT — every fire burns this into the agent's context.
+  # The agent already has the auto-handoff skill loaded; no need to
+  # re-explain the steps here.
   reason_template: |
-    ⚠ MANDATORY pre-compact handoff (context at {pct}%, threshold {threshold}%, {tokens} tokens).
-
-    Stop is BLOCKED until you create the handoff. The block
-    auto-releases on your next Stop after the handoff lands
-    (the dedupe marker prevents re-fire this session).
-
-    Required steps before stopping:
-
-      1. Wrap up the in-flight code change (don't leave it half-done).
-      2. Create the handoff:
-           Bash(kaizen-handoff scaffold --session <project>
-                 --goal '<one line>' --now 'pre-compact at {pct}%')
-      3. Fill the qualitative fields (decisions / findings / worked / failed / next).
-      4. Run kaizen-handoff auto-finalize.
-      5. Then user runs /compact when ready, or you Stop normally.
-
-    Skip this enforcement only via KAIZEN_AUTO_HANDOFF_DISABLE=1
-    in the user's environment — never bypass without the user's
-    explicit say-so.
+    ⚠ MANDATORY pre-compact handoff (context {pct}%, threshold {threshold}%). Stop BLOCKED.
+    kaizen-handoff scaffold → fill fields → auto-finalize. Bypass: KAIZEN_AUTO_HANDOFF_DISABLE=1.
 
 # Optional: per-bucket action policy when rubric.yaml drives the
 # classification. Bucket names must match those declared in rubric.yaml.
@@ -63,10 +46,8 @@ on_bucket:
   threshold-block:
     decision: block
     reason_template: |
-      ⚠ MANDATORY pre-compact handoff (context at {pct}%, threshold {threshold}%).
-      Stop is BLOCKED. Create the handoff before exiting:
-      Bash(kaizen-handoff scaffold --session <project> --goal '<one line>' --now 'pre-compact')
-      → fill qualitative fields → kaizen-handoff auto-finalize.
+      ⚠ MANDATORY pre-compact handoff (context {pct}%, threshold {threshold}%). Stop BLOCKED.
+      kaizen-handoff scaffold → fill fields → auto-finalize.
 
   post-compact-warn:
     decision: systemMessage
