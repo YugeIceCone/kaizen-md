@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+# kaizen-code-lift — code-lift engine with import rewrites (Phase 4 X4).
+# Symlinked to ~/.local/bin/kaizen-code-lift by /kaizen:setup.
+#
+# Backed by ${PLUGIN_ROOT}/skills/workflow/scripts/code_lift.py. See
+# `kaizen-code-lift --help` for subcommands (audit / preview / deps-gap /
+# lift / path).
+#
+# Renamed from `kaizen-migrate` in Tier-2 consolidation — `kaizen-migrate`
+# now belongs to the data-migrator dispatcher (path | legacy). The
+# code-lift engine is a different concern: Python port of shodan's
+# xtask/src/migrate/, reads project-local <repo>/kaizen-migrations.toml.
+
+set -euo pipefail
+
+# Resolve real script location through any symlinks so $_BIN_DIR points at
+# the actual plugin bin dir, not ~/.local/bin/ (where /kaizen:setup drops
+# the symlink). Without realpath resolution, the ../skills/... source fails.
+_SCRIPT_REAL="$(readlink -f "${BASH_SOURCE[0]}" 2>/dev/null \
+  || python3 -c 'import os,sys; print(os.path.realpath(sys.argv[1]))' "${BASH_SOURCE[0]}")"
+_BIN_DIR="$(cd "$(dirname "$_SCRIPT_REAL")" && pwd)"
+# shellcheck source=../skills/workflow/scripts/_plugin_root.sh
+source "$_BIN_DIR/../skills/workflow/scripts/_plugin_root.sh"
+PLUGIN_ROOT="$(kaizen_plugin_root)" || {
+    echo "kaizen-code-lift: plugin root unresolved — set CLAUDE_PLUGIN_ROOT or KAIZEN_PLUGIN_ROOT" >&2
+    exit 1
+}
+
+exec python3 "$PLUGIN_ROOT/skills/workflow/scripts/code_lift.py" "$@"

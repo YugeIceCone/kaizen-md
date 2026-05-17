@@ -71,7 +71,7 @@ def _load_toml(path: Path) -> dict:
             import tomli as tomllib  # type: ignore
         except ImportError:
             raise RuntimeError(
-                "kaizen-migrate: tomllib (3.11+) or tomli required.\n"
+                "kaizen-code-lift: tomllib (3.11+) or tomli required.\n"
                 "  pip install --user tomli"
             )
     return tomllib.loads(text)
@@ -155,7 +155,7 @@ class Config:
     def from_file(cls, path: Path) -> "Config":
         if not path.is_file():
             raise FileNotFoundError(
-                f"{path} not found — create it to drive kaizen-migrate "
+                f"{path} not found — create it to drive kaizen-code-lift "
                 f"(see docs for schema)."
             )
         return cls.from_dict(_load_toml(path))
@@ -648,7 +648,7 @@ def _cmd_audit(args) -> int:
     if args.json:
         print(json.dumps([dataclasses.asdict(r) for r in rows], indent=2))
         return 0
-    print(f"[kaizen-migrate audit] {len(rows)} target(s)")
+    print(f"[kaizen-code-lift audit] {len(rows)} target(s)")
     print()
     print(f"  {'SOURCE':<28} {'TARGET':<24} {'STATUS':<16} SRC TGT")
     print(f"  {'-' * 28} {'-' * 24} {'-' * 16} --- ---")
@@ -671,7 +671,7 @@ def _cmd_preview(args) -> int:
         d["rewrite_events"] = [dataclasses.asdict(e) for e in result.rewrite_events]
         print(json.dumps(d, indent=2))
         return 0
-    print(f"[kaizen-migrate preview] {src.relative_to(repo_root)}")
+    print(f"[kaizen-code-lift preview] {src.relative_to(repo_root)}")
     print()
     if result.status == "skipped":
         print("  status: SKIPPED — [targets] marks the project _skip")
@@ -718,10 +718,10 @@ def _cmd_deps_gap(args) -> int:
         print(json.dumps(d, indent=2))
         return 0
     if result.manifest_path is None:
-        print(f"[kaizen-migrate deps-gap] {result.target}: no manifest found")
+        print(f"[kaizen-code-lift deps-gap] {result.target}: no manifest found")
         return 1
     print(
-        f"[kaizen-migrate deps-gap] target={result.target} "
+        f"[kaizen-code-lift deps-gap] target={result.target} "
         f"manifest={result.manifest_path.relative_to(repo_root)} "
         f"kind={result.manifest_kind} "
         f"required={len(result.required)}"
@@ -782,7 +782,7 @@ def _cmd_lift(args) -> int:
         print(json.dumps(d, indent=2))
         return 0
     mode = "(--apply)" if args.apply else "(dry-run; pass --apply to write)"
-    print(f"[kaizen-migrate lift] {src.relative_to(repo_root) if src.is_relative_to(repo_root) else src} "
+    print(f"[kaizen-code-lift lift] {src.relative_to(repo_root) if src.is_relative_to(repo_root) else src} "
           f"-> {target_dir.relative_to(repo_root) if target_dir.is_relative_to(repo_root) else target_dir}  {mode}")
     print()
     for s, t in result.pairs:
@@ -803,7 +803,7 @@ def _cmd_lift(args) -> int:
 
 def main(argv: Optional[list[str]] = None) -> int:
     p = argparse.ArgumentParser(
-        prog="kaizen-migrate",
+        prog="kaizen-code-lift",
         description="Code-lift engine with import rewrites (X4).",
     )
     p.add_argument("--root", help="repo root (default: walk up from CWD)")

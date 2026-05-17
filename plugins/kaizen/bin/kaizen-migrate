@@ -1,19 +1,14 @@
 #!/usr/bin/env bash
-# kaizen-migrate — code-lift engine with import rewrites (X4).
-# Symlinked to ~/.local/bin/kaizen-migrate by /kaizen:install.
+# kaizen-migrate — transitional. Points at code_lift.py since _migrate.py
+# was renamed in Tier-2 commit A. Commit B replaces this wrapper with the
+# new data-migrator dispatcher (path | legacy). Until then, callers of
+# `kaizen-migrate` keep getting the code-lift engine via the renamed path.
 #
-# Backed by ${PLUGIN_ROOT}/skills/workflow/scripts/_migrate.py. See
-# `kaizen-migrate --help` for subcommands (audit / preview / deps-gap /
-# lift / path).
-#
-# Phase 4 X4 — Python port of shodan's xtask/src/migrate/. Reads
-# project-local <repo>/kaizen-migrations.toml.
+# After commit B lands, use `kaizen-code-lift` for the code-lift engine and
+# `kaizen-migrate <path|legacy>` for the data-migrator dispatcher.
 
 set -euo pipefail
 
-# Resolve real script location through any symlinks so $_BIN_DIR points at
-# the actual plugin bin dir, not ~/.local/bin/ (where /kaizen:install drops
-# the symlink). Without realpath resolution, the ../skills/... source fails.
 _SCRIPT_REAL="$(readlink -f "${BASH_SOURCE[0]}" 2>/dev/null \
   || python3 -c 'import os,sys; print(os.path.realpath(sys.argv[1]))' "${BASH_SOURCE[0]}")"
 _BIN_DIR="$(cd "$(dirname "$_SCRIPT_REAL")" && pwd)"
@@ -24,4 +19,4 @@ PLUGIN_ROOT="$(kaizen_plugin_root)" || {
     exit 1
 }
 
-exec python3 "$PLUGIN_ROOT/skills/workflow/scripts/_migrate.py" "$@"
+exec python3 "$PLUGIN_ROOT/skills/workflow/scripts/code_lift.py" "$@"

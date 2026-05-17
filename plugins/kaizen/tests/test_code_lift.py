@@ -1,4 +1,4 @@
-"""Tests for _migrate.py — X4 code-lift engine.
+"""Tests for code_lift.py — X4 code-lift engine (formerly _migrate.py).
 
 Mirrors the Rust ``xtask/src/migrate/`` test cases (rewriter boundary
 checks, longest-match-first, config round-trip, deps-gap regex)
@@ -16,7 +16,7 @@ from pathlib import Path
 _KZ_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_KZ_DIR / "skills/workflow/scripts"))
 
-import _migrate  # noqa: E402
+import code_lift  # noqa: E402
 
 
 # ─── Config parsing ───────────────────────────────────────────────────
@@ -24,7 +24,7 @@ import _migrate  # noqa: E402
 
 class TestConfigParse(unittest.TestCase):
     def test_parses_minimal(self):
-        cfg = _migrate.Config.from_dict({
+        cfg = code_lift.Config.from_dict({
             "targets": {"core": "core"},
             "paths": {"shodan_kernel": "shodan_core"},
             "required_deps": {"tools": ["dirs"]},
@@ -35,7 +35,7 @@ class TestConfigParse(unittest.TestCase):
         self.assertEqual(pairs[0], ("shodan_kernel", "shodan_core"))
 
     def test_longest_path_first(self):
-        cfg = _migrate.Config.from_dict({
+        cfg = code_lift.Config.from_dict({
             "paths": {
                 "shodan_protocol": "shodan_core",
                 "shodan_protocol::ApprovalRequest": "shodan_core::ApprovalRequest",
@@ -45,7 +45,7 @@ class TestConfigParse(unittest.TestCase):
         self.assertIn("ApprovalRequest", pairs[0][0])
 
     def test_siblings_parsed(self):
-        cfg = _migrate.Config.from_dict({
+        cfg = code_lift.Config.from_dict({
             "siblings": [
                 {
                     "file": "src/foo.rs",
@@ -60,26 +60,26 @@ class TestConfigParse(unittest.TestCase):
         self.assertEqual(c.note, "shared types")
 
     def test_missing_sibling_returns_none(self):
-        cfg = _migrate.Config.from_dict({})
+        cfg = code_lift.Config.from_dict({})
         self.assertIsNone(cfg.siblings_for("nothing"))
 
     def test_target_skip(self):
-        cfg = _migrate.Config.from_dict({"targets": {"old": "_skip"}})
+        cfg = code_lift.Config.from_dict({"targets": {"old": "_skip"}})
         self.assertEqual(cfg.target_for("old"), "_skip")
 
     def test_empty_config(self):
-        cfg = _migrate.Config.from_dict({})
+        cfg = code_lift.Config.from_dict({})
         self.assertIsNone(cfg.target_for("anything"))
         self.assertEqual(cfg.paths_longest_first(), [])
         self.assertEqual(cfg.required_deps_for("any"), [])
 
     def test_crate_targets_alias(self):
         # Back-compat: shodan xtask uses `crate_targets` key
-        cfg = _migrate.Config.from_dict({"crate_targets": {"a": "b"}})
+        cfg = code_lift.Config.from_dict({"crate_targets": {"a": "b"}})
         self.assertEqual(cfg.target_for("a"), "b")
 
     def test_meta_overrides_roots(self):
-        cfg = _migrate.Config.from_dict({
+        cfg = code_lift.Config.from_dict({
             "meta": {"source_root": "vendor", "target_root": "packages"},
         })
         self.assertEqual(cfg.source_root, "vendor")
@@ -91,10 +91,10 @@ class TestConfigParse(unittest.TestCase):
 
 class TestRewriter(unittest.TestCase):
     def _cfg(self, pairs):
-        return _migrate.Config.from_dict({"paths": dict(pairs)})
+        return code_lift.Config.from_dict({"paths": dict(pairs)})
 
     def test_simple_rewrite(self):
-        out, events = _migrate.rewrite(
+        out, events = code_lift.rewrite(
             "use shodan_kernel::Foo;",
             self._cfg([("shodan_kernel", "shodan_core")]),
         )
@@ -107,7 +107,7 @@ class TestRewriter(unittest.TestCase):
             ("shodan_protocol", "shodan_core"),
             ("shodan_protocol::ApprovalRequest", "shodan_core::ApprovalRequest"),
         ])
-        out, _ = _migrate.rewrite(
+        out, _ = code_lift.rewrite(
             "use shodan_protocol::ApprovalRequest;\n"
             "use shodan_protocol::other;",
             cfg,
@@ -118,14 +118,14 @@ class TestRewriter(unittest.TestCase):
     def test_boundary_blocks_partial_match(self):
         # `shodan_core_extension` must NOT match `shodan_core` —
         # next byte `_` isn't in the boundary set.
-        out, _ = _migrate.rewrite(
+        out, _ = code_lift.rewrite(
             "shodan_core_extension",
             self._cfg([("shodan_core", "shodan_NEW")]),
         )
         self.assertEqual(out, "shodan_core_extension")
 
     def test_multiple_occurrences_counted(self):
-        out, events = _migrate.rewrite(
+        out, events = code_lift.rewrite(
             "old::a old::b old::c",
             self._cfg([("old", "new")]),
         )
@@ -134,7 +134,7 @@ class TestRewriter(unittest.TestCase):
         self.assertEqual(events[0].occurrences, 3)
 
     def test_no_match_emits_no_event(self):
-        out, events = _migrate.rewrite(
+        out, events = code_lift.rewrite(
             "nothing to see here",
             self._cfg([("foo", "bar")]),
         )
@@ -142,11 +142,11 @@ class TestRewriter(unittest.TestCase):
         self.assertEqual(events, [])
 
     def test_eof_is_boundary(self):
-        out, _ = _migrate.rewrite("shodan_core", self._cfg([("shodan_core", "X")]))
+        out, _ = code_lift.rewrite("shodan_core", self._cfg([("shodan_core", "X")]))
         self.assertEqual(out, "X")
 
     def test_newline_is_boundary(self):
-        out, _ = _migrate.rewrite(
+        out, _ = code_lift.rewrite(
             "shodan_core\nrest",
             self._cfg([("shodan_core", "X")]),
         )
@@ -158,33 +158,33 @@ class TestRewriter(unittest.TestCase):
 
 class TestManifestDetection(unittest.TestCase):
     def test_cargo_dep_match_eq(self):
-        manifest = _migrate.ManifestInfo(
+        manifest = code_lift.ManifestInfo(
             path=Path("Cargo.toml"),
             kind="cargo",
             body='[dependencies]\nserde = "1.0"\ntokio = { version = "1" }\n',
         )
-        self.assertTrue(_migrate.manifest_has_dep(manifest, "serde"))
-        self.assertTrue(_migrate.manifest_has_dep(manifest, "tokio"))
-        self.assertFalse(_migrate.manifest_has_dep(manifest, "axum"))
+        self.assertTrue(code_lift.manifest_has_dep(manifest, "serde"))
+        self.assertTrue(code_lift.manifest_has_dep(manifest, "tokio"))
+        self.assertFalse(code_lift.manifest_has_dep(manifest, "axum"))
 
     def test_cargo_workspace_dep(self):
-        manifest = _migrate.ManifestInfo(
+        manifest = code_lift.ManifestInfo(
             path=Path("Cargo.toml"),
             kind="cargo",
             body="[dependencies]\nserde.workspace = true\n",
         )
-        self.assertTrue(_migrate.manifest_has_dep(manifest, "serde"))
+        self.assertTrue(code_lift.manifest_has_dep(manifest, "serde"))
 
     def test_cargo_explicit_section(self):
-        manifest = _migrate.ManifestInfo(
+        manifest = code_lift.ManifestInfo(
             path=Path("Cargo.toml"),
             kind="cargo",
             body='[dependencies.tokio]\nversion = "1"\n',
         )
-        self.assertTrue(_migrate.manifest_has_dep(manifest, "tokio"))
+        self.assertTrue(code_lift.manifest_has_dep(manifest, "tokio"))
 
     def test_npm_dep_match(self):
-        manifest = _migrate.ManifestInfo(
+        manifest = code_lift.ManifestInfo(
             path=Path("package.json"),
             kind="npm",
             body=json.dumps({
@@ -192,58 +192,58 @@ class TestManifestDetection(unittest.TestCase):
                 "devDependencies": {"jest": "^29"},
             }),
         )
-        self.assertTrue(_migrate.manifest_has_dep(manifest, "react"))
-        self.assertTrue(_migrate.manifest_has_dep(manifest, "jest"))
-        self.assertFalse(_migrate.manifest_has_dep(manifest, "vue"))
+        self.assertTrue(code_lift.manifest_has_dep(manifest, "react"))
+        self.assertTrue(code_lift.manifest_has_dep(manifest, "jest"))
+        self.assertFalse(code_lift.manifest_has_dep(manifest, "vue"))
 
     def test_npm_invalid_json_returns_false(self):
-        manifest = _migrate.ManifestInfo(
+        manifest = code_lift.ManifestInfo(
             path=Path("package.json"), kind="npm", body="not json",
         )
-        self.assertFalse(_migrate.manifest_has_dep(manifest, "react"))
+        self.assertFalse(code_lift.manifest_has_dep(manifest, "react"))
 
     def test_pyproject_pep631(self):
-        manifest = _migrate.ManifestInfo(
+        manifest = code_lift.ManifestInfo(
             path=Path("pyproject.toml"),
             kind="pyproject",
             body='[project]\ndependencies = ["click>=8", "requests"]\n',
         )
-        self.assertTrue(_migrate.manifest_has_dep(manifest, "click"))
+        self.assertTrue(code_lift.manifest_has_dep(manifest, "click"))
 
     def test_pyproject_poetry(self):
-        manifest = _migrate.ManifestInfo(
+        manifest = code_lift.ManifestInfo(
             path=Path("pyproject.toml"),
             kind="pyproject",
             body='[tool.poetry.dependencies]\nclick = "^8"\nrequests = "*"\n',
         )
-        self.assertTrue(_migrate.manifest_has_dep(manifest, "click"))
-        self.assertTrue(_migrate.manifest_has_dep(manifest, "requests"))
+        self.assertTrue(code_lift.manifest_has_dep(manifest, "click"))
+        self.assertTrue(code_lift.manifest_has_dep(manifest, "requests"))
 
     def test_go_mod(self):
-        manifest = _migrate.ManifestInfo(
+        manifest = code_lift.ManifestInfo(
             path=Path("go.mod"),
             kind="go-mod",
             body="require github.com/example/foo v1.2.3\n",
         )
-        self.assertTrue(_migrate.manifest_has_dep(manifest, "github.com/example/foo"))
+        self.assertTrue(code_lift.manifest_has_dep(manifest, "github.com/example/foo"))
 
     def test_empty_dep_returns_false(self):
-        manifest = _migrate.ManifestInfo(
+        manifest = code_lift.ManifestInfo(
             path=Path("Cargo.toml"), kind="cargo", body="anything",
         )
-        self.assertFalse(_migrate.manifest_has_dep(manifest, ""))
+        self.assertFalse(code_lift.manifest_has_dep(manifest, ""))
 
     def test_detect_cargo_first(self):
         with tempfile.TemporaryDirectory() as tmp:
             d = Path(tmp)
             (d / "Cargo.toml").write_text("[package]\nname = \"x\"\n")
             (d / "package.json").write_text('{"name": "x"}')
-            m = _migrate.detect_manifest(d)
+            m = code_lift.detect_manifest(d)
             self.assertEqual(m.kind, "cargo")
 
     def test_detect_returns_none_when_no_manifest(self):
         with tempfile.TemporaryDirectory() as tmp:
-            self.assertIsNone(_migrate.detect_manifest(Path(tmp)))
+            self.assertIsNone(code_lift.detect_manifest(Path(tmp)))
 
 
 # ─── do_lift / do_preview / do_audit (end-to-end) ────────────────────
@@ -265,7 +265,7 @@ class TestLift(unittest.TestCase):
         (root / "crates" / "p1" / "Cargo.toml").write_text(
             '[package]\nname = "p1"\n[dependencies]\nserde = "1"\n'
         )
-        cfg = _migrate.Config.from_dict({
+        cfg = code_lift.Config.from_dict({
             "targets": {"p1": "p1"},
             "paths": {"shodan_kernel": "shodan_core"},
             "required_deps": {"p1": ["serde", "tokio"]},
@@ -277,7 +277,7 @@ class TestLift(unittest.TestCase):
         try:
             src = root / "port" / "p1" / "src" / "foo.rs"
             tgt = root / "crates" / "p1"
-            result = _migrate.do_lift(
+            result = code_lift.do_lift(
                 src, tgt, cfg, root / "port", apply=False,
             )
             self.assertEqual(len(result.pairs), 1)
@@ -293,7 +293,7 @@ class TestLift(unittest.TestCase):
         try:
             src = root / "port" / "p1" / "src" / "foo.rs"
             tgt = root / "crates" / "p1"
-            result = _migrate.do_lift(src, tgt, cfg, root / "port", apply=True)
+            result = code_lift.do_lift(src, tgt, cfg, root / "port", apply=True)
             written = (tgt / "src" / "foo.rs").read_text()
             self.assertIn("shodan_core::Foo", written)
             self.assertNotIn("shodan_kernel", written)
@@ -309,7 +309,7 @@ class TestLift(unittest.TestCase):
             )
             src = root / "port" / "p1" / "src"
             tgt = root / "crates" / "p1"
-            result = _migrate.do_lift(src, tgt, cfg, root / "port", apply=True)
+            result = code_lift.do_lift(src, tgt, cfg, root / "port", apply=True)
             self.assertEqual(len(result.pairs), 2)
             self.assertTrue((tgt / "src" / "foo.rs").is_file())
             self.assertTrue((tgt / "src" / "bar.rs").is_file())
@@ -329,7 +329,7 @@ class TestPreview(unittest.TestCase):
         (root / "crates" / "p1" / "Cargo.toml").write_text(
             '[dependencies]\nserde = "1"\n'
         )
-        cfg = _migrate.Config.from_dict({
+        cfg = code_lift.Config.from_dict({
             "targets": {"p1": "p1"},
             "paths": {"shodan_kernel": "shodan_core"},
             "required_deps": {"p1": ["serde", "tokio"]},
@@ -340,7 +340,7 @@ class TestPreview(unittest.TestCase):
         tmp, root, cfg = self._scaffold()
         try:
             src = root / "port" / "p1" / "src" / "foo.rs"
-            result = _migrate.do_preview(src, root, cfg)
+            result = code_lift.do_preview(src, root, cfg)
             self.assertEqual(result.status, "ok")
             self.assertEqual(len(result.rewrite_events), 1)
             # serde present, tokio missing
@@ -356,10 +356,10 @@ class TestPreview(unittest.TestCase):
             (root / "port" / "skipped" / "src").mkdir(parents=True)
             f = root / "port" / "skipped" / "src" / "x.rs"
             f.write_text("pub fn x() {}\n")
-            cfg = _migrate.Config.from_dict({
+            cfg = code_lift.Config.from_dict({
                 "targets": {"skipped": "_skip"},
             })
-            result = _migrate.do_preview(f, root, cfg)
+            result = code_lift.do_preview(f, root, cfg)
             self.assertEqual(result.status, "skipped")
         finally:
             tmp.cleanup()
@@ -371,8 +371,8 @@ class TestPreview(unittest.TestCase):
             (root / "port" / "unknown" / "src").mkdir(parents=True)
             f = root / "port" / "unknown" / "src" / "x.rs"
             f.write_text("pub fn x() {}\n")
-            cfg = _migrate.Config.from_dict({})  # no [targets]
-            result = _migrate.do_preview(f, root, cfg)
+            cfg = code_lift.Config.from_dict({})  # no [targets]
+            result = code_lift.do_preview(f, root, cfg)
             self.assertEqual(result.status, "no-mapping")
         finally:
             tmp.cleanup()
@@ -397,10 +397,10 @@ class TestAudit(unittest.TestCase):
             # p4: missing target dir
             (root / "port" / "p4" / "src").mkdir(parents=True)
             (root / "port" / "p4" / "src" / "w.rs").write_text("pub fn w(){}")
-            cfg = _migrate.Config.from_dict({
+            cfg = code_lift.Config.from_dict({
                 "targets": {"p1": "p1", "p2": "p2", "p3": "_skip", "p4": "p4"},
             })
-            rows = _migrate.do_audit(root, cfg)
+            rows = code_lift.do_audit(root, cfg)
             statuses = {r.source_project: r.status for r in rows}
             self.assertEqual(statuses["p1"], "lifted")
             self.assertEqual(statuses["p2"], "pending")
@@ -416,10 +416,10 @@ class TestDepsGap(unittest.TestCase):
             (root / "crates" / "x" / "Cargo.toml").write_text(
                 '[dependencies]\nserde = "1"\n'
             )
-            cfg = _migrate.Config.from_dict({
+            cfg = code_lift.Config.from_dict({
                 "required_deps": {"x": ["serde", "tokio", "anyhow"]},
             })
-            result = _migrate.do_deps_gap("x", root, cfg)
+            result = code_lift.do_deps_gap("x", root, cfg)
             self.assertEqual(result.manifest_kind, "cargo")
             self.assertEqual(set(result.missing), {"tokio", "anyhow"})
 
@@ -427,10 +427,10 @@ class TestDepsGap(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             (root / "crates" / "x").mkdir(parents=True)
-            cfg = _migrate.Config.from_dict({
+            cfg = code_lift.Config.from_dict({
                 "required_deps": {"x": ["serde"]},
             })
-            result = _migrate.do_deps_gap("x", root, cfg)
+            result = code_lift.do_deps_gap("x", root, cfg)
             self.assertIsNone(result.manifest_path)
             self.assertEqual(result.missing, ["serde"])
 
@@ -439,8 +439,8 @@ class TestDepsGap(unittest.TestCase):
             root = Path(tmp)
             (root / "crates" / "x").mkdir(parents=True)
             (root / "crates" / "x" / "Cargo.toml").write_text("[package]\n")
-            cfg = _migrate.Config.from_dict({})
-            result = _migrate.do_deps_gap("x", root, cfg)
+            cfg = code_lift.Config.from_dict({})
+            result = code_lift.do_deps_gap("x", root, cfg)
             self.assertEqual(result.required, [])
             self.assertEqual(result.missing, [])
 
@@ -454,7 +454,7 @@ class TestCli(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             (root / ".git").mkdir()
-            rc = _migrate.main(["--root", str(root), "path"])
+            rc = code_lift.main(["--root", str(root), "path"])
             self.assertEqual(rc, 0)
 
 
