@@ -48,6 +48,7 @@ import _envelope  # noqa: E402
 import schema_cli  # noqa: E402
 import _session_jsonl as _sj  # noqa: E402
 import _atomic  # noqa: E402
+import _dxm_emit  # noqa: E402  — BK-001 per-handler trace events
 
 _emit = _envelope.emitter("kaizen-handoff", tool_version="1.0.0")
 
@@ -447,6 +448,15 @@ def _cmd_verify(args) -> int:
         data["recent_tool_churn"] = _query_dxm_recent_churn(
             args.dxm_session, back_seconds=60.0)
 
+    # BK-001 per-handler trace event (best-effort, never raises)
+    _dxm_emit.emit_event(
+        "handoff.verify.complete",
+        tool_name="kaizen-handoff",
+        payload={"verdict": verdict,
+                  "files": len(file_checks),
+                  "patterns": len(pattern_checks)},
+    )
+
     if args.json:
         # The lens validates output against verify-report.schema.json
         # before emit — failing closed if the data shape doesn't match.
@@ -795,6 +805,11 @@ def _cmd_scaffold(args) -> int:
             "jsonl_lag_seconds":  jsonl_lag,
             "dxm_event_count":    dxm_event_count,
         }
+    _dxm_emit.emit_event(
+        "handoff.scaffold.complete", tool_name="kaizen-handoff",
+        payload={"yaml_path": str(yaml_path.resolve()),
+                  "files_changed": len(changed)},
+    )
     if args.json:
         try:
             schema_cli.lens_emit(
@@ -942,6 +957,10 @@ def _cmd_create(args) -> int:
         "db_id":      int(db_id),
         "status":     "partial",
     }
+    _dxm_emit.emit_event(
+        "handoff.create.complete", tool_name="kaizen-handoff",
+        payload={"file_path": data["file_path"], "db_id": data["db_id"]},
+    )
     if args.json:
         try:
             schema_cli.lens_emit(
@@ -983,6 +1002,12 @@ def _cmd_assess(args) -> int:
         "signals":     signals,
         "rationale":   result.rationale,
     }
+
+    _dxm_emit.emit_event(
+        "handoff.assess.complete", tool_name="kaizen-handoff",
+        payload={"bucket": result.bucket, "method": result.method,
+                  "confidence": result.confidence},
+    )
 
     if args.json:
         try:
@@ -1099,6 +1124,12 @@ def _cmd_auto_finalize(args) -> int:
         "dxm_parent_session": args.parent_session,
         "dxm_linked": dxm_linked,
     }
+    _dxm_emit.emit_event(
+        "handoff.auto-finalize.complete", tool_name="kaizen-handoff",
+        payload={"outcome": args.outcome, "status": args.status,
+                  "session_id": session_id,
+                  "assigned_by": args.assigned_by},
+    )
     if args.json:
         verdict = "green" if args.outcome == "SUCCEEDED" else "yellow"
         _emit(result, verdict=verdict)

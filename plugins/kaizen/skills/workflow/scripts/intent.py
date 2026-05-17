@@ -60,6 +60,7 @@ _SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(_SCRIPT_DIR))
 
 import _envelope  # noqa: E402
+import _dxm_emit  # noqa: E402  — BK-001 per-handler trace events
 
 _emit = _envelope.emitter("kaizen-intent", tool_version="1.0.0")
 
@@ -239,6 +240,11 @@ def _cmd_match(args) -> int:
     # Sort by confidence DESC
     matched.sort(key=lambda m: -m["confidence"])
     data = {"matched": matched, "count": len(matched)}
+    _dxm_emit.emit_event(
+        "intent.match.complete", tool_name="kaizen-intent",
+        payload={"matched_count": len(matched),
+                  "top_id": matched[0]["id"] if matched else None},
+    )
     if args.json:
         verdict = "green" if matched else "yellow"
         _emit(data, verdict=verdict, counts={"matched": len(matched)})
@@ -279,6 +285,11 @@ def _cmd_suggest(args) -> int:
             "confidence":  _intent_confidence(best),
             "action":      best.get("action") or {},
         }}
+    _dxm_emit.emit_event(
+        "intent.suggest.complete", tool_name="kaizen-intent",
+        payload={"intent_id": (best or {}).get("id"),
+                  "confidence": _intent_confidence(best) if best else None},
+    )
     if args.json:
         verdict = "green" if best else "yellow"
         _emit(data, verdict=verdict)
@@ -355,6 +366,12 @@ def _cmd_scan(args) -> int:
         "matched": matched,
         "count": len(matched),
     }
+    _dxm_emit.emit_event(
+        "intent.scan.complete", tool_name="kaizen-intent",
+        payload={"session_scanned": args.session,
+                  "event_count": len(events),
+                  "matched_count": len(matched)},
+    )
     if args.json:
         verdict = "green" if matched else "yellow"
         _emit(data, verdict=verdict, counts={"matched": len(matched)})
