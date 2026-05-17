@@ -201,6 +201,8 @@ class TestBundlesSubcommand(Base):
                 "simplicity", "structure", "process", "karpathy",
                 # operational tier
                 "quality", "security", "brain-hygiene", "plugin-dev",
+                # work-mode tier
+                "discovery", "debugging", "refactoring", "planning",
             },
         )
         self.assertIn("kiss", data["simplicity"])
@@ -226,6 +228,34 @@ class TestBundlesSubcommand(Base):
         r = self._run("bundles", "--json")
         data = json.loads(r.stdout)
         self.assertIn("security-review", data["security"])
+
+    def test_lists_work_mode_bundles(self):
+        """3rd tier — work-mode bundles for task-specific disciplines."""
+        r = self._run("bundles")
+        self.assertEqual(r.returncode, 0)
+        for name in ("discovery", "debugging", "refactoring", "planning"):
+            self.assertIn(name, r.stdout, f"missing work-mode bundle {name!r}")
+
+    def test_discovery_bundle_includes_brainstorming(self):
+        """User-requested: brainstorming is pin-able via /kaizen:mode."""
+        r = self._run("bundles", "--json")
+        data = json.loads(r.stdout)
+        self.assertIn("brainstorming", data["discovery"])
+
+    def test_debugging_bundle_includes_systematic_debugging(self):
+        r = self._run("bundles", "--json")
+        data = json.loads(r.stdout)
+        self.assertIn("systematic-debugging", data["debugging"])
+
+    def test_refactoring_bundle_includes_boy_scout(self):
+        r = self._run("bundles", "--json")
+        data = json.loads(r.stdout)
+        self.assertIn("boy-scout", data["refactoring"])
+
+    def test_planning_bundle_includes_writing_plans(self):
+        r = self._run("bundles", "--json")
+        data = json.loads(r.stdout)
+        self.assertIn("writing-plans", data["planning"])
 
 
 class TestReminderSubcommand(Base):

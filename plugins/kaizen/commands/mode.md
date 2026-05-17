@@ -17,9 +17,10 @@ Parse the argument. Valid values: `loop`, `workflow`, `neither`.
 
 ### When `$ARGUMENTS` is one of `loop`/`workflow`/`neither`
 
-Mode is known — skip Q1, ask THREE questions in a single
-AskUserQuestion call: coding-style disciplines, operational
-disciplines, and auto-handoff threshold.
+Mode is known — skip the mode question and ask FOUR questions in a
+single AskUserQuestion call: coding-style disciplines, operational
+disciplines, work-mode disciplines, and auto-handoff threshold.
+(Fits AskUserQuestion's 4-question ceiling exactly.)
 
 ```
 QUESTION 1 — coding-style disciplines (multiSelect):
@@ -50,7 +51,21 @@ QUESTION 2 — operational disciplines (multiSelect):
     - label: "Plugin-dev (plugin-development + plugin-pitfalls + iron-laws + writing-skills + command-development)"
       description: "kaizen plugin authoring — canonical feature shape + iron laws + skill/command conventions."
 
-QUESTION 3 — auto-handoff trigger (single-select):
+QUESTION 3 — work-mode disciplines (multiSelect):
+  question: "Which WORK-MODE disciplines apply to this session's primary task type?"
+  header:   "Work mode"
+  multiSelect: true
+  options:
+    - label: "Discovery (explore + brainstorming + research + ast-grep-router + decision-rubric)"
+      description: "Up-front exploration / idea-generation BEFORE implementation."
+    - label: "Debugging (systematic-debugging + verify-before-execution + verification-before-completion)"
+      description: "Bug hunt / RCA loops with hypothesis → test → narrow discipline."
+    - label: "Refactoring (boy-scout + dry + onion-ddd + shim-and-sweep + finishing-a-development-branch)"
+      description: "Structural cleanups with safe carve-outs + wrap-up gate."
+    - label: "Planning (writing-plans + executing-plans + create-plan + execute-plan + decision-rubric)"
+      description: "Multi-step work driven by an explicit plan/tasks artifact."
+
+QUESTION 4 — auto-handoff trigger (single-select):
   question: "Auto-trigger a handoff when context window reaches ____ %?"
   header:   "Auto-handoff"
   multiSelect: false
@@ -63,18 +78,25 @@ QUESTION 3 — auto-handoff trigger (single-select):
 ```
 
 Bundle name mapping (lowercase, comma-separated). Merge picks from
-BOTH multiSelect questions into a single `--bundles` CSV:
+ALL THREE multiSelect questions into a single `--bundles` CSV:
 
-| Label                | Bundle id        |
-|----------------------|------------------|
-| Simplicity (…)       | `simplicity`     |
-| Structure (…)        | `structure`      |
-| Process (…)          | `process`        |
-| Karpathy 4           | `karpathy`       |
-| Quality (…)          | `quality`        |
-| Security (…)         | `security`       |
-| Brain hygiene (…)    | `brain-hygiene`  |
-| Plugin-dev (…)       | `plugin-dev`     |
+| Label                  | Bundle id                       |
+|------------------------|---------------------------------|
+| **Coding-style tier**  |                                 |
+| Simplicity (…)         | `simplicity`                    |
+| Structure (…)          | `structure`                     |
+| Process (…)            | `process`                       |
+| Karpathy 4             | `karpathy`                      |
+| **Operational tier**   |                                 |
+| Quality (…)            | `quality`                       |
+| Security (…)           | `security`                      |
+| Brain hygiene (…)      | `brain-hygiene`                 |
+| Plugin-dev (…)         | `plugin-dev`                    |
+| **Work-mode tier**     |                                 |
+| Discovery (…)          | `discovery`                     |
+| Debugging (…)          | `debugging`                     |
+| Refactoring (…)        | `refactoring`                   |
+| Planning (…)           | `planning`                      |
 
 Threshold mapping (integer or OMIT for Disabled):
 - 25% / 50% / 75% / 85%  → numeric value via `--threshold`

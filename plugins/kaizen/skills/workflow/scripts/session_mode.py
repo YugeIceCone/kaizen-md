@@ -89,6 +89,28 @@ _BUNDLES: dict[str, list[str]] = {
     # disciplines for sessions editing plugin-original code.
     "plugin-dev":    ["plugin-development", "plugin-pitfalls", "iron-laws",
                        "writing-skills", "command-development"],
+
+    # ── Work-mode tier ──
+    # Task-specific disciplines. Pin these for sessions that are
+    # predominantly one work shape (vs the cross-cutting operational
+    # tier above).
+    #
+    # discovery = up-front exploration + idea-generation before code.
+    "discovery":    ["explore", "brainstorming", "research",
+                      "ast-grep-router", "decision-rubric"],
+    # debugging = bug hunt / RCA loops. RED-GREEN verify gates dominate.
+    "debugging":    ["systematic-debugging", "verify-before-execution",
+                      "verification-before-completion"],
+    # refactoring = structural cleanups. Boy-scout, DRY, onion-ddd are
+    # the spine; shim-and-sweep covers safe carve-outs; finishing-a-
+    # development-branch covers the wrap-up gate.
+    "refactoring":  ["boy-scout", "dry", "onion-ddd",
+                      "shim-and-sweep", "finishing-a-development-branch"],
+    # planning = multi-step work driven by an explicit plan/tasks
+    # artifact. Pin the plan-author + plan-executor + decision-support
+    # disciplines.
+    "planning":     ["writing-plans", "executing-plans",
+                      "create-plan", "execute-plan", "decision-rubric"],
 }
 
 
@@ -138,6 +160,25 @@ _SKILL_DESCRIPTIONS: dict[str, str] = {
     "plugin-pitfalls":        "plugin-pitfalls — failure modes catalog; counterpart to plugin-development",
     "writing-skills":         "writing-skills — SKILL.md authoring conventions (frontmatter, triggers, Iron Laws)",
     "command-development":    "command-development — slash-command frontmatter + argument patterns",
+
+    # ── Work-mode tier ──
+    # Discovery
+    "explore":                  "explore — fast read-only codebase / requirement reconnaissance",
+    "brainstorming":            "brainstorming — surface requirements + design options BEFORE implementation",
+    "research":                 "research — gather external context (docs / web / library APIs) before deciding",
+    "ast-grep-router":          "ast-grep-router — structural search routing for refactor + audit queries",
+    "decision-rubric":          "decision-rubric — explicit criteria + scoring when choosing between approaches",
+    # Debugging
+    "systematic-debugging":     "systematic-debugging — hypothesis → test → narrow loop; never guess + edit",
+    "verification-before-completion": "verify before complete — run tests + smoke checks before declaring done",
+    # Refactoring
+    "shim-and-sweep":           "shim-and-sweep — introduce shim, migrate callers, retire old API safely",
+    "finishing-a-development-branch": "finish-branch — gate the wrap-up: tests / docs / changelog / arch-log",
+    # Planning
+    "writing-plans":            "writing-plans — author the multi-step plan BEFORE touching code",
+    "executing-plans":          "executing-plans — one task at a time; verify-then-commit cadence",
+    "create-plan":              "create-plan — initialize plan scaffold with scope / phases / verification",
+    "execute-plan":             "execute-plan — drive a plan to completion with per-phase verification",
 }
 
 

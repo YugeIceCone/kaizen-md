@@ -58,6 +58,12 @@ class TestBodyContent(unittest.TestCase):
             self.assertIn(bundle, self.body,
                           f"body missing {bundle!r} operational bundle option")
 
+    def test_body_references_work_mode_bundles(self):
+        """Work-mode tier — Discovery / Debugging / Refactoring / Planning."""
+        for bundle in ("Discovery", "Debugging", "Refactoring", "Planning"):
+            self.assertIn(bundle, self.body,
+                          f"body missing {bundle!r} work-mode bundle option")
+
     def test_body_prescribes_kaizen_session_mode_set(self):
         self.assertIn("kaizen-session-mode set", self.body)
         self.assertIn("--bundles", self.body)
@@ -77,7 +83,8 @@ class TestBodyContent(unittest.TestCase):
     def test_body_references_bundle_name_lowercase_mapping(self):
         # Agent needs to know which label → which lowercased bundle id
         for lc in ("simplicity", "structure", "process", "karpathy",
-                    "quality", "security", "brain-hygiene", "plugin-dev"):
+                    "quality", "security", "brain-hygiene", "plugin-dev",
+                    "discovery", "debugging", "refactoring", "planning"):
             self.assertIn(lc, self.body,
                           f"body missing lowercase bundle id {lc!r}")
 
