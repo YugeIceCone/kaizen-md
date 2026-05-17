@@ -264,6 +264,53 @@ measure here). Keep the bin as `kaizen-<thing>-coverage` for consistency
 with the existing pair, and register it as its own SUB_GATES key in
 gatekeeper (don't overload an existing axis).
 
+### JSONL-indexed deliverables — fine-grained picking convention
+
+For any output > ~30 structured entries (brainstorms, findings, audit
+results, plan items, event slices), produce a paired `.jsonl` index
+**alongside** the prose `.md`. Consumers query the JSONL with `jq` /
+DuckDB / `python -c` to pick the exact slice they need — no need to
+Read the prose file just to navigate to one entry.
+
+**File layout convention:**
+```
+plans/<date>-<slug>.md         ← prose synthesis + cross-thread narrative
+plans/<date>-<slug>.jsonl      ← indexed entries, one per line
+```
+
+**Entry shape (typical fields):**
+```json
+{"id": <int>, "round": <int>, "bucket": "<group>", "theme": "<sub>",
+ "idea": "<one-line>", "tier": 1-4|null, "tools": ["..."],
+ "status": "shipped|top-pick|deferred|research|long-arc|radical"}
+```
+
+**Query examples (all zero-Read):**
+```bash
+# All top-picks across all rounds
+jq -r 'select(.status=="top-pick") | "#\(.id) [\(.bucket)] \(.idea)"' plans/*.jsonl
+
+# Just round 5's SQL-bucket
+jq -r 'select(.round==5 and .bucket|startswith("sql"))' plans/*.jsonl
+
+# DuckDB: per-bucket counts (after R5#201 lands)
+kaizen-sql 'SELECT bucket, COUNT(*) FROM "plans/*.jsonl" GROUP BY bucket'
+
+# Python one-liner for ad-hoc joins
+python3 -c "import json; [print(r['idea']) for r in
+  (json.loads(l) for l in open('plans/<file>.jsonl')) if r.get('tier')==1]"
+```
+
+**Why:** the agent (or human) gets ~10 lines of relevant output instead
+of reading 580 lines of prose to find them. Compounds heavily over a
+long session — sister pattern to `kaizen-token-bloat read <citation>`
+(jump straight to the cited lines, no whole-file Read) and
+`kaizen-dxm append-to` (zero-roundtrip stream → file dump).
+
+**When NOT to use:** single-purpose docs (CONTRIBUTING.md, ATTRIBUTIONS.md,
+this CLAUDE.md), narrative-only outputs (handoff prose), and anything
+< 30 structured entries (the indexing overhead doesn't pay back).
+
 ### Audit surface (one-command sanity)
 
 ```bash

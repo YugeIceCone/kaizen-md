@@ -423,3 +423,29 @@ Research-informed (context7: DuckDB + Radon; arxiv rate-limited — gap noted).
 3. **R1#3** — `vulture-coverage` (Tier 1 from round 1 still standing).
 4. **R4#K1** — extend `append-to` to trace + metrics (after dxm proves the pattern this session).
 5. **R2#C28** — per-prompt event diff (cheapest in-flight bloat signal).
+
+---
+
+# Indexed JSONL (zero-Read picking)
+
+All 300 ideas live at `plans/2026-05-17-coverage-ideas.jsonl` —
+one entry per line with `{id, round, bucket, theme, idea, tier?, tools?, status}`.
+Query without reading this prose file:
+
+```bash
+# Top-picks across all rounds
+jq -r 'select(.status=="top-pick") | "#\(.id) R\(.round) [\(.bucket)] \(.idea)"' \
+    plans/2026-05-17-coverage-ideas.jsonl
+
+# Round 5's SQL bucket only
+jq -r 'select(.round==5 and (.bucket|startswith("sql")))' plans/*.jsonl
+
+# Tier 1 only
+jq 'select(.tier==1)' plans/*.jsonl
+
+# Per-bucket counts
+jq -r '.bucket' plans/*.jsonl | sort | uniq -c | sort -rn
+```
+
+See CLAUDE.md "JSONL-indexed deliverables" for the convention this
+plan-file pair establishes.

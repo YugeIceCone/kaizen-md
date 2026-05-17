@@ -1,0 +1,300 @@
+{"id":1,"round":1,"bucket":"content","theme":"token-bloat","idea":"comment-quality coverage (rewrite-without-loss)","tier":3,"status":"deferred"}
+{"id":2,"round":1,"bucket":"content","theme":"token-bloat","idea":"TODO/FIXME age inventory via git-blame","tier":4,"status":"deferred"}
+{"id":3,"round":1,"bucket":"content","theme":"token-bloat","idea":"dead-code detection (vulture)","tier":1,"tools":["vulture"],"status":"deferred"}
+{"id":4,"round":1,"bucket":"content","theme":"token-bloat","idea":"unused config keys (env defined but never read)","tier":3,"status":"deferred"}
+{"id":5,"round":1,"bucket":"content","theme":"token-bloat","idea":"stale internal references","tier":4,"status":"deferred"}
+{"id":6,"round":1,"bucket":"content","theme":"token-bloat","idea":"markdown link rot","tier":4,"status":"deferred"}
+{"id":7,"round":1,"bucket":"content","theme":"token-bloat","idea":"heading-depth consistency","tier":3,"status":"deferred"}
+{"id":8,"round":1,"bucket":"content","theme":"token-bloat","idea":"trailing whitespace / mixed indentation","tier":4,"status":"deferred"}
+{"id":9,"round":1,"bucket":"content","theme":"token-bloat","idea":"duplicate-section detection","tier":3,"status":"deferred"}
+{"id":10,"round":1,"bucket":"naming","theme":"name-quality","idea":"function-name quality (body verb match)","tier":2,"status":"deferred"}
+{"id":11,"round":1,"bucket":"naming","theme":"name-quality","idea":"class-name quality","tier":2,"status":"deferred"}
+{"id":12,"round":1,"bucket":"naming","theme":"name-quality","idea":"test-name quality test_<X>_<scenario>","tier":3,"status":"deferred"}
+{"id":13,"round":1,"bucket":"naming","theme":"name-quality","idea":"variable-name discipline","tier":4,"status":"deferred"}
+{"id":14,"round":1,"bucket":"naming","theme":"name-quality","idea":"SKILL frontmatter name matches dir basename","tier":1,"status":"deferred"}
+{"id":15,"round":1,"bucket":"naming","theme":"name-quality","idea":"trigger-phrase coverage (>=3 quoted phrases per SKILL desc)","tier":1,"status":"deferred"}
+{"id":16,"round":1,"bucket":"schema","theme":"schema-coverage","idea":"JSONSchema actually loaded at runtime","tier":2,"status":"deferred"}
+{"id":17,"round":1,"bucket":"schema","theme":"schema-coverage","idea":"schema-file naming convention","tier":4,"status":"deferred"}
+{"id":18,"round":1,"bucket":"schema","theme":"schema-coverage","idea":"validator-wiring (loader calls .validate)","tier":2,"status":"deferred"}
+{"id":19,"round":1,"bucket":"schema","theme":"schema-coverage","idea":"domain-YAML PyYAML-strict lint","tier":3,"status":"deferred"}
+{"id":20,"round":1,"bucket":"tests","theme":"code-to-test","idea":"test-density per public function","tier":2,"status":"deferred"}
+{"id":21,"round":1,"bucket":"tests","theme":"code-to-test","idea":"skipped-test ratio","tier":3,"status":"deferred"}
+{"id":22,"round":1,"bucket":"tests","theme":"code-to-test","idea":"test-isolation env-sandbox AST scan","tier":1,"status":"deferred"}
+{"id":23,"round":1,"bucket":"tests","theme":"code-to-test","idea":"mock-vs-real coverage pairing","tier":2,"status":"deferred"}
+{"id":24,"round":1,"bucket":"tests","theme":"code-to-test","idea":"mutation-testing kill-ratio (mutmut)","tier":2,"tools":["mutmut"],"status":"deferred"}
+{"id":25,"round":1,"bucket":"perf","theme":"latency","idea":"hook latency timeout coverage","tier":4,"status":"deferred"}
+{"id":26,"round":1,"bucket":"perf","theme":"latency","idea":"MCP tool latency budget p50/p95","tier":3,"status":"deferred"}
+{"id":27,"round":1,"bucket":"perf","theme":"latency","idea":"heavy-import detection (eager torch/transformers)","tier":2,"status":"deferred"}
+{"id":28,"round":1,"bucket":"perf","theme":"latency","idea":"per-feature cold-start time","tier":3,"status":"deferred"}
+{"id":29,"round":1,"bucket":"perf","theme":"latency","idea":"cold-start cost map","tier":3,"status":"deferred"}
+{"id":30,"round":1,"bucket":"obs","theme":"trace","idea":"hook trace coverage extension","tier":2,"status":"deferred"}
+{"id":31,"round":1,"bucket":"obs","theme":"trace","idea":"MCP trace-event coverage","tier":2,"status":"deferred"}
+{"id":32,"round":1,"bucket":"obs","theme":"trace","idea":"error-capture AST scan (subprocess.run returncode)","tier":2,"status":"deferred"}
+{"id":33,"round":1,"bucket":"obs","theme":"trace","idea":"dxm-event-type registry","tier":3,"status":"deferred"}
+{"id":34,"round":1,"bucket":"wiring","theme":"completeness","idea":"plugin.json perm coverage per script","tier":1,"status":"deferred"}
+{"id":35,"round":1,"bucket":"wiring","theme":"completeness","idea":"hooks.json wiring coverage","tier":1,"status":"deferred"}
+{"id":36,"round":1,"bucket":"wiring","theme":"completeness","idea":"bin-wrapper per argparse-main script","tier":1,"status":"deferred"}
+{"id":37,"round":1,"bucket":"wiring","theme":"completeness","idea":"slash-command allowed-tools coverage","tier":1,"status":"deferred"}
+{"id":38,"round":1,"bucket":"wiring","theme":"completeness","idea":"MCP-server in plugin.json mcpServers","tier":1,"status":"deferred"}
+{"id":39,"round":1,"bucket":"docs","theme":"completeness","idea":"SKILL.md required-sections audit","tier":3,"status":"deferred"}
+{"id":40,"round":1,"bucket":"docs","theme":"completeness","idea":"references/ link coverage from SKILL.md","tier":3,"status":"deferred"}
+{"id":41,"round":1,"bucket":"docs","theme":"completeness","idea":"slash-command docstring presence","tier":3,"status":"deferred"}
+{"id":42,"round":1,"bucket":"docs","theme":"completeness","idea":"CHANGELOG entry per release tag","tier":3,"status":"deferred"}
+{"id":43,"round":1,"bucket":"security","theme":"audit","idea":"secret-pattern coverage","tier":4,"status":"deferred"}
+{"id":44,"round":1,"bucket":"security","theme":"audit","idea":"path-traversal scan on Path() concat","tier":4,"status":"deferred"}
+{"id":45,"round":1,"bucket":"security","theme":"audit","idea":"shell-injection scan extension","tier":4,"status":"deferred"}
+{"id":46,"round":1,"bucket":"security","theme":"audit","idea":"tarfile filter='data' coverage","tier":4,"status":"deferred"}
+{"id":47,"round":1,"bucket":"convention","theme":"iron-laws","idea":"iron-law conformance per-feature","tier":2,"status":"deferred"}
+{"id":48,"round":1,"bucket":"convention","theme":"iron-laws","idea":"Conventional Commits CHANGELOG vs git log drift","tier":3,"status":"deferred"}
+{"id":49,"round":1,"bucket":"convention","theme":"iron-laws","idea":"architecture-log row alignment per new file","tier":3,"status":"deferred"}
+{"id":50,"round":1,"bucket":"convention","theme":"iron-laws","idea":"license-header coverage (SPDX)","tier":4,"status":"deferred"}
+{"id":51,"round":2,"bucket":"vertical-A","theme":"trace+dxm","idea":"per-feature event timeline view","status":"deferred"}
+{"id":52,"round":2,"bucket":"vertical-A","theme":"trace+dxm","idea":"per-feature call-graph (hooks->tools->MCPs)","status":"deferred"}
+{"id":53,"round":2,"bucket":"vertical-A","theme":"trace+dxm","idea":"per-feature latency histogram","status":"deferred"}
+{"id":54,"round":2,"bucket":"vertical-A","theme":"trace+dxm","idea":"per-feature error rate","status":"deferred"}
+{"id":55,"round":2,"bucket":"vertical-A","theme":"trace+dxm","idea":"per-feature first-fire/last-fire dates","status":"deferred"}
+{"id":56,"round":2,"bucket":"vertical-A","theme":"trace+dxm","idea":"per-feature hour-of-day heat-map","status":"deferred"}
+{"id":57,"round":2,"bucket":"vertical-A","theme":"trace+dxm","idea":"per-feature lifecycle audit (git+trace)","tier":1,"status":"top-pick"}
+{"id":58,"round":2,"bucket":"vertical-A","theme":"trace+dxm","idea":"per-feature peak concurrency","status":"deferred"}
+{"id":59,"round":2,"bucket":"vertical-A","theme":"trace+dxm","idea":"per-feature retry rate","status":"deferred"}
+{"id":60,"round":2,"bucket":"vertical-A","theme":"trace+dxm","idea":"per-feature p95 regression detection","status":"deferred"}
+{"id":61,"round":2,"bucket":"horizontal-B","theme":"trace+dxm","idea":"tool-chain frequency 3-grams","status":"deferred"}
+{"id":62,"round":2,"bucket":"horizontal-B","theme":"trace+dxm","idea":"hook-fire cascade detection","tier":1,"status":"top-pick"}
+{"id":63,"round":2,"bucket":"horizontal-B","theme":"trace+dxm","idea":"cross-feature correlation matrix","status":"deferred"}
+{"id":64,"round":2,"bucket":"horizontal-B","theme":"trace+dxm","idea":"cross-feature data-flow path intersect","status":"deferred"}
+{"id":65,"round":2,"bucket":"horizontal-B","theme":"trace+dxm","idea":"tool-use burst Poisson-deviation","status":"deferred"}
+{"id":66,"round":2,"bucket":"horizontal-B","theme":"trace+dxm","idea":"skill activation graph co-load edges","status":"deferred"}
+{"id":67,"round":2,"bucket":"horizontal-B","theme":"trace+dxm","idea":"cross-session anomaly detection","status":"deferred"}
+{"id":68,"round":2,"bucket":"horizontal-B","theme":"trace+dxm","idea":"cohort comparison by session-mode","status":"deferred"}
+{"id":69,"round":2,"bucket":"horizontal-B","theme":"trace+dxm","idea":"cross-MCP routing waste detection","status":"deferred"}
+{"id":70,"round":2,"bucket":"horizontal-B","theme":"trace+dxm","idea":"feature usage decay curves","status":"deferred"}
+{"id":71,"round":2,"bucket":"live-C","theme":"dxm-live","idea":"live activity feed tail","status":"deferred"}
+{"id":72,"round":2,"bucket":"live-C","theme":"dxm-live","idea":"live token-budget meter","status":"deferred"}
+{"id":73,"round":2,"bucket":"live-C","theme":"dxm-live","idea":"live hook-latency rolling p50/p95","status":"deferred"}
+{"id":74,"round":2,"bucket":"live-C","theme":"dxm-live","idea":"live error stream","status":"deferred"}
+{"id":75,"round":2,"bucket":"live-C","theme":"dxm-live","idea":"live tool-call rate surge detection","status":"deferred"}
+{"id":76,"round":2,"bucket":"live-C","theme":"dxm-live","idea":"real-time skill-load tracking since last UserPromptSubmit","status":"deferred"}
+{"id":77,"round":2,"bucket":"live-C","theme":"dxm-live","idea":"live MCP queue depth","status":"deferred"}
+{"id":78,"round":2,"bucket":"live-C","theme":"dxm-live","idea":"per-prompt event diff","tier":1,"status":"top-pick"}
+{"id":79,"round":2,"bucket":"live-C","theme":"dxm-live","idea":"live concurrency map","status":"deferred"}
+{"id":80,"round":2,"bucket":"live-C","theme":"dxm-live","idea":"live hot-feature surface top-5","status":"deferred"}
+{"id":81,"round":2,"bucket":"lifetime-D","theme":"trace","idea":"top-N most-fired hooks","status":"deferred"}
+{"id":82,"round":2,"bucket":"lifetime-D","theme":"trace","idea":"top-N most-called tools","status":"deferred"}
+{"id":83,"round":2,"bucket":"lifetime-D","theme":"trace","idea":"never-used features extended to bins/cmds","status":"deferred"}
+{"id":84,"round":2,"bucket":"lifetime-D","theme":"trace","idea":"feature half-life","status":"deferred"}
+{"id":85,"round":2,"bucket":"lifetime-D","theme":"trace","idea":"feature adoption curve time-to-first-N","status":"deferred"}
+{"id":86,"round":2,"bucket":"lifetime-D","theme":"trace","idea":"multi-session 3-motif mining","status":"deferred"}
+{"id":87,"round":2,"bucket":"lifetime-D","theme":"trace","idea":"most-touched files lifetime","status":"deferred"}
+{"id":88,"round":2,"bucket":"lifetime-D","theme":"trace","idea":"cross-project comparison","status":"deferred"}
+{"id":89,"round":2,"bucket":"lifetime-D","theme":"trace","idea":"lifetime cost estimation","status":"deferred"}
+{"id":90,"round":2,"bucket":"lifetime-D","theme":"trace","idea":"hook reliability over time","status":"deferred"}
+{"id":91,"round":2,"bucket":"join-E","theme":"fusion","idea":"trace + dxm union timeline","status":"deferred"}
+{"id":92,"round":2,"bucket":"join-E","theme":"fusion","idea":"trace + token-bloat causal weight","tier":1,"status":"top-pick"}
+{"id":93,"round":2,"bucket":"join-E","theme":"fusion","idea":"dxm + coverage gaps (untested=touched more?)","status":"deferred"}
+{"id":94,"round":2,"bucket":"join-E","theme":"fusion","idea":"trace + handoff log preceding patterns","status":"deferred"}
+{"id":95,"round":2,"bucket":"join-E","theme":"fusion","idea":"dxm + intent rules per-rule hit rate","status":"deferred"}
+{"id":96,"round":2,"bucket":"join-E","theme":"fusion","idea":"trace + git history commit-to-activity","status":"deferred"}
+{"id":97,"round":2,"bucket":"join-E","theme":"fusion","idea":"dxm + session-mode tool-mix delta","status":"deferred"}
+{"id":98,"round":2,"bucket":"join-E","theme":"fusion","idea":"trace + memory writes feature contribution","status":"deferred"}
+{"id":99,"round":2,"bucket":"join-E","theme":"fusion","idea":"dxm + name-quality bad-named touched-more","status":"deferred"}
+{"id":100,"round":2,"bucket":"join-E","theme":"fusion","idea":"trace + token-bloat per-session weighting","status":"shipped"}
+{"id":101,"round":3,"bucket":"session-F","theme":"agent-meta","idea":"turn-density events per UserPromptSubmit","tier":1,"status":"top-pick"}
+{"id":102,"round":3,"bucket":"session-F","theme":"agent-meta","idea":"prompt-rhythm time between prompts (stuck signal)","tier":1,"status":"top-pick"}
+{"id":103,"round":3,"bucket":"session-F","theme":"agent-meta","idea":"tool-mix per turn (Edit/Bash/Read heavy)","status":"deferred"}
+{"id":104,"round":3,"bucket":"session-F","theme":"agent-meta","idea":"cost-per-turn token distribution","status":"deferred"}
+{"id":105,"round":3,"bucket":"session-F","theme":"agent-meta","idea":"conversation phase detection","status":"deferred"}
+{"id":106,"round":3,"bucket":"session-F","theme":"agent-meta","idea":"turn-to-commit ratio","status":"deferred"}
+{"id":107,"round":3,"bucket":"session-F","theme":"agent-meta","idea":"self-correction count Edit-retry on same file","status":"deferred"}
+{"id":108,"round":3,"bucket":"session-F","theme":"agent-meta","idea":"Read-then-Edit ratio (confidence proxy)","status":"deferred"}
+{"id":109,"round":3,"bucket":"session-F","theme":"agent-meta","idea":"skill-load density per turn","status":"deferred"}
+{"id":110,"round":3,"bucket":"session-F","theme":"agent-meta","idea":"end-of-turn shape (last-N before Stop)","status":"deferred"}
+{"id":111,"round":3,"bucket":"feedback-G","theme":"agent-meta","idea":"redirect detection (actually/wait/no)","status":"deferred"}
+{"id":112,"round":3,"bucket":"feedback-G","theme":"agent-meta","idea":"praise signal (perfect/great/nice)","status":"deferred"}
+{"id":113,"round":3,"bucket":"feedback-G","theme":"agent-meta","idea":"interruption events during in-flight tool","status":"deferred"}
+{"id":114,"round":3,"bucket":"feedback-G","theme":"agent-meta","idea":"question count (prompts ending ?)","status":"deferred"}
+{"id":115,"round":3,"bucket":"feedback-G","theme":"agent-meta","idea":"imperative vs reflective prompts","status":"deferred"}
+{"id":116,"round":3,"bucket":"feedback-G","theme":"agent-meta","idea":"prompt length distribution","status":"deferred"}
+{"id":117,"round":3,"bucket":"feedback-G","theme":"agent-meta","idea":"repeat-keyword unclear delivery signal","status":"deferred"}
+{"id":118,"round":3,"bucket":"feedback-G","theme":"agent-meta","idea":"acceptance latency (turns to yes go)","status":"deferred"}
+{"id":119,"round":3,"bucket":"feedback-G","theme":"agent-meta","idea":"roll-back signals (undo/revert/drop)","status":"deferred"}
+{"id":120,"round":3,"bucket":"feedback-G","theme":"agent-meta","idea":"user-extension signals (also do X)","status":"deferred"}
+{"id":121,"round":3,"bucket":"subagent-H","theme":"agent-meta","idea":"subagent dispatch rate","status":"deferred"}
+{"id":122,"round":3,"bucket":"subagent-H","theme":"agent-meta","idea":"subagent depth (nested layers)","status":"deferred"}
+{"id":123,"round":3,"bucket":"subagent-H","theme":"agent-meta","idea":"subagent cost vs quality","status":"deferred"}
+{"id":124,"round":3,"bucket":"subagent-H","theme":"agent-meta","idea":"subagent isolation audit","status":"deferred"}
+{"id":125,"round":3,"bucket":"subagent-H","theme":"agent-meta","idea":"subagent overlap (same task twice)","status":"deferred"}
+{"id":126,"round":3,"bucket":"subagent-H","theme":"agent-meta","idea":"subagent completion rate","status":"deferred"}
+{"id":127,"round":3,"bucket":"subagent-H","theme":"agent-meta","idea":"subagent type-usage distribution","status":"deferred"}
+{"id":128,"round":3,"bucket":"subagent-H","theme":"agent-meta","idea":"parent-subagent context transfer cost","status":"deferred"}
+{"id":129,"round":3,"bucket":"subagent-H","theme":"agent-meta","idea":"SubagentStop next-event pattern","status":"deferred"}
+{"id":130,"round":3,"bucket":"subagent-H","theme":"agent-meta","idea":"subagent vs in-process tradeoff","status":"deferred"}
+{"id":131,"round":3,"bucket":"longitudinal-I","theme":"cross-session","idea":"returning-user signals","status":"deferred"}
+{"id":132,"round":3,"bucket":"longitudinal-I","theme":"cross-session","idea":"session-mode evolution","status":"deferred"}
+{"id":133,"round":3,"bucket":"longitudinal-I","theme":"cross-session","idea":"skill drift load-count over time","status":"deferred"}
+{"id":134,"round":3,"bucket":"longitudinal-I","theme":"cross-session","idea":"bin-adoption curve","status":"deferred"}
+{"id":135,"round":3,"bucket":"longitudinal-I","theme":"cross-session","idea":"feature-deprecation candidates no-fire N sessions","status":"deferred"}
+{"id":136,"round":3,"bucket":"longitudinal-I","theme":"cross-session","idea":"pattern memorisation fix repeat","status":"deferred"}
+{"id":137,"round":3,"bucket":"longitudinal-I","theme":"cross-session","idea":"memory recall rate","status":"deferred"}
+{"id":138,"round":3,"bucket":"longitudinal-I","theme":"cross-session","idea":"persona top-belief utilization","status":"deferred"}
+{"id":139,"round":3,"bucket":"longitudinal-I","theme":"cross-session","idea":"handoff effectiveness resume vs cold-start","status":"deferred"}
+{"id":140,"round":3,"bucket":"longitudinal-I","theme":"cross-session","idea":"brain growth rate notes/persona deltas","status":"deferred"}
+{"id":141,"round":3,"bucket":"failure-J","theme":"agent-meta","idea":"silent-fail detection hook-returned-empty","tier":1,"status":"top-pick"}
+{"id":142,"round":3,"bucket":"failure-J","theme":"agent-meta","idea":"empty-tool-result tracking","status":"deferred"}
+{"id":143,"round":3,"bucket":"failure-J","theme":"agent-meta","idea":"tool-error catalog top-N","status":"deferred"}
+{"id":144,"round":3,"bucket":"failure-J","theme":"agent-meta","idea":"iron-law violation introduction rate","status":"deferred"}
+{"id":145,"round":3,"bucket":"failure-J","theme":"agent-meta","idea":"test-flake detection intermittent","status":"deferred"}
+{"id":146,"round":3,"bucket":"failure-J","theme":"agent-meta","idea":"commit-revert rate","status":"deferred"}
+{"id":147,"round":3,"bucket":"failure-J","theme":"agent-meta","idea":"plan-deviation rate","status":"deferred"}
+{"id":148,"round":3,"bucket":"failure-J","theme":"agent-meta","idea":"Stop-hook block rate","status":"deferred"}
+{"id":149,"round":3,"bucket":"failure-J","theme":"agent-meta","idea":"permission-prompt frequency catalog","status":"deferred"}
+{"id":150,"round":3,"bucket":"failure-J","theme":"agent-meta","idea":"cache-hit rate (skill/context)","status":"deferred"}
+{"id":151,"round":4,"bucket":"substrate-K","theme":"streams-SSOT","idea":"append-to universal pattern across emitters","tier":1,"status":"top-pick"}
+{"id":152,"round":4,"bucket":"substrate-K","theme":"streams-SSOT","idea":"generic kaizen-stream <source> append-to <target>","status":"deferred"}
+{"id":153,"round":4,"bucket":"substrate-K","theme":"streams-SSOT","idea":"stream join CLI trace+dxm on session_id","tier":1,"status":"top-pick"}
+{"id":154,"round":4,"bucket":"substrate-K","theme":"streams-SSOT","idea":"stream pipe trace|bloat correlate","status":"deferred"}
+{"id":155,"round":4,"bucket":"substrate-K","theme":"streams-SSOT","idea":"uniform window flags across emitters","status":"deferred"}
+{"id":156,"round":4,"bucket":"substrate-K","theme":"streams-SSOT","idea":"format adapters md/jsonl/csv/human","status":"deferred"}
+{"id":157,"round":4,"bucket":"substrate-K","theme":"streams-SSOT","idea":"--where filter DSL","status":"deferred"}
+{"id":158,"round":4,"bucket":"substrate-K","theme":"streams-SSOT","idea":"stream tee fan-out","status":"deferred"}
+{"id":159,"round":4,"bucket":"substrate-K","theme":"streams-SSOT","idea":"--follow tail-and-follow live","status":"deferred"}
+{"id":160,"round":4,"bucket":"substrate-K","theme":"streams-SSOT","idea":"--max-rate backpressure","status":"deferred"}
+{"id":161,"round":4,"bucket":"axis-as-query-L","theme":"streams-SSOT","idea":"axis-as-yaml + generic runner","tier":1,"status":"top-pick"}
+{"id":162,"round":4,"bucket":"axis-as-query-L","theme":"streams-SSOT","idea":"coverage delta N-th vs latest","status":"deferred"}
+{"id":163,"round":4,"bucket":"axis-as-query-L","theme":"streams-SSOT","idea":"trend sparkline per axis","status":"deferred"}
+{"id":164,"round":4,"bucket":"axis-as-query-L","theme":"streams-SSOT","idea":"auto-promote stable axis lower frequency","status":"deferred"}
+{"id":165,"round":4,"bucket":"axis-as-query-L","theme":"streams-SSOT","idea":"auto-fire spike additionalContext","status":"deferred"}
+{"id":166,"round":4,"bucket":"axis-as-query-L","theme":"streams-SSOT","idea":"coverage event stream <axis>.scanned","status":"deferred"}
+{"id":167,"round":4,"bucket":"axis-as-query-L","theme":"streams-SSOT","idea":"coverage rubric yaml-driven scoring","status":"deferred"}
+{"id":168,"round":4,"bucket":"axis-as-query-L","theme":"streams-SSOT","idea":"per-axis token budget","status":"deferred"}
+{"id":169,"round":4,"bucket":"axis-as-query-L","theme":"streams-SSOT","idea":"debt curve accumulate vs pay-down","status":"deferred"}
+{"id":170,"round":4,"bucket":"axis-as-query-L","theme":"streams-SSOT","idea":"cross-axis correlation matrix","status":"deferred"}
+{"id":171,"round":4,"bucket":"radical-M","theme":"streams-SSOT","idea":"findings ARE events not files","status":"radical"}
+{"id":172,"round":4,"bucket":"radical-M","theme":"streams-SSOT","idea":"plans ARE event projections","status":"radical"}
+{"id":173,"round":4,"bucket":"radical-M","theme":"streams-SSOT","idea":"CHANGELOG IS a trace projection","status":"radical"}
+{"id":174,"round":4,"bucket":"radical-M","theme":"streams-SSOT","idea":"backlog IS a query of .candidate events","status":"radical"}
+{"id":175,"round":4,"bucket":"radical-M","theme":"streams-SSOT","idea":"tests ARE replayed event sequences","status":"radical"}
+{"id":176,"round":4,"bucket":"radical-M","theme":"streams-SSOT","idea":"handoff IS a stream snapshot","status":"radical"}
+{"id":177,"round":4,"bucket":"radical-M","theme":"streams-SSOT","idea":"persona IS a slow aggregation","status":"radical"}
+{"id":178,"round":4,"bucket":"radical-M","theme":"streams-SSOT","idea":"audit reports ARE stream filters","status":"radical"}
+{"id":179,"round":4,"bucket":"radical-M","theme":"streams-SSOT","idea":"architecture-log IS commit-event projection","status":"radical"}
+{"id":180,"round":4,"bucket":"radical-M","theme":"streams-SSOT","idea":"skill suggestions ARE intent-event matches","status":"radical"}
+{"id":181,"round":4,"bucket":"mining-N","theme":"patterns","idea":"frequent-itemset Apriori on tool 3-grams","status":"research"}
+{"id":182,"round":4,"bucket":"mining-N","theme":"patterns","idea":"z-score anomaly per tool","status":"research"}
+{"id":183,"round":4,"bucket":"mining-N","theme":"patterns","idea":"Markov-chain tool transitions","status":"research"}
+{"id":184,"round":4,"bucket":"mining-N","theme":"patterns","idea":"session clustering by tool-mix vector","status":"research"}
+{"id":185,"round":4,"bucket":"mining-N","theme":"patterns","idea":"hot-edit co-change pairs","status":"research"}
+{"id":186,"round":4,"bucket":"mining-N","theme":"patterns","idea":"sequence-to-feature inference","status":"research"}
+{"id":187,"round":4,"bucket":"mining-N","theme":"patterns","idea":"outlier-feature event signature","status":"research"}
+{"id":188,"round":4,"bucket":"mining-N","theme":"patterns","idea":"causal-inference graph A->B","status":"research"}
+{"id":189,"round":4,"bucket":"mining-N","theme":"patterns","idea":"bottleneck detection longest p95 gap","status":"research"}
+{"id":190,"round":4,"bucket":"mining-N","theme":"patterns","idea":"goldilocks zone per session-mode","status":"research"}
+{"id":191,"round":4,"bucket":"self-O","theme":"self-improvement","idea":"auto-deprecate never-fired K weeks","status":"long-arc"}
+{"id":192,"round":4,"bucket":"self-O","theme":"self-improvement","idea":"auto-promote ad-hoc patterns to skill","status":"long-arc"}
+{"id":193,"round":4,"bucket":"self-O","theme":"self-improvement","idea":"auto-rebalance allocate next iteration","status":"long-arc"}
+{"id":194,"round":4,"bucket":"self-O","theme":"self-improvement","idea":"auto-budget predict session spend","status":"long-arc"}
+{"id":195,"round":4,"bucket":"self-O","theme":"self-improvement","idea":"auto-handoff cause-of-death log","status":"long-arc"}
+{"id":196,"round":4,"bucket":"self-O","theme":"self-improvement","idea":"auto-coverage-axis from repeating bugs","status":"long-arc"}
+{"id":197,"round":4,"bucket":"self-O","theme":"self-improvement","idea":"auto-skill-suggest from phrase-load pairs","status":"long-arc"}
+{"id":198,"round":4,"bucket":"self-O","theme":"self-improvement","idea":"auto-intent-rule from phrase clusters","status":"long-arc"}
+{"id":199,"round":4,"bucket":"self-O","theme":"self-improvement","idea":"auto-rubric from frequent decisions","status":"long-arc"}
+{"id":200,"round":4,"bucket":"self-O","theme":"self-improvement","idea":"auto-test from known-good replay","status":"long-arc"}
+{"id":201,"round":5,"bucket":"sql-P","theme":"DuckDB","idea":"kaizen-sql DuckDB wrapper over JSONL","tier":1,"tools":["duckdb"],"status":"top-pick"}
+{"id":202,"round":5,"bucket":"sql-P","theme":"DuckDB","idea":"pre-built views latest_session / tool_calls_today","status":"deferred"}
+{"id":203,"round":5,"bucket":"sql-P","theme":"DuckDB","idea":"JSONL-as-table for trace/dxm/bloat history","status":"deferred"}
+{"id":204,"round":5,"bucket":"sql-P","theme":"DuckDB","idea":"cross-stream JOIN via SQL","status":"deferred"}
+{"id":205,"round":5,"bucket":"sql-P","theme":"DuckDB","idea":"window-function cumulative cost","status":"deferred"}
+{"id":206,"round":5,"bucket":"sql-P","theme":"DuckDB","idea":"CTE multi-stage reports","status":"deferred"}
+{"id":207,"round":5,"bucket":"sql-P","theme":"DuckDB","idea":"materialised views slow queries","status":"deferred"}
+{"id":208,"round":5,"bucket":"sql-P","theme":"DuckDB","idea":"SQL-driven coverage axes","status":"deferred"}
+{"id":209,"round":5,"bucket":"sql-P","theme":"DuckDB","idea":"time_bucket hourly daily rollups","status":"deferred"}
+{"id":210,"round":5,"bucket":"sql-P","theme":"DuckDB","idea":"approx_quantile p95 dashboards","status":"deferred"}
+{"id":211,"round":5,"bucket":"sql-P","theme":"DuckDB","idea":"EXPLAIN auto for slow queries","status":"deferred"}
+{"id":212,"round":5,"bucket":"sql-P","theme":"DuckDB","idea":"kaizen-sql shell REPL","status":"deferred"}
+{"id":213,"round":5,"bucket":"sql-P","theme":"DuckDB","idea":"SQL to markdown report renderer","status":"deferred"}
+{"id":214,"round":5,"bucket":"sql-P","theme":"DuckDB","idea":"per-session VIEW snapshot","status":"deferred"}
+{"id":215,"round":5,"bucket":"sql-P","theme":"DuckDB","idea":"Parquet long-term archive COPY","status":"deferred"}
+{"id":216,"round":5,"bucket":"radon-Q","theme":"complexity","idea":"kaizen-complexity cyclomatic via radon cc","tier":1,"tools":["radon"],"status":"top-pick"}
+{"id":217,"round":5,"bucket":"radon-Q","theme":"complexity","idea":"MI per file via radon mi","status":"deferred"}
+{"id":218,"round":5,"bucket":"radon-Q","theme":"complexity","idea":"Halstead volume/effort","status":"deferred"}
+{"id":219,"round":5,"bucket":"radon-Q","theme":"complexity","idea":"CC SUB_GATE advisory","status":"deferred"}
+{"id":220,"round":5,"bucket":"radon-Q","theme":"complexity","idea":"CC trend over time","status":"deferred"}
+{"id":221,"round":5,"bucket":"radon-Q","theme":"complexity","idea":"CC vs test-coverage correlation","status":"deferred"}
+{"id":222,"round":5,"bucket":"radon-Q","theme":"complexity","idea":"CC vs bloat correlation","status":"deferred"}
+{"id":223,"round":5,"bucket":"radon-Q","theme":"complexity","idea":"per-feature CC budget","status":"deferred"}
+{"id":224,"round":5,"bucket":"radon-Q","theme":"complexity","idea":"function-length histogram","status":"deferred"}
+{"id":225,"round":5,"bucket":"radon-Q","theme":"complexity","idea":"LCOM class cohesion","status":"deferred"}
+{"id":226,"round":5,"bucket":"radon-Q","theme":"complexity","idea":"import-fanout dep complexity","status":"deferred"}
+{"id":227,"round":5,"bucket":"radon-Q","theme":"complexity","idea":"PR CC gate","status":"deferred"}
+{"id":228,"round":5,"bucket":"radon-Q","theme":"complexity","idea":"big-bang refactor candidates top-N","status":"deferred"}
+{"id":229,"round":5,"bucket":"radon-Q","theme":"complexity","idea":"dead-complexity radon+vulture+trace","status":"deferred"}
+{"id":230,"round":5,"bucket":"radon-Q","theme":"complexity","idea":"hotspot CC times churn","status":"deferred"}
+{"id":231,"round":5,"bucket":"viz-R","theme":"render","idea":"statusline live cost + bloat","status":"deferred"}
+{"id":232,"round":5,"bucket":"viz-R","theme":"render","idea":"ASCII sparkline trends","status":"deferred"}
+{"id":233,"round":5,"bucket":"viz-R","theme":"render","idea":"Sankey diagram tool-chain","status":"deferred"}
+{"id":234,"round":5,"bucket":"viz-R","theme":"render","idea":"heatmap PNG hour x day x tool","status":"deferred"}
+{"id":235,"round":5,"bucket":"viz-R","theme":"render","idea":"timeline graph per session","status":"deferred"}
+{"id":236,"round":5,"bucket":"viz-R","theme":"render","idea":"Mermaid from rubric YAML","status":"deferred"}
+{"id":237,"round":5,"bucket":"viz-R","theme":"render","idea":"colour terminal tables rich/tabulate","status":"deferred"}
+{"id":238,"round":5,"bucket":"viz-R","theme":"render","idea":"HTML report bundle build","status":"deferred"}
+{"id":239,"round":5,"bucket":"viz-R","theme":"render","idea":"live dashboard server","status":"deferred"}
+{"id":240,"round":5,"bucket":"viz-R","theme":"render","idea":"visual snapshot diff","status":"deferred"}
+{"id":241,"round":5,"bucket":"viz-R","theme":"render","idea":"file-touch frequency heatmap","status":"deferred"}
+{"id":242,"round":5,"bucket":"viz-R","theme":"render","idea":"skill-load co-occurrence graphviz","status":"deferred"}
+{"id":243,"round":5,"bucket":"viz-R","theme":"render","idea":"cost-gauge glyph statusline","status":"deferred"}
+{"id":244,"round":5,"bucket":"viz-R","theme":"render","idea":"per-prompt cost mini-table","status":"deferred"}
+{"id":245,"round":5,"bucket":"viz-R","theme":"render","idea":"end-of-session card","status":"deferred"}
+{"id":246,"round":5,"bucket":"ci-S","theme":"infra","idea":"GH Actions kaizen gatekeeper annotations","status":"deferred"}
+{"id":247,"round":5,"bucket":"ci-S","theme":"infra","idea":"pre-commit framework integration","status":"deferred"}
+{"id":248,"round":5,"bucket":"ci-S","theme":"infra","idea":"PR coverage-delta comment bot","status":"deferred"}
+{"id":249,"round":5,"bucket":"ci-S","theme":"infra","idea":"auto-label PRs by feature changed","status":"deferred"}
+{"id":250,"round":5,"bucket":"ci-S","theme":"infra","idea":"kaizen-bench latency baselines","status":"deferred"}
+{"id":251,"round":5,"bucket":"ci-S","theme":"infra","idea":"failure-replay artifact upload","status":"deferred"}
+{"id":252,"round":5,"bucket":"ci-S","theme":"infra","idea":"PR token-bloat report comment","status":"deferred"}
+{"id":253,"round":5,"bucket":"ci-S","theme":"infra","idea":"snapshot-diff bot for plan files","status":"deferred"}
+{"id":254,"round":5,"bucket":"ci-S","theme":"infra","idea":"branch protection red-gate blocks","status":"deferred"}
+{"id":255,"round":5,"bucket":"ci-S","theme":"infra","idea":"dependabot equivalent for vendored skills","status":"deferred"}
+{"id":256,"round":5,"bucket":"ci-S","theme":"infra","idea":"auto-publish to marketplace on tag","status":"deferred"}
+{"id":257,"round":5,"bucket":"ci-S","theme":"infra","idea":"release-notes generator","status":"deferred"}
+{"id":258,"round":5,"bucket":"ci-S","theme":"infra","idea":"CI hook health-check","status":"deferred"}
+{"id":259,"round":5,"bucket":"ci-S","theme":"infra","idea":"CI MCP smoke-test","status":"deferred"}
+{"id":260,"round":5,"bucket":"ci-S","theme":"infra","idea":"cross-OS matrix linux/mac/win","status":"deferred"}
+{"id":261,"round":5,"bucket":"multiuser-T","theme":"collab","idea":"per-user session-mode prefs","status":"deferred"}
+{"id":262,"round":5,"bucket":"multiuser-T","theme":"collab","idea":"shared team brain overlays","status":"deferred"}
+{"id":263,"round":5,"bucket":"multiuser-T","theme":"collab","idea":"pair-coding session linking","status":"deferred"}
+{"id":264,"round":5,"bucket":"multiuser-T","theme":"collab","idea":"code-review handoff","status":"deferred"}
+{"id":265,"round":5,"bucket":"multiuser-T","theme":"collab","idea":"conflict detection kaizen.toml","status":"deferred"}
+{"id":266,"round":5,"bucket":"multiuser-T","theme":"collab","idea":"team-wide axis pinning","status":"deferred"}
+{"id":267,"round":5,"bucket":"multiuser-T","theme":"collab","idea":"per-user inbox routing","status":"deferred"}
+{"id":268,"round":5,"bucket":"multiuser-T","theme":"collab","idea":"per-user audit log","status":"deferred"}
+{"id":269,"round":5,"bucket":"multiuser-T","theme":"collab","idea":"perm-grant approval workflow","status":"deferred"}
+{"id":270,"round":5,"bucket":"multiuser-T","theme":"collab","idea":"cross-user backlog","status":"deferred"}
+{"id":271,"round":5,"bucket":"multiuser-T","theme":"collab","idea":"shared metric dashboards","status":"deferred"}
+{"id":272,"round":5,"bucket":"multiuser-T","theme":"collab","idea":"per-user iron-law overrides","status":"deferred"}
+{"id":273,"round":5,"bucket":"multiuser-T","theme":"collab","idea":"mentor/junior roles","status":"deferred"}
+{"id":274,"round":5,"bucket":"multiuser-T","theme":"collab","idea":"brain-export knowledge handoff","status":"deferred"}
+{"id":275,"round":5,"bucket":"multiuser-T","theme":"collab","idea":"team retrospective generator","status":"deferred"}
+{"id":276,"round":5,"bucket":"privacy-U","theme":"safety","idea":"auto-redact secrets in trace events","status":"deferred"}
+{"id":277,"round":5,"bucket":"privacy-U","theme":"safety","idea":"per-event PII tagger","status":"deferred"}
+{"id":278,"round":5,"bucket":"privacy-U","theme":"safety","idea":"redaction profile per surface","status":"deferred"}
+{"id":279,"round":5,"bucket":"privacy-U","theme":"safety","idea":"network-egress trace","status":"deferred"}
+{"id":280,"round":5,"bucket":"privacy-U","theme":"safety","idea":"SBOM-style MCP reach audit","status":"deferred"}
+{"id":281,"round":5,"bucket":"privacy-U","theme":"safety","idea":"hash-only event storage","status":"deferred"}
+{"id":282,"round":5,"bucket":"privacy-U","theme":"safety","idea":"local-only mode block network MCPs","status":"deferred"}
+{"id":283,"round":5,"bucket":"privacy-U","theme":"safety","idea":"time-limited brain notes auto-expire","status":"deferred"}
+{"id":284,"round":5,"bucket":"privacy-U","theme":"safety","idea":"per-skill data classification","status":"deferred"}
+{"id":285,"round":5,"bucket":"privacy-U","theme":"safety","idea":"encrypted trace storage option","status":"deferred"}
+{"id":286,"round":5,"bucket":"privacy-U","theme":"safety","idea":"audit-log hash-chain immutability","status":"deferred"}
+{"id":287,"round":5,"bucket":"privacy-U","theme":"safety","idea":"sandbox profile per untrusted skill","status":"deferred"}
+{"id":288,"round":5,"bucket":"privacy-U","theme":"safety","idea":"network-egress allowlist","status":"deferred"}
+{"id":289,"round":5,"bucket":"privacy-U","theme":"safety","idea":"memory cleanse on logout","status":"deferred"}
+{"id":290,"round":5,"bucket":"privacy-U","theme":"safety","idea":"per-project data residency boundaries","status":"deferred"}
+{"id":291,"round":5,"bucket":"cost-V","theme":"telemetry","idea":"per-tool token cost coefficient table","status":"deferred"}
+{"id":292,"round":5,"bucket":"cost-V","theme":"telemetry","idea":"per-session USD estimate via pricing","status":"deferred"}
+{"id":293,"round":5,"bucket":"cost-V","theme":"telemetry","idea":"burn-rate alert tokens/min","status":"deferred"}
+{"id":294,"round":5,"bucket":"cost-V","theme":"telemetry","idea":"cost forecast from rolling rate","status":"deferred"}
+{"id":295,"round":5,"bucket":"cost-V","theme":"telemetry","idea":"most-expensive tool calls top-N","status":"deferred"}
+{"id":296,"round":5,"bucket":"cost-V","theme":"telemetry","idea":"per-feature cost attribution","status":"deferred"}
+{"id":297,"round":5,"bucket":"cost-V","theme":"telemetry","idea":"cost-vs-value heatmap","status":"deferred"}
+{"id":298,"round":5,"bucket":"cost-V","theme":"telemetry","idea":"per-month cost rollup","status":"deferred"}
+{"id":299,"round":5,"bucket":"cost-V","theme":"telemetry","idea":"cost-regression detector vs lifetime","status":"deferred"}
+{"id":300,"round":5,"bucket":"cost-V","theme":"telemetry","idea":"compact suggestion when over threshold","status":"deferred"}
