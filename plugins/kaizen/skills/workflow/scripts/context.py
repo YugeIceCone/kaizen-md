@@ -71,6 +71,57 @@ def zone_of(pct: int | None) -> str:
     return "red"
 
 
+def get_tokens_from_jsonl(cwd_path=None):
+    """Read latest assistant turn's usage from active CC session JSONL.
+    Returns total context tokens (input + cache_creation + cache_read +
+    output) of the most-recent assistant turn, or None when unavailable.
+
+    This is the AUTHORITATIVE source for context-window state — env
+    vars are inconsistent across CC versions; the JSONL is reliable.
+    """
+    import sys as _sys
+    from pathlib import Path as _Path
+    _here = _Path(__file__).resolve().parent
+    _sys.path.insert(0, str(_here))
+    try:
+        import _session_jsonl as _sj
+    except ImportError:
+        return None
+    sid = _sj.discover_active_session_id(cwd_path)
+    if not sid:
+        return None
+    slug = _sj.cwd_to_slug(_Path(cwd_path or ".").resolve())
+    from pathlib import Path as _P
+    jsonl = _P.home() / ".claude" / "projects" / slug / f"{sid}.jsonl"
+    if not jsonl.is_file():
+        return None
+    last_usage = None
+    try:
+        with jsonl.open("r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    o = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                if o.get("type") == "assistant":
+                    usage = (o.get("message") or {}).get("usage")
+                    if isinstance(usage, dict):
+                        last_usage = usage
+    except OSError:
+        return None
+    if last_usage is None:
+        return None
+    return (
+        int(last_usage.get("input_tokens") or 0)
+        + int(last_usage.get("cache_creation_input_tokens") or 0)
+        + int(last_usage.get("cache_read_input_tokens") or 0)
+        + int(last_usage.get("output_tokens") or 0)
+    )
+
+
 def main():
     stdin_text = ""
     if not sys.stdin.isatty():
@@ -79,12 +130,25 @@ def main():
         except (OSError, ValueError):
             pass
 
+    cmd = sys.argv[1] if len(sys.argv) > 1 else "show"
+
+    # from-jsonl source: derive tokens from the active session JSONL
+    # (the authoritative source — env vars are inconsistent)
+    if cmd == "from-jsonl":
+        tokens = get_tokens_from_jsonl()
+        limit = get_limit()
+        pct = (tokens * 100 // limit) if tokens is not None else None
+        z = zone_of(pct)
+        print(json.dumps({
+            "tokens": tokens, "limit": limit, "pct": pct, "zone": z,
+            "source": "jsonl",
+        }, indent=2))
+        return
+
     tokens = get_tokens(stdin_text)
     limit = get_limit()
     pct = (tokens * 100 // limit) if tokens is not None else None
     z = zone_of(pct)
-
-    cmd = sys.argv[1] if len(sys.argv) > 1 else "show"
 
     if cmd == "show":
         if tokens is None:
