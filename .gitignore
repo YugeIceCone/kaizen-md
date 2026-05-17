@@ -28,3 +28,8 @@ gwtest-*/
 # settings.json edits). Format: <name>.bak-<UTC>.<ext> or similar.
 *.bak-*
 *.bak.[0-9]*
+
+# kaizen audit reports — auto-regenerated session artifacts.
+# Already-tracked reports stay tracked (git ignores ignore rules for
+# tracked files); only new reports are excluded.
+.kaizen/workflow/audits/*.md
