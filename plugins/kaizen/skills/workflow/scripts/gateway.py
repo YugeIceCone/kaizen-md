@@ -75,6 +75,8 @@ SUBSERVERS: list[tuple[str, str]] = [
     # Phase 6 — quality axes (frontmatter / coverage / name-quality /
     #           schema-coverage / slash-collision)
     ("quality", "quality_mcp"),
+    # Phase 7 — stack detection
+    ("detect_stack", "detect_stack_mcp"),
 ]
 
 gw = FastMCP("kaizen")
