@@ -473,6 +473,78 @@ class TestSessionStateFile(unittest.TestCase):
         self.assertEqual(r.stdout.strip(), str(self.state_file))
 
 
+class TestProjectAwarePath(unittest.TestCase):
+    """Default location: $KAIZEN_DIR/token-bloat/<project-slug>/{session.md,history.jsonl}.
+    User-global storage + per-project slugging."""
+
+    def setUp(self):
+        sys.path.insert(0, str(_KZ_DIR / "skills/workflow/scripts"))
+        if "token_bloat" in sys.modules:
+            del sys.modules["token_bloat"]
+        import token_bloat as tb
+        self.tb = tb
+        self._tmp = tempfile.TemporaryDirectory()
+        self.tmp = Path(self._tmp.name)
+        # Build a fake project with .git so _project_root resolves to it
+        self.proj = self.tmp / "fake-project"
+        (self.proj / ".git").mkdir(parents=True)
+        # KAIZEN_DIR points at our temp home so paths land in tmp
+        self._orig_env: dict[str, str | None] = {}
+        for k in ("KAIZEN_DIR", "KAIZEN_BLOAT_SESSION_FILE",
+                   "KAIZEN_BLOAT_HISTORY_FILE"):
+            self._orig_env[k] = os.environ.get(k)
+            os.environ.pop(k, None)
+        os.environ["KAIZEN_DIR"] = str(self.tmp / "kaizen")
+        self._cwd0 = os.getcwd()
+        os.chdir(self.proj)
+
+    def tearDown(self):
+        os.chdir(self._cwd0)
+        for k, v in self._orig_env.items():
+            if v is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = v
+        self._tmp.cleanup()
+
+    def test_session_path_uses_kaizen_dir_and_slug(self):
+        # Re-import to pick up env
+        if "token_bloat" in sys.modules:
+            del sys.modules["token_bloat"]
+        import token_bloat as tb
+        p = tb._session_state_path()
+        # Under $KAIZEN_DIR/token-bloat/<slug>/session.md
+        self.assertEqual(p.parent.parent, Path(os.environ["KAIZEN_DIR"]) / "token-bloat")
+        self.assertEqual(p.name, "session.md")
+        # Slug encodes the project root
+        slug = p.parent.name
+        self.assertIn("fake-project", slug)
+
+    def test_history_path_lives_beside_snapshot(self):
+        if "token_bloat" in sys.modules:
+            del sys.modules["token_bloat"]
+        import token_bloat as tb
+        snap = tb._session_state_path()
+        hist = tb._session_history_path()
+        self.assertEqual(snap.parent, hist.parent)
+        self.assertEqual(hist.name, "history.jsonl")
+
+    def test_session_subcommand_returns_user_global_path(self):
+        r = _run("session")  # no env overrides
+        self.assertEqual(r.returncode, 0)
+        out = r.stdout.strip()
+        self.assertIn(os.environ["KAIZEN_DIR"], out)
+        self.assertIn("token-bloat", out)
+
+    def test_explicit_session_file_env_still_wins(self):
+        """KAIZEN_BLOAT_SESSION_FILE override keeps working."""
+        custom = self.tmp / "custom-session.md"
+        env = {"KAIZEN_DIR": str(self.tmp / "kaizen"),
+                "KAIZEN_BLOAT_SESSION_FILE": str(custom)}
+        r = _run("session", env=env)
+        self.assertEqual(r.stdout.strip(), str(custom))
+
+
 class TestSessionStateSurvival(unittest.TestCase):
     """Continuity + survival: snapshot is atomic; history JSONL grows;
     snapshot regenerable from history if lost."""

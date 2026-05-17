@@ -578,26 +578,68 @@ def _write_cache(findings: list[dict]) -> None:
     p.write_text(json.dumps(payload, indent=2), encoding="utf-8")
 
 
-def _session_state_path() -> Path:
-    """Per-project session-scoped state file with actionable line ranges.
-    Lives in the project's .kaizen/ (not user-global) so each repo's
-    state is independent. Override via KAIZEN_BLOAT_SESSION_FILE."""
-    env = os.environ.get("KAIZEN_BLOAT_SESSION_FILE")
+def _kaizen_dir() -> Path:
+    env = os.environ.get("KAIZEN_DIR")
     if env:
         return Path(os.path.expandvars(env)).expanduser()
-    # Walk up from cwd to find repo root (.git or .kaizen marker)
+    return Path.home() / ".claude" / ".kaizen"
+
+
+def _project_root() -> Path:
+    """Walk up cwd to find the repo root (.git or .kaizen marker).
+    Falls back to cwd when neither marker exists (works under bare dirs)."""
     cwd = Path.cwd()
     for parent in [cwd, *cwd.parents]:
         if (parent / ".kaizen").is_dir() or (parent / ".git").is_dir():
-            return parent / ".kaizen" / "session-token-bloat.md"
-    return cwd / ".kaizen" / "session-token-bloat.md"
+            return parent
+    return cwd
+
+
+def _project_slug() -> str:
+    """`/home/u/repo` → `-home-u-repo` — same shape as CC's
+    `~/.claude/projects/<slug>/`. Reused from _session_jsonl when
+    available; otherwise a self-contained re-impl."""
+    root = _project_root()
+    try:
+        sys.path.insert(0, str(_SCRIPT_DIR))
+        import _session_jsonl as _sj
+        return _sj.cwd_to_slug(root)
+    except ImportError:
+        return str(root.resolve()).replace("/", "-")
+
+
+def _bloat_dir() -> Path:
+    """Per-project token-bloat dir under the user-global $KAIZEN_DIR.
+
+    Layout (project-aware):
+      $KAIZEN_DIR/token-bloat/<project-slug>/session.md
+      $KAIZEN_DIR/token-bloat/<project-slug>/history.jsonl
+
+    Survives `git clean` / repo wipe / fresh clone. Multiple repos
+    coexist without clobbering."""
+    return _kaizen_dir() / "token-bloat" / _project_slug()
+
+
+def _session_state_path() -> Path:
+    """Per-project state file. Override via KAIZEN_BLOAT_SESSION_FILE
+    (full path; useful for tests / one-off redirection)."""
+    env = os.environ.get("KAIZEN_BLOAT_SESSION_FILE")
+    if env:
+        return Path(os.path.expandvars(env)).expanduser()
+    return _bloat_dir() / "session.md"
 
 
 def _session_history_path() -> Path:
-    """Continuous JSONL history alongside the .md snapshot — one line per
-    scan. Snapshot is regenerable from the last history entry, so the
-    pair survives any single-file loss."""
-    return _session_state_path().with_suffix(".history.jsonl")
+    """Continuous JSONL history. Sibling of the snapshot.
+    Override via KAIZEN_BLOAT_HISTORY_FILE (full path)."""
+    env = os.environ.get("KAIZEN_BLOAT_HISTORY_FILE")
+    if env:
+        return Path(os.path.expandvars(env)).expanduser()
+    # When KAIZEN_BLOAT_SESSION_FILE is set without a paired history env,
+    # derive the history from the snapshot path (back-compat with tests).
+    if os.environ.get("KAIZEN_BLOAT_SESSION_FILE"):
+        return _session_state_path().with_suffix(".history.jsonl")
+    return _bloat_dir() / "history.jsonl"
 
 
 def _history_max_mb() -> int:
