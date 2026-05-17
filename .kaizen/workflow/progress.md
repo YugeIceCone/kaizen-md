@@ -33,3 +33,4 @@
 | 2026-05-17 | fix      | +25    | BK-014 — precompact-snapshot.sh runs backup sync + emits honest systemMessage with real tarball path (was backgrounded `&` + wrong hardcoded path) |
 | 2026-05-17 | feat     | +85    | BK-015 — context.get_usage_summary peak-aware reader (walks all assistant turns, detects compact via isCompactSummary marker, returns current+peak+peak_pre_compact+compact_count) |
 | 2026-05-17 | feat     | +35    | context_notifier consumes BK-015 — payload + envelope now include peak_tokens, peak_pct, peak_pre_compact, compact_count (post-compact red-zone signal survives current-zone drop) |
+| 2026-05-17 | fix      | +5     | handoff verify — skip pattern_check for narrative bullets (em-dash separator). Real-world: 8 stale false-positives → 0 against handoff #8 |

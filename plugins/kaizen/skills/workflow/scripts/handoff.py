@@ -314,8 +314,19 @@ def _check_files(parsed: dict, repo_root: Path) -> list[dict]:
     return out
 
 
+def _is_narrative_bullet(text: str) -> bool:
+    """Heuristic: handoff worked/failed bullets following the
+    'identifier — explanation' convention (em-dash separator) are
+    session-discovery notes, not code patterns. Grep'ing them against
+    the codebase always yields 0 hits and produces false-positive
+    stale warns. Skip them in pattern_checks."""
+    return " — " in text
+
+
 def _check_patterns(parsed: dict, repo_root: Path) -> list[dict]:
-    """pattern-still-present (worked) + failed-pattern-reintroduced (failed)."""
+    """pattern-still-present (worked) + failed-pattern-reintroduced
+    (failed). Narrative bullets (em-dash separator) are skipped — they
+    were never code patterns, so verify can't meaningfully grep them."""
     out: list[dict] = []
 
     def _grep_count(pattern: str) -> int:
@@ -337,6 +348,8 @@ def _check_patterns(parsed: dict, repo_root: Path) -> list[dict]:
         return total
 
     for pattern in parsed["worked"]:
+        if _is_narrative_bullet(pattern):
+            continue
         hits = _grep_count(pattern)
         if hits > 0:
             out.append({
@@ -350,6 +363,8 @@ def _check_patterns(parsed: dict, repo_root: Path) -> list[dict]:
             })
 
     for pattern in parsed["failed"]:
+        if _is_narrative_bullet(pattern):
+            continue
         hits = _grep_count(pattern)
         if hits > 0:
             out.append({

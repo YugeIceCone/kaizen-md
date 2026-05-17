@@ -219,6 +219,59 @@ class TestVerifyRegression(HandoffVerifyBase):
         self.assertEqual(len(bad), 1)
 
 
+class TestVerifyNarrativeSkipped(HandoffVerifyBase):
+    """Narrative bullets (containing ' — ' em-dash separator) are
+    session-discovery notes, not code patterns. Verify must skip them
+    entirely instead of producing false-positive 'stale' warnings."""
+
+    def test_em_dash_narrative_in_worked_emits_no_pattern_check(self):
+        self._commit({"src/lib.py": "x = 1\n"})
+        yaml_path = self._write_handoff(_make_handoff_yaml(
+            worked=[
+                "TDD-disciplined-handlers — RED-first per feature, often 17+ tests per commit",
+                "DRY-SOLID-KISS-witnessed-in-_dxm_emit — one helper, one-line wiring",
+            ],
+        ))
+        result = self._run("--file", str(yaml_path), "--json")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        env = json.loads(result.stdout)
+        # No pattern checks emitted — both bullets are narrative
+        worked_checks = [c for c in env["data"]["pattern_checks"]
+                         if c["section"] == "worked"]
+        self.assertEqual(worked_checks, [],
+                         f"narrative bullets should produce no pattern_checks, got: {worked_checks}")
+
+    def test_em_dash_narrative_in_failed_emits_no_pattern_check(self):
+        self._commit({"src/lib.py": "x = 1\n"})
+        yaml_path = self._write_handoff(_make_handoff_yaml(
+            failed=[
+                "first-_dxm_emit-wire-broke-84-tests — os.chdir without save-cwd leaked across suites",
+            ],
+        ))
+        result = self._run("--file", str(yaml_path), "--json")
+        env = json.loads(result.stdout)
+        failed_checks = [c for c in env["data"]["pattern_checks"]
+                         if c["section"] == "failed"]
+        self.assertEqual(failed_checks, [])
+
+    def test_mixed_narrative_and_code_pattern_only_code_checked(self):
+        self._commit({"src/oops.py": "def using_deprecated_api(): pass\n"})
+        yaml_path = self._write_handoff(_make_handoff_yaml(
+            failed=[
+                "narrative-bullet — explaining what failed in the prior session",
+                "using_deprecated_api",  # actual code pattern, no em-dash
+            ],
+        ))
+        result = self._run("--file", str(yaml_path), "--json")
+        env = json.loads(result.stdout)
+        failed_checks = [c for c in env["data"]["pattern_checks"]
+                         if c["section"] == "failed"]
+        # Only the code pattern produces a check (and it reintroduces)
+        self.assertEqual(len(failed_checks), 1)
+        self.assertEqual(failed_checks[0]["pattern"], "using_deprecated_api")
+        self.assertEqual(failed_checks[0]["verdict"], "reintroduced")
+
+
 class TestVerifyEnvelopeShape(HandoffVerifyBase):
     def test_output_validates_against_schema(self):
         import schema_cli as lens
