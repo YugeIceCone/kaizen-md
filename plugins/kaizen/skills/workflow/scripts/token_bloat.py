@@ -642,6 +642,22 @@ def _session_history_path() -> Path:
     return _bloat_dir() / "history.jsonl"
 
 
+def _archive_dir() -> Path:
+    """Where rendered .md snapshots get archived per scan. Sibling of
+    the live snapshot. Override via KAIZEN_BLOAT_ARCHIVE_DIR."""
+    env = os.environ.get("KAIZEN_BLOAT_ARCHIVE_DIR")
+    if env:
+        return Path(os.path.expandvars(env)).expanduser()
+    return _session_state_path().parent / "archive"
+
+
+def _archive_path_for(scanned_at: str) -> Path:
+    """Timestamped archive file. Filename matches the history JSONL
+    entry's scanned_at field so they can be cross-referenced by grep."""
+    safe = scanned_at.replace(":", "").replace("-", "").replace("Z", "Z")
+    return _archive_dir() / f"{safe}.md"
+
+
 def _history_max_mb() -> int:
     return _envint("KAIZEN_BLOAT_HISTORY_MAX_MB", 5)
 
@@ -750,6 +766,15 @@ def _render_snapshot(findings: list[dict], scanned_at: str,
     body = "\n".join(lines) + "\n"
     if split_plans:
         body += _render_split_plans_section(split_plans)
+    # Footer link to the archived twin of this snapshot. The reviewer
+    # can `cd archive/ && ls -t` to walk history; each archive is the
+    # rendered snapshot at that scanned_at, linkable to history.jsonl
+    # via the matching timestamp.
+    body += (
+        f"\n---\n"
+        f"# archived: archive/{_archive_path_for(scanned_at).name}\n"
+        f"# history:  history.jsonl  (grep '{scanned_at}' for this scan)\n"
+    )
     return body
 
 
@@ -797,11 +822,21 @@ def _write_session_state(findings: list[dict]) -> None:
     except Exception:
         pass
 
-    # 1) Snapshot — atomic replace (now includes split-plans appendix)
+    # 1) Snapshot — atomic replace (includes split-plans + archive link)
+    rendered = _render_snapshot(findings, scanned_at, split_plans)
     try:
-        atomic_write(snap, _render_snapshot(findings, scanned_at, split_plans))
+        atomic_write(snap, rendered)
     except OSError:
         pass  # never raise from persistence
+
+    # 1b) Archive — atomic timestamped copy of THIS scan's rendered .md.
+    # Lets the reviewer compare snapshots across scans without
+    # re-rendering from history. Cross-referenced to history.jsonl by
+    # matching scanned_at timestamp.
+    try:
+        atomic_write(_archive_path_for(scanned_at), rendered)
+    except OSError:
+        pass
 
     # 2) History — append one JSONL line, rotate if huge
     try:
@@ -868,6 +903,105 @@ def _validate_and_partition(findings: list[dict], root: Path | None = None) -> d
         status = validate_finding(f, root)
         buckets.setdefault(status, []).append(f)
     return buckets
+
+
+_CITATION_RE = re.compile(r"^([^:]+):(\d+)(?:-(\d+))?$")
+
+
+def smart_read(citation: str, root: Path | None = None,
+                 context_lines: int = 0) -> dict:
+    """Read the cited line range from a source file. Returns:
+      {ok, path, start, end, content, error?}
+
+    citation: 'plugins/kaizen/foo.py:42-58' or 'foo.md:10'.
+    context_lines: pad N lines above + below the range (default 0)."""
+    m = _CITATION_RE.match(citation.strip("`"))
+    if not m:
+        return {"ok": False, "error": f"bad citation: {citation!r}",
+                 "path": citation, "start": 0, "end": 0, "content": ""}
+    rel, start_s, end_s = m.group(1), m.group(2), m.group(3)
+    start = int(start_s)
+    end = int(end_s) if end_s else start
+    base = root or _plugin_root()
+    p = base / rel if not Path(rel).is_absolute() else Path(rel)
+    if not p.is_file():
+        # Try cwd-relative as fallback
+        p2 = Path(rel)
+        if p2.is_file():
+            p = p2
+        else:
+            return {"ok": False, "error": f"not found: {p}",
+                     "path": rel, "start": start, "end": end, "content": ""}
+    try:
+        all_lines = p.read_text(encoding="utf-8", errors="ignore").splitlines()
+    except OSError as e:
+        return {"ok": False, "error": str(e), "path": rel,
+                 "start": start, "end": end, "content": ""}
+    pad = max(0, context_lines)
+    lo = max(1, start - pad)
+    hi = min(len(all_lines), end + pad)
+    snippet = "\n".join(
+        f"{i:5d}: {all_lines[i - 1]}"
+        for i in range(lo, hi + 1)
+    )
+    return {
+        "ok":      True,
+        "path":    str(p),
+        "start":   start,
+        "end":     end,
+        "padded_start": lo,
+        "padded_end":   hi,
+        "content": snippet,
+    }
+
+
+def _list_archives() -> list[dict]:
+    """Sorted (newest first) list of archived snapshots with metadata."""
+    d = _archive_dir()
+    if not d.is_dir():
+        return []
+    out = []
+    for p in sorted(d.glob("*.md"), reverse=True):
+        try:
+            st = p.stat()
+            out.append({
+                "path":      str(p),
+                "name":      p.name,
+                "size":      st.st_size,
+                "mtime":     st.st_mtime,
+            })
+        except OSError:
+            continue
+    return out
+
+
+def _cmd_read(args) -> int:
+    """Smart line-read: emit the cited `path:start-end` snippet."""
+    out = smart_read(args.citation, context_lines=args.context)
+    if args.json:
+        print(json.dumps(out, indent=2))
+        return 0 if out.get("ok") else 1
+    if not out.get("ok"):
+        sys.stderr.write(f"[kaizen-token-bloat read] {out.get('error')}\n")
+        return 1
+    print(f"# {out['path']}:{out['start']}-{out['end']}")
+    print(out["content"])
+    return 0
+
+
+def _cmd_archives(args) -> int:
+    archives = _list_archives()
+    if args.json:
+        print(json.dumps(archives, indent=2))
+        return 0
+    if not archives:
+        print("kaizen-token-bloat archives: (empty)")
+        return 0
+    print(f"kaizen-token-bloat archives ({len(archives)}):")
+    for a in archives:
+        kb = a["size"] // 1024
+        print(f"  {a['name']:30s} {kb:>4d}KB  {a['path']}")
+    return 0
 
 
 def _restore_snapshot_from_history() -> bool:
@@ -1369,6 +1503,20 @@ def main(argv=None) -> int:
 
     phi = sub.add_parser("history", help="print history JSONL file path")
     phi.set_defaults(func=lambda a: (print(_session_history_path()), 0)[1])
+
+    pard = sub.add_parser("archives",
+                           help="list timestamped snapshot archives (newest first)")
+    pard.add_argument("--json", action="store_true")
+    pard.set_defaults(func=_cmd_archives)
+
+    prd = sub.add_parser("read",
+                          help="smart line-read: emit the cited `path:start-end` snippet")
+    prd.add_argument("citation",
+                      help="`path:start-end` (e.g. plugins/kaizen/foo.py:42-58)")
+    prd.add_argument("--context", type=int, default=0,
+                      help="pad N lines above + below (default 0)")
+    prd.add_argument("--json", action="store_true")
+    prd.set_defaults(func=_cmd_read)
 
     psp = sub.add_parser("split-plan",
                           help="emit a rubric-driven split plan for one skill (or all oversized)")

@@ -717,6 +717,132 @@ class TestSplitPlan(unittest.TestCase):
         self.assertGreater(len(data), 0)
 
 
+class TestArchiveAndSmartRead(unittest.TestCase):
+    """Each scan archives the rendered snapshot to archive/<ts>.md and
+    the `read` subcommand resolves `path:start-end` citations."""
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.tmp = Path(self._tmp.name)
+        self.snap = self.tmp / "session.md"
+        self.env = {
+            "KAIZEN_DIR":                str(self.tmp),
+            "KAIZEN_BLOAT_SESSION_FILE": str(self.snap),
+        }
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    def test_scan_writes_timestamped_archive(self):
+        _run("scan", "--cache", env=self.env)
+        archives = sorted((self.tmp / "archive").glob("*.md"))
+        self.assertEqual(len(archives), 1)
+
+    def test_two_scans_produce_two_archives(self):
+        _run("scan", "--cache", env=self.env)
+        import time; time.sleep(1.1)  # ensure timestamp granularity
+        _run("scan", "--cache", env=self.env)
+        archives = list((self.tmp / "archive").glob("*.md"))
+        self.assertEqual(len(archives), 2)
+
+    def test_snapshot_footer_links_to_archive(self):
+        _run("scan", "--cache", env=self.env)
+        text = self.snap.read_text()
+        self.assertIn("# archived: archive/", text)
+        self.assertIn("# history:  history.jsonl", text)
+
+    def test_archives_subcommand_lists_them(self):
+        _run("scan", "--cache", env=self.env)
+        r = _run("archives", env=self.env)
+        self.assertEqual(r.returncode, 0)
+        self.assertIn("archives", r.stdout)
+        self.assertIn(".md", r.stdout)
+
+    def test_archives_json_emits_list(self):
+        _run("scan", "--cache", env=self.env)
+        r = _run("archives", "--json", env=self.env)
+        data = json.loads(r.stdout)
+        self.assertIsInstance(data, list)
+        self.assertEqual(len(data), 1)
+        for k in ("path", "name", "size", "mtime"):
+            self.assertIn(k, data[0])
+
+
+class TestSmartRead(unittest.TestCase):
+    """smart_read / `read` subcommand — pure citation → snippet."""
+
+    def setUp(self):
+        sys.path.insert(0, str(_KZ_DIR / "skills/workflow/scripts"))
+        if "token_bloat" in sys.modules:
+            del sys.modules["token_bloat"]
+        import token_bloat as tb
+        self.tb = tb
+        self._tmp = tempfile.TemporaryDirectory()
+        self.root = Path(self._tmp.name)
+        # Build a fixture file with known content
+        self.fixture = self.root / "data.txt"
+        self.fixture.write_text("\n".join(f"line {i}" for i in range(1, 11)))
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    def test_smart_read_range_returns_snippet(self):
+        out = self.tb.smart_read("data.txt:3-5", root=self.root)
+        self.assertTrue(out["ok"])
+        self.assertIn("line 3", out["content"])
+        self.assertIn("line 4", out["content"])
+        self.assertIn("line 5", out["content"])
+        # Line numbers prefixed
+        self.assertIn("    3:", out["content"])
+
+    def test_smart_read_single_line_works(self):
+        out = self.tb.smart_read("data.txt:7", root=self.root)
+        self.assertTrue(out["ok"])
+        self.assertIn("line 7", out["content"])
+        self.assertEqual(out["start"], 7)
+        self.assertEqual(out["end"], 7)
+
+    def test_smart_read_context_pads_above_and_below(self):
+        out = self.tb.smart_read("data.txt:5", root=self.root, context_lines=2)
+        # padded range = 3..7
+        self.assertIn("line 3", out["content"])
+        self.assertIn("line 7", out["content"])
+        self.assertEqual(out["padded_start"], 3)
+        self.assertEqual(out["padded_end"], 7)
+
+    def test_smart_read_bad_citation_returns_error(self):
+        out = self.tb.smart_read("not-a-valid-citation", root=self.root)
+        self.assertFalse(out["ok"])
+        self.assertIn("error", out)
+
+    def test_smart_read_missing_file_returns_error(self):
+        out = self.tb.smart_read("missing.txt:1-3", root=self.root)
+        self.assertFalse(out["ok"])
+
+    def test_read_cli_emits_snippet(self):
+        cwd0 = os.getcwd()
+        os.chdir(self.root)
+        try:
+            r = _run("read", "data.txt:2-4")
+            self.assertEqual(r.returncode, 0, r.stderr)
+            self.assertIn("line 2", r.stdout)
+            self.assertIn("line 4", r.stdout)
+        finally:
+            os.chdir(cwd0)
+
+    def test_read_cli_json_shape(self):
+        cwd0 = os.getcwd()
+        os.chdir(self.root)
+        try:
+            r = _run("read", "data.txt:2-4", "--json")
+            data = json.loads(r.stdout)
+            self.assertTrue(data["ok"])
+            self.assertEqual(data["start"], 2)
+            self.assertEqual(data["end"], 4)
+        finally:
+            os.chdir(cwd0)
+
+
 class TestStaleEntryValidator(unittest.TestCase):
     """Stale / invalid finding detection + prune behavior."""
 
