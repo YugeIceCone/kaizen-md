@@ -61,12 +61,25 @@ done < <(
 )
 ok "shell scripts parse"
 
-# 2. Python scripts parse
+# 2. Python scripts parse.
+# Batched into ONE python3 invocation (loops in Python) instead of
+# one cold-start per file. Pre-fix: ~193 spawns × ~30ms = ~5s. Post-fix:
+# 1 spawn + per-file ast.parse in-process = ~0.25s. The per-file
+# failure path still names the offending file for debuggability.
+_PY_FILES=()
 for f in plugins/kaizen/skills/workflow/scripts/*.py plugins/kaizen/tests/*.py; do
-  [ -f "$f" ] || continue
-  python3 -c "import ast,sys; ast.parse(open(sys.argv[1]).read())" "$f" \
-    || fail "python parse: $f"
+  [ -f "$f" ] && _PY_FILES+=("$f")
 done
+python3 -c "
+import ast, sys
+for p in sys.argv[1:]:
+    try:
+        with open(p) as fh:
+            ast.parse(fh.read())
+    except SyntaxError as e:
+        print(f'python parse: {p}: {e}', file=sys.stderr)
+        sys.exit(1)
+" "${_PY_FILES[@]}" || fail "python parse"
 ok "python scripts parse"
 
 # 3. JSON manifests valid
