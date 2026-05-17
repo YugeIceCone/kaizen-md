@@ -1,0 +1,68 @@
+# kaizen agent-dispatch rubric — picks the right subagent for a task.
+# Validated against domain/schemas/dispatch-rubric.schema.json.
+# Walked via skills/workflow/scripts/schema_cli.py::BucketWalker.
+#
+# Signals are binary (0 = phrase absent, 1 = present). Computed
+# externally by whoever's dispatching — typically by regex over the
+# task description / user prompt:
+#
+#   tdd               — /TDD|test.first|RED.*GREEN/i
+#   multi_phase       — /phase|multi.step|N commits/i
+#   isolated_worktree — /worktree|isolated|isolation/i
+#   review_diff       — /review.*(diff|staged)|verdict|audit/i
+#   karpathy          — /karpathy|complexity|diff.surgeon/i
+#   tech_debt         — /debt|architecture violation|smell/i
+#   backlog           — /backlog|file.*item|track.*work/i
+#   brain_memory      — /memory|brain|notes|consolidate|promote/i
+#   skill_extract     — /skill.*extract|generalize.*pattern|reusable/i
+#
+# First match wins. Bucket value IS the agent name (no separate
+# config.yaml::on_bucket layer — kept KISS).
+
+version: 1
+
+rules:
+  # ─── Multi-phase TDD in a worktree → restricted-Bash implementer ──
+  # The exact shape that bit us this session: general-purpose agent
+  # committed to master + reset --hard to recover. Curated tools fix.
+  - bucket: kaizen-implementer
+    require_all:
+      - {signal: multi_phase, op: "==", value: 1}
+      - {signal: isolated_worktree, op: "==", value: 1}
+
+  # Same shape, less explicit: TDD work in isolation
+  - bucket: kaizen-implementer
+    require_all:
+      - {signal: tdd, op: "==", value: 1}
+      - {signal: isolated_worktree, op: "==", value: 1}
+
+  # ─── Specialised reviewers ───────────────────────────────────────
+  - bucket: kaizen-karpathy-reviewer
+    require_any:
+      - {signal: karpathy, op: "==", value: 1}
+
+  - bucket: kaizen-reviewer
+    require_all:
+      - {signal: review_diff, op: "==", value: 1}
+
+  - bucket: kaizen-debt-auditor
+    require_any:
+      - {signal: tech_debt, op: "==", value: 1}
+
+  # ─── Domain-specific curators ────────────────────────────────────
+  - bucket: kaizen-backlog-curator
+    require_any:
+      - {signal: backlog, op: "==", value: 1}
+
+  - bucket: kaizen-memory-analyst
+    require_any:
+      - {signal: brain_memory, op: "==", value: 1}
+
+  - bucket: kaizen-skill-extractor
+    require_any:
+      - {signal: skill_extract, op: "==", value: 1}
+
+confidence_threshold: 0.85
+
+# When nothing matches, fall back to the catch-all CC agent.
+fallback: general-purpose

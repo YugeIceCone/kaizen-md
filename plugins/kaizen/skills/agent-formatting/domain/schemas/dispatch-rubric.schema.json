@@ -1,0 +1,69 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "kaizen-agent-dispatch-rubric",
+  "title": "kaizen agent-dispatch rubric (BucketWalker)",
+  "description": "First-match-wins rules mapping task-description signals to a subagent name. Signals are binary (0/1) — computed by regex over the user prompt or task brief. Bucket value IS the agent's `name:` field (no separate config layer). Walked via schema_cli.BucketWalker.",
+  "type": "object",
+  "required": ["version", "rules", "fallback"],
+  "additionalProperties": false,
+  "properties": {
+    "version": { "type": "integer", "const": 1 },
+    "rules": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["bucket"],
+        "additionalProperties": false,
+        "properties": {
+          "bucket": {
+            "type": "string",
+            "pattern": "^(kaizen-[a-z][a-z0-9-]+|general-purpose|NEEDS_AGENT)$",
+            "description": "Either a real agent name (kaizen-*) or the general-purpose fallback or NEEDS_AGENT sentinel."
+          },
+          "require_all": { "$ref": "#/definitions/condition_list" },
+          "require_any": { "$ref": "#/definitions/condition_list" }
+        }
+      }
+    },
+    "confidence_threshold": {
+      "type": "number", "minimum": 0, "maximum": 1
+    },
+    "fallback": {
+      "type": "string",
+      "pattern": "^(kaizen-[a-z][a-z0-9-]+|general-purpose|NEEDS_AGENT)$"
+    }
+  },
+  "definitions": {
+    "condition_list": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["signal", "op", "value"],
+        "additionalProperties": false,
+        "properties": {
+          "signal": {
+            "type": "string",
+            "enum": [
+              "tdd",
+              "multi_phase",
+              "isolated_worktree",
+              "review_diff",
+              "karpathy",
+              "tech_debt",
+              "backlog",
+              "brain_memory",
+              "skill_extract"
+            ],
+            "description": "Binary phrase-match signal. Add new names here BEFORE referencing them in dispatch-rubric.yaml (loader fails fast on unknown signals)."
+          },
+          "op": {
+            "enum": [">=", ">", "<=", "<", "==", "!="]
+          },
+          "value": { "type": "number" }
+        }
+      }
+    }
+  }
+}

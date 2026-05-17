@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/YugeIceCone/kaizen-md/assets/schemas/agent.schema.json",
+  "title": "Kaizen subagent frontmatter",
+  "description": "Schema for the YAML frontmatter block in plugins/kaizen/agents/<name>.md files. Validates the parsed frontmatter (not the raw YAML text). Loader normalizes tools / disallowedTools from any supported surface form (JSON array, YAML list, comma-separated string) to a list[str] before validation.",
+  "type": "object",
+  "required": ["name", "description", "tools"],
+  "properties": {
+    "name": {
+      "type": "string",
+      "pattern": "^kaizen-[a-z][a-z0-9-]*$",
+      "description": "Agent's slug — must equal the filename stem and start with `kaizen-`."
+    },
+    "description": {
+      "type": "string",
+      "minLength": 50,
+      "description": "Routing surface for skill-suggest and the Agent dispatcher. Must clearly state WHEN to use this agent and include 2+ trigger phrases or example dispatches."
+    },
+    "tools": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/ToolSpec" },
+      "description": "Whitelist of allowed tools. Each entry is either a bare tool name (Read, Bash, Edit) OR a pattern-restricted Bash invocation like `Bash(git diff *)`."
+    },
+    "disallowedTools": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/ToolSpec" },
+      "description": "Patterns explicitly denied even when the matching tool is in `tools`. Use to block destructive ops for autonomous agents (git reset *, git push *, rm -rf *, etc.)."
+    },
+    "model": {
+      "type": "string",
+      "enum": ["inherit", "sonnet", "opus", "haiku"],
+      "description": "Model to use. `inherit` follows the dispatching agent. Explicit choice locks the agent to that tier."
+    },
+    "color": {
+      "type": "string",
+      "description": "Optional UI color (cyan, green, blue, etc.)."
+    },
+    "maxTurns": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 100,
+      "description": "Hard cap on agent turns. Forces self-termination."
+    },
+    "context": {
+      "type": "string",
+      "enum": ["fork", "inherit"],
+      "description": "`fork` = clean context with only the dispatch prompt; `inherit` = receives dispatcher's recent context."
+    },
+    "domain": {
+      "type": "string",
+      "description": "Free-form domain label (engineering, planning, etc.)."
+    },
+    "skills": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Skills to auto-load when this agent starts. Format: `<plugin>:<skill>` or bare `<skill>`."
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "ToolSpec": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Either a bare tool name (`Read`, `Bash`, `Edit`) OR a Bash pattern (`Bash(git diff *)`, `Bash(python *)`). The Claude Code dispatcher matches the literal Bash invocation against the parenthesized pattern."
+    }
+  }
+}
