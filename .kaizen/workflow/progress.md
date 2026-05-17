@@ -35,3 +35,4 @@
 | 2026-05-17 | feat     | +35    | context_notifier consumes BK-015 — payload + envelope now include peak_tokens, peak_pct, peak_pre_compact, compact_count (post-compact red-zone signal survives current-zone drop) |
 | 2026-05-17 | fix      | +5     | handoff verify — skip pattern_check for narrative bullets (em-dash separator). Real-world: 8 stale false-positives → 0 against handoff #8 |
 | 2026-05-17 | feat     | +25    | BK-016 — handoff scaffold mined_summary carries peak_tokens, peak_context_pct, peak_pre_compact, compact_count from BK-015 (compact-resilient handoff signal) |
+| 2026-05-17 | perf     | +30    | session-inject-context: UserPromptSubmit trims to git-only (workflow/handoff/plans/project-memory injected once at SessionStart). Saves ~1.4KB per prompt × N turns. |

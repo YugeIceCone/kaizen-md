@@ -84,7 +84,14 @@ class StructuralContract(_BaseHook):
                          "SessionStart")
 
     def test_prompt_event_name(self):
-        (self.root / "CLAUDE.md").write_text("test\n")
+        # prompt-mode only emits git state — seed a git repo so the
+        # collector has something to report (and the envelope renders).
+        subprocess.run(["git", "init", "-q"], cwd=str(self.root),
+                        check=True, capture_output=True)
+        subprocess.run(["git", "config", "user.email", "t@t"],
+                        cwd=str(self.root), check=True, capture_output=True)
+        subprocess.run(["git", "config", "user.name", "t"],
+                        cwd=str(self.root), check=True, capture_output=True)
         out = _parse(_run_hook("prompt", self.root))
         self.assertEqual(out["hookSpecificOutput"]["hookEventName"],
                          "UserPromptSubmit")
@@ -105,6 +112,62 @@ class BypassKnob(_BaseHook):
         r = _run_hook("session", self.root,
                       extra_env={"KAIZEN_INJECT_CONTEXT_DISABLE": "1"})
         self.assertEqual(r.stdout.strip(), "{}")
+
+
+class PerEventTrimming(_BaseHook):
+    """Token-cost optimization: UserPromptSubmit injects ONLY git
+    state (the volatile section). SessionStart injected the stable
+    sections (workflow/handoff/plans/project-memory) at startup;
+    re-injecting them every prompt wastes ~1.4KB per turn."""
+
+    def _seed_full_context(self):
+        """Populate every section so we can confirm what survives the trim."""
+        (self.root / "CLAUDE.md").write_text("x\n")
+        (self.root / "plans").mkdir()
+        (self.root / "plans" / "p.md").write_text("# p\n")
+        (self.root / ".kaizen" / "workflow").mkdir(parents=True)
+        (self.root / ".kaizen" / "workflow" / "state.json").write_text(
+            json.dumps({"routine": "harden", "stages": ["a"], "current": 0}))
+        # Make it a git repo so collect_git fires
+        subprocess.run(["git", "init", "-q"], cwd=str(self.root), check=True,
+                        capture_output=True)
+        subprocess.run(["git", "config", "user.email", "t@t"],
+                        cwd=str(self.root), check=True, capture_output=True)
+        subprocess.run(["git", "config", "user.name", "t"],
+                        cwd=str(self.root), check=True, capture_output=True)
+
+    def test_session_event_includes_all_sections(self):
+        self._seed_full_context()
+        out = _parse(_run_hook("session", self.root))
+        body = out["hookSpecificOutput"]["additionalContext"]
+        self.assertIn("Active /workflow run", body)
+        self.assertIn("Plans in this project", body)
+        self.assertIn("Project memory files", body)
+        self.assertIn("Git state", body)
+
+    def test_prompt_event_strips_stable_sections(self):
+        self._seed_full_context()
+        out = _parse(_run_hook("prompt", self.root))
+        body = out["hookSpecificOutput"]["additionalContext"]
+        # Volatile section retained
+        self.assertIn("Git state", body)
+        # Stable sections dropped (already injected at SessionStart)
+        self.assertNotIn("Active /workflow run", body)
+        self.assertNotIn("Plans in this project", body)
+        self.assertNotIn("Project memory files", body)
+
+    def test_prompt_event_body_substantially_smaller(self):
+        """Concrete token-cost assertion: prompt body < 30% of session body."""
+        self._seed_full_context()
+        session_body = _parse(_run_hook("session", self.root))[
+            "hookSpecificOutput"]["additionalContext"]
+        prompt_body = _parse(_run_hook("prompt", self.root))[
+            "hookSpecificOutput"]["additionalContext"]
+        self.assertLess(
+            len(prompt_body), len(session_body) * 0.30,
+            f"prompt body ({len(prompt_body)}b) should be <30% of "
+            f"session body ({len(session_body)}b)",
+        )
 
 
 class Collectors(_BaseHook):

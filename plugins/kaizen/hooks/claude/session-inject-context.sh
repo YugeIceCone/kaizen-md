@@ -199,11 +199,21 @@ collect_claude_md() {
 BODY=""
 append() { local s; s="$(eval "$1")"; if [ -n "$s" ]; then BODY+="$s"$'\n\n'; fi; }
 
-append collect_workflow
-append collect_handoff
-append collect_plans
-append collect_git
-append collect_claude_md
+# Token-cost optimization: UserPromptSubmit fires every turn, but the
+# stable sections (workflow / handoff / plans / project-memory)
+# don't change between prompts — SessionStart already injected them
+# once at startup (or after compact). Only the git state is volatile
+# turn-to-turn. So on `prompt` we emit just git, saving ~1.4KB per
+# user prompt × N turns per session.
+if [ "$EVENT" = "prompt" ]; then
+    append collect_git
+else
+    append collect_workflow
+    append collect_handoff
+    append collect_plans
+    append collect_git
+    append collect_claude_md
+fi
 
 BODY="${BODY%$'\n\n'}"
 [ -z "$BODY" ] && emit_empty
