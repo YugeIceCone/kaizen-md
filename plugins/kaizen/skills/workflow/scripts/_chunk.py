@@ -1,4 +1,4 @@
-"""kaizen chunker — sentence-boundary chunking for RAG (v1.27.0+).
+"""kaizen chunk — sentence-boundary chunker for RAG (v1.27.0+).
 
 Ported from Onyx's `backend/onyx/indexing/chunker.py` chunking discipline,
 minus the chonkie dep (we use pure-Python regex sentence splitting).

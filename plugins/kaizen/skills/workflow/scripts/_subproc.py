@@ -1,4 +1,4 @@
-"""kaizen subprocess helpers — shared subprocess + git-root utilities.
+"""kaizen subproc — shared subprocess + git-root subprocess helpers.
 
 Used by lint_mcp.py, state_mcp.py, workflow_mcp.py, and any consumer
 that needs git-aware cwd discovery + list-form subprocess execution.

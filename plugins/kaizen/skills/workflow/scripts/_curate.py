@@ -1,4 +1,4 @@
-"""Token-efficient curator for findings/results lists.
+"""kaizen curate — token-efficient curator for findings/results lists.
 
 Shared module — kaizen's MCP servers all return potentially-thousands-of-rows
 result sets (ruff findings, ty findings, trace events, search hits). Letting
