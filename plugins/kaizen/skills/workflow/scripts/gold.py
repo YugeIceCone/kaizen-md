@@ -327,6 +327,125 @@ def _cmd_path(args) -> int:
     return 0
 
 
+def _cmd_mine(args) -> int:
+    """Run the auto-miner pipeline: scan event streams + propose / auto-
+    capture per the threshold gate. Lives in gold_mine.py; this wrapper
+    is the CLI entry point."""
+    sys.path.insert(0, str(_SCRIPT_DIR))
+    try:
+        import gold_mine
+    except ImportError as e:
+        sys.stderr.write(f"[kaizen-gold mine] missing gold_mine.py: {e}\n")
+        return 1
+    summary = gold_mine.run_mine()
+    if args.json:
+        print(json.dumps(summary, indent=2))
+    else:
+        print(f"[kaizen-gold mine] {summary}")
+    return 0
+
+
+def _proposals_path() -> Path:
+    """Resolve proposals.jsonl via gold_mine (same project-slug layout)."""
+    sys.path.insert(0, str(_SCRIPT_DIR))
+    try:
+        import gold_mine
+        return gold_mine.proposals_path()
+    except ImportError:
+        return _patterns_path().parent / "proposals.jsonl"
+
+
+def _read_proposals(p: Path) -> list[dict]:
+    if not p.is_file():
+        return []
+    out = []
+    try:
+        with p.open("r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    out.append(json.loads(line))
+                except json.JSONDecodeError:
+                    continue
+    except OSError:
+        return []
+    return out
+
+
+def _write_proposals(p: Path, recs: list[dict]) -> None:
+    p.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        sys.path.insert(0, str(_SCRIPT_DIR))
+        import _atomic
+        _atomic.atomic_write(p, "\n".join(json.dumps(r) for r in recs)
+                                + ("\n" if recs else ""))
+    except (OSError, ImportError):
+        p.write_text("\n".join(json.dumps(r) for r in recs)
+                     + ("\n" if recs else ""), encoding="utf-8")
+
+
+def _cmd_review(args) -> int:
+    """List / accept / reject / clear pending proposals."""
+    p = _proposals_path()
+    recs = _read_proposals(p)
+
+    if args.clear_all_rejected:
+        kept = [r for r in recs if r.get("status") != "rejected"]
+        n_removed = len(recs) - len(kept)
+        _write_proposals(p, kept)
+        print(f"[kaizen-gold review] cleared {n_removed} rejected proposals")
+        return 0
+
+    if args.accept is not None:
+        target = next((r for r in recs if r.get("id") == args.accept), None)
+        if target is None:
+            sys.stderr.write(f"[kaizen-gold review] no proposal #{args.accept}\n")
+            return 1
+        target["status"] = "accepted"
+        _write_proposals(p, recs)
+        # Capture into patterns.jsonl using the existing flow.
+        class _Ns:
+            pass
+        ns = _Ns()
+        ns.pattern = target["pattern"]
+        ns.tag = target.get("tag") or "auto-mined"
+        ns.source = f"evt:{target.get('source_evt', '')}"
+        ns.learned = target.get("reason", "")
+        ns.json = False
+        _cmd_capture(ns)
+        print(f"[kaizen-gold review] accepted #{args.accept} → captured")
+        return 0
+
+    if args.reject is not None:
+        target = next((r for r in recs if r.get("id") == args.reject), None)
+        if target is None:
+            sys.stderr.write(f"[kaizen-gold review] no proposal #{args.reject}\n")
+            return 1
+        target["status"] = "rejected"
+        _write_proposals(p, recs)
+        print(f"[kaizen-gold review] rejected #{args.reject}")
+        return 0
+
+    # Default: list pending.
+    pending = [r for r in recs if r.get("status") == "pending"]
+    if args.json:
+        print(json.dumps(pending, indent=2))
+        return 0
+    if not pending:
+        print("[kaizen-gold review] (no pending proposals)")
+        return 0
+    for r in pending:
+        score = r.get("score", 0)
+        print(f"  · #{r.get('id'):<4d} [{score:.2f}] {r.get('pattern', '')}")
+        if r.get("reason"):
+            print(f"        reason: {r['reason']}")
+        if r.get("source_evt"):
+            print(f"        evt:    {r['source_evt']}")
+    return 0
+
+
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(
         prog="kaizen-gold",
@@ -374,6 +493,22 @@ def main(argv=None) -> int:
 
     pth = sub.add_parser("path", help="print storage path")
     pth.set_defaults(func=_cmd_path)
+
+    pm = sub.add_parser("mine",
+                          help="scan event streams + propose gold-worthy patterns")
+    pm.add_argument("--json", action="store_true")
+    pm.set_defaults(func=_cmd_mine)
+
+    pr = sub.add_parser("review",
+                          help="review pending auto-mined proposals")
+    pr.add_argument("--accept", type=int, default=None, metavar="ID",
+                     help="accept proposal <ID> → promote to patterns.jsonl")
+    pr.add_argument("--reject", type=int, default=None, metavar="ID",
+                     help="reject proposal <ID>")
+    pr.add_argument("--clear-all-rejected", action="store_true",
+                     help="drop all rejected proposals from the file")
+    pr.add_argument("--json", action="store_true")
+    pr.set_defaults(func=_cmd_review)
 
     args = p.parse_args(argv)
     return args.func(args)

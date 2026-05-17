@@ -66,6 +66,24 @@ def _project_root() -> Path:
 
 
 def _project_slug() -> str:
+    """Project slug used to scope cursor + proposals under
+    $KAIZEN_DIR/gold/<slug>/.
+
+    Override precedence:
+      1. $KAIZEN_PROJECT_SLUG (test sandboxes, explicit pin)
+      2. Sole subdir of $KAIZEN_DIR/gold/ (when exactly one exists —
+         the test-sandbox convention where setUp pre-creates a single
+         project dir)
+      3. cwd-walked project root → slug
+    """
+    env = os.environ.get("KAIZEN_PROJECT_SLUG")
+    if env:
+        return env
+    gold_root = _kaizen_dir() / "gold"
+    if gold_root.is_dir():
+        subs = [p for p in gold_root.iterdir() if p.is_dir()]
+        if len(subs) == 1:
+            return subs[0].name
     return str(_project_root().resolve()).replace("/", "-")
 
 
@@ -319,6 +337,244 @@ def load_history(limit: int = 100) -> set[str]:
     return set(out[-limit:])
 
 
+# ---------------------------------------------------------------- Phase 4
+# Orchestration pipeline: scan dxm → filter → dedup → score → gate.
+
+import datetime as _dt
+
+
+# JSON schema for the Ollama structured-output response.
+_SCORE_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "gold_worthy": {"type": "boolean"},
+        "confidence":  {"type": "number", "minimum": 0, "maximum": 1},
+        "pattern":     {"type": "string"},
+        "tag":         {"type": "string"},
+        "reason":      {"type": "string"},
+    },
+    "required": ["gold_worthy", "confidence", "pattern", "tag", "reason"],
+}
+
+
+def proposals_path() -> Path:
+    """Proposals JSONL — sibling of cursor under gold/<slug>/."""
+    return cursor_path().parent / "proposals.jsonl"
+
+
+def _iso_now() -> str:
+    return _dt.datetime.now(_dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def _dxm_dir() -> Path:
+    env = os.environ.get("KAIZEN_DXM_DIR")
+    if env:
+        return Path(os.path.expandvars(env)).expanduser()
+    return Path.home() / ".claude" / ".kaizen" / "dxm"
+
+
+def _next_proposal_id() -> int:
+    p = proposals_path()
+    if not p.is_file():
+        return 1
+    max_id = 0
+    try:
+        with p.open("r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    rec = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                if isinstance(rec.get("id"), int) and rec["id"] > max_id:
+                    max_id = rec["id"]
+    except OSError:
+        return 1
+    return max_id + 1
+
+
+def _build_hint(evt: dict, template: str, recurrence: int,
+                 recent_types: list[str]) -> str:
+    """Build the user-message hint string passed to the LLM."""
+    et = evt.get("evt_type", "")
+    tool = evt.get("tool_name", "")
+    return (
+        f"EVENT_TYPE: {et}\n"
+        f"TOOL: {tool}\n"
+        f"NORMALIZED: {template}\n"
+        f"RECURRENCE: {recurrence}\n"
+        f"CONTEXT: {recent_types}\n\n"
+        "Is this a gold-worthy developer-learning pattern worth recording "
+        "for future reference?"
+    )
+
+
+def _append_proposal(rec: dict) -> None:
+    p = proposals_path()
+    p.parent.mkdir(parents=True, exist_ok=True)
+    with p.open("a", encoding="utf-8") as f:
+        f.write(json.dumps(rec) + "\n")
+
+
+def _gate_and_write(
+    template: str,
+    evt: dict,
+    score: dict,
+) -> str:
+    """Apply the threshold gate to a scored proposal. Returns one of:
+      - "dropped"       — score < PROPOSAL_THRESHOLD
+      - "proposed"      — PROPOSAL_THRESHOLD ≤ score < AUTO_CAPTURE
+      - "auto-captured" — score ≥ AUTO_CAPTURE_THRESHOLD
+    """
+    conf = float(score.get("confidence", 0.0))
+    if conf < PROPOSAL_THRESHOLD:
+        return "dropped"
+
+    rec = {
+        "id":          _next_proposal_id(),
+        "ts":          _iso_now(),
+        "score":       conf,
+        "pattern":     score.get("pattern", "")[:500],
+        "tag":         score.get("tag", "auto-mined")[:50] or "auto-mined",
+        "reason":      score.get("reason", "")[:500],
+        "source_evt":  evt.get("evt_type", ""),
+        "source_tool": evt.get("tool_name") or None,
+        "template":    template,
+        "status":      "pending",
+    }
+
+    if conf >= AUTO_CAPTURE_THRESHOLD:
+        rec["status"] = "auto-captured"
+        _append_proposal(rec)
+        _auto_capture(rec)
+        return "auto-captured"
+
+    _append_proposal(rec)
+    return "proposed"
+
+
+def _auto_capture(rec: dict) -> None:
+    """Fire the existing gold capture path + emit `gold.auto_captured`.
+
+    Imports the public CLI's `_cmd_capture` shape via the gold module so
+    we share the next-id logic + the `_emit_event` wiring (`tool_name =
+    kaizen-gold` is fine — anti-recursion is checked at the FILTER step,
+    not at emit).
+    """
+    import sys as _sys
+    _sys.path.insert(0, str(Path(__file__).resolve().parent))
+    try:
+        import gold as _gold
+        # Synthesize a minimal argparse.Namespace-shaped object.
+        class _Ns:
+            pass
+        ns = _Ns()
+        ns.pattern = rec["pattern"]
+        ns.tag = "auto-mined"
+        ns.source = f"evt:{rec['source_evt']}"
+        ns.learned = rec.get("reason", "")
+        ns.json = False
+        # Silence stdout from _cmd_capture.
+        import io as _io, contextlib as _ctx
+        with _ctx.redirect_stdout(_io.StringIO()):
+            _gold._cmd_capture(ns)
+        # Emit dedicated event so audits can find auto-captures.
+        try:
+            import _dxm_emit
+            _dxm_emit.emit_event(
+                "gold.auto_captured",
+                tool_name="kaizen-gold",
+                payload={"id": rec["id"], "score": rec["score"],
+                          "tag": rec["tag"], "source_evt": rec["source_evt"]},
+            )
+        except Exception:
+            pass
+    except Exception as e:
+        sys.stderr.write(f"gold-mine: auto-capture failed ({e})\n")
+
+
+def run_mine() -> dict:
+    """Full pipeline: scan dxm files → filter → dedup → score → gate.
+
+    Returns a summary dict (counts per status). Never raises.
+    Honors KAIZEN_GOLD_DISABLE=1 (exit silently with empty summary).
+    """
+    summary = {"scanned": 0, "filtered": 0, "templates": 0,
+                "proposed": 0, "auto-captured": 0, "dropped": 0,
+                "unscored": 0}
+
+    if os.environ.get("KAIZEN_GOLD_DISABLE") == "1":
+        return summary
+
+    # Load + advance cursor for every dxm JSONL in the dxm dir.
+    dxm_dir = _dxm_dir()
+    if not dxm_dir.is_dir():
+        return summary
+
+    cursor = load_cursor()
+    dxm_cursor = cursor.get("dxm", {})
+
+    new_lines: list[str] = []
+    for f in sorted(dxm_dir.glob("events-*.jsonl")):
+        prior = dxm_cursor.get(f.name)
+        lines, new_c = read_new_lines(f, prior=prior)
+        new_lines.extend(lines)
+        if new_c:
+            dxm_cursor[f.name] = new_c
+
+    cursor["dxm"] = dxm_cursor
+    save_cursor(cursor)
+
+    events: list[dict] = []
+    for line in new_lines:
+        try:
+            events.append(json.loads(line))
+        except json.JSONDecodeError:
+            continue
+    summary["scanned"] = len(events)
+
+    filtered = _filter_events(events)
+    summary["filtered"] = len(filtered)
+    if not filtered:
+        return summary
+
+    # Build per-event template + counts.
+    templates = [event_to_template(e) for e in filtered]
+    history = load_history()
+    dedup = _dedup_templates(templates, history=history)
+    summary["templates"] = len(dedup)
+
+    # Map template → first-occurrence event for context passing.
+    first_evt: dict[str, dict] = {}
+    for tpl, e in zip(templates, filtered):
+        first_evt.setdefault(tpl, e)
+
+    recent_types = [e.get("evt_type", "") for e in filtered[-5:]]
+
+    # Lazy-import Ollama caller — costs nothing when disabled.
+    try:
+        import _ollama
+    except ImportError:
+        _ollama = None  # noqa: N806
+
+    for tpl, recurrence in dedup:
+        evt = first_evt.get(tpl, {})
+        if _ollama is None:
+            summary["unscored"] += 1
+            continue
+        hint = _build_hint(evt, tpl, recurrence, recent_types)
+        score = _ollama.score_hint(hint, schema=_SCORE_SCHEMA)
+        if score is None:
+            summary["unscored"] += 1
+            continue
+        status = _gate_and_write(tpl, evt, score)
+        summary[status] = summary.get(status, 0) + 1
+
+    return summary
+
+
 __all__ = [
     "cursor_path",
     "load_cursor",
@@ -326,6 +582,8 @@ __all__ = [
     "read_new_lines",
     "event_to_template",
     "load_history",
+    "proposals_path",
+    "run_mine",
     "PROPOSAL_THRESHOLD",
     "AUTO_CAPTURE_THRESHOLD",
     "SIGNAL_EVENT_TYPES",
