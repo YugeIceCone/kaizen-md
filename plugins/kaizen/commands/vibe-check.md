@@ -1,15 +1,15 @@
 ---
 name: vibe-check
-description: Run the vibe-coding discipline checklist against the currently staged diff. Combines `/kaizen:gate` dry-run output with AI-specific checks (commit-message marker presence, dependency-allowlist rule consultation, scope-size advisory). Triggers on "vibe check", "is this safe to commit", "review my AI-generated diff".
+description: Run the vibe-coding discipline checklist against the currently staged diff. Combines `/kaizen:precommit` dry-run output with AI-specific checks (commit-message marker presence, dependency-allowlist rule consultation, scope-size advisory). Triggers on "vibe check", "is this safe to commit", "review my AI-generated diff".
 ---
 
 # kaizen vibe-check
 
-Runs the discipline gate over the staged diff with AI-coding specific augmentations on top of `/kaizen:gate`'s 12 checks.
+Runs the discipline gate over the staged diff with AI-coding specific augmentations on top of `/kaizen:precommit`'s 12 checks.
 
 !`bash ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/vibe_check.sh`
 
-## What it adds on top of `/kaizen:gate`
+## What it adds on top of `/kaizen:precommit`
 
 `kaizen:gate` runs the 12 checks against staged. `vibe-check` additionally:
 
@@ -21,8 +21,8 @@ Runs the discipline gate over the staged diff with AI-coding specific augmentati
 ## What it doesn't do
 
 - It's NOT a replacement for human review.
-- It's NOT a substitute for `/kaizen:gate` — invoke this AFTER the gate passes.
-- It's NOT enforced (advisory). The actual block is `/kaizen:gate` Check #13 (vibe marker, when enabled via env).
+- It's NOT a substitute for `/kaizen:precommit` — invoke this AFTER the gate passes.
+- It's NOT enforced (advisory). The actual block is `/kaizen:precommit` Check #13 (vibe marker, when enabled via env).
 
 ## Read the skill body first
 
@@ -40,7 +40,7 @@ Markdown summary section to stderr (so it doesn't pollute pipes):
 
 ```
 vibe-check on staged diff
-  ✓ kaizen:gate dry-run: green (12/12 pass)
+  ✓ kaizen:precommit dry-run: green (12/12 pass)
   ! new exported fn count: 5 / new test count: 2 (imbalance: 3)
   ✓ no orphan imports
   ∘ commit msg marker: not yet (use [AI] in scope when committing)

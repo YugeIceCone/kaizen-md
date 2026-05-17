@@ -12,7 +12,7 @@ description: List all /kaizen:* slash commands with brief descriptions + suggest
 | `/kaizen:setup` | Activate / reverse / inspect kaizen in this repo — subcommands `install` (default), `uninstall`, `cache`; `--enable-all` adds the global stack |
 | `/kaizen:health` | Health diagnostic — broken symlinks, schema mismatch, missing scripts |
 | `/kaizen:status` | At-a-glance: config, hook, backlog, active routine, backups |
-| `/kaizen:gate` | Dry-run the pre-commit gate against staged changes |
+| `/kaizen:precommit` | Dry-run the pre-commit gate against staged changes |
 | `/kaizen:backlog` | List / add / start / tick / park / decision / render / verify backlog items |
 | `/kaizen:migrate` | Scan + retire loose duplicates / marketplaces; convert hand-written BACKLOG.md |
 | `/kaizen:backup` | Create / list / restore / prune workflow-state snapshots |
