@@ -593,26 +593,43 @@ def _session_state_path() -> Path:
     return cwd / ".kaizen" / "session-token-bloat.md"
 
 
-def _write_session_state(findings: list[dict]) -> None:
-    """One-line-per-finding actionable list. Replaces (not appends) on
-    each scan — represents *current* state of bloat to address.
+def _session_history_path() -> Path:
+    """Continuous JSONL history alongside the .md snapshot — one line per
+    scan. Snapshot is regenerable from the last history entry, so the
+    pair survives any single-file loss."""
+    return _session_state_path().with_suffix(".history.jsonl")
 
-    Line format (grep + jump friendly):
-      `<path>:<start>-<end>` <sev>|<sens> q=<q> ~<tok>tok ×<fires>→<cumul>
-    """
-    p = _session_state_path()
+
+def _history_max_mb() -> int:
+    return _envint("KAIZEN_BLOAT_HISTORY_MAX_MB", 5)
+
+
+def _rotate_history_if_huge(p: Path) -> None:
+    """Rotate the history file when it exceeds the cap — mirrors the
+    pattern in trace.py. Rotation is best-effort; never raises."""
     try:
-        p.parent.mkdir(parents=True, exist_ok=True)
+        if not p.exists():
+            return
+        size_mb = p.stat().st_size / (1024 * 1024)
+        if size_mb < _history_max_mb():
+            return
+        ts = _dt.datetime.now(_dt.timezone.utc).strftime("%Y%m%d-%H%M%SZ")
+        rotated = p.parent / f"{p.stem}.{ts}.jsonl"
+        p.rename(rotated)
     except OSError:
-        return
+        pass
+
+
+def _render_snapshot(findings: list[dict], scanned_at: str) -> str:
+    """Pure: render the markdown snapshot from findings + timestamp.
+    Used by both _write_session_state and the restore path."""
     waste = _total_waste(findings)
     cumul = sum(f.get("cumulative_tokens", f.get("tokens", 0)) for f in findings)
     h = sum(1 for f in findings if f["severity"] == "high")
     m = sum(1 for f in findings if f["severity"] == "medium")
-    now = _dt.datetime.now(_dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     lines = [
         f"# kaizen token-bloat — session state",
-        f"# scanned: {now}",
+        f"# scanned: {scanned_at}",
         f"# findings: {len(findings)} ({h} high, {m} medium) | waste: ~{waste} tok | cumulative: ~{cumul} tok",
         f"# format: `path:start-end` <sev>|<sens> q=<q> ~<tok>tok ×<fires>→<cumul>",
         f"",
@@ -631,10 +648,102 @@ def _write_session_state(findings: list[dict]) -> None:
         lines.append(
             f"`{path}:{s}-{e}` {sev}|{sens} q={q} ~{tok}tok {fire_str}→~{cumul_i}"
         )
+    return "\n".join(lines) + "\n"
+
+
+def _write_session_state(findings: list[dict]) -> None:
+    """Atomic snapshot + continuous JSONL history.
+
+    Survival guarantees:
+      - snapshot via _atomic.atomic_write (tempfile + os.replace).
+        Power-loss mid-write leaves the prior snapshot intact.
+      - history appended via _atomic.atomic_append_line. Either fully
+        appended or fully not — never a half line.
+      - history rotated when > KAIZEN_BLOAT_HISTORY_MAX_MB (default 5).
+      - all errors swallowed; the scan never raises from persistence.
+
+    Either file alone is recoverable: snapshot regenerable from latest
+    history entry via `kaizen-token-bloat restore`.
+    """
+    snap = _session_state_path()
+    hist = _session_history_path()
+    scanned_at = _dt.datetime.now(_dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    # Lazy-import _atomic so token_bloat.py stays standalone-runnable
+    # when _atomic.py is somehow missing — fall back to direct write.
     try:
-        p.write_text("\n".join(lines) + "\n", encoding="utf-8")
+        sys.path.insert(0, str(_SCRIPT_DIR))
+        import _atomic
+        atomic_write = _atomic.atomic_write
+        atomic_append_line = _atomic.atomic_append_line
+    except ImportError:
+        def atomic_write(p, content):
+            Path(p).parent.mkdir(parents=True, exist_ok=True)
+            Path(p).write_text(content, encoding="utf-8")
+
+        def atomic_append_line(p, line):
+            Path(p).parent.mkdir(parents=True, exist_ok=True)
+            with Path(p).open("a", encoding="utf-8") as f:
+                f.write(line + ("" if line.endswith("\n") else "\n"))
+
+    # 1) Snapshot — atomic replace
+    try:
+        atomic_write(snap, _render_snapshot(findings, scanned_at))
+    except OSError:
+        pass  # never raise from persistence
+
+    # 2) History — append one JSONL line, rotate if huge
+    try:
+        _rotate_history_if_huge(hist)
+        atomic_append_line(hist, json.dumps({
+            "scanned_at":        scanned_at,
+            "total":             len(findings),
+            "high":              sum(1 for f in findings if f["severity"] == "high"),
+            "medium":            sum(1 for f in findings if f["severity"] == "medium"),
+            "waste_tokens":      _total_waste(findings),
+            "cumulative_tokens": sum(f.get("cumulative_tokens", f.get("tokens", 0)) for f in findings),
+            "findings":          findings,
+        }, default=str))
     except OSError:
         pass
+
+
+def _restore_snapshot_from_history() -> bool:
+    """Regenerate the .md snapshot from the LAST entry in the history
+    JSONL. Returns True on success, False when no history available."""
+    hist = _session_history_path()
+    if not hist.is_file():
+        return False
+    last_obj = None
+    try:
+        with hist.open("r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    last_obj = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+    except OSError:
+        return False
+    if not last_obj:
+        return False
+    snap = _session_state_path()
+    findings = last_obj.get("findings") or []
+    scanned_at = last_obj.get("scanned_at") or "unknown"
+    try:
+        sys.path.insert(0, str(_SCRIPT_DIR))
+        import _atomic
+        _atomic.atomic_write(snap, _render_snapshot(findings, scanned_at))
+    except (OSError, ImportError):
+        try:
+            snap.parent.mkdir(parents=True, exist_ok=True)
+            snap.write_text(_render_snapshot(findings, scanned_at),
+                             encoding="utf-8")
+        except OSError:
+            return False
+    return True
 
 
 def _read_cache() -> dict | None:
@@ -815,6 +924,16 @@ def main(argv=None) -> int:
 
     pss = sub.add_parser("session", help="print session-state file path")
     pss.set_defaults(func=lambda a: (print(_session_state_path()), 0)[1])
+
+    phi = sub.add_parser("history", help="print history JSONL file path")
+    phi.set_defaults(func=lambda a: (print(_session_history_path()), 0)[1])
+
+    prs = sub.add_parser("restore",
+                          help="regenerate session-state .md from last history entry")
+    prs.set_defaults(func=lambda a:
+        (print(f"restored {_session_state_path()}"), 0)[1]
+        if _restore_snapshot_from_history()
+        else (sys.stderr.write("[kaizen-token-bloat] no history to restore from\n"), 1)[1])
 
     args = p.parse_args(argv)
     return args.func(args)

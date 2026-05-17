@@ -473,6 +473,74 @@ class TestSessionStateFile(unittest.TestCase):
         self.assertEqual(r.stdout.strip(), str(self.state_file))
 
 
+class TestSessionStateSurvival(unittest.TestCase):
+    """Continuity + survival: snapshot is atomic; history JSONL grows;
+    snapshot regenerable from history if lost."""
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.tmp = Path(self._tmp.name)
+        self.snap = self.tmp / "session-bloat.md"
+        self.hist = self.tmp / "session-bloat.history.jsonl"
+        self.env = {
+            "KAIZEN_DIR":                str(self.tmp),
+            "KAIZEN_BLOAT_SESSION_FILE": str(self.snap),
+        }
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    def test_history_jsonl_appended_each_scan(self):
+        _run("scan", "--cache", env=self.env)
+        self.assertTrue(self.hist.is_file())
+        # Each scan adds ONE line
+        line_count_1 = sum(1 for _ in self.hist.open())
+        _run("scan", "--cache", env=self.env)
+        line_count_2 = sum(1 for _ in self.hist.open())
+        self.assertEqual(line_count_2, line_count_1 + 1)
+
+    def test_history_entry_includes_findings(self):
+        _run("scan", "--cache", env=self.env)
+        with self.hist.open() as f:
+            entry = json.loads(f.readline())
+        for k in ("scanned_at", "total", "high", "medium",
+                   "waste_tokens", "cumulative_tokens", "findings"):
+            self.assertIn(k, entry)
+
+    def test_history_subcommand_prints_path(self):
+        r = _run("history", env=self.env)
+        self.assertEqual(r.returncode, 0)
+        self.assertEqual(r.stdout.strip(), str(self.hist))
+
+    def test_restore_regenerates_snapshot_from_history(self):
+        _run("scan", "--cache", env=self.env)
+        prior = self.snap.read_text()
+        # Snapshot lost (disk corruption / accidental delete)
+        self.snap.unlink()
+        self.assertFalse(self.snap.exists())
+        # Restore from history
+        r = _run("restore", env=self.env)
+        self.assertEqual(r.returncode, 0)
+        self.assertTrue(self.snap.is_file())
+        # Content matches the prior snapshot byte-for-byte (rendered from
+        # the same findings + scanned_at).
+        self.assertEqual(self.snap.read_text(), prior)
+
+    def test_restore_without_history_exits_1(self):
+        r = _run("restore", env=self.env)
+        self.assertEqual(r.returncode, 1)
+
+    def test_snapshot_is_atomic_no_partial_file(self):
+        """If atomic_write is used, the snapshot file is either fully
+        old or fully new — never a half-written state with tempfile
+        leftovers in the parent dir post-write."""
+        _run("scan", "--cache", env=self.env)
+        # No stray .part files left in the directory
+        leftover = list(self.tmp.glob(".session-bloat.md.*.part"))
+        self.assertEqual(leftover, [],
+                          f"atomic_write left stray tempfiles: {leftover}")
+
+
 class TestLineRangePresence(unittest.TestCase):
     """Every finding must carry start_line + end_line so the session
     state file can render `path:start-end` jump targets."""
