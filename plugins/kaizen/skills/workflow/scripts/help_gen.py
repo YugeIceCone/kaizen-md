@@ -59,7 +59,7 @@ CLUSTERS: list[tuple[str, list[str]]] = [
         "context", "statusline",
     ]),
     ("brain/memory", [
-        "brain", "self-improving",
+        "brain", "self-improving", "gold",
     ]),
     ("workflow", [
         "backlog", "handoff", "loop", "flow", "mode",

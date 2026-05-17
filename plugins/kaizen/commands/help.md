@@ -6,7 +6,7 @@ argument-hint: "(none) | <command-name>"
 
 # /kaizen:help
 
-Static taxonomy of all 53 `/kaizen:*` commands. **One screen, zero bash
+Static taxonomy of all 54 `/kaizen:*` commands. **One screen, zero bash
 execution.** For full per-command docs use `kaizen help <name>`. Auto-
 generated from `commands/*.md` frontmatter via `kaizen-help-gen`.
 
@@ -38,12 +38,13 @@ generated from `commands/*.md` frontmatter via `kaizen-help-gen`.
 | `context` | Report Claude Code's current context-window state — tokens used, percentage of lim |
 | `statusline` | Install or inspect the kaizen statusline — a one-line status bar showing context w |
 
-## brain/memory (2)
+## brain/memory (3)
 
 | Command | Does |
 |---|---|
 | `brain` | Schema-driven Second Brain — capture / search / promote / audit / evolve. Replaces |
 | `self-improving` | Curate Claude Code's auto-memory into durable project knowledge. `review` flags pr |
+| `gold` | Incidental-discovery + learnings tracker. Capture mid-work patterns + gotchas + hi |
 
 ## workflow (7)
 
