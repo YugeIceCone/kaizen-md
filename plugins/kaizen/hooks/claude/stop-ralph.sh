@@ -45,7 +45,12 @@ json_stop() {
 
 HOOK_CWD=$(printf '%s' "$HOOK_INPUT" | jq -r '.cwd // ""')
 HOOK_SESSION=$(printf '%s' "$HOOK_INPUT" | jq -r '.session_id // ""')
-HOOK_TURN_ID=$(printf '%s' "$HOOK_INPUT" | jq -r '.turn_id // .transcript_path // ""')
+# Raw turn_id when CC provides one (rare). Fallback computed below from
+# a hash of the assistant's last output so idempotence is per-TURN, not
+# per-SESSION. Pre-bug: fell back to transcript_path which is stable for
+# the entire session → every Stop after the first wrongly matched and
+# emitted "Ralph loop already processed this turn" until state was deleted.
+HOOK_TURN_ID=$(printf '%s' "$HOOK_INPUT" | jq -r '.turn_id // ""')
 LAST_OUTPUT=$(printf '%s' "$HOOK_INPUT" | jq -r '.last_assistant_message // ""')
 
 if [[ -z "$LAST_OUTPUT" ]]; then
@@ -53,6 +58,14 @@ if [[ -z "$LAST_OUTPUT" ]]; then
   if [[ -n "$TRANSCRIPT" ]] && [[ -f "$TRANSCRIPT" ]]; then
     LAST_OUTPUT=$(tac "$TRANSCRIPT" 2>/dev/null | jq -r 'select(.role=="assistant") | .content[0].text // .content // ""' 2>/dev/null | head -n 1 || printf '')
   fi
+fi
+
+# Synthesize a per-turn key when CC didn't give us one. Hash of the
+# assistant's last output → changes per real turn (each new assistant
+# message has different text), stable within hook re-fires of the same
+# Stop event (same text, same hash). Empty LAST_OUTPUT → skip idempotence.
+if [[ -z "$HOOK_TURN_ID" ]] && [[ -n "$LAST_OUTPUT" ]]; then
+  HOOK_TURN_ID=$(printf '%s' "$LAST_OUTPUT" | sha1sum | awk '{print $1}')
 fi
 
 if [[ -n "$HOOK_CWD" ]]; then
