@@ -50,9 +50,9 @@ def _plugin_root() -> Path:
 # into "uncategorized" — gen flags them so the human adds the mapping.
 CLUSTERS: list[tuple[str, list[str]]] = [
     ("audit/quality", [
-        "audit", "audit:axis", "gatekeeper", "gate", "review", "coverage",
-        "iron-laws", "karpathy-check", "vibe-check", "self-audit",
-        "agent-self-audit", "ci-gate",
+        "audit", "audit:axis", "gatekeeper", "gate", "precommit", "review",
+        "coverage", "iron-laws", "karpathy-check", "vibe-check",
+        "self-audit", "agent-self-audit", "ci-gate",
     ]),
     ("observability", [
         "trace", "trace-search", "trace-proxy", "metrics", "observe",
@@ -62,8 +62,8 @@ CLUSTERS: list[tuple[str, list[str]]] = [
         "brain", "self-improving", "gold",
     ]),
     ("workflow", [
-        "backlog", "handoff", "loop", "flow", "mode", "session-mode",
-        "migrate", "migrate-paths",
+        "backlog", "handoff", "loop", "flow", "workflow", "mode",
+        "session-mode", "migrate", "migrate-paths",
     ]),
     ("plugin-meta", [
         "setup", "bootstrap", "update", "refresh-cache", "daemon",
@@ -74,10 +74,18 @@ CLUSTERS: list[tuple[str, list[str]]] = [
         "onboard", "knowledge", "claude-docs", "code-tour", "scrape",
         "models", "browser", "docs",
     ]),
+    ("intent/session", [
+        "intent", "session-mode", "skill-suggest",
+    ]),
     ("dev-aids", [
         "rule", "rules", "schema", "inbox", "test", "help",
     ]),
 ]
+
+# Cluster picker QA: 4 visible options in the AskUserQuestion call
+# (within the 4-options-per-question contract); the rest go to "Other"
+# overflow. Picked by usage-importance, not raw command count.
+QA_CLUSTER_PICKS = ("audit/quality", "workflow", "observability", "brain/memory")
 
 
 _FM_RE   = re.compile(r"^---\n(.*?)\n---", re.DOTALL)
@@ -155,6 +163,41 @@ def cluster_assignments(commands: list[dict]) -> dict[str, list[dict]]:
     return buckets
 
 
+def _qa_preamble(buckets: dict[str, list[dict]]) -> list[str]:
+    """The cluster-picker QA contract — instructions the agent follows
+    when /kaizen:help is invoked with no arguments. Output goes near
+    the top of the rendered body."""
+    overflow = [c for c, _ in CLUSTERS if c not in QA_CLUSTER_PICKS
+                 and buckets.get(c)]
+    lines = [
+        "## Interactive cluster wizard (no-args mode)",
+        "",
+        "When `/kaizen:help` is invoked with **no arguments**, run the",
+        "`AskUserQuestion` cluster picker below before anything else.",
+        "With explicit args (`all`, a cluster name, or `<command>`), skip",
+        "the wizard and emit the corresponding slice directly.",
+        "",
+        "**Q1 — Which domain?** (single-select; 4 options + Other)",
+        "",
+    ]
+    for name in QA_CLUSTER_PICKS:
+        count = len(buckets.get(name, []))
+        lines.append(f"- `{name}` ({count})")
+    lines.append(f"- Other (overflow: {' / '.join(overflow)})")
+    lines.extend([
+        "",
+        "After the user picks, dispatch:",
+        "",
+        "  `kaizen-help-gen cluster <picked-name>`",
+        "",
+        "to render just that cluster's sub-table. For `Other`, run a",
+        "follow-up `AskUserQuestion` over the overflow clusters, then",
+        "dispatch the same way.",
+        "",
+    ])
+    return lines
+
+
 def render_body(commands: list[dict]) -> str:
     buckets = cluster_assignments(commands)
     total = len(commands)
@@ -166,6 +209,7 @@ def render_body(commands: list[dict]) -> str:
         f"generated from `commands/*.md` frontmatter via `kaizen-help-gen`.",
         f"",
     ]
+    lines.extend(_qa_preamble(buckets))
     for cluster_name, _ in CLUSTERS:
         cmds = buckets[cluster_name]
         if not cmds:
@@ -193,7 +237,7 @@ def render_body(commands: list[dict]) -> str:
         "- `kaizen help <name>` — full per-command docstring",
         "- `kaizen list --json` — machine-readable inventory",
         "- `kaizen <bin> --help` — per-bin usage",
-        "- `/kaizen:status` / `/kaizen:menu` — health snapshot / interactive picker",
+        "- `/kaizen:status` — kaizen install health snapshot",
         "",
         "## Zero-token-cost view (for user, not agent)",
         "",
@@ -262,6 +306,43 @@ def _cmd_print(args) -> int:
     return 0
 
 
+def _render_one_cluster(commands: list[dict], cluster_name: str) -> str:
+    """Emit a single cluster's sub-table (header + rows). Backs the
+    /kaizen:help QA wizard drill-down."""
+    buckets = cluster_assignments(commands)
+    cmds = buckets.get(cluster_name, [])
+    out = [f"## {cluster_name} ({len(cmds)})", ""]
+    if not cmds:
+        out.append("(no commands in this cluster yet)")
+        return "\n".join(out) + "\n"
+    out.append("| Command | Does |")
+    out.append("|---|---|")
+    for c in cmds:
+        out.append(f"| `{c['stem']}` | {c['desc']} |")
+    return "\n".join(out) + "\n"
+
+
+def _cmd_cluster(args) -> int:
+    """Render one cluster's sub-table (drill-down from /kaizen:help QA)."""
+    if args.list:
+        for name, _ in CLUSTERS:
+            print(name)
+        return 0
+    if not args.name:
+        sys.stderr.write(
+            "[kaizen-help-gen] cluster: provide a cluster name or --list\n")
+        return 2
+    known = {name for name, _ in CLUSTERS}
+    if args.name not in known:
+        sys.stderr.write(
+            f"[kaizen-help-gen] cluster: unknown cluster '{args.name}'. "
+            f"Known: {', '.join(sorted(known))}\n")
+        return 2
+    commands = discover_commands()
+    sys.stdout.write(_render_one_cluster(commands, args.name))
+    return 0
+
+
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(
         prog="kaizen-help-gen",
@@ -277,6 +358,12 @@ def main(argv=None) -> int:
 
     pp = sub.add_parser("print", help="print body to stdout (don't write)")
     pp.set_defaults(func=_cmd_print)
+
+    pcl = sub.add_parser("cluster", help="render one cluster's sub-table")
+    pcl.add_argument("name", nargs="?", help="cluster name (e.g. audit/quality)")
+    pcl.add_argument("--list", action="store_true",
+                      help="list known cluster names instead of rendering")
+    pcl.set_defaults(func=_cmd_cluster)
 
     args = p.parse_args(argv)
     return args.func(args)

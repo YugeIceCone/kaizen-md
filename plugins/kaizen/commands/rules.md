@@ -27,7 +27,7 @@ Inspect / validate / generate brain-sourced kaizen rules. Rules let you customiz
 | `check-severity` | Override one of the 10 gate checks: `skip` / `warn` / `block` |
 | `custom-pattern` | Run a regex over the staged diff; emit warn or hard-block on hit |
 
-See `kaizen:behaviour-config` skill (`/kaizen:menu` lists it) for the full schema, examples, and trigger phrases.
+See `kaizen:behaviour-config` skill (`/kaizen:help` lists it) for the full schema, examples, and trigger phrases.
 
 ## How to author a rule
 

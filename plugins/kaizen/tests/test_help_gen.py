@@ -95,5 +95,39 @@ class TestClusterAssignment(unittest.TestCase):
         self.assertEqual(buckets["uncategorized"][0]["stem"], "totally-novel")
 
 
+class TestClusterSubcommand(unittest.TestCase):
+    """Backing for /kaizen:help cluster-picker QA — emit one cluster only."""
+
+    def test_cluster_emits_only_that_cluster(self):
+        r = _run("cluster", "audit/quality")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("audit/quality", r.stdout)
+        # Some other clusters should NOT appear as headings in the output
+        self.assertNotIn("## observability", r.stdout)
+        self.assertNotIn("## brain/memory", r.stdout)
+        self.assertNotIn("## workflow", r.stdout)
+
+    def test_cluster_includes_member_commands(self):
+        r = _run("cluster", "audit/quality")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        # audit/quality cluster includes audit, gatekeeper, ci-gate
+        self.assertIn("`audit`", r.stdout)
+        self.assertIn("`gatekeeper`", r.stdout)
+
+    def test_cluster_unknown_exits_nonzero(self):
+        r = _run("cluster", "nonexistent-cluster")
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("nonexistent-cluster", r.stderr + r.stdout)
+
+    def test_cluster_help_lists_known_clusters(self):
+        """Calling cluster without arg or with --list shows the catalog."""
+        r = _run("cluster", "--list")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        for cluster in ("audit/quality", "observability", "brain/memory",
+                         "workflow", "plugin-meta", "discovery/search",
+                         "dev-aids"):
+            self.assertIn(cluster, r.stdout)
+
+
 if __name__ == "__main__":
     unittest.main()

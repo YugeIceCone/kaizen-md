@@ -58,7 +58,7 @@ class TestBodyContent(unittest.TestCase):
 
     def test_includes_drill_down_pointers(self):
         for pointer in ("kaizen commands", "kaizen help", "kaizen list",
-                         "/kaizen:status", "/kaizen:menu"):
+                         "/kaizen:status"):
             self.assertIn(pointer, self.body, f"missing pointer: {pointer}")
 
     def test_under_150_lines(self):
@@ -77,6 +77,25 @@ class TestBodyContent(unittest.TestCase):
             # row format: `cmd` | <description>
             self.assertRegex(self.body, rf"`{cmd}`\s*\|",
                               f"missing per-command row for {cmd}")
+
+    def test_body_includes_qa_wizard_preamble(self):
+        """User-direction: /kaizen:help gets a simple-list QA (cluster
+        picker). Body must instruct the agent to run the wizard when
+        called with no args."""
+        self.assertRegex(self.body,
+                          r"(?i)interactive (cluster )?wizard|cluster picker",
+                          "missing QA wizard preamble heading")
+        # The wizard contract names the 4 visible cluster options.
+        for label in ("audit/quality", "workflow", "observability",
+                       "brain/memory"):
+            self.assertIn(label, self.body,
+                           f"QA wizard must list cluster option: {label}")
+
+    def test_body_lists_cluster_subcommand(self):
+        """The agent dispatches `kaizen-help-gen cluster <name>` to
+        render one cluster's sub-table after the user picks."""
+        self.assertIn("kaizen-help-gen cluster", self.body,
+                       "QA wizard must reference cluster dispatch")
 
 
 if __name__ == "__main__":
