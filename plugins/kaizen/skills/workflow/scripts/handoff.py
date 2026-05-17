@@ -47,6 +47,7 @@ import _handoff as _core  # noqa: E402
 import _envelope  # noqa: E402
 import schema_cli  # noqa: E402
 import _session_jsonl as _sj  # noqa: E402
+import _atomic  # noqa: E402
 
 _emit = _envelope.emitter("kaizen-handoff", tool_version="1.0.0")
 
@@ -927,10 +928,8 @@ def _cmd_create(args) -> int:
 
     body = _render_create_yaml(payload, date_str)
 
-    # Atomic write
-    tmp_path = yaml_path.with_suffix(yaml_path.suffix + ".create.tmp")
-    tmp_path.write_text(body, encoding="utf-8")
-    tmp_path.replace(yaml_path)
+    # Atomic write (shared util)
+    _atomic.atomic_write(yaml_path, body)
 
     # Index into the store
     db_id = _core.save_handoff(
@@ -1074,10 +1073,8 @@ def _cmd_auto_finalize(args) -> int:
             print(f"[kaizen-handoff auto-finalize] {msg}", file=sys.stderr)
         return 1
 
-    # Atomic write: tempfile in same dir → rename.
-    tmp = fp.with_suffix(fp.suffix + ".auto-finalize.tmp")
-    tmp.write_text(rewritten, encoding="utf-8")
-    tmp.replace(fp)
+    # Atomic write (shared util)
+    _atomic.atomic_write(fp, rewritten)
 
     # Re-index. Session name = parent dir name (matches the skill's
     # "session-name groups handoffs into one folder" convention).

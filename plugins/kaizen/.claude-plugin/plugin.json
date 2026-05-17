@@ -54,6 +54,7 @@
       "Bash(bash ${CLAUDE_PLUGIN_ROOT}/hooks/claude/dxm-event.sh:*)",
       "Bash(uv run --script ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/dxm_mcp.py:*)",
       "Bash(uv run --script ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/intent_mcp.py:*)",
+      "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/statusline_dxm.py:*)",
       "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/intent.py:*)",
       "Bash(bash ${CLAUDE_PLUGIN_ROOT}/bin/kaizen-intent:*)",
       "Bash(bash ${CLAUDE_PLUGIN_ROOT}/hooks/claude/intent-userprompt.sh:*)",

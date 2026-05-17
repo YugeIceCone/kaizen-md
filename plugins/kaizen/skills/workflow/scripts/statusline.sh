@@ -81,9 +81,13 @@ if [ -n "$REPO_ROOT" ]; then
     fi
 fi
 
+# ─── dxm live segment ────────────────────────────────────────────────
+# Skips itself when KAIZEN_DXM_DISABLE=1 or no events for cwd's session.
+DXM_PART=$(python3 "$SCRIPT_DIR/statusline_dxm.py" --back 300 2>/dev/null || echo "")
+
 # ─── Compose ─────────────────────────────────────────────────────────
 OUT=""
-for part in "$CTX_PART" "$BACKLOG_PART" "$GATE_PART"; do
+for part in "$CTX_PART" "$BACKLOG_PART" "$GATE_PART" "$DXM_PART"; do
     if [ -n "$part" ]; then
         if [ -z "$OUT" ]; then
             OUT="$part"
