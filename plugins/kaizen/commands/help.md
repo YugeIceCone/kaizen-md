@@ -64,7 +64,7 @@ generated from `commands/*.md` frontmatter via `kaizen-help-gen`.
 
 | Command | Does |
 |---|---|
-| `setup` | Unified kaizen setup command. Subcommands - install (per-repo pre-commit gate, def |
+| `setup` | Unified kaizen setup. No-args → interactive QA menu (4 AskUserQuestion steps). Wit |
 | `bootstrap` | Provision the kaizen plugin's uv-managed Python surface — verifies uv is installed |
 | `update` | Single-command kaizen maintenance — `git pull` the marketplace, refresh Claude Cod |
 | `refresh-cache` | Force Claude Code's plugin cache to match the kaizen source. Solves the "/plugin u |
