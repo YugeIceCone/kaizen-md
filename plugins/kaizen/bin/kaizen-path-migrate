@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# kaizen-path-migrate — v1.38 → v1.39 layout restructure.
+# See `kaizen-path-migrate --help`.
+
+set -euo pipefail
+
+_BIN_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=../skills/workflow/scripts/_plugin_root.sh
+source "$_BIN_DIR/../skills/workflow/scripts/_plugin_root.sh"
+PLUGIN_ROOT="$(kaizen_plugin_root)" || {
+    echo "kaizen-path-migrate: plugin root unresolved" >&2
+    exit 1
+}
+
+exec python3 "$PLUGIN_ROOT/skills/workflow/scripts/path_migrate.py" "$@"
