@@ -41,3 +41,4 @@
 | 2026-05-17 | perf     | +95    | pretooluse_trace.py — consolidates 4 python3 spawns into 1 per PreToolUse fire. ~120ms → ~25ms per tool call × 1000s of calls/session. |
 | 2026-05-17 | perf     | +85    | posttooluse_trace.py — same fix on PostToolUse (4 spawns → 1). Companion hot-path saving. |
 | 2026-05-17 | perf     | +120   | stop_backlog_reminder.py — Stop hook 3 spawns → 1. Also drops a redundant backlog.json double-read + adds KAIZEN_BACKLOG_DISABLE bypass for hook discipline parity. |
+| 2026-05-17 | perf     | +60    | userprompt_inbox.py — UserPromptSubmit inbox capture 4 spawns → 1. KAIZEN_INBOX_DISABLE bypass parity. |

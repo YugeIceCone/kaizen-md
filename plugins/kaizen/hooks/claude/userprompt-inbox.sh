@@ -21,35 +21,12 @@ INPUT=$(cat 2>/dev/null || echo "{}")
 
 printf '%s' "$INPUT" | bash "$PLUGIN_ROOT/hooks/claude/_trace.sh" UserPromptSubmit
 
-PROMPT=$(echo "$INPUT" | python3 -c "
-import json, sys
-try:
-    d = json.loads(sys.stdin.read())
-    print(d.get('prompt') or d.get('user_prompt') or d.get('message') or '')
-except Exception:
-    pass
-" 2>/dev/null)
-
-SESSION=$(echo "$INPUT" | python3 -c "
-import json, sys
-try:
-    d = json.loads(sys.stdin.read())
-    print(d.get('session_id') or '')
-except Exception:
-    pass
-" 2>/dev/null)
-
-if [ -n "${PROMPT:-}" ]; then
-    INBOX="$PLUGIN_ROOT/skills/workflow/scripts/inbox.py"
-    # Capture prints the absolute path of the new message file
-    CAPTURED=$(python3 "$INBOX" capture --session "$SESSION" "$PROMPT" 2>/dev/null) || true
-    # Mark this as the turn-starter ONLY if no sentinel exists. Mid-turn
-    # prompts (typed while Claude is busy) do NOT overwrite the sentinel,
-    # so they surface normally on the next PostToolUse drain. The Stop
-    # hook clears the sentinel at turn end.
-    if [ -n "$CAPTURED" ]; then
-        python3 "$INBOX" set-turn-starter "$CAPTURED" >/dev/null 2>&1 || true
-    fi
-fi
+# Single python3 spawn — userprompt_inbox.py reads stdin once,
+# extracts prompt + session_id, calls inbox.capture +
+# inbox.set_turn_starter directly. Was 4 spawns (extract prompt +
+# extract session + capture + set-turn-starter) per UserPromptSubmit.
+printf '%s' "$INPUT" | python3 \
+    "$PLUGIN_ROOT/skills/workflow/scripts/userprompt_inbox.py" \
+    >/dev/null 2>&1 || true
 
 exit 0
