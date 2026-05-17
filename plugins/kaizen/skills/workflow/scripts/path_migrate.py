@@ -38,6 +38,7 @@ Exit codes: 0 success / 1 user error or conflict refusal /
 from __future__ import annotations
 
 import argparse
+import hashlib
 import shutil
 import subprocess
 import sys
@@ -260,7 +261,45 @@ def _backup_tree() -> Optional[Path]:
     except (OSError, tarfile.TarError) as e:
         print(f"[kaizen-path-migrate] backup error: {e}", file=sys.stderr)
         return None
+    # CRYPTO-1: SHA-256 sidecar for integrity verification at rollback
+    if not _write_sha256_sidecar(backup_path):
+        return None
     return backup_path
+
+
+def _write_sha256_sidecar(tar_path: Path) -> bool:
+    try:
+        digest = hashlib.sha256(tar_path.read_bytes()).hexdigest()
+        sidecar = Path(str(tar_path) + ".sha256")
+        sidecar.write_text(digest + "\n")
+        return True
+    except OSError as e:
+        print(f"[kaizen-path-migrate] sidecar write failed: {e}",
+              file=sys.stderr)
+        return False
+
+
+def _verify_sha256_sidecar(tar_path: Path) -> bool:
+    sidecar = Path(str(tar_path) + ".sha256")
+    if not sidecar.is_file():
+        print(f"[kaizen-path-migrate] integrity sidecar missing: {sidecar}",
+              file=sys.stderr)
+        return False
+    try:
+        expected = sidecar.read_text().strip()
+        actual = hashlib.sha256(tar_path.read_bytes()).hexdigest()
+    except OSError as e:
+        print(f"[kaizen-path-migrate] sidecar read failed: {e}",
+              file=sys.stderr)
+        return False
+    if expected != actual:
+        print(f"[kaizen-path-migrate] INTEGRITY FAILURE: {tar_path}\n"
+              f"  expected: {expected}\n"
+              f"  actual:   {actual}\n"
+              f"  refusing to extract a tampered/corrupted tarball",
+              file=sys.stderr)
+        return False
+    return True
 
 
 def _skip_self_backup(backup_path: Path):
@@ -340,6 +379,13 @@ def cmd_rollback(args) -> int:
                 f"[kaizen-path-migrate rollback] no backup at {_paths.BACKUP_DIR}")
         return 1
     latest = backups[-1]
+    # CRYPTO-1: verify SHA-256 sidecar before any extraction
+    if not _verify_sha256_sidecar(latest):
+        _report(args, {"action": "failed", "reason": "integrity-failure",
+                       "backup": str(latest)}, verdict="red", text=
+                f"[kaizen-path-migrate rollback] REFUSED: {latest} failed "
+                f"integrity check (corrupted or tampered).")
+        return 2
     # Extract over the user-dir parent (the tar was rooted at .kaizen/).
     # filter="data" (Py3.12+) rejects path-traversal, absolute paths,
     # and dangerous symlinks (CVE-2007-4559 class).

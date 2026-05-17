@@ -48,6 +48,7 @@ Exit codes: 0 success / 1 user error / 2 verification failure /
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import shutil
@@ -337,8 +338,9 @@ def cmd_apply(args) -> int:
 
 
 def _backup_src(src: Path, args) -> Optional[Path]:
-    """Tar.gz the src dir to the backup location. Returns path on
-    success, None on failure (caller exits non-zero)."""
+    """Tar.gz the src dir to the backup location, write a SHA-256
+    sidecar for integrity verification at rollback time. Returns the
+    tar path on success, None on failure."""
     _paths.BACKUP_DIR.mkdir(parents=True, exist_ok=True)
     backup_path = _paths.BACKUP_DIR / f"{_BACKUP_PREFIX}{_utc_stamp()}.tar.gz"
     try:
@@ -352,14 +354,57 @@ def _backup_src(src: Path, args) -> Optional[Path]:
         with tarfile.open(backup_path, "r:gz") as tar:
             count = sum(1 for _ in tar)
         if count == 0:
-            print(f"[kaizen-brain-migrate] backup produced empty tarball",
+            print("[kaizen-brain-migrate] backup produced empty tarball",
                   file=sys.stderr)
             return None
     except (OSError, tarfile.TarError) as e:
         print(f"[kaizen-brain-migrate] backup verify failed: {e}",
               file=sys.stderr)
         return None
+    # CRYPTO-1: write SHA-256 sidecar for tamper detection at rollback
+    if not _write_sha256_sidecar(backup_path):
+        return None
     return backup_path
+
+
+def _write_sha256_sidecar(tar_path: Path) -> bool:
+    """Compute SHA-256 of `tar_path` and write `<tar_path>.sha256`
+    next to it. Returns True on success."""
+    try:
+        digest = hashlib.sha256(tar_path.read_bytes()).hexdigest()
+        sidecar = Path(str(tar_path) + ".sha256")
+        sidecar.write_text(digest + "\n")
+        return True
+    except OSError as e:
+        print(f"[kaizen-brain-migrate] sidecar write failed: {e}",
+              file=sys.stderr)
+        return False
+
+
+def _verify_sha256_sidecar(tar_path: Path) -> bool:
+    """Verify `tar_path` against `<tar_path>.sha256`. Returns False
+    when sidecar is missing OR digest doesn't match. Used by
+    cmd_rollback before extraction."""
+    sidecar = Path(str(tar_path) + ".sha256")
+    if not sidecar.is_file():
+        print(f"[kaizen-brain-migrate] integrity sidecar missing: {sidecar}",
+              file=sys.stderr)
+        return False
+    try:
+        expected = sidecar.read_text().strip()
+        actual = hashlib.sha256(tar_path.read_bytes()).hexdigest()
+    except OSError as e:
+        print(f"[kaizen-brain-migrate] sidecar read failed: {e}",
+              file=sys.stderr)
+        return False
+    if expected != actual:
+        print(f"[kaizen-brain-migrate] INTEGRITY FAILURE: {tar_path}\n"
+              f"  expected: {expected}\n"
+              f"  actual:   {actual}\n"
+              f"  refusing to extract a tampered/corrupted tarball",
+              file=sys.stderr)
+        return False
+    return True
 
 
 def _rsync_dir(src: Path, dst: Path, args) -> bool:
@@ -418,6 +463,13 @@ def cmd_rollback(args) -> int:
                 f"{_paths.BACKUP_DIR}")
         return 1
     latest = backups[-1]
+    # CRYPTO-1: verify SHA-256 sidecar before any extraction.
+    if not _verify_sha256_sidecar(latest):
+        _report(args, {"action": "failed", "reason": "integrity-failure",
+                       "backup": str(latest)}, verdict="red", text=
+                f"[kaizen-brain-migrate rollback] REFUSED: {latest} failed "
+                f"integrity check (corrupted or tampered).")
+        return 2
 
     # Restore src (delete dst, untar backup over src parent)
     if dst.exists():
