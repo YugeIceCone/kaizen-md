@@ -68,6 +68,8 @@ SUBSERVERS: list[tuple[str, str]] = [
     # Phase 3 — live-state + intent automation
     ("dxm", "dxm_mcp"),
     ("intent", "intent_mcp"),
+    # Phase 4 — local LLM bridge
+    ("ollama", "ollama_mcp"),
 ]
 
 gw = FastMCP("kaizen")

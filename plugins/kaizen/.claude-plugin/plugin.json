@@ -78,6 +78,7 @@
       "Bash(bash ${CLAUDE_PLUGIN_ROOT}/hooks/claude/dxm-event.sh:*)",
       "Bash(uv run --script ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/dxm_mcp.py:*)",
       "Bash(uv run --script ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/intent_mcp.py:*)",
+      "Bash(uv run --script ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/ollama_mcp.py:*)",
       "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/statusline_dxm.py:*)",
       "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/statusline_intent.py:*)",
       "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/context_notifier.py:*)",
