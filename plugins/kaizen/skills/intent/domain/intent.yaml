@@ -1,0 +1,28 @@
+# kaizen-intent feature manifest (v2 lens). Declares the CLI surface
+# + schemas; behavior rules live in the sibling intents.yaml.
+
+version: 2
+feature: intent
+description: >-
+  Declarative intent → action automation on top of dxm event stream +
+  text triggers. Maps user/agent intent to suggested or auto-runnable
+  kaizen actions.
+
+paths:
+  intents_file: "skills/intent/domain/intents.yaml"
+  intents_file_env: "KAIZEN_INTENTS_FILE"
+
+subcommands:
+  list:
+    description: List all registered intents.
+    output_schema: schemas/list-out.schema.json
+  match:
+    description: Return all intents matching the supplied text/events.
+    input_schema:  schemas/match-in.schema.json
+    output_schema: schemas/match-out.schema.json
+  suggest:
+    description: >-
+      Return the single highest-confidence matching intent. Used by
+      statusline + agent for one-line hints.
+    input_schema:  schemas/match-in.schema.json
+    output_schema: schemas/suggest-out.schema.json

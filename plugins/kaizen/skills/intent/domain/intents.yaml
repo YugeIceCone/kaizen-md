@@ -1,0 +1,116 @@
+# kaizen-intent rules — declarative intent → action mapping.
+#
+# Each intent has:
+#   id           - unique kebab-case identifier
+#   description  - one-line summary
+#   triggers     - list of phrase or event_pattern triggers (any fires)
+#   action       - what to suggest/run (suggest + subcommand + confidence)
+#
+# Trigger kinds (MVP):
+#   phrase:        regex/literal text match (case_insensitive optional)
+#   event_pattern: dxm event sequence threshold (count_at_least within
+#                  window_seconds; optional evt_type / tool_name /
+#                  exit_code_nonzero filters)
+#
+# Confidence (0.0-1.0) ranks matches in `suggest` (highest wins).
+
+version: 1
+
+intents:
+  # ─── Session-management intents ──────────────────────────────────
+
+  - id: wrap-up
+    description: User signals end-of-session — suggest handoff create.
+    triggers:
+      - { kind: phrase, pattern: "let'?s wrap (this )?up", case_insensitive: true }
+      - { kind: phrase, pattern: "wrap.*session", case_insensitive: true }
+      - { kind: phrase, pattern: "(end|finish).*session", case_insensitive: true }
+      - { kind: phrase, pattern: "(create|write).*handoff", case_insensitive: true }
+    action:
+      suggest: "kaizen-handoff scaffold --session <project>  # then edit qualitative fields → assess → auto-finalize"
+      subcommand: handoff-scaffold
+      confidence: 0.9
+
+  - id: resume-prior
+    description: User wants to pick up prior session — suggest handoff resume.
+    triggers:
+      - { kind: phrase, pattern: "(resume|continue|pick up).*(last|prior|previous).*session", case_insensitive: true }
+      - { kind: phrase, pattern: "where (did|were) we (left|stop)", case_insensitive: true }
+    action:
+      suggest: "/kaizen:handoff resume  # loads latest handoff + verify"
+      subcommand: handoff-resume
+      confidence: 0.9
+
+  # ─── Context-pressure intents ────────────────────────────────────
+
+  - id: context-pressure
+    description: User mentions context is full — suggest /compact.
+    triggers:
+      - { kind: phrase, pattern: "context.*(high|tight|full|9[0-9]%|exhausted)", case_insensitive: true }
+      - { kind: phrase, pattern: "running out of (context|tokens)", case_insensitive: true }
+    action:
+      suggest: "/compact  # reclaims context window via Anthropic-side summarization"
+      subcommand: compact
+      confidence: 0.85
+
+  # ─── Debugging intents ───────────────────────────────────────────
+
+  - id: repeated-bash-failures
+    description: 3+ failing Bash calls in 60s — suggest investigation.
+    triggers:
+      - kind: event_pattern
+        evt_type: PostToolUse
+        tool_name: Bash
+        exit_code_nonzero: true
+        count_at_least: 3
+        window_seconds: 60
+    action:
+      suggest: "3+ Bash failures in 60s — investigate root cause before continuing"
+      subcommand: debug
+      confidence: 0.95
+
+  - id: stuck-on-error
+    description: User mentions debugging / stuck — surface verify + recent failures.
+    triggers:
+      - { kind: phrase, pattern: "(stuck|hit a wall|can'?t figure out)", case_insensitive: true }
+      - { kind: phrase, pattern: "(debug|investigate).*error", case_insensitive: true }
+    action:
+      suggest: "kaizen-dxm tail --back 120 + kaizen-handoff verify  # surface last 2 min + tree state"
+      subcommand: debug
+      confidence: 0.7
+
+  # ─── Testing intents ─────────────────────────────────────────────
+
+  - id: tdd-prompt
+    description: User signals net-new code — load /tdd.
+    triggers:
+      - { kind: phrase, pattern: "(implement|build|create|add).*(feature|component|module|function)", case_insensitive: true }
+      - { kind: phrase, pattern: "net.?new (code|feature|module)", case_insensitive: true }
+    action:
+      suggest: "Load Skill(kaizen:tdd)  # net-new code lands test-first per Persona pref-tdd-for-new-code"
+      subcommand: tdd
+      confidence: 0.8
+
+  # ─── Refactor + architecture intents ─────────────────────────────
+
+  - id: refactor-prompt
+    description: User signals refactor — load onion-ddd + coding-skills.
+    triggers:
+      - { kind: phrase, pattern: "refactor", case_insensitive: true }
+      - { kind: phrase, pattern: "(restructure|reorganize).*code", case_insensitive: true }
+    action:
+      suggest: "Load Skill(kaizen:onion-ddd-workflow) + the touched coding-skills/* per Persona Directives"
+      subcommand: refactor
+      confidence: 0.75
+
+  # ─── Commit / publish intents ────────────────────────────────────
+
+  - id: pre-commit-check
+    description: User about to commit — suggest karpathy + iron-laws check.
+    triggers:
+      - { kind: phrase, pattern: "(before|about to|ready to) commit", case_insensitive: true }
+      - { kind: phrase, pattern: "(stage|staged).*for commit", case_insensitive: true }
+    action:
+      suggest: "kaizen gatekeeper check --staged + /kaizen:karpathy-check  # gate before commit"
+      subcommand: gatekeeper
+      confidence: 0.85
