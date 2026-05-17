@@ -247,7 +247,7 @@ documented so the next consolidation sprint has the list):
 
 | Pair / family | Overlap | Resolution sketch |
 |---|---|---|
-| `/kaizen:gate` ↔ `/kaizen:gatekeeper` | Two entry points to the same green/yellow/red verdict | Make `gate` a thin alias dispatch to `gatekeeper`; document deprecation |
+| ~~`/kaizen:gate` ↔ `/kaizen:gatekeeper`~~ | **NOT a real overlap** — `gate` runs the actual git pre-commit hook (commit-blocking checks: msg prefix, structural-change → progress.md row, pre-deletion belief scan). `gatekeeper` aggregates AUDIT findings (iron-laws, etu, karpathy, validator, token-bloat, coverage axes) into one verdict. Different scopes, both keep their slot. | Keep both; clarify in user-facing docs. |
 | `/kaizen:audit` ↔ `/kaizen:self-audit` ↔ `/kaizen:agent-self-audit` | 3 audit flavours; user has to remember the difference | Consolidate to `/kaizen:audit <flavor>` (whole-repo / plugin-self / agent-driven) — leave the existing three as back-compat aliases |
 | `/kaizen:migrate` ↔ `/kaizen:migrate-paths` | One is the parent, one is a specific data migrator | Make `migrate` the parent dispatcher (already done at the bin level); deprecate `migrate-paths` as a sibling |
 | `/kaizen:setup` ↔ `/kaizen:bootstrap` ↔ `/kaizen:refresh-cache` ↔ `/kaizen:update` | 4 admin commands with overlapping lifecycle steps | Cluster as `/kaizen:admin <subcommand>` later; the bins are also flat today (Round 3 archeology — defer until aggregation parent is clearly needed) |
