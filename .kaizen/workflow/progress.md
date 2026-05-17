@@ -39,3 +39,4 @@
 | 2026-05-17 | refactor | +25    | _dxm_emit.emit_subcommand_complete DRY helper — migrate 8 callers in handoff.py + intent.py to centralized {tool,sub} naming convention. Rename + typo safety by construction. |
 | 2026-05-17 | perf     | +15    | context.py `line` subcommand emits pre-formatted statusline segment in 1 spawn (was 5). 160ms → 100ms per statusline render (37% faster). |
 | 2026-05-17 | perf     | +95    | pretooluse_trace.py — consolidates 4 python3 spawns into 1 per PreToolUse fire. ~120ms → ~25ms per tool call × 1000s of calls/session. |
+| 2026-05-17 | perf     | +85    | posttooluse_trace.py — same fix on PostToolUse (4 spawns → 1). Companion hot-path saving. |
