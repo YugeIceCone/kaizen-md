@@ -404,8 +404,47 @@ DEFAULT_WATCH_INTERVAL_SEC = 5.0
 # own DB write and loop forever. Also skip vcs / build noise.
 _WATCH_IGNORE = ["*/.kaizen/*", "*/.git/*", "*/__pycache__/*",
                  "*/node_modules/*", "*/target/*"]
-_WATCH_DEBOUNCE_SEC = 0.05
+# 0.5s = 2Hz wake-up — was 0.05s (20Hz) which caused sustained 99% CPU
+# from the threading.Event + lock + iteration overhead alone, even when
+# `pending` was empty. 0.5s is indistinguishable from 0.05s in user
+# perceived latency for index refresh. Override via env if needed.
+_WATCH_DEBOUNCE_SEC = 0.5
+_WATCH_DEBOUNCE_FLOOR = 0.05
+_WATCH_DEBOUNCE_CEILING = 5.0
 _SEMANTIC_THROTTLE_SEC = 5.0
+
+
+def _resolve_debounce() -> float:
+    """Return the actual debounce seconds — env override (clamped) or
+    module default. Pure; safe to call repeatedly."""
+    raw = os.environ.get("KAIZEN_WATCH_DEBOUNCE_SEC")
+    if not raw:
+        return _WATCH_DEBOUNCE_SEC
+    try:
+        v = float(raw)
+    except (TypeError, ValueError):
+        return _WATCH_DEBOUNCE_SEC
+    if v < _WATCH_DEBOUNCE_FLOOR:
+        return _WATCH_DEBOUNCE_FLOOR
+    if v > _WATCH_DEBOUNCE_CEILING:
+        return _WATCH_DEBOUNCE_CEILING
+    return v
+
+
+def _should_spawn_semantic(
+    *, prev_proc, last_spawn: float, now: float, throttle_sec: float,
+) -> bool:
+    """True iff we should spawn the next semantic refresh subprocess.
+    Two short-circuits:
+      - prev_proc still running (poll() is None) → skip; avoids zombie
+        accumulation and concurrent torch processes.
+      - throttle window still open → skip.
+    Pure; the caller does the spawn + bookkeeping."""
+    if prev_proc is not None and prev_proc.poll() is None:
+        return False
+    if (now - last_spawn) < throttle_sec:
+        return False
+    return True
 
 
 def _watchdog_available() -> bool:
@@ -455,12 +494,38 @@ def _run_watchdog_foreground(stop_event) -> None:
     tick()
     last_semantic = time.monotonic()
     semantic_dirty = False
+    prev_semantic_proc = None   # tracked so we don't accumulate zombies
+    debounce = _resolve_debounce()
+    log_line("INFO", f"watch loop debounce={debounce}s semantic_throttle={_SEMANTIC_THROTTLE_SEC}s")
+    _diag_iter = 0
+    _diag_last_log = time.monotonic()
+    _diag_paths_seen = 0
     try:
         # The debounce window IS the wait interval — coalesces a burst.
-        while not stop_event.wait(_WATCH_DEBOUNCE_SEC):
+        while not stop_event.wait(debounce):
             with lock:
                 paths = list(pending)
                 pending.clear()
+            _diag_iter += 1
+            _diag_paths_seen += len(paths)
+            now_d = time.monotonic()
+            if (now_d - _diag_last_log) >= 10.0:
+                # Sample a few paths so we can SEE what's spamming.
+                sample = list(paths)[:3] if paths else []
+                log_line(
+                    "INFO",
+                    f"watch-diag iter={_diag_iter} "
+                    f"paths_processed={_diag_paths_seen} "
+                    f"over {now_d - _diag_last_log:.1f}s "
+                    f"sample={sample}",
+                )
+                _diag_iter = 0
+                _diag_paths_seen = 0
+                _diag_last_log = now_d
+            # Reap finished semantic-refresh child (fire-and-forget had
+            # been leaking zombies — see test_daemon_helpers).
+            if prev_semantic_proc is not None and prev_semantic_proc.poll() is not None:
+                prev_semantic_proc = None
             if not paths:
                 continue
             for path in paths:
@@ -476,9 +541,15 @@ def _run_watchdog_foreground(stop_event) -> None:
             conn.commit()
             semantic_dirty = True
             # Throttled background semantic refresh — off the loc path.
-            if semantic_dirty and (time.monotonic() - last_semantic) > _SEMANTIC_THROTTLE_SEC:
-                _spawn_semantic_refresh(root)
-                last_semantic = time.monotonic()
+            # The pure helper handles both the throttle window AND the
+            # "previous still running" short-circuit.
+            now = time.monotonic()
+            if semantic_dirty and _should_spawn_semantic(
+                prev_proc=prev_semantic_proc, last_spawn=last_semantic,
+                now=now, throttle_sec=_SEMANTIC_THROTTLE_SEC,
+            ):
+                prev_semantic_proc = _spawn_semantic_refresh(root)
+                last_semantic = now
                 semantic_dirty = False
     finally:
         observer.stop()
@@ -487,12 +558,13 @@ def _run_watchdog_foreground(stop_event) -> None:
         log_line("INFO", "watchdog observer stopped")
 
 
-def _spawn_semantic_refresh(root: Path) -> None:
-    """Fire-and-forget incremental onboard index — torch is seconds, so
-    it runs detached, never on the loc critical path."""
+def _spawn_semantic_refresh(root: Path):
+    """Background incremental onboard index — torch is seconds, runs
+    detached, never on the loc critical path. Returns the Popen handle
+    so the caller can poll() it (avoids zombie accumulation)."""
     scripts = scripts_dir()
     try:
-        subprocess.Popen(
+        return subprocess.Popen(
             ["uv", "run", "--script", str(scripts / "onboard_index.py"),
              "index", "--root", str(root)],
             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
@@ -500,6 +572,7 @@ def _spawn_semantic_refresh(root: Path) -> None:
         )
     except (FileNotFoundError, OSError) as e:
         log_line("ERROR", f"semantic refresh spawn failed: {e}")
+        return None
 
 
 def _pid_alive(pid: int) -> bool:
@@ -691,7 +764,7 @@ def main() -> None:
             print(f"  ✓ cron entry installed (every {args.interval} min)")
             print(f"  log:    {LOG_FILE}")
             print(f"  state:  {STATE_FILE}")
-            print(f"  unset KAIZEN_DAEMON_AUTOPULL=1 to enable auto-pull from origin (default: notify only)")
+            print("  unset KAIZEN_DAEMON_AUTOPULL=1 to enable auto-pull from origin (default: notify only)")
         else:
             sys.exit(1)
 
@@ -740,7 +813,7 @@ def main() -> None:
         if ok:
             print(f"  ✓ watcher started (pid {info}, interval {args.interval}s)")
             print(f"    log:   {LOG_FILE}")
-            print(f"    stop:  kaizen daemon watch-stop")
+            print("    stop:  kaizen daemon watch-stop")
         else:
             print(f"  ! watch-start: {info}", file=sys.stderr)
             sys.exit(1)
