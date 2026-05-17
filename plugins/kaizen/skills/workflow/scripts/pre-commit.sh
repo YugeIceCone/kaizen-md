@@ -201,7 +201,7 @@ if [ -n "$COMPILE_CHECK_CMD" ]; then
     # Cache key = compile cmd + sha of staged content. Same staged
     # blob set + same cmd → re-use last green verdict. Failed runs
     # are NOT cached (stale failure is worse than re-running).
-    STAGED_SHA=$(git diff --cached 2>/dev/null | python3 -c "import sys,hashlib; print(hashlib.sha1(sys.stdin.buffer.read()).hexdigest()[:16])" 2>/dev/null || echo "no-stage")
+    STAGED_SHA=$(git diff --cached 2>/dev/null | python3 -c "import sys,hashlib; print(hashlib.sha256(sys.stdin.buffer.read()).hexdigest()[:16])" 2>/dev/null || echo "no-stage")
     CACHE_PY="$_SCRIPT_REAL_DIR/cache.py"
     CACHE_KEY=""
     if [ -x "$CACHE_PY" ]; then

@@ -78,7 +78,7 @@ def key_of(*parts: object) -> str:
     Parts are stringified and null-byte-separated to prevent
     ambiguity (e.g. ['ab', 'c'] vs ['a', 'bc']).
     """
-    h = hashlib.sha1()
+    h = hashlib.sha256()
     for p in parts:
         h.update(str(p).encode())
         h.update(b"\x00")

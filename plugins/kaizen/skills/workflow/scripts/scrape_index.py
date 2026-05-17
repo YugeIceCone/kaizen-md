@@ -172,7 +172,7 @@ def get_meta(conn: sqlite3.Connection, key: str, default: str = "") -> str:
 
 
 def item_sha(url: str, prompt: str) -> str:
-    return hashlib.sha1(f"{url}|{prompt}".encode()).hexdigest()[:16]
+    return hashlib.sha256(f"{url}|{prompt}".encode()).hexdigest()[:16]
 
 
 def denormalize(extraction: Any) -> str:

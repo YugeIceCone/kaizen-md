@@ -555,7 +555,7 @@ def count_sloc(text: str) -> int:
 
 
 def _file_sha(content: bytes) -> str:
-    return hashlib.sha1(content).hexdigest()[:16]
+    return hashlib.sha256(content).hexdigest()[:16]
 
 
 def _rel_path(path: Path, root: Path) -> str:

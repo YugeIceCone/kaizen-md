@@ -200,7 +200,7 @@ def event_to_text(ev: dict, embed_data: bool = False) -> str:
 def content_hash(ev: dict) -> str:
     """Stable identity hash for de-dup. Based on ts + src + evt + sid + tool."""
     s = f"{ev.get('ts','')}|{ev.get('src','')}|{ev.get('evt','')}|{ev.get('sid','')}|{ev.get('tool','')}|{ev.get('ms','')}"
-    return hashlib.sha1(s.encode()).hexdigest()[:16]
+    return hashlib.sha256(s.encode()).hexdigest()[:16]
 
 
 # ─── Index command ───────────────────────────────────────────────────

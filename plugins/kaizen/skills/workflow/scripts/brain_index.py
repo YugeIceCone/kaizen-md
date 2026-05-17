@@ -192,7 +192,7 @@ def iter_brain_notes(brain_root: Optional[Path] = None) -> Iterator[dict]:
                 "freshness": fm.get("freshness"),
                 "subdir": sub,
                 "body": body.strip(),
-                "sha": hashlib.sha1(text.encode("utf-8")).hexdigest(),
+                "sha": hashlib.sha256(text.encode("utf-8")).hexdigest(),
                 "updated_at": dt.datetime.fromtimestamp(
                     f.stat().st_mtime, dt.timezone.utc
                 ).isoformat(),

@@ -576,7 +576,7 @@ def cmd_drill(sid: str) -> str:
 def _hash_layer(d: dict) -> str:
     """SHA1 of the canonical-JSON serialization of a layer's summary."""
     s = json.dumps(d, sort_keys=True, default=str)
-    return hashlib.sha1(s.encode()).hexdigest()[:16]
+    return hashlib.sha256(s.encode()).hexdigest()[:16]
 
 
 def cmd_snapshot(name: str = "") -> dict:

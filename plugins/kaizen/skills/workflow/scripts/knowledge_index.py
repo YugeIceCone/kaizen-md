@@ -465,7 +465,7 @@ def iter_all_sources():
 def item_sha(item: dict) -> str:
     """Stable identity hash. Source + path + title + updated_at."""
     s = f"{item['source']}|{item['source_path']}|{item['title']}|{item['updated_at']}"
-    return hashlib.sha1(s.encode()).hexdigest()[:16]
+    return hashlib.sha256(s.encode()).hexdigest()[:16]
 
 
 def item_to_text(item: dict, embed_body: bool) -> str:

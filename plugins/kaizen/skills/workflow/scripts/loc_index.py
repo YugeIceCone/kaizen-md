@@ -420,7 +420,7 @@ def extract_python_functions(source: str, file: str) -> list[FunctionInfo]:
         byte_start = sum(len(lines[i]) + 1 for i in range(line_start - 1))
         seg_bytes = segment.encode("utf-8")
         byte_end = byte_start + len(seg_bytes)
-        body_sha = hashlib.sha1(seg_bytes).hexdigest()[:16]
+        body_sha = hashlib.sha256(seg_bytes).hexdigest()[:16]
 
         # Logical lines = non-blank, non-comment lines inside the body.
         logical = 0
@@ -435,7 +435,7 @@ def extract_python_functions(source: str, file: str) -> list[FunctionInfo]:
         is_public = not name.startswith("_") or name.startswith("__") and name.endswith("__")
         is_test = _is_test_function(name, decos, file)
         signature = _render_signature(node)
-        sig_hash = hashlib.sha1(signature.encode("utf-8")).hexdigest()[:16]
+        sig_hash = hashlib.sha256(signature.encode("utf-8")).hexdigest()[:16]
 
         out.append(FunctionInfo(
             path=file,
@@ -494,8 +494,8 @@ def extract_python_functions(source: str, file: str) -> list[FunctionInfo]:
             is_async=False,
             is_public=not node.name.startswith("_"),
             signature=f"class {node.name}",
-            signature_hash=hashlib.sha1(node.name.encode()).hexdigest()[:16],
-            body_sha=hashlib.sha1(seg_bytes).hexdigest()[:16],
+            signature_hash=hashlib.sha256(node.name.encode()).hexdigest()[:16],
+            body_sha=hashlib.sha256(seg_bytes).hexdigest()[:16],
             parser="ast",
         ))
 
@@ -601,7 +601,7 @@ def extract_regex_functions(source: str, file: str, language: str) -> list[Funct
                 physical_lines=max(1, line_end - line_start + 1),
                 byte_start=byte_start,
                 byte_end=byte_end,
-                body_sha=hashlib.sha1(name.encode()).hexdigest()[:16],
+                body_sha=hashlib.sha256(name.encode()).hexdigest()[:16],
                 signature=m.group(0).strip()[:120],
                 parser="regex",
             ))
@@ -697,7 +697,7 @@ def analyze_file(path: Path, root: Path) -> FileMetrics | None:
     metrics = FileMetrics(
         path=rel,
         language=language,
-        sha=hashlib.sha1(data).hexdigest()[:16],
+        sha=hashlib.sha256(data).hexdigest()[:16],
     )
 
     prefixes = _COMMENT_PREFIXES.get(language, ())

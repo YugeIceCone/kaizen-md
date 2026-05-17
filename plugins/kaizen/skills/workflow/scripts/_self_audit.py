@@ -45,7 +45,7 @@ class Finding:
 
     @staticmethod
     def make_id(stage: str, key: str) -> str:
-        h = hashlib.sha1(f"{stage}:{key}".encode()).hexdigest()[:8]
+        h = hashlib.sha256(f"{stage}:{key}".encode()).hexdigest()[:8]
         return f"{stage}-{h}"
 
 

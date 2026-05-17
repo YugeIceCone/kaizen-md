@@ -274,7 +274,7 @@ def _body_sha(body: str) -> str:
     """Stable sha of the body content (after stripping the framing
     frontmatter)."""
     import hashlib as _h
-    return _h.sha1(body.strip().encode("utf-8")).hexdigest()[:16]
+    return _h.sha256(body.strip().encode("utf-8")).hexdigest()[:16]
 
 
 def _check_no_progress(fm: str, body_now_sha: str) -> tuple[bool, int]:
