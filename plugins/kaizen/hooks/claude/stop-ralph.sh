@@ -194,6 +194,45 @@ case "$ACTION" in
     ' "$RALPH_STATE_FILE" > "$TEMP_FILE"
     mv "$TEMP_FILE" "$RALPH_STATE_FILE"
 
+    # Per-iteration trace event (Ralph brainstorm #5). Captures the
+    # snapshot of the iteration that just ended — `iteration` is the
+    # finished-iteration number (not NEXT_ITERATION); `pending` /
+    # `completed` come from the post-loop_ledger.py body. Best-effort:
+    # any failure is swallowed so tracing never breaks the loop.
+    if command -v python3 >/dev/null 2>&1 \
+            && [ -f "$PLUGIN_ROOT/skills/workflow/scripts/trace.py" ]; then
+        python3 - "$RALPH_STATE_FILE" "$ITERATION" \
+                   "$PLUGIN_ROOT" "$HOOK_SESSION" <<'PY' 2>/dev/null || true
+import json, os, subprocess, sys
+state_file, iteration, plugin_root, sid = sys.argv[1:5]
+try:
+    text = open(state_file).read()
+except OSError:
+    sys.exit(0)
+parts = text.split("---", 2)
+body = parts[2] if len(parts) >= 3 else ""
+pending = completed = 0
+try:
+    ledger = json.loads(body.strip())
+    pending = len(ledger.get("pending", []) or [])
+    completed = len(ledger.get("completed", []) or [])
+except (json.JSONDecodeError, AttributeError, TypeError):
+    pass
+data = json.dumps({
+    "action": "block",
+    "iteration": int(iteration) if iteration.isdigit() else None,
+    "pending": pending,
+    "completed": completed,
+})
+trace_py = os.path.join(plugin_root, "skills/workflow/scripts/trace.py")
+cmd = [sys.executable, trace_py, "event", "--src", "hook",
+       "--evt", "Stop-ralph-iteration", "--data", data]
+if sid:
+    cmd += ["--sid", sid]
+subprocess.run(cmd, capture_output=True, check=False, timeout=5)
+PY
+    fi
+
     if [[ "$COMPLETION_PROMISE" != "null" ]] && [[ -n "$COMPLETION_PROMISE" ]]; then
       SYSTEM_MSG="Ralph iteration $NEXT_ITERATION. Stop only after the ledger is empty OR after outputting <promise>$COMPLETION_PROMISE</promise> truthfully."
     else

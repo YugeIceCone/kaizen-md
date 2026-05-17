@@ -159,6 +159,62 @@ class TestPath(_Sandbox):
         self.assertEqual(wc.main(["path", "--scope", "global"]), 0)
 
 
+class TestGetKey(_Sandbox):
+    """`get-key <dotted-key>` returns scalar values for shell consumers
+    (no jq dependency). Powers /kaizen:loop's workflow-config defaults
+    (Ralph brainstorm #4)."""
+
+    def setUp(self):
+        super().setUp()
+        # Seed a config so get-key has something to read.
+        wc.main([
+            "set", "--scope", "project",
+            "--run-mode", "loop",
+            "--loop-its", "42",
+            "--loop-stop", "promise,iteration-cap",
+            "--threshold", "75",
+        ])
+
+    def _capture(self, *args) -> tuple[int, str]:
+        from io import StringIO
+        buf = StringIO()
+        orig = sys.stdout
+        sys.stdout = buf
+        try:
+            rc = wc.main(list(args))
+        finally:
+            sys.stdout = orig
+        return rc, buf.getvalue()
+
+    def test_get_key_scalar(self):
+        rc, out = self._capture("get-key", "auto_handoff_threshold")
+        self.assertEqual(rc, 0)
+        self.assertEqual(out.strip(), "75")
+
+    def test_get_key_nested_dotted(self):
+        rc, out = self._capture("get-key", "loop.max_iterations")
+        self.assertEqual(rc, 0)
+        self.assertEqual(out.strip(), "42")
+
+    def test_get_key_list_csv(self):
+        """Lists print as comma-separated for shell-friendly consumption."""
+        rc, out = self._capture("get-key", "loop.stop_conditions")
+        self.assertEqual(rc, 0)
+        self.assertEqual(out.strip(), "promise,iteration-cap")
+
+    def test_get_key_missing_returns_empty_and_zero(self):
+        """Missing keys exit 0 with empty stdout — bash consumers can
+        test `[ -z "$VAL" ]` without juggling exit codes."""
+        rc, out = self._capture("get-key", "loop.nonexistent_field")
+        self.assertEqual(rc, 0)
+        self.assertEqual(out.strip(), "")
+
+    def test_get_key_unknown_top_level_returns_empty(self):
+        rc, out = self._capture("get-key", "nonexistent")
+        self.assertEqual(rc, 0)
+        self.assertEqual(out.strip(), "")
+
+
 class TestSchemaValidity(unittest.TestCase):
     """The shipped JSON Schema must be valid JSON + declare version."""
 

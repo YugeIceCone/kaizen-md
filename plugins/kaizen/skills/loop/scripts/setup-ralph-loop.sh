@@ -113,6 +113,51 @@ done
 
 PROMPT="${PROMPT_PARTS[*]:-}"
 
+# Ralph brainstorm #6 — implicit ledger from `- [ ]` checkboxes in the
+# prompt. Only kicks in when no explicit --item / --ledger was given.
+# Each unchecked `- [ ]` line becomes one trust-based pending item
+# (verify=null); checked `- [x]` / `- [X]` lines are skipped (already
+# done). When at least one unchecked item is found, ITEMS is populated
+# and PROMPT is cleared so the ledger-mode body is built.
+if [[ -z "$LEDGER_FILE" ]] && [[ ${#ITEMS[@]} -eq 0 ]] && [[ -n "$PROMPT" ]]; then
+  IMPLICIT_OUT=$(python3 - <<PY
+import re, sys
+text = """$PROMPT"""
+descs = []
+for line in text.splitlines():
+    m = re.match(r"^\s*-\s*\[\s*\]\s*(.+?)\s*$", line)
+    if m:
+        descs.append(m.group(1))
+for d in descs:
+    print(d)
+PY
+)
+  if [[ -n "$IMPLICIT_OUT" ]]; then
+    while IFS= read -r line; do
+      [[ -n "$line" ]] && ITEMS+=("$line")
+    done <<< "$IMPLICIT_OUT"
+    PROMPT=""
+    echo "[setup-ralph-loop] seeded ${#ITEMS[@]} implicit item(s) from \`- [ ]\` checkboxes in prompt" >&2
+  fi
+fi
+
+# Ralph brainstorm #4 — workflow-config default for --its when not given.
+# Reads `loop.max_iterations` from the merged workflow config (project ←
+# global). Silent skip when the helper or config is missing. KISS lookup:
+# resolve the workflow_config.py path relative to THIS script.
+if [[ "$MAX_ITERATIONS" -eq 0 ]]; then
+  _SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+  WC_PY="$_SCRIPT_DIR/../../workflow/scripts/workflow_config.py"
+  if [[ -f "$WC_PY" ]] && command -v python3 >/dev/null 2>&1; then
+    DEFAULT_ITS=$(python3 "$WC_PY" get-key loop.max_iterations 2>/dev/null)
+    if [[ -n "$DEFAULT_ITS" ]] && [[ "$DEFAULT_ITS" =~ ^[0-9]+$ ]] \
+            && [[ "$DEFAULT_ITS" -gt 0 ]]; then
+      MAX_ITERATIONS="$DEFAULT_ITS"
+      echo "[setup-ralph-loop] --its defaulted to $MAX_ITERATIONS (from workflow-config loop.max_iterations)" >&2
+    fi
+  fi
+fi
+
 # Validate inputs: must have at least ONE source of work (prompt, items, or ledger file).
 if [[ -z "$PROMPT" ]] && [[ ${#ITEMS[@]} -eq 0 ]] && [[ -z "$LEDGER_FILE" ]]; then
   die "No prompt, --item, or --ledger provided"

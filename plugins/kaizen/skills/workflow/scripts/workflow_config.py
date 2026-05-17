@@ -229,6 +229,25 @@ def cmd_get(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_get_key(args: argparse.Namespace) -> int:
+    """Print a single scalar field from the merged config. Lists print
+    as comma-separated. Missing keys print nothing and exit 0 so bash
+    consumers can `VAL=$(... get-key X)` + `[ -z "$VAL" ]`."""
+    data = _merged()
+    cur: Any = data
+    for part in args.dotted_key.split("."):
+        if not isinstance(cur, dict) or part not in cur:
+            return 0
+        cur = cur[part]
+    if isinstance(cur, list):
+        print(",".join(str(x) for x in cur))
+    elif cur is None or isinstance(cur, bool):
+        print("" if cur is None else ("true" if cur else "false"))
+    else:
+        print(cur)
+    return 0
+
+
 def cmd_show(args: argparse.Namespace) -> int:
     if args.scope:
         data = _read(_resolve(args.scope))
@@ -306,6 +325,11 @@ def _build_parser() -> argparse.ArgumentParser:
     g.add_argument("--scope", choices=_VALID_SCOPES, default=None)
     g.add_argument("--json", action="store_true")
     g.set_defaults(func=cmd_get)
+
+    gk = sub.add_parser("get-key", help="Print a single scalar value from "
+                                          "the merged config (shell-friendly).")
+    gk.add_argument("dotted_key", help="Dotted path, e.g. loop.max_iterations")
+    gk.set_defaults(func=cmd_get_key)
 
     h = sub.add_parser("show", help="Human-readable view of the config")
     h.add_argument("--scope", choices=_VALID_SCOPES, default=None)

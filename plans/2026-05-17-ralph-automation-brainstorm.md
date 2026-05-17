@@ -13,9 +13,9 @@
 | 1 | **TTL on loop state** — auto-delete state files older than N hours | lifecycle | 5 | 2 | 10 | ✅ TDD now |
 | 2 | **Auto-archive on session boundary** — different session_id → archive + start fresh | lifecycle | 5 | 2 | 10 | ✅ TDD now |
 | 3 | **Stuck-run escalation** — `stuck_run >= N` (field exists) → auto-cancel + handoff suggestion | recovery | 5 | 2 | 10 | ✅ TDD now |
-| 4 | **Workflow-config defaults** — `/kaizen:loop` reads `.kaizen/workflow.json::loop.*` for `--its`/`--stop` defaults | integration | 4 | 2 | 8 | next |
-| 5 | **Per-iteration dxm trace** — emit event per Stop fire (action/decision/ledger-delta) | observability | 4 | 2 | 8 | next |
-| 6 | **Implicit ledger from TODOs** — parse `- [ ]` items in user prompt as ledger seed | ergonomics | 4 | 3 | 7 | next |
+| 4 | **Workflow-config defaults** — `/kaizen:loop` reads `.kaizen/workflow.json::loop.*` for `--its`/`--stop` defaults | integration | 4 | 2 | 8 | ✅ done |
+| 5 | **Per-iteration dxm trace** — emit event per Stop fire (action/decision/ledger-delta) | observability | 4 | 2 | 8 | ✅ done |
+| 6 | **Implicit ledger from TODOs** — parse `- [ ]` items in user prompt as ledger seed | ergonomics | 4 | 3 | 7 | ✅ done |
 | 7 | **Auto-verify-shape detection** — `desc: "ship X"` → suggest `git log --grep=X` | ergonomics | 4 | 3 | 7 | next |
 | 8 | **Verify-cmd retries** — N-retry with backoff for flaky commands | recovery | 3 | 3 | 6 | defer |
 | 9 | **Auto-archive completed loops** — `.kaizen/loops/<UTC>.archive.md` instead of delete | auditability | 3 | 2 | 6 | defer |
