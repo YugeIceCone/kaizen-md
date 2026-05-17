@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/YugeIceCone/kaizen-md/skills/schema-driven-cli/feature-manifest.schema.json",
+  "title": "kaizen feature manifest (v2 — schema-driven CLI lens)",
+  "description": "Declares a feature's subcommands and their input/output JSON-Schema contracts. Loaded by lens.py::Manifest.load. Subcommand schema paths are resolved RELATIVE TO THIS MANIFEST FILE.",
+  "type": "object",
+  "required": ["version", "feature", "subcommands"],
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "const": 2,
+      "description": "Manifest schema version. v1 was the legacy descriptive yaml; v2 adds the subcommand→schema mapping. Bump on breaking shape changes."
+    },
+    "feature": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*$",
+      "description": "Kebab-case feature name. Matches the skills/<feature>/ directory name."
+    },
+    "description": {
+      "type": "string",
+      "description": "Optional one-line summary of what this feature surfaces."
+    },
+    "subcommands": {
+      "type": "object",
+      "description": "Map of subcommand name → contract.",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "description": {
+            "type": "string",
+            "description": "One-line summary surfaced by --help."
+          },
+          "input_schema": {
+            "type": "string",
+            "description": "Path (relative to manifest file) to the JSON Schema validating subcommand input. Omit when the subcommand accepts no structured input."
+          },
+          "output_schema": {
+            "type": "string",
+            "description": "Path (relative to manifest file) to the JSON Schema validating the subcommand's envelope.data payload. Omit to opt out of output validation."
+          },
+          "handler": {
+            "type": "string",
+            "description": "Optional dotted-path to a Python callable that runs the subcommand. lens_dispatch resolves this when set; otherwise the CLI script wires the handler explicitly."
+          }
+        }
+      }
+    }
+  }
+}

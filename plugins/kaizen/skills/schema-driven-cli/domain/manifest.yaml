@@ -1,0 +1,19 @@
+# Schema-driven CLI — the lens skill's own meta-manifest.
+#
+# Declares the schemas the skill ships for OTHER features to consume.
+# Self-referential by intent — this file is itself a manifest for the
+# `schema-driven-cli` feature, even though the feature is a library
+# (no subcommands of its own to dispatch).
+
+version: 2
+feature: schema-driven-cli
+description: >-
+  Reusable runtime + schemas for declaring CLI input/output contracts
+  in YAML and validating I/O before / after each subcommand call.
+  Pairs with _envelope.py (the JSON lens) and rule-walker patterns
+  for data-driven classifiers.
+
+# This skill ships schemas but doesn't itself expose subcommands —
+# every consumer feature gets its own manifest.yaml. Subcommands map
+# is intentionally empty.
+subcommands: {}
