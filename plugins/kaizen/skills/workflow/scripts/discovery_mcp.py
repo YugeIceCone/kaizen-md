@@ -27,6 +27,7 @@ Tools:
 from __future__ import annotations
 
 import asyncio
+import json
 import sys
 from pathlib import Path
 from typing import Any
@@ -96,6 +97,85 @@ def _resolved_surfaces(picked: list[str] | None) -> list[str]:
     if not picked:
         return list(SURFACES.keys())
     return list(picked)
+
+
+def _fetch_ollama_models_with_caps() -> list[dict]:
+    """Query Ollama for every local model + per-model capabilities.
+    Returns [{name, capabilities, dim}]. Raises ConnectionError when
+    Ollama is unreachable so the caller can degrade gracefully.
+
+    capabilities source: Ollama's /api/show response includes a
+    `capabilities` list (e.g. ["embedding"] or ["completion"]).
+    dim source: model_info's `*.embedding_length` for embedding models.
+    """
+    import os
+    from urllib import error, request
+
+    host = (os.environ.get("KAIZEN_OLLAMA_HOST")
+            or os.environ.get("OLLAMA_HOST")
+            or "http://localhost:11434").rstrip("/")
+    if "://" not in host:
+        host = f"http://{host}"
+
+    try:
+        with request.urlopen(f"{host}/api/tags", timeout=2) as r:
+            tags = json.loads(r.read())
+    except (error.URLError, TimeoutError, OSError) as exc:
+        raise ConnectionError(f"Ollama unreachable at {host}: {exc}")
+
+    out: list[dict] = []
+    for m in tags.get("models", []) or []:
+        name = m.get("name") or m.get("model") or ""
+        if not name:
+            continue
+        caps: list[str] = []
+        dim: int | None = None
+        try:
+            data = json.dumps({"name": name}).encode()
+            req = request.Request(
+                f"{host}/api/show", data=data,
+                headers={"Content-Type": "application/json"},
+            )
+            with request.urlopen(req, timeout=2) as r:
+                info = json.loads(r.read())
+            caps = info.get("capabilities") or []
+            mi = info.get("model_info") or {}
+            # Ollama stores embedding dim under `<family>.embedding_length`
+            for k, v in mi.items():
+                if k.endswith(".embedding_length") and isinstance(v, int):
+                    dim = v
+                    break
+        except (error.URLError, TimeoutError, OSError, ValueError):
+            # Per-model failures don't poison the whole list.
+            pass
+        out.append({"name": name, "capabilities": caps, "dim": dim})
+    return out
+
+
+def _list_available_embed_models() -> list[dict]:
+    """Locally-available embedding-capable models. Empty when Ollama
+    is down — the discovery surface still works (sentence-transformers
+    cache is the fallback embedding backend for codebase / knowledge)."""
+    try:
+        models = _fetch_ollama_models_with_caps()
+    except ConnectionError:
+        return []
+    return [m for m in models if "embedding" in (m.get("capabilities") or [])]
+
+
+@mcp.tool()
+async def discovery_list_embed_models() -> list[dict]:
+    """List locally-available embedding-capable models (Ollama-side).
+
+    Returns [{name, capabilities, dim}]. Empty when Ollama is
+    unreachable — discovery surfaces that use sentence-transformers
+    (codebase / knowledge) still work without Ollama.
+
+    Use before deciding which surface to re-index against a different
+    backend, or when comparing dim/cost tradeoffs across local
+    embedding options.
+    """
+    return _list_available_embed_models()
 
 
 @mcp.tool()

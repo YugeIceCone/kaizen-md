@@ -116,6 +116,46 @@ class TestDoSearchSurface(unittest.TestCase):
         self.assertEqual(result[0]["score"], 0.9)
 
 
+class TestListEmbedModels(unittest.TestCase):
+    """`discovery_list_embed_models` surfaces locally-available
+    embedding-capable models so the caller can pick one when
+    re-indexing or comparing surfaces."""
+
+    def setUp(self):
+        self.dm = _load()
+
+    def test_list_embed_models_tool_registered(self):
+        tools = asyncio.run(self.dm.mcp._list_tools())
+        names = {t.name for t in tools}
+        self.assertIn("discovery_list_embed_models", names)
+
+    def test_helper_filters_ollama_models_by_capability(self):
+        """The helper queries Ollama and keeps only models whose
+        capabilities include 'embedding'."""
+        fake_models = [
+            {"name": "qwen3-embedding:0.6b",
+             "capabilities": ["embedding"], "dim": 1024},
+            {"name": "qwen2.5-coder:1.5b",
+             "capabilities": ["completion"], "dim": None},
+            {"name": "nomic-embed-text",
+             "capabilities": ["embedding"], "dim": 768},
+        ]
+        with patch.object(self.dm, "_fetch_ollama_models_with_caps",
+                           return_value=fake_models):
+            result = self.dm._list_available_embed_models()
+        names = {m["name"] for m in result}
+        self.assertIn("qwen3-embedding:0.6b", names)
+        self.assertIn("nomic-embed-text", names)
+        self.assertNotIn("qwen2.5-coder:1.5b", names)
+
+    def test_helper_returns_empty_on_ollama_unavailable(self):
+        """No Ollama connection → return []; tool degrades gracefully."""
+        with patch.object(self.dm, "_fetch_ollama_models_with_caps",
+                           side_effect=ConnectionError("ollama down")):
+            result = self.dm._list_available_embed_models()
+        self.assertEqual(result, [])
+
+
 class TestFederatedSearchAggregator(unittest.IsolatedAsyncioTestCase):
     """The async aggregator that's exposed as discovery_search MCP tool.
 

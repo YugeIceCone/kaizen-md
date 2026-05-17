@@ -80,6 +80,25 @@ class TestBodyContract(unittest.TestCase):
                        "/kaizen:claude-docs", "/kaizen:scrape"):
             self.assertIn(slash, self.body, f"arg-assembly missing: {slash}")
 
+    def test_q3_embed_model_picker_when_indexing(self):
+        """Q3 (only when Q2=Index) lets the user pick an embedding
+        model from the locally-available list. The body documents:
+        (a) the dynamic option-build via discovery_list_embed_models,
+        (b) the "keep current model (default)" option, and
+        (c) the 4-option cap routing for >3 local models."""
+        self.assertRegex(self.body, r"(?i)question\s*3\s*[—-]")
+        self.assertIn("discovery_list_embed_models", self.body)
+        # Default option present
+        self.assertRegex(self.body, r"(?i)current model|default")
+
+    def test_body_lists_mcp_tools(self):
+        """The body surfaces the agent-callable MCP surface so the
+        agent can bypass the wizard when programmatic."""
+        for tool in ("discovery_search", "discovery_stats",
+                     "discovery_list_surfaces",
+                     "discovery_list_embed_models"):
+            self.assertIn(tool, self.body, f"MCP tool not surfaced: {tool}")
+
 
 if __name__ == "__main__":
     unittest.main()

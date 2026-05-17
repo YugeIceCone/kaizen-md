@@ -55,15 +55,44 @@ options:
     description: "Print per-index stats (rows / size / last update). Dispatches <slash> stats per pick."
 ```
 
-### After the 2 questions
+### Question 3 — embedding model (only when Q2 = Index / refresh)
 
-- **Search:** ask a free-text Q3 for the query, then dispatch
+When the user picks "Index / refresh" in Q2, the agent first calls
+the `discovery_list_embed_models()` MCP tool to fetch every locally-
+available embedding-capable Ollama model, then builds Q3 dynamically
+from that list:
+
+```
+question:    "Which embedding model for the re-index?"
+header:      "Embed model"
+multiSelect: false
+options:
+  - label: "Keep each surface's current model (default)"
+    description: "Each surface re-indexes against the model it was last built with. Safest — preserves dim + cosine semantics."
+  # One option per Ollama model returned by discovery_list_embed_models().
+  # If the tool returns []  (Ollama down or no embed models pulled),
+  # show only the "default" option and note "Ollama unreachable — pull
+  # a model with /kaizen:models pull <name> if you want a switch".
+  - label: "<model.name> (dim=<model.dim>)"
+    description: "Switch the picked surface(s) to this Ollama embedding model. Re-index is mandatory after a model change because dim differs and cosine isn't comparable across models."
+```
+
+Cap Q3 at 4 options total (AskUserQuestion contract). When >3 embed
+models exist locally, show "default" + top 3 (sorted by dim then
+name) and route the rest via `Other` follow-up.
+
+### After the 2-3 questions
+
+- **Search:** ask a free-text query, then dispatch
   `<slash> search "<query>"` once per surface picked in Q1 (run them
   in parallel — they're independent reads). Aggregate results back to
-  the user grouped by surface.
-- **Index / refresh:** dispatch `<slash> index` (or `reindex` when
-  available) per pick. These can be long-running; the agent should
-  surface progress.
+  the user grouped by surface. Search uses each surface's existing
+  model — no Q3 needed.
+- **Index / refresh:** for each Q1 pick, dispatch `<slash> index` (or
+  `reindex` when available). When Q3 picked a non-default model,
+  surface the model name in the dispatch so the underlying indexer
+  honors it (per-surface env var or `--model` flag — see each
+  underlying script's CLI for the exact knob).
 - **Stats:** dispatch `<slash> stats` per pick and summarize.
 
 ## Arg assembly
@@ -104,6 +133,22 @@ Example: `/kaizen:discovery code search "async semaphore"` →
 `/kaizen:discovery` is **additive** — the 4 underlying slashes
 (`/kaizen:onboard`, `/kaizen:knowledge`, `/kaizen:claude-docs`,
 `/kaizen:scrape`) stay as direct entry points for power users.
+
+## MCP surface (agent-callable)
+
+When the agent wants to query without going through the
+AskUserQuestion wizard, the kaizen MCP server exposes:
+
+| Tool | Purpose |
+|---|---|
+| `discovery_list_surfaces()` | Catalog of the 4 surfaces with slash + desc |
+| `discovery_search(query, surfaces=None, top_k_per=4)` | Federated cosine; one call, grouped results, per-surface failure isolation |
+| `discovery_stats(surfaces=None)` | Multi-surface index stats in one shot |
+| `discovery_list_embed_models()` | Locally-available embedding-capable Ollama models (with capability + dim) — empty when Ollama is down |
+
+Use `discovery_list_embed_models()` before deciding which surface to
+re-index against a different backend, or when comparing dim/cost
+tradeoffs across local embedding options.
 
 ## Related
 
