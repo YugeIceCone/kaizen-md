@@ -196,7 +196,7 @@ no parent fits.
 |---|---|---|---|
 | **audit/quality** | gate the diff; surface bloat / shape gaps / coverage | **`kaizen-gatekeeper`** aggregates 7 sub-gates | iron-laws, etu, karpathy, validator, token-bloat, coverage, schema-coverage |
 | **observability** | trace lifetime, dxm live mirror, context window | (no parent — each is a distinct concern) | trace, dxm, metrics, observe, context, statusline |
-| **brain/memory** | Second Brain (Persona / PARA / Notes) | **`kaizen-brain`** multi-verb (audit / evolve / index / promote / migrate) | brain, remember, reflect, evolve, memory-state |
+| **brain/memory** | Second Brain (Persona / PARA / Notes) + mid-work gold-pattern capture | **`kaizen-brain`** multi-verb (audit / evolve / index / promote / migrate) | brain, remember, reflect, evolve, memory-state, gold |
 | **workflow** | routine engines + backlog + handoff | (kept separate — different runtimes; see note below) | workflow, loop, flow, backlog, handoff, auto-handoff, roadmap |
 | **plugin-meta** | install / update / hygiene / cache | (no parent yet) | bootstrap, cache, daemon, enable-all, hygiene, manifests, migrate, surface, update, watch |
 | **discovery/search** | semantic indexes + grep wrappers | per-feature (each `<feature>-index` + matching MCP server) | onboard, knowledge, loc, drift, scrape, models, claude-docs |
@@ -204,17 +204,17 @@ no parent fits.
 | **writing/io** | atomic file writers + shim | `_atomic` is the shared helper | write, shim |
 | **dev-aids** | scratch tools + rubric / rules CLI | per-tool | rubric, rules, scratch, browser, code-lift, test, docs |
 
-### Slash commands by cluster (52 total)
+### Slash commands by cluster (53 total)
 
 Same 9-cluster taxonomy as the bins, applied to the `/kaizen:*`
 surface. Use this to find the right slash command without listing all
-52, and to know which cluster a new command should join.
+53, and to know which cluster a new command should join.
 
 | Cluster | Count | Commands |
 |---|---|---|
 | **audit/quality** | 11 | `audit`, `gatekeeper`, `gate`, `review`, `coverage`, `iron-laws`, `karpathy-check`, `vibe-check`, `self-audit`, `agent-self-audit`, `ci-gate` |
 | **observability** | 7 | `trace`, `trace-search`, `trace-proxy`, `metrics`, `observe`, `context`, `statusline` |
-| **brain/memory** | 2 | `brain` (multi-verb parent), `self-improving` |
+| **brain/memory** | 3 | `brain` (multi-verb parent), `self-improving`, `gold` |
 | **workflow** | 7 | `backlog`, `handoff`, `loop`, `flow`, `mode`, `migrate`, `migrate-paths` |
 | **plugin-meta** | 13 | `setup`, `bootstrap`, `update`, `refresh-cache`, `daemon`, `hygiene`, `backup`, `publish`, `env`, `health`, `status`, `surface`, `disable-dupes` |
 | **discovery/search** | 8 | `onboard`, `knowledge`, `claude-docs`, `code-tour`, `scrape`, `models`, `browser`, `docs` |
