@@ -33,7 +33,10 @@ def _fresh():
 
 
 def _clear_env():
-    for k in ("CLAUDE_CONTEXT_TOKENS", "CLAUDE_USAGE_TOTAL_TOKENS", "KAIZEN_CONTEXT_LIMIT"):
+    for k in (
+        "CLAUDE_CONTEXT_TOKENS", "CLAUDE_USAGE_TOTAL_TOKENS",
+        "KAIZEN_CONTEXT_LIMIT", "KAIZEN_MODEL_ID", "CLAUDE_MODEL_ID",
+    ):
         os.environ.pop(k, None)
 
 
@@ -96,6 +99,92 @@ class TestGetLimit(unittest.TestCase):
         os.environ["KAIZEN_CONTEXT_LIMIT"] = "garbage"
         c = _fresh()
         self.assertEqual(c.get_limit(), 200_000)
+
+
+class TestModelAwareLimit(unittest.TestCase):
+    """Limit must reflect the *active model's* context window.
+
+    Opus 4.7 [1m] = 1,000,000 tokens. Default Sonnet/Opus/Haiku = 200k.
+    KAIZEN_CONTEXT_LIMIT still wins (explicit > derived).
+    """
+
+    def setUp(self):
+        _clear_env()
+
+    def test_explicit_env_beats_model(self):
+        os.environ["KAIZEN_CONTEXT_LIMIT"] = "300000"
+        os.environ["KAIZEN_MODEL_ID"] = "claude-opus-4-7[1m]"
+        c = _fresh()
+        self.assertEqual(c.get_limit(), 300_000)
+
+    def test_opus_1m_via_kaizen_env(self):
+        os.environ["KAIZEN_MODEL_ID"] = "claude-opus-4-7[1m]"
+        c = _fresh()
+        self.assertEqual(c.get_limit(), 1_000_000)
+
+    def test_opus_1m_via_claude_env(self):
+        os.environ["CLAUDE_MODEL_ID"] = "claude-opus-4-7[1m]"
+        c = _fresh()
+        self.assertEqual(c.get_limit(), 1_000_000)
+
+    def test_standard_opus_uses_200k(self):
+        os.environ["KAIZEN_MODEL_ID"] = "claude-opus-4-5"
+        c = _fresh()
+        self.assertEqual(c.get_limit(), 200_000)
+
+    def test_standard_sonnet_uses_200k(self):
+        os.environ["KAIZEN_MODEL_ID"] = "claude-sonnet-4-6"
+        c = _fresh()
+        self.assertEqual(c.get_limit(), 200_000)
+
+    def test_dash_1m_suffix_recognized(self):
+        """Heuristic: any model id with -1m or [1m] is 1M context."""
+        os.environ["KAIZEN_MODEL_ID"] = "some-future-1m-model"
+        c = _fresh()
+        self.assertEqual(c.get_limit(), 1_000_000)
+
+    def test_unknown_model_falls_back_to_200k(self):
+        os.environ["KAIZEN_MODEL_ID"] = "completely-unknown-model"
+        c = _fresh()
+        self.assertEqual(c.get_limit(), 200_000)
+
+    def test_limit_for_model_pure_fn(self):
+        """Direct test of the pure helper — no env coupling."""
+        c = _fresh()
+        self.assertEqual(c.limit_for_model("claude-opus-4-7[1m]"), 1_000_000)
+        self.assertEqual(c.limit_for_model("claude-opus-4-7-1m"), 1_000_000)
+        self.assertEqual(c.limit_for_model("claude-opus-4-5"), 200_000)
+        self.assertEqual(c.limit_for_model(""), 200_000)
+        self.assertEqual(c.limit_for_model(None), 200_000)
+
+    def test_defensive_autodetect_from_observed_usage(self):
+        """If observed peak > 200k, the active model MUST be 1M context.
+        CC's JSONL strips the [1m] suffix from the model field, so the
+        usage signal is the authoritative tell."""
+        c = _fresh()
+        # Stub get_usage_summary to simulate a session with 320k peak
+        # (only possible on a 1M-context model)
+        orig = c.get_usage_summary
+        try:
+            c.get_usage_summary = lambda cwd_path=None: {
+                "current_tokens": 320_000, "peak_tokens": 320_000,
+                "peak_pre_compact": False, "compact_count": 0,
+            }
+            self.assertEqual(c.get_limit(), 1_000_000)
+        finally:
+            c.get_usage_summary = orig
+
+    def test_defensive_autodetect_skipped_when_peak_under_200k(self):
+        c = _fresh()
+        orig = c.get_usage_summary
+        try:
+            c.get_usage_summary = lambda cwd_path=None: {
+                "current_tokens": 150_000, "peak_tokens": 150_000,
+                "peak_pre_compact": False, "compact_count": 0,
+            }
+            self.assertEqual(c.get_limit(), 200_000)
+        finally:
+            c.get_usage_summary = orig
 
 
 class TestZone(unittest.TestCase):
