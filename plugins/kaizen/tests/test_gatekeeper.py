@@ -61,17 +61,18 @@ class TestGatekeeperAggregator(unittest.TestCase):
         self.gk = _load("gatekeeper_test", _GATEKEEPER)
 
     def test_list_subgates(self):
-        # 10 sub-gates: 4 commit-blocking originals + 6 audit aggregators
+        # 11 sub-gates: 4 commit-blocking originals + 7 audit aggregators
         # (token-bloat, coverage, schema-coverage, name-quality-coverage,
-        # frontmatter-coverage, slash-collision). Frontmatter splits its
-        # findings — name-mismatch=error (blocks), weak-routing=warn
-        # (advisory). Slash-collision is advisory only.
+        # frontmatter-coverage, slash-collision, menu-lint). Frontmatter
+        # splits its findings — name-mismatch=error (blocks),
+        # weak-routing=warn (advisory). Slash-collision is advisory only;
+        # menu-lint errors (missing AskUserQuestion perm) block.
         self.assertEqual(
             set(self.gk.SUB_GATES.keys()),
             {"iron-laws", "etu", "karpathy", "validator",
              "token-bloat", "code-to-test-coverage", "schema-coverage",
              "name-quality-coverage", "frontmatter-coverage",
-             "slash-collision"},
+             "slash-collision", "menu-lint"},
         )
 
     def test_norm_sev_maps_to_canonical(self):

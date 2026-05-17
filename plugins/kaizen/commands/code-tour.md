@@ -2,7 +2,7 @@
 name: code-tour
 description: "Scaffold a CodeTour .tour walkthrough — persona-targeted, step-by-step, file+line anchored. Triggers on \"create a tour\", \"onboarding tour\", \"architecture tour\", \"PR review tour\", \"explain how X works\", \"vibe check\", \"RCA tour\", \"contributor guide\". Thin router to the kaizen:code-tour skill."
 argument-hint: "[persona] [depth]   e.g. /kaizen:code-tour newcomer quick"
-allowed-tools: ["Read", "Glob", "Grep", "Write", "Bash(git log:*)", "Bash(git status:*)"]
+allowed-tools: ["AskUserQuestion", "Read", "Glob", "Grep", "Write", "Bash(git log:*)", "Bash(git status:*)"]
 ---
 
 # /kaizen:code-tour — scaffold a persona-targeted walkthrough

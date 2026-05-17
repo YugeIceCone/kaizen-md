@@ -473,6 +473,52 @@ def _gate_slash_collision(scope: str, repo_root: Path) -> list[GateFinding]:
     )]
 
 
+def _gate_menu_lint(scope: str, repo_root: Path) -> list[GateFinding]:
+    """AskUserQuestion-driven menu slash commands must declare the perm
+    + respect the 4Q × 4-option contract. Errors (missing perm = runtime
+    AskUserQuestion failure) surface as error-severity; option/question
+    overflows surface as warn-severity (advisory)."""
+    script = _PLUGIN_ROOT / "skills" / "workflow" / "scripts" / "menu_lint.py"
+    if not script.is_file():
+        return []
+    try:
+        proc = subprocess.run(
+            [sys.executable, str(script), "check", "--json"],
+            cwd=repo_root, capture_output=True, text=True, timeout=5,
+        )
+    except (subprocess.TimeoutExpired, OSError):
+        return []
+    try:
+        data = json.loads(proc.stdout)
+    except (ValueError, json.JSONDecodeError):
+        return []
+    findings = data.get("findings", []) if isinstance(data, dict) else []
+    if not findings:
+        return []
+    errors = [f for f in findings if f.get("severity") == "error"]
+    warns  = [f for f in findings if f.get("severity") == "warn"]
+    out: list[GateFinding] = []
+    if errors:
+        sample = "; ".join(Path(f["path"]).name for f in errors[:3])
+        if len(errors) > 3:
+            sample += "…"
+        out.append(GateFinding(
+            gate="menu-lint", severity="error",
+            rule_id="menu-runtime-break",
+            message=(f"{len(errors)} menu(s) missing AskUserQuestion perm "
+                     f"(wizard would runtime-fail): {sample}. "
+                     f"Run `kaizen-menu-lint check` for the full list."),
+        ))
+    if warns:
+        out.append(GateFinding(
+            gate="menu-lint", severity="warn",
+            rule_id="menu-contract-overflow",
+            message=(f"{len(warns)} menu(s) over the 4Q × 4-option "
+                     "AskUserQuestion contract — see `kaizen-menu-lint check`."),
+        ))
+    return out
+
+
 SUB_GATES = {
     "iron-laws":              _gate_iron_laws,
     "etu":                    _gate_etu,
@@ -484,6 +530,7 @@ SUB_GATES = {
     "name-quality-coverage":  _gate_name_quality,       # filename ↔ docstring intent
     "frontmatter-coverage":   _gate_frontmatter,        # SKILL name=dir + ≥3 trigger phrases
     "slash-collision":        _gate_slash_collision,   # tab-completion-ambiguous prefix pairs
+    "menu-lint":              _gate_menu_lint,         # AskUserQuestion contract conformance
 }
 
 

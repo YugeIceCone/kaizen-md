@@ -214,14 +214,18 @@ Backs to `/kaizen:onboard`, `/kaizen:knowledge`, `/kaizen:claude-docs`,
    stays as alias.
 - [x] **P4**: Extend `/kaizen:brain` (empty-args) with multiSelect
    verb checklist.
-- [ ] **P5**: New `/kaizen:discovery` wrapper bundling onboard /
+- [x] **P5**: New `/kaizen:discovery` wrapper bundling onboard /
    knowledge / claude-docs / scrape.
-- [ ] **P6**: Shared menu library — extract the AskUserQuestion
-   orchestration into `skills/menu/SKILL.md` with reusable patterns
-   (single-pick / multi-pick / branching / persist).
-- [ ] **P7**: Menu lint — extend `kaizen-yaml lint` (or new
-   `kaizen-menu lint`) to verify menu commands declare AskUserQuestion
-   in allowed-tools, document the 4-question/4-option limits, etc.
+- [~] **P6**: Shared menu library — **DROPPED (YAGNI)**. With
+   `/kaizen:menu` retired (redundant) and only 5 menus today
+   (setup / workflow / loop / brain / discovery / audit:axis / help),
+   each meaningfully different, premature abstraction is the wrong
+   tradeoff. KISS + YAGNI dominate over DRY at this scale.
+- [x] **P7**: Menu lint — new `kaizen-menu-lint` (separate from
+   `kaizen-yaml lint` which is YAML-parse-only). Verifies
+   AskUserQuestion in allowed-tools (error severity — runtime break)
+   + 4Q × 4-option contract (warn severity — advisory). Wired as a
+   gatekeeper sub-gate.
 
 ### Out of scope (deferred to next plan)
 
