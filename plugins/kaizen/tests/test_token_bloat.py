@@ -434,6 +434,68 @@ class TestDxmFireWeighting(unittest.TestCase):
             os.environ.pop("KAIZEN_DXM_DIR", None)
 
 
+class TestSessionStateFile(unittest.TestCase):
+    """Per-scan session state file with one short line per finding."""
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.tmp = Path(self._tmp.name)
+        self.state_file = self.tmp / "session-bloat.md"
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    def test_scan_cache_writes_session_state(self):
+        env = {"KAIZEN_DIR": str(self.tmp),
+                "KAIZEN_BLOAT_SESSION_FILE": str(self.state_file)}
+        r = _run("scan", "--cache", env=env)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertTrue(self.state_file.is_file())
+
+    def test_session_state_format_includes_line_ranges(self):
+        env = {"KAIZEN_DIR": str(self.tmp),
+                "KAIZEN_BLOAT_SESSION_FILE": str(self.state_file)}
+        _run("scan", "--cache", env=env)
+        text = self.state_file.read_text()
+        # Header lines
+        self.assertIn("# kaizen token-bloat — session state", text)
+        self.assertIn("# scanned:", text)
+        self.assertIn("# findings:", text)
+        # At least one entry with the `path:start-end` shape
+        import re
+        m = re.search(r"`[^`]+:\d+-\d+`", text)
+        self.assertIsNotNone(m, f"no `path:start-end` line in:\n{text[:500]}")
+
+    def test_session_subcommand_prints_path(self):
+        env = {"KAIZEN_BLOAT_SESSION_FILE": str(self.state_file)}
+        r = _run("session", env=env)
+        self.assertEqual(r.returncode, 0)
+        self.assertEqual(r.stdout.strip(), str(self.state_file))
+
+
+class TestLineRangePresence(unittest.TestCase):
+    """Every finding must carry start_line + end_line so the session
+    state file can render `path:start-end` jump targets."""
+
+    def setUp(self):
+        sys.path.insert(0, str(_KZ_DIR / "skills/workflow/scripts"))
+        if "token_bloat" in sys.modules:
+            del sys.modules["token_bloat"]
+        import token_bloat as tb
+        self.tb = tb
+
+    def test_real_plugin_findings_all_have_line_ranges(self):
+        findings = self.tb.scan_all()
+        self.assertGreater(len(findings), 0)
+        for f in findings:
+            self.assertIn("start_line", f,
+                          f"{f['path']}::{f['field']} missing start_line")
+            self.assertIn("end_line", f,
+                          f"{f['path']}::{f['field']} missing end_line")
+            self.assertGreaterEqual(f["start_line"], 1)
+            self.assertGreaterEqual(f["end_line"], f["start_line"])
+
+
 class TestSkillBody(unittest.TestCase):
     def test_skill_md_present(self):
         p = _KZ_DIR / "skills/token-bloat/SKILL.md"

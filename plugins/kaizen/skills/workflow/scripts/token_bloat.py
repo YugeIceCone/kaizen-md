@@ -294,6 +294,7 @@ def _scan_yaml_template(path: Path, root: Path) -> list[dict]:
     for m in _YAML_BLOCK_RE.finditer(text):
         indent = len(m.group(1))
         key = m.group(2)
+        key_line = text[:m.start()].count("\n") + 1  # 1-indexed
         # Collect the indented body following this line
         start = m.end()
         lines = []
@@ -318,6 +319,8 @@ def _scan_yaml_template(path: Path, root: Path) -> list[dict]:
                 "path":         str(path.relative_to(root)),
                 "field":        key,
                 "lines":        line_count,
+                "start_line":   key_line,
+                "end_line":     key_line + len(lines),
                 "tokens":       estimate_tokens(body),
                 "quality":      q,
                 "quality_hint": q_hint,
@@ -344,6 +347,8 @@ def _scan_markdown_size(path: Path, root: Path, line_med: int, line_high: int,
         "path":         str(path.relative_to(root)),
         "field":        "(body)",
         "lines":        line_count,
+        "start_line":   1,
+        "end_line":     line_count,
         "tokens":       estimate_tokens(text),
         "quality":      q,
         "quality_hint": q_hint,
@@ -380,6 +385,8 @@ def _scan_agent_md(path: Path, root: Path) -> list[dict]:
         "path":         str(path.relative_to(root)),
         "field":        "(body)",
         "lines":        line_count,
+        "start_line":   1,
+        "end_line":     line_count,
         "tokens":       estimate_tokens(text),
         "quality":      q,
         "quality_hint": q_hint,
@@ -416,12 +423,17 @@ def _scan_frontmatter_desc(path: Path, root: Path) -> list[dict]:
         return findings
     sev = "high" if char_count >= _FRONTMATTER_DESC_HIGH else "medium"
     q, q_hint = quality_score(desc)
+    # Frontmatter sits at lines 1..frontmatter_end; description is one of
+    # its keys. Approximate the description's own line range.
+    desc_start = fm.group(1)[:m.start()].count("\n") + 2  # +1 for `---`, +1 for 1-index
     findings.append({
         "severity":     sev,
         "kind":         "frontmatter-desc",
         "path":         str(path.relative_to(root)),
         "field":        "description",
         "lines":        desc.count("\n") + 1,
+        "start_line":   desc_start,
+        "end_line":     desc_start + desc.count("\n"),
         "tokens":       estimate_tokens(desc),
         "quality":      q,
         "quality_hint": q_hint,
@@ -444,12 +456,15 @@ def _scan_hook_heredoc(path: Path, root: Path) -> list[dict]:
             sev = ("high" if line_count >= _HOOK_HEREDOC_LINES_HIGH
                    else "medium")
             q, q_hint = quality_score(body)
+            start_line = text[:m.start()].count("\n") + 1
             findings.append({
                 "severity":     sev,
                 "kind":         "hook-heredoc",
                 "path":         str(path.relative_to(root)),
                 "field":        "body=''' ... '''",
                 "lines":        line_count,
+                "start_line":   start_line,
+                "end_line":     start_line + line_count - 1,
                 "tokens":       estimate_tokens(body),
                 "quality":      q,
                 "quality_hint": q_hint,
@@ -561,6 +576,65 @@ def _write_cache(findings: list[dict]) -> None:
         "findings":   findings,
     }
     p.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+
+
+def _session_state_path() -> Path:
+    """Per-project session-scoped state file with actionable line ranges.
+    Lives in the project's .kaizen/ (not user-global) so each repo's
+    state is independent. Override via KAIZEN_BLOAT_SESSION_FILE."""
+    env = os.environ.get("KAIZEN_BLOAT_SESSION_FILE")
+    if env:
+        return Path(os.path.expandvars(env)).expanduser()
+    # Walk up from cwd to find repo root (.git or .kaizen marker)
+    cwd = Path.cwd()
+    for parent in [cwd, *cwd.parents]:
+        if (parent / ".kaizen").is_dir() or (parent / ".git").is_dir():
+            return parent / ".kaizen" / "session-token-bloat.md"
+    return cwd / ".kaizen" / "session-token-bloat.md"
+
+
+def _write_session_state(findings: list[dict]) -> None:
+    """One-line-per-finding actionable list. Replaces (not appends) on
+    each scan — represents *current* state of bloat to address.
+
+    Line format (grep + jump friendly):
+      `<path>:<start>-<end>` <sev>|<sens> q=<q> ~<tok>tok ×<fires>→<cumul>
+    """
+    p = _session_state_path()
+    try:
+        p.parent.mkdir(parents=True, exist_ok=True)
+    except OSError:
+        return
+    waste = _total_waste(findings)
+    cumul = sum(f.get("cumulative_tokens", f.get("tokens", 0)) for f in findings)
+    h = sum(1 for f in findings if f["severity"] == "high")
+    m = sum(1 for f in findings if f["severity"] == "medium")
+    now = _dt.datetime.now(_dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    lines = [
+        f"# kaizen token-bloat — session state",
+        f"# scanned: {now}",
+        f"# findings: {len(findings)} ({h} high, {m} medium) | waste: ~{waste} tok | cumulative: ~{cumul} tok",
+        f"# format: `path:start-end` <sev>|<sens> q=<q> ~<tok>tok ×<fires>→<cumul>",
+        f"",
+    ]
+    for f in findings:
+        path = f.get("path", "")
+        s = f.get("start_line", 1)
+        e = f.get("end_line", s)
+        sev = f.get("severity", "?")[:1].upper()  # H / M
+        sens = (f.get("sensitivity", "context") or "context")[:4]
+        q = f.get("quality", "?")
+        tok = f.get("tokens", 0)
+        fires = f.get("fire_count", 0)
+        cumul_i = f.get("cumulative_tokens", tok)
+        fire_str = f"×{fires}" if fires else "×1"
+        lines.append(
+            f"`{path}:{s}-{e}` {sev}|{sens} q={q} ~{tok}tok {fire_str}→~{cumul_i}"
+        )
+    try:
+        p.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    except OSError:
+        pass
 
 
 def _read_cache() -> dict | None:
@@ -684,6 +758,7 @@ def _cmd_scan(args) -> int:
     findings = scan_all()
     if args.cache:
         _write_cache(findings)
+        _write_session_state(findings)
         _emit_trace(findings)
     if args.json:
         print(json.dumps({"findings": findings,
@@ -737,6 +812,9 @@ def main(argv=None) -> int:
 
     psf = sub.add_parser("surface", help="SessionStart one-line summary")
     psf.set_defaults(func=_cmd_surface)
+
+    pss = sub.add_parser("session", help="print session-state file path")
+    pss.set_defaults(func=lambda a: (print(_session_state_path()), 0)[1])
 
     args = p.parse_args(argv)
     return args.func(args)
