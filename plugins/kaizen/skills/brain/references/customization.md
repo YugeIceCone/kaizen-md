@@ -18,7 +18,7 @@ If you want to do X, edit Y.
 | PARA folder names | `assets/templates/remember.md` + `skills/init/SKILL.md` | The 10 default folders (`Notes / Projects / People / Areas / Inbox / Journal / Tasks / Resources / Templates / Archive`) are baked into the init flow; rename here to redefine the structure. |
 | Persona file name | `_paths.py::BRAIN_PERSONA` | Currently `<BRAIN_DIR>/Persona.md`. Used by reflection + Top Beliefs surface. |
 
-**Migration**: `kaizen-brain-migrate apply` is the canonical move command (rsync + verify + atomic settings.json edit).
+**Migration**: `kaizen-brain migrate apply` is the canonical move command (rsync + verify + atomic settings.json edit).
 
 ---
 
@@ -80,7 +80,7 @@ Default criteria:
 | Where promoted notes go | `brain_promote.py::pick_destination()` — consults `routing.yaml` |
 | Tombstone shape (left at project-memory) | `brain_promote.py` docstring around `promoted_to:` |
 
-CLI: `kaizen-brain-promote` (dry-run) / `--apply`. MCP tools: `brain_promote_preview`, `brain_promote_apply`.
+CLI: `kaizen-brain promote` (dry-run) / `--apply`. MCP tools: `brain_promote_preview`, `brain_promote_apply`.
 
 ---
 
@@ -95,7 +95,7 @@ CLI: `kaizen-brain-promote` (dry-run) / `--apply`. MCP tools: `brain_promote_pre
 | What signals trigger a draft | The classifier in `brain_audit.py` (re-uses `_brain.detect_type`) |
 | Auto-fire on SessionEnd | `hooks/claude/brain-session-end.sh` (already wired; toggle via `KAIZEN_BRAIN_DISABLE` env) |
 
-CLI: `kaizen-brain-audit` (dry-run) / `--apply`. MCP: `brain_audit`.
+CLI: `kaizen-brain audit` (dry-run) / `--apply`. MCP: `brain_audit`.
 
 ---
 
@@ -112,7 +112,7 @@ notes into `Persona.md ## Top Beliefs`.
 | Persona Top Beliefs promotion criteria | `brain_evolve.py::reflect()` — what gets surfaced |
 | Dupe detection root-stem normalization | `brain_evolve.py::FindDupes` Node |
 
-CLI: `kaizen-brain-evolve`. MCP: `brain_evolve`.
+CLI: `kaizen-brain evolve`. MCP: `brain_evolve`.
 
 ---
 
@@ -148,7 +148,7 @@ Bypass any brain hook: `KAIZEN_BRAIN_DISABLE=1`.
 | Embedding model | `config.py::EMBED_MODEL` (default `all-MiniLM-L6-v2`) |
 | Fallback to LIKE search (skip embeddings) | `KAIZEN_BRAIN_INDEX_SKIP_EMBED=1` env |
 
-CLI: `kaizen-brain-index index|search|stats|get|path|clear`. MCP: `brain_search`, `brain_index_build`, `brain_index_stats`.
+CLI: `kaizen-brain index <subcommand>` (subcommand ∈ `index|search|stats|get|path|clear`). MCP: `brain_search`, `brain_index_build`, `brain_index_stats`.
 
 ---
 

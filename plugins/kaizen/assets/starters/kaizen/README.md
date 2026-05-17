@@ -57,7 +57,7 @@ kaizen/
    parking lot — write into it during sessions when something
    interesting surfaces but doesn't fit a Note yet. See the file
    header for the convention.
-4. Schedule `kaizen-brain-evolve` weekly to promote high-confidence
+4. Schedule `kaizen-brain evolve` weekly to promote high-confidence
    Notes into `Persona.md ## Top Beliefs`.
 
 ## Why these particular Notes?

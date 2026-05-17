@@ -29,27 +29,28 @@ schema:
 ### Search + index
 
 - `kaizen-brain status` / `brain_status` MCP — file counts per subdir
-- `kaizen-brain-index index|search|stats|get|path|clear` — SQLite +
+- `kaizen-brain index <subcommand>` (where subcommand ∈
+  `index|search|stats|get|path|clear`) — SQLite +
   sentence-transformers over Notes / Projects / People / Areas
 - `brain_search(query, top_k, type, subdir, min_confidence)` MCP
 - `brain_index_build` / `brain_index_stats` MCP
 
 ### Promote (project-memory → brain)
 
-- `kaizen-brain-promote` (dry-run) / `--apply`
+- `kaizen-brain promote` (dry-run) / `--apply`
 - `brain_promote_preview` / `brain_promote_apply` MCP
 - Criteria: `sources_count >= 2` OR explicit `promote: true`
 
 ### Audit (end-of-session discovery)
 
-- `kaizen-brain-audit` (dry-run) / `--apply` (writes drafts to Inbox)
+- `kaizen-brain audit` (dry-run) / `--apply` (writes drafts to Inbox)
 - `brain_audit(apply, limit_commits, limit_inbox)` MCP
 - `SessionEnd` hook auto-fires (apply=true) — drafts land in
   `<brain>/Inbox/draft-<today>-<slug>.md`; user reviews next session.
 
 ### Evolve (consolidation + freshness)
 
-- `kaizen-brain-evolve --stale-days N`
+- `kaizen-brain evolve --stale-days N`
 - `brain_evolve(stale_days)` MCP
 - Reports duplicates, freshness drift, Persona.md ↔ Notes drift.
   NO auto-writes — read-only report.
@@ -98,7 +99,7 @@ Project mem:  ~/.claude/projects/<cwd_slug>/memory
 `KAIZEN_BRAIN_DIR` accepts literal `$HOME` references plus `~` expansion.
 Legacy envs (`REMEMBER_BRAIN_PATH` / `KAIZEN_BRAIN_PATH` / `KAIZEN_BRAIN`)
 are NO LONGER consulted as of v1.38.0 — single-user clean cut. To migrate
-an existing brain from the legacy location, run `kaizen-brain-migrate apply`.
+an existing brain from the legacy location, run `kaizen-brain migrate apply`.
 
 ## Capture decision tree (project-memory vs brain)
 
@@ -183,16 +184,16 @@ kaizen-brain capture "we decided to use sqlite for indexers"
 kaizen-brain capture "user prefers terse output" --type belief --confidence 0.9 --tier brain
 
 # Search
-kaizen-brain-index search "sqlite"
-kaizen-brain-index search "preference" --type belief --min-confidence 0.85
+kaizen-brain index search "sqlite"
+kaizen-brain index search "preference" --type belief --min-confidence 0.85
 
 # Promote project entries that grew to sources_count>=2
-kaizen-brain-promote                    # dry-run preview
-kaizen-brain-promote --apply
+kaizen-brain promote                    # dry-run preview
+kaizen-brain promote --apply
 
 # Audit last session for missed captures
-kaizen-brain-audit --apply              # writes drafts to Inbox
+kaizen-brain audit --apply              # writes drafts to Inbox
 
 # Evolve — duplicates / freshness / persona drift
-kaizen-brain-evolve --stale-days 30
+kaizen-brain evolve --stale-days 30
 ```

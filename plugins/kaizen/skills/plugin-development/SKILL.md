@@ -541,9 +541,15 @@ commit (CONTRIBUTING.md rule).
 addressable. Without a wrapper, the script is only reachable via
 `/kaizen:<feature>` slash command or direct path.
 
-**Don't forget specialized bins** (e.g. `kaizen-brain-index`,
-`kaizen-brain-promote`) — the omission caused a real bug this round,
-caught by smoke-testing `kaizen-<feature>-<op>` from shell.
+**Don't forget specialized bins** (e.g. `kaizen-trace-search`,
+`kaizen-onboard-search`, `kaizen-loc`) — the omission caused a real
+bug when the brain feature first landed, caught by smoke-testing
+`kaizen-<feature>-<op>` from shell. The consolidated-cli-parent
+exemption (declared via `# consolidated-cli-parent: <parent>` header
+in the script) transfers the wrapper requirement to the parent's bin
+— used today by the `kaizen-brain audit|evolve|index|promote|migrate`
+family. Default to one wrapper per CLI script unless you're shipping
+a multi-verb consolidated parent in the same commit.
 
 ---
 

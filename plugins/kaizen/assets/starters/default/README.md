@@ -33,7 +33,7 @@ A minimal but production-ready Second Brain. Seeded by
    re-author the ones that don't. They're STARTING POINTS, not rules.
 3. Test the capture flow: open a session, say "remember this: <thing>"
    — kaizen's UserPromptSubmit hook should surface a capture hint.
-4. Optionally schedule `kaizen-brain-evolve` weekly (cron or
+4. Optionally schedule `kaizen-brain evolve` weekly (cron or
    `/kaizen:daemon` cycle) to consolidate dupes + promote high-
    confidence Notes into Persona's Top Beliefs.
 
