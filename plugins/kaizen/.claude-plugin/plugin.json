@@ -42,6 +42,8 @@
       "Bash(${CLAUDE_PLUGIN_ROOT}/bin/kaizen:*)",
       "Bash(${CLAUDE_PLUGIN_ROOT}/bin/kaizen-help-gen:*)",
       "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/help_gen.py:*)",
+      "Bash(${CLAUDE_PLUGIN_ROOT}/bin/kaizen-io:*)",
+      "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/io.py:*)",
       "Bash(uv run --script ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/token_bloat.py:*)",
       "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/token_bloat.py:*)",
       "Bash(bash ${CLAUDE_PLUGIN_ROOT}/hooks/claude/sessionend-token-bloat.sh:*)",
