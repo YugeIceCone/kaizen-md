@@ -147,8 +147,19 @@ def _has_argparse_main(text: str) -> bool:
 
 
 def _wrapper_name(stem: str) -> str:
-    """demo.py -> kaizen-demo ; brain_index.py -> kaizen-brain-index."""
-    return "kaizen-" + stem.lstrip("_").replace("_", "-")
+    """demo.py -> kaizen-demo ; brain_index.py -> kaizen-brain-index.
+
+    Idempotency: a stem already starting with ``kaizen_`` (e.g.
+    ``kaizen_write.py``) maps to ``kaizen-write``, NOT
+    ``kaizen-kaizen-write``. Double-prefix would force awkward
+    wrappers like ``kaizen-kaizen-write`` alongside the natural
+    ``kaizen-write``. The convention "every wrapper starts with
+    kaizen-" still holds because the stem already provides it.
+    """
+    clean = stem.lstrip("_")
+    if clean.startswith("kaizen_") or clean == "kaizen":
+        return clean.replace("_", "-")
+    return "kaizen-" + clean.replace("_", "-")
 
 
 _CONSOLIDATED_PARENT = re.compile(

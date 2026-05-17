@@ -7,7 +7,7 @@ description: View or mutate the project's kaizen backlog (JSON-sourced, .md is g
 
 JSON-sourced micro-work tracker. `.md` is auto-regenerated on every mutation.
 
-!`python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/backlog.py ${ARGUMENTS:-list all}`
+!`python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/backlog.py $ARGUMENTS`
 
 ## Subcommands
 

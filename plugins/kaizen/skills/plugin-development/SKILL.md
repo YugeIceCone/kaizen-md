@@ -678,6 +678,15 @@ in the script) transfers the wrapper requirement to the parent's bin
 family. Default to one wrapper per CLI script unless you're shipping
 a multi-verb consolidated parent in the same commit.
 
+**Naming convention (`_wrapper_name` in iron-laws):**
+
+| Script stem | Wrapper name | Why |
+|---|---|---|
+| `demo.py` | `kaizen-demo` | normal — `kaizen-` prefix added, `_`→`-` |
+| `brain_index.py` | `kaizen-brain-index` | underscores normalize |
+| `kaizen_write.py` | `kaizen-write` | stem already starts with `kaizen_` → idempotent (no `kaizen-kaizen-write`) |
+| `kaizen.py` | `kaizen` | stem IS the prefix |
+
 ---
 
 ## Part 8 — Anti-patterns

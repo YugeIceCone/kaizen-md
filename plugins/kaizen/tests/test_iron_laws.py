@@ -219,6 +219,15 @@ class TestChecker(unittest.TestCase):
         (self.pk / "bin" / "kaizen-demo").write_text("#!/bin/bash\n")
         self.assertEqual(_iron_laws.check_bin_wrapper_per_cli(_ctx(self.tmp)), [])
 
+    def test_wrapper_name_idempotent_for_kaizen_prefixed_stems(self):
+        """kaizen_write.py → kaizen-write (NOT kaizen-kaizen-write).
+        Stems that already start with `kaizen_` shouldn't double-prefix."""
+        import _iron_laws
+        self.assertEqual(_iron_laws._wrapper_name("demo"), "kaizen-demo")
+        self.assertEqual(_iron_laws._wrapper_name("brain_index"), "kaizen-brain-index")
+        self.assertEqual(_iron_laws._wrapper_name("kaizen_write"), "kaizen-write")
+        self.assertEqual(_iron_laws._wrapper_name("kaizen"), "kaizen")
+
     def test_plugin_manifest_permissions(self):
         import _iron_laws
         (self.pk / "skills/workflow/scripts/demo.py").write_text("print('hi')\n")

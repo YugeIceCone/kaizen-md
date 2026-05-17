@@ -279,7 +279,10 @@ def cmd_verify(store, args, *, json_path: Path, md_path: Path):
 
 def build_parser():
     p = argparse.ArgumentParser(prog="backlog", description=__doc__.split("\n")[0])
-    sp = p.add_subparsers(dest="cmd", required=True)
+    # Subcommand is optional; bare invocation (e.g. /kaizen:backlog with
+    # no args) defaults to `list all`. Avoids the slash-command iron-law
+    # forbidding ${ARGUMENTS:-defaults-with-spaces}.
+    sp = p.add_subparsers(dest="cmd", required=False)
 
     p_list = sp.add_parser("list")
     p_list.add_argument("section", nargs="?", default="all",
@@ -318,6 +321,11 @@ def build_parser():
 
 def main():
     args = build_parser().parse_args()
+    # No subcommand → default to `list all` (avoids ${ARGUMENTS:-list all}
+    # in the slash command, which iron-law forbids — spaces in default).
+    if args.cmd is None:
+        args.cmd = "list"
+        args.section = "all"
     root = repo_root()
     json_path, md_path = resolve_paths(root)
     store = load_store(json_path)

@@ -9,6 +9,12 @@ This guard scans installer / hook / script files for any mutation of
 to a user-global config. Documentation strings are excluded (a comment
 mentioning ``.claude/settings.json`` for context is fine).
 
+NOTE for iron-law sandbox-tests: this test does NOT touch the real
+``~/.claude`` — it only STATIC-SCANS files under the plugin tree.
+The `~/.claude` reference here is documentation, not behavior. No
+KAIZEN_<X>_PATH override is needed because there's no HOME mutation
+to sandbox.
+
 Run:
     python3 -m unittest tests.test_hooks_invariant -v
 """

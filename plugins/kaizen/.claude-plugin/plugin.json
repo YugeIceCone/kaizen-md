@@ -66,6 +66,8 @@
       "Bash(bash ${CLAUDE_PLUGIN_ROOT}/bin/kaizen-auto-handoff:*)",
       "Bash(bash ${CLAUDE_PLUGIN_ROOT}/bin/kaizen-skill-suggest:*)",
       "Bash(bash ${CLAUDE_PLUGIN_ROOT}/bin/kaizen-context-notifier:*)",
+      "Bash(bash ${CLAUDE_PLUGIN_ROOT}/bin/kaizen-statusline-dxm:*)",
+      "Bash(bash ${CLAUDE_PLUGIN_ROOT}/bin/kaizen-statusline-intent:*)",
       "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/kaizen_write.py:*)",
       "Bash(bash ${CLAUDE_PLUGIN_ROOT}/bin/kaizen-write:*)",
       "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/intent.py:*)",

@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# consolidated-cli-parent: loop
 """Controlled CRUD helpers for the kaizen Ralph-loop state file.
 
 Provides the AGENT-FACING surface to read and mutate `.kaizen/loop.state.md`
