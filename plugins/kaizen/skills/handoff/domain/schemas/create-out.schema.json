@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/YugeIceCone/kaizen-md/skills/handoff/create-out.schema.json",
+  "title": "Handoff create output",
+  "type": "object",
+  "required": ["file_path", "session_id", "db_id", "status"],
+  "additionalProperties": false,
+  "properties": {
+    "file_path":  { "type": "string" },
+    "session_id": { "type": "string" },
+    "db_id":      { "type": "integer" },
+    "status":     { "enum": ["partial", "complete", "blocked"] }
+  }
+}

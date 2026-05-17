@@ -469,6 +469,288 @@ def _cmd_verify(args) -> int:
     return 0
 
 
+# ─── scaffold — git-driven YAML pre-fill ─────────────────────────────
+
+
+_SLUG_RE = re.compile(r"[^a-z0-9]+")
+
+
+def _derive_slug(text: str, max_len: int = 40) -> str:
+    s = _SLUG_RE.sub("-", text.lower()).strip("-")
+    return (s[:max_len].rstrip("-") or "session")
+
+
+def _git_log_files(repo: Path, since: str) -> tuple[list[str], int]:
+    """Return (changed_files_sorted, commit_count) since the given date."""
+    # Commit count — `--oneline` gives one line per commit.
+    r_count = _git(repo, "log", f"--since={since}", "--oneline")
+    commits = (
+        len([l for l in r_count.stdout.splitlines() if l.strip()])
+        if r_count.returncode == 0 else 0
+    )
+    # Changed files — `--pretty=format:` suppresses commit headers; just
+    # file paths remain (blank lines between commits).
+    r_files = _git(repo, "log", f"--since={since}", "--name-only",
+                    "--pretty=format:")
+    if r_files.returncode != 0:
+        return [], commits
+    files = {line.strip() for line in r_files.stdout.splitlines() if line.strip()}
+    return sorted(files), commits
+
+
+def _git_created_files(repo: Path, since: str) -> list[str]:
+    r = _git(repo, "log", f"--since={since}", "--diff-filter=A",
+             "--name-only", "--pretty=format:")
+    if r.returncode != 0:
+        return []
+    return sorted({line.strip() for line in r.stdout.splitlines() if line.strip()})
+
+
+def _cmd_scaffold(args) -> int:
+    """Write a partially-filled handoff YAML; agent finishes the prose."""
+    import datetime as _dt
+    repo = Path(args.repo_root or ".").resolve()
+    session = args.session
+    if not re.match(r"^[A-Za-z0-9._-]+$", session):
+        print(f"[kaizen-handoff scaffold] invalid session name {session!r}",
+              file=sys.stderr)
+        return 2
+
+    slug = args.description_slug or _derive_slug(args.goal)
+    timestamp = args.at or _dt.datetime.now(_dt.timezone.utc).strftime("%Y-%m-%d_%H-%M")
+    date_str = timestamp.split("_", 1)[0]  # YYYY-MM-DD
+    since = args.since or "7.days.ago"
+
+    handoffs_root = _core.handoffs_dir()
+    session_dir = handoffs_root / session
+    session_dir.mkdir(parents=True, exist_ok=True)
+    yaml_path = session_dir / f"{timestamp}_{slug}.yaml"
+
+    changed, commits = _git_log_files(repo, since)
+    created  = _git_created_files(repo, since)
+    modified = sorted(set(changed) - set(created))
+
+    body_lines = [
+        "---",
+        f"session: {session}",
+        f"date: {date_str}",
+        "status: partial",
+        "outcome: IN_PROGRESS",
+        "---",
+        "",
+        f"goal: {args.goal}",
+        f"now: {args.now}",
+        "test: TBD",
+        "",
+    ]
+    if changed:
+        body_lines.append("done_this_session:")
+        body_lines.append("  - task: TBD (scaffolded — agent fills)")
+        body_lines.append(
+            "    files: [" + ", ".join(changed) + "]"
+        )
+    else:
+        body_lines.append("done_this_session: []")
+    body_lines += [
+        "",
+        "blockers: []",
+        "questions: []",
+        "decisions: []",
+        "findings: []",
+        "worked: []",
+        "failed: []",
+        "next: []",
+        "",
+        "files:",
+    ]
+    body_lines.append("  created: [" + ", ".join(created) + "]")
+    body_lines.append("  modified: [" + ", ".join(modified) + "]")
+    body_lines.append("")
+
+    yaml_path.write_text("\n".join(body_lines), encoding="utf-8")
+
+    prefilled = ["date", "test"]
+    if changed:
+        prefilled += ["done_this_session.files"]
+    prefilled += ["files.created", "files.modified"]
+    must_fill = ["goal", "now", "test", "decisions", "findings",
+                  "worked", "failed", "next"]
+
+    data = {
+        "yaml_path": str(yaml_path.resolve()),
+        "session": session,
+        "prefilled_sections": prefilled,
+        "agent_must_fill": must_fill,
+        "stats": {
+            "commits_since": commits,
+            "files_changed": len(changed),
+            "since": since,
+        },
+    }
+    if args.json:
+        try:
+            schema_cli.lens_emit(
+                "kaizen-handoff", _MANIFEST, "scaffold",
+                data=data, verdict="green",
+                tool_version="1.0.0",
+            )
+        except schema_cli.SchemaValidationError as exc:
+            print(f"[kaizen-handoff scaffold] internal: {exc}", file=sys.stderr)
+            return 2
+    else:
+        print(f"[kaizen-handoff scaffold] {yaml_path.resolve()}")
+        print(f"  prefilled: {prefilled}")
+        print(f"  agent_must_fill: {must_fill}")
+        print(f"  stats: commits_since={commits} files_changed={len(changed)}")
+    return 0
+
+
+# ─── create — typed one-shot YAML write + index ──────────────────────
+
+
+def _quote_if_unsafe(value: str) -> str:
+    """Quote a YAML scalar if it contains the `: ` colon-space sequence
+    that PyYAML reads as a nested mapping. Single-quote escaping —
+    embedded `'` doubled."""
+    if ": " not in value and not value.startswith(("&", "*", "!", "|", ">", "%")):
+        return value
+    return "'" + value.replace("'", "''") + "'"
+
+
+def _render_create_yaml(payload: dict, date_str: str) -> str:
+    lines = [
+        "---",
+        f"session: {payload['session']}",
+        f"date: {date_str}",
+        "status: partial",
+        "outcome: IN_PROGRESS",
+        "---",
+        "",
+        f"goal: {_quote_if_unsafe(payload['goal'])}",
+        f"now: {_quote_if_unsafe(payload['now'])}",
+    ]
+    if payload.get("test"):
+        lines.append(f"test: {_quote_if_unsafe(payload['test'])}")
+    lines.append("")
+
+    done = payload.get("done_this_session") or []
+    if done:
+        lines.append("done_this_session:")
+        for entry in done:
+            lines.append(f"  - task: {_quote_if_unsafe(entry['task'])}")
+            files = entry.get("files") or []
+            lines.append(f"    files: [{', '.join(files)}]")
+    else:
+        lines.append("done_this_session: []")
+    lines.append("")
+
+    def _string_list(key: str) -> None:
+        items = payload.get(key) or []
+        if not items:
+            lines.append(f"{key}: []")
+        else:
+            lines.append(f"{key}:")
+            for item in items:
+                lines.append(f"  - {_quote_if_unsafe(str(item))}")
+
+    for k in ("blockers", "questions"):
+        _string_list(k)
+
+    for k in ("decisions", "findings"):
+        items = payload.get(k) or []
+        if not items:
+            lines.append(f"{k}: []")
+        else:
+            lines.append(f"{k}:")
+            for item in items:
+                if isinstance(item, dict):
+                    for kk, vv in item.items():
+                        lines.append(f"  - {_quote_if_unsafe(str(kk))}: {_quote_if_unsafe(str(vv))}")
+                else:
+                    lines.append(f"  - {_quote_if_unsafe(str(item))}")
+
+    for k in ("worked", "failed", "next"):
+        _string_list(k)
+
+    lines.append("")
+    files_section = payload.get("files") or {}
+    lines.append("files:")
+    lines.append(f"  created: [{', '.join(files_section.get('created') or [])}]")
+    lines.append(f"  modified: [{', '.join(files_section.get('modified') or [])}]")
+    lines.append("")
+    return "\n".join(lines)
+
+
+def _cmd_create(args) -> int:
+    """One-shot structured-input handoff write."""
+    import datetime as _dt
+
+    # Source the payload
+    if args.stdin:
+        payload_text = sys.stdin.read()
+    elif args.data_file:
+        payload_text = Path(args.data_file).expanduser().read_text(encoding="utf-8")
+    else:
+        print("[kaizen-handoff create] --stdin or --data-file required",
+              file=sys.stderr)
+        return 2
+
+    try:
+        payload = json.loads(payload_text)
+    except json.JSONDecodeError as exc:
+        print(f"[kaizen-handoff create] payload not valid JSON: {exc}",
+              file=sys.stderr)
+        return 2
+
+    # Validate via lens manifest's create subcommand
+    try:
+        _MANIFEST.get("create").validate_input(payload)
+    except schema_cli.SchemaValidationError as exc:
+        print(f"[kaizen-handoff create] payload rejected: {exc}", file=sys.stderr)
+        return 2
+
+    timestamp = payload.get("at") or _dt.datetime.now(_dt.timezone.utc).strftime("%Y-%m-%d_%H-%M")
+    date_str = timestamp.split("_", 1)[0]
+    slug = payload.get("description_slug") or _derive_slug(payload["goal"])
+
+    handoffs_root = _core.handoffs_dir()
+    session_dir = handoffs_root / payload["session"]
+    session_dir.mkdir(parents=True, exist_ok=True)
+    yaml_path = session_dir / f"{timestamp}_{slug}.yaml"
+
+    body = _render_create_yaml(payload, date_str)
+
+    # Atomic write
+    tmp_path = yaml_path.with_suffix(yaml_path.suffix + ".create.tmp")
+    tmp_path.write_text(body, encoding="utf-8")
+    tmp_path.replace(yaml_path)
+
+    # Index into the store
+    db_id = _core.save_handoff(
+        payload["session"], body, str(yaml_path.resolve()), status="partial",
+    )
+
+    data = {
+        "file_path":  str(yaml_path.resolve()),
+        "session_id": payload["session"],
+        "db_id":      int(db_id),
+        "status":     "partial",
+    }
+    if args.json:
+        try:
+            schema_cli.lens_emit(
+                "kaizen-handoff", _MANIFEST, "create",
+                data=data, verdict="green",
+                tool_version="1.0.0",
+            )
+        except schema_cli.SchemaValidationError as exc:
+            print(f"[kaizen-handoff create] internal: {exc}", file=sys.stderr)
+            return 2
+    else:
+        print(f"[kaizen-handoff create] #{db_id} → {yaml_path.resolve()}")
+    return 0
+
+
 def _cmd_assess(args) -> int:
     """Deterministic rubric walk — compute signals, return recommended bucket.
 
@@ -661,6 +943,38 @@ def main(argv: Optional[list[str]] = None) -> int:
 
     s_path = sub.add_parser("path", help="print store + yaml-dir paths")
     s_path.set_defaults(func=_cmd_path)
+
+    s_create = sub.add_parser(
+        "create",
+        help="one-shot typed handoff write — accepts structured JSON "
+             "(--stdin or --data-file), generates valid YAML, indexes",
+    )
+    src = s_create.add_mutually_exclusive_group(required=False)
+    src.add_argument("--stdin", action="store_true",
+                      help="read JSON payload from stdin")
+    src.add_argument("--data-file", default=None,
+                      help="read JSON payload from a file")
+    s_create.add_argument("--json", action="store_true")
+    s_create.set_defaults(func=_cmd_create)
+
+    s_scaffold = sub.add_parser(
+        "scaffold",
+        help="git-driven YAML pre-fill — writes a partially-filled handoff "
+             "YAML so the agent only writes the qualitative sections",
+    )
+    s_scaffold.add_argument("--session", required=True)
+    s_scaffold.add_argument("--goal", required=True)
+    s_scaffold.add_argument("--now", required=True)
+    s_scaffold.add_argument("--description-slug", default=None,
+                             help="kebab-case slug; defaults to derived-from-goal")
+    s_scaffold.add_argument("--since", default=None,
+                             help="git --since filter (default 7.days.ago)")
+    s_scaffold.add_argument("--at", default=None,
+                             help="override UTC timestamp YYYY-MM-DD_HH-MM (test aid)")
+    s_scaffold.add_argument("--repo-root", default=None,
+                             help="git working tree (default: cwd)")
+    s_scaffold.add_argument("--json", action="store_true")
+    s_scaffold.set_defaults(func=_cmd_scaffold)
 
     s_assess = sub.add_parser(
         "assess",

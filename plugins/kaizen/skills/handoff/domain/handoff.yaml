@@ -63,6 +63,26 @@ subcommands:
     input_schema:  schemas/assess-in.schema.json
     output_schema: schemas/assess-out.schema.json
 
+  scaffold:
+    description: >-
+      Git-driven YAML pre-fill. Writes a partially-filled handoff YAML
+      from git state (date, files.modified, files.created,
+      done_this_session.files) so the agent only writes the
+      qualitative content (decisions, findings, worked, failed, next).
+      Saves ~20–50% of Step-2 token cost.
+    input_schema:  schemas/scaffold-in.schema.json
+    output_schema: schemas/scaffold-out.schema.json
+
+  create:
+    description: >-
+      One-shot structured-input handoff write. Accepts a typed JSON
+      payload (via --stdin or --data-file), validates, generates valid
+      YAML (handles `: ` colon-space escaping), writes atomically, and
+      indexes into the DB. Collapses Steps 1+2+3 of the legacy create
+      flow into one subcommand.
+    input_schema:  schemas/create-in.schema.json
+    output_schema: schemas/create-out.schema.json
+
   # Pre-existing subcommands — declared for discovery; schemas land
   # in their own migration commits per the lens skill's "incremental"
   # guidance.

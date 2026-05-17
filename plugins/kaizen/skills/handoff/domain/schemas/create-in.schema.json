@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/YugeIceCone/kaizen-md/skills/handoff/create-in.schema.json",
+  "title": "Handoff create input",
+  "description": "Typed payload for one-shot handoff write — validates → renders YAML → atomic write → DB index in a single subcommand.",
+  "type": "object",
+  "required": ["session", "goal", "now"],
+  "additionalProperties": false,
+  "properties": {
+    "session":          { "type": "string", "pattern": "^[A-Za-z0-9._-]+$" },
+    "goal":             { "type": "string", "maxLength": 400 },
+    "now":              { "type": "string", "maxLength": 400 },
+    "test":             { "type": "string" },
+    "done_this_session": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["task"],
+        "additionalProperties": false,
+        "properties": {
+          "task":  { "type": "string" },
+          "files": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "blockers":   { "type": "array", "items": { "type": "string" } },
+    "questions":  { "type": "array", "items": { "type": "string" } },
+    "decisions":  { "type": "array" },
+    "findings":   { "type": "array" },
+    "worked":     { "type": "array", "items": { "type": "string" } },
+    "failed":     { "type": "array", "items": { "type": "string" } },
+    "next":       { "type": "array", "items": { "type": "string" } },
+    "files": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "created":  { "type": "array", "items": { "type": "string" } },
+        "modified": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "description_slug": { "type": "string", "pattern": "^[a-z0-9-]+$" },
+    "at":               { "type": "string", "description": "Override UTC timestamp YYYY-MM-DD_HH-MM (test aid)." }
+  }
+}

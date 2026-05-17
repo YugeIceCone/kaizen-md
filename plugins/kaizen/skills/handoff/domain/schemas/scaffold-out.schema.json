@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/YugeIceCone/kaizen-md/skills/handoff/scaffold-out.schema.json",
+  "title": "Handoff scaffold output",
+  "description": "Records what was prefilled and what the agent still has to write. The yaml_path file is the system of record.",
+  "type": "object",
+  "required": ["yaml_path", "prefilled_sections", "agent_must_fill", "stats"],
+  "additionalProperties": false,
+  "properties": {
+    "yaml_path":          { "type": "string" },
+    "session":            { "type": "string" },
+    "prefilled_sections": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Section names the scaffold filled mechanically."
+    },
+    "agent_must_fill": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Section names left empty — agent must Edit them in."
+    },
+    "stats": {
+      "type": "object",
+      "required": ["commits_since", "files_changed", "since"],
+      "additionalProperties": false,
+      "properties": {
+        "commits_since":   { "type": "integer", "minimum": 0 },
+        "files_changed":   { "type": "integer", "minimum": 0 },
+        "since":           { "type": "string" }
+      }
+    }
+  }
+}
