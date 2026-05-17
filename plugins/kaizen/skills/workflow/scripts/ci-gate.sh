@@ -8,8 +8,15 @@
 #
 #   ci-gate.sh                static-only (fast, agent-callable, ~1s)
 #   ci-gate.sh --syntax-only  same as default; kept for back-compat
-#   ci-gate.sh --full         static + the unittest suite (~80s)
-#                             also opt-in via KAIZEN_CI_GATE_FULL=1
+#   ci-gate.sh --full         static + the unittest suite via the
+#                             async-bounded-batch parallel runner
+#                             (~8s on 32 threads vs ~70s sequential).
+#                             Concurrency: KAIZEN_TEST_CONCURRENCY env,
+#                             default nproc.
+#                             Also opt-in via KAIZEN_CI_GATE_FULL=1
+#   ci-gate.sh --full-serial  same as --full but with sequential
+#                             `unittest discover` (fallback if the
+#                             parallel runner ever misbehaves)
 #
 # Exit 0 = all green; non-zero = first failing check.
 # Bypass: KAIZEN_CI_GATE_DISABLE=1 (exits 0 immediately).
@@ -23,12 +30,15 @@ fi
 
 # Default is static-only. Explicit --full OR env knob opts into the
 # unittest suite. Empty args = honor env knob (don't override).
+# UNITTEST_MODE: parallel (default for --full) | serial (--full-serial)
 RUN_UNITTESTS=0
+UNITTEST_MODE="parallel"
 [ "${KAIZEN_CI_GATE_FULL:-}" = "1" ] && RUN_UNITTESTS=1
 case "${1:-}" in
-  --full)        RUN_UNITTESTS=1 ;;
-  --syntax-only) RUN_UNITTESTS=0 ;;
-  "")            : ;;  # honor env knob, don't reset
+  --full)         RUN_UNITTESTS=1 ;;
+  --full-serial)  RUN_UNITTESTS=1; UNITTEST_MODE="serial" ;;
+  --syntax-only)  RUN_UNITTESTS=0 ;;
+  "")             : ;;  # honor env knob, don't reset
 esac
 
 # Resolve the repo root (the kaizen-md checkout). This script lives at
@@ -118,8 +128,16 @@ fi
 # test that itself shells out to ci-gate.sh --full (test_ci_gate's
 # own --full-path tests) can detect it's already INSIDE a ci-gate
 # run and skip — without this guard the run is infinite.
-( cd plugins/kaizen && KAIZEN_CI_GATE_RECURSION=1 python3 -m unittest discover -s tests -p 'test_*.py' ) \
-  || fail "unittest suite"
-ok "unittest suite"
+if [ "$UNITTEST_MODE" = "parallel" ]; then
+  ( cd plugins/kaizen && KAIZEN_CI_GATE_RECURSION=1 \
+      python3 "$_SCRIPT_DIR/run_tests_parallel.py" --root . ) \
+    || fail "unittest suite (parallel)"
+  ok "unittest suite (parallel)"
+else
+  ( cd plugins/kaizen && KAIZEN_CI_GATE_RECURSION=1 \
+      python3 -m unittest discover -s tests -p 'test_*.py' ) \
+    || fail "unittest suite (serial)"
+  ok "unittest suite (serial)"
+fi
 
 echo "ci-gate: all checks passed (incl. unittest suite)"

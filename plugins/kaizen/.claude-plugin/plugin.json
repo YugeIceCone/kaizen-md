@@ -151,7 +151,9 @@
       "Read(.kaizen/**)",
       "Read(.workflow/**)",
       "Read(.kaizen.toml)",
-      "Write(.kaizen/cache/**)"
+      "Write(.kaizen/cache/**)",
+      "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/run_tests_parallel.py:*)",
+      "Bash(bash ${CLAUDE_PLUGIN_ROOT}/bin/kaizen-run-tests-parallel:*)"
     ]
   }
 }
