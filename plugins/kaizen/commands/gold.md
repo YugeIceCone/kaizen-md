@@ -11,7 +11,7 @@ Catch the "ha!" moments mid-work. Capture immediately so the pattern
 doesn't decay; later promote the durable ones to rules (CLAUDE.md) or
 beliefs (brain Notes via `--brain`).
 
-!`${CLAUDE_PLUGIN_ROOT}/bin/kaizen-gold $ARGUMENTS`
+!`bash -c 'exec ${CLAUDE_PLUGIN_ROOT}/bin/kaizen-gold ${ARGUMENTS:-list}'`
 
 ## Subcommands
 

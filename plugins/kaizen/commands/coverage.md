@@ -10,7 +10,7 @@ allowed-tools: ["Bash(${CLAUDE_PLUGIN_ROOT}/bin/kaizen-coverage:*)"]
 Mechanical 1:1 code-to-test mapper. Goal: every public script has a
 matching test file.
 
-!`${CLAUDE_PLUGIN_ROOT}/bin/kaizen-coverage $ARGUMENTS`
+!`bash -c 'exec ${CLAUDE_PLUGIN_ROOT}/bin/kaizen-coverage ${ARGUMENTS:-report}'`
 
 ## Subcommands
 

@@ -8,7 +8,7 @@ argument-hint: [<url>|batch <urls.txt>|search "<query>"|stats|get <id>|list|clea
 
 Scrape web content + embed it into a SQLite semantic index. Local Ollama by default.
 
-!`bash ${CLAUDE_PLUGIN_ROOT}/bin/kaizen-scrape $ARGUMENTS`
+!`bash -c 'exec ${CLAUDE_PLUGIN_ROOT}/bin/kaizen-scrape ${ARGUMENTS:-stats}'`
 
 Claude can also query the scraped index without a slash command via the `kaizen-scrape` MCP server:
 
