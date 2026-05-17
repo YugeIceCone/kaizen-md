@@ -16,11 +16,14 @@ _HOOK_PY = _KZ_DIR / "hooks/claude/_write_atomic.py"
 
 
 def _fire_py(event: dict, env: dict | None = None) -> subprocess.CompletedProcess:
-    """Invoke the backing Python directly with the event on stdin."""
+    """Invoke the backing Python directly with the event on stdin.
+    Default env enables the hook (it's opt-in by design). Tests that
+    explicitly check opt-OUT semantics can override via env arg."""
+    base_env = {"KAIZEN_ATOMIC_WRITE_ENABLE": "1"}
     return subprocess.run(
         [sys.executable, str(_HOOK_PY)],
         input=json.dumps(event), capture_output=True, text=True,
-        timeout=5, env={**os.environ, **(env or {})},
+        timeout=5, env={**os.environ, **base_env, **(env or {})},
     )
 
 
@@ -43,7 +46,7 @@ class TestInterception(unittest.TestCase):
     def tearDown(self):
         self._tmp.cleanup()
 
-    def test_write_event_atomic_writes_and_denies(self):
+    def test_write_event_atomic_writes_and_notes(self):
         target = self.tmp / "out.txt"
         evt = {
             "tool_name":  "Write",
@@ -52,14 +55,16 @@ class TestInterception(unittest.TestCase):
         r = _fire_py(evt)
         self.assertEqual(r.returncode, 0, r.stderr)
         data = json.loads(r.stdout)
-        # File on disk with the content
+        # File on disk with the content (atomic-pre-write happened)
         self.assertTrue(target.is_file())
         self.assertEqual(target.read_text(), "hello\n")
-        # Decision tells the agent to skip CC's Write
+        # NEW SHAPE: additionalContext note, NO permissionDecision deny
         ho = data["hookSpecificOutput"]
         self.assertEqual(ho["hookEventName"], "PreToolUse")
-        self.assertEqual(ho["permissionDecision"], "deny")
-        self.assertIn("atomically", ho["permissionDecisionReason"])
+        self.assertNotIn("permissionDecision", ho,
+                          "hook must NOT deny — that renders as Error in CC")
+        self.assertIn("atomic-write", ho["additionalContext"])
+        self.assertIn("DISABLE", ho["additionalContext"])
 
     def test_creates_parent_dirs(self):
         target = self.tmp / "deep/nested/out.txt"
@@ -81,7 +86,7 @@ class TestInterception(unittest.TestCase):
         r = subprocess.run(
             [sys.executable, str(_HOOK_PY)],
             input="not-json", capture_output=True, text=True, timeout=5,
-            env=os.environ.copy(),
+            env={**os.environ, "KAIZEN_ATOMIC_WRITE_ENABLE": "1"},
         )
         self.assertEqual(r.returncode, 0)
         self.assertEqual(r.stdout.strip(), "{}")
@@ -91,6 +96,38 @@ class TestInterception(unittest.TestCase):
         r = _fire_py(evt)
         self.assertEqual(r.returncode, 0)
         self.assertEqual(r.stdout.strip(), "{}")
+
+
+class TestOptInDefault(unittest.TestCase):
+    """Hook is opt-IN — without KAIZEN_ATOMIC_WRITE_ENABLE=1 it
+    returns empty {} so CC's native Write runs normally + no
+    deny-rendered-as-error noise."""
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.tmp = Path(self._tmp.name)
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    def test_no_enable_env_short_circuits(self):
+        target = self.tmp / "out.txt"
+        evt = {
+            "tool_name":  "Write",
+            "tool_input": {"file_path": str(target), "content": "x"},
+        }
+        # Build env WITHOUT ENABLE; mirror raw os.environ (no opt-in)
+        env = {k: v for k, v in os.environ.items()
+               if k != "KAIZEN_ATOMIC_WRITE_ENABLE"}
+        r = subprocess.run(
+            [sys.executable, str(_HOOK_PY)],
+            input=json.dumps(evt), capture_output=True, text=True,
+            timeout=5, env=env,
+        )
+        self.assertEqual(r.returncode, 0)
+        self.assertEqual(r.stdout.strip(), "{}")
+        # File NOT written — hook didn't run
+        self.assertFalse(target.exists())
 
 
 class TestBypassKnob(unittest.TestCase):
@@ -129,9 +166,9 @@ class TestFallbackOnIOError(unittest.TestCase):
         data = json.loads(r.stdout)
         ho = data.get("hookSpecificOutput", {})
         # No deny (so CC's Write still runs as the fallback)
-        self.assertNotEqual(ho.get("permissionDecision"), "deny")
+        self.assertNotIn("permissionDecision", ho)
         # And we surfaced *why* via additionalContext
-        self.assertIn("falling through",
+        self.assertIn("failed",
                        ho.get("additionalContext", ""))
 
 
@@ -154,15 +191,18 @@ class TestHookScriptIntegration(unittest.TestCase):
         r = subprocess.run(
             ["bash", str(_HOOK_SH)],
             input=json.dumps(evt), capture_output=True, text=True, timeout=5,
-            env={**os.environ, "CLAUDE_PLUGIN_ROOT": str(_KZ_DIR)},
+            env={**os.environ, "CLAUDE_PLUGIN_ROOT": str(_KZ_DIR),
+                  "KAIZEN_ATOMIC_WRITE_ENABLE": "1"},
         )
         self.assertEqual(r.returncode, 0, r.stderr)
         # Parse the LAST JSON object emitted (the python decision —
         # _trace.sh may emit other stuff first).
         last_json = r.stdout.strip().splitlines()[-1]
         data = json.loads(last_json)
-        self.assertEqual(
-            data["hookSpecificOutput"]["permissionDecision"], "deny")
+        # NEW SHAPE: additionalContext note, no deny
+        ho = data["hookSpecificOutput"]
+        self.assertNotIn("permissionDecision", ho)
+        self.assertIn("atomic-write", ho.get("additionalContext", ""))
         self.assertTrue(target.is_file())
         self.assertEqual(target.read_text(), "via-bash")
 

@@ -7,6 +7,9 @@
 
 set -uo pipefail
 
+# Hook is OPT-IN (default OFF) — see _write_atomic.py docstring.
+# Without explicit ENABLE=1 the deny→error rendering creates noise.
+if [ "${KAIZEN_ATOMIC_WRITE_ENABLE:-}" != "1" ]; then echo '{}'; exit 0; fi
 if [ "${KAIZEN_ATOMIC_WRITE_DISABLE:-}" = "1" ]; then echo '{}'; exit 0; fi
 
 _HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

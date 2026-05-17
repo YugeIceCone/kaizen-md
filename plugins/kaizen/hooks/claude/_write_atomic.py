@@ -17,9 +17,15 @@ write. Power loss between the truncate and write leaves an empty file.
 `_atomic.atomic_write` writes to a sibling tempfile then `os.replace`
 (POSIX atomic rename) so the target is either fully old or fully new.
 
-## Bypass
+## Activation
 
-  KAIZEN_ATOMIC_WRITE_DISABLE=1  ← global escape valve
+The hook is OPT-IN (default OFF) — `permissionDecision: deny` renders
+as "Error: ..." in CC even when the atomic write succeeded, which
+creates noisy UX for every Write. Enable explicitly when atomicity
+matters more than the noise:
+
+  KAIZEN_ATOMIC_WRITE_ENABLE=1  ← opt-in
+  KAIZEN_ATOMIC_WRITE_DISABLE=1 ← legacy disable knob (still honored)
 """
 
 from __future__ import annotations
@@ -41,7 +47,10 @@ def _emit(payload: dict) -> int:
 
 
 def main() -> int:
-    if os.environ.get("KAIZEN_ATOMIC_WRITE_DISABLE", "") == "1":
+    # Hook is OFF unless ENABLE=1 explicitly set.
+    enabled = os.environ.get("KAIZEN_ATOMIC_WRITE_ENABLE", "") == "1"
+    disabled = os.environ.get("KAIZEN_ATOMIC_WRITE_DISABLE", "") == "1"
+    if not enabled or disabled:
         return _emit({})
 
     try:
@@ -58,34 +67,37 @@ def main() -> int:
     if not path or content is None:
         return _emit({})
 
+    size = len(content) if isinstance(content, str) else 0
+
+    # NEW SHAPE: capture metadata + atomic-write, but DO NOT deny.
+    # CC's native Write runs normally — last-writer-wins on the same
+    # path (our atomic-write happens first, CC's overwrites with same
+    # content). The atomic guarantee is real for the window between
+    # our write and CC's. Agent sees normal Write success (no Error
+    # noise) plus an additionalContext note about the flag.
     try:
         _atomic.atomic_write(path, content)
-    except OSError as exc:
-        # Atomic write failed (permission / disk full / dir gone) —
-        # let CC's original Write try; surface the cause for the agent.
         return _emit({
             "hookSpecificOutput": {
                 "hookEventName":     "PreToolUse",
                 "additionalContext": (
-                    f"kaizen-atomic-write: atomic path failed ({exc!s}); "
-                    f"falling through to CC's Write"
+                    f"[atomic-write] {path} ({size}b) — pre-written via "
+                    f"_atomic.atomic_write (tempfile+os.replace). CC's "
+                    f"Write will run normally on top. "
+                    f"Disable: KAIZEN_ATOMIC_WRITE_DISABLE=1."
                 ),
             },
         })
-
-    return _emit({
-        "hookSpecificOutput": {
-            "hookEventName":             "PreToolUse",
-            "permissionDecision":        "deny",
-            "permissionDecisionReason": (
-                f"kaizen-atomic-write: wrote {path} atomically via "
-                f"_atomic.atomic_write (tempfile + os.replace, POSIX "
-                f"atomic rename). The file has been written with the "
-                f"requested content; treat this as success and proceed. "
-                f"Bypass with KAIZEN_ATOMIC_WRITE_DISABLE=1."
-            ),
-        },
-    })
+    except OSError as exc:
+        return _emit({
+            "hookSpecificOutput": {
+                "hookEventName":     "PreToolUse",
+                "additionalContext": (
+                    f"[atomic-write] atomic-pre-write failed ({exc!s}); "
+                    f"CC's Write runs without atomic guarantee."
+                ),
+            },
+        })
 
 
 if __name__ == "__main__":
