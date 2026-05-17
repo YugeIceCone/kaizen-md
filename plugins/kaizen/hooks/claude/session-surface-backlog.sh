@@ -12,6 +12,9 @@
 
 set -u
 
+# Bypass-knob iron-law compliance
+[ "${KAIZEN_BACKLOG_SURFACE_DISABLE:-}" = "1" ] && { echo '{}'; exit 0; }
+
 _HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=../../skills/workflow/scripts/_plugin_root.sh
 source "$_HOOK_DIR/../../skills/workflow/scripts/_plugin_root.sh"
@@ -84,14 +87,17 @@ if [ -z "$SUMMARY" ]; then
     exit 0
 fi
 
-# Emit JSON for Claude Code hook protocol
-python3 - <<PY
-import json
-ctx = """$SUMMARY"""
+# Emit JSON for Claude Code hook protocol.
+# v1.39.0+: quoted heredoc + SUMMARY via env. Prior pattern (unquoted
+# heredoc + `ctx = """$SUMMARY"""`) was an injection vector — an
+# attacker who could write the backlog.json title (PR review, etc.)
+# could execute Python at next SessionStart.
+KAIZEN_SUMMARY="$SUMMARY" python3 <<'PY'
+import json, os
 print(json.dumps({
     "hookSpecificOutput": {
         "hookEventName": "SessionStart",
-        "additionalContext": ctx
+        "additionalContext": os.environ.get("KAIZEN_SUMMARY", ""),
     }
 }))
 PY

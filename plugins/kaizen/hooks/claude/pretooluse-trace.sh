@@ -70,9 +70,14 @@ if [ -z "$TOOL_NAME" ] || [ "$TOOL_NAME" = "Bash" ]; then
 fi
 
 # Build a small data blob with the identifier (only when present).
+# v1.39.0+: pass IDENT via env var, never via shell substitution into
+# Python source. The previous `python3 -c "...'''$IDENT'''..."` pattern
+# was a defense-in-depth concern (a malicious tool argument with the
+# right paren/brace balance could in principle inject Python).
 DATA="{}"
 if [ -n "$IDENT" ]; then
-    DATA=$(python3 -c "import json; print(json.dumps({'ident': '''$IDENT'''}))")
+    DATA=$(KAIZEN_IDENT="$IDENT" python3 -c \
+        'import json, os; print(json.dumps({"ident": os.environ["KAIZEN_IDENT"]}))')
 fi
 
 SID=$(printf '%s' "$INPUT" | python3 -c "

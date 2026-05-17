@@ -6,6 +6,9 @@
 
 set -uo pipefail
 
+# Bypass-knob iron-law compliance
+[ "${KAIZEN_BACKLOG_COMMIT_DISABLE:-}" = "1" ] && { echo '{}'; exit 0; }
+
 # Resolve plugin root (CLAUDE_PLUGIN_ROOT → KAIZEN_PLUGIN_ROOT → derived).
 _HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=../../skills/workflow/scripts/_plugin_root.sh
@@ -16,11 +19,14 @@ EVENT=$(cat 2>/dev/null || echo '{}')
 
 printf '%s' "$EVENT" | bash "$PLUGIN_ROOT/hooks/claude/_trace.sh" PostToolUse-bash Bash
 
-# Extract command + exit info
-COMMAND_INFO=$(printf '%s' "$EVENT" | python3 - <<'PY' 2>/dev/null
-import json, sys
+# Extract command + exit info.
+# v1.39.0+: pass EVENT via env (not stdin) because `python3 - <<'PY'`
+# leaves sys.stdin shadowed by the heredoc — the prior pattern silently
+# made `json.load(sys.stdin)` see EOF, so this whole block was dead.
+COMMAND_INFO=$(KAIZEN_EVENT="$EVENT" python3 <<'PY' 2>/dev/null
+import json, os
 try:
-    e = json.load(sys.stdin)
+    e = json.loads(os.environ.get("KAIZEN_EVENT", "{}"))
     cmd = e.get("tool_input", {}).get("command", "")
     result = e.get("tool_result", {})
     rtype = result.get("type", "")
@@ -59,11 +65,16 @@ BACKLOG_JSON="${BACKLOG_MD%.md}.json"
 COMMIT_MSG=$(git log -1 --format="%B" 2>/dev/null)
 [ -z "$COMMIT_MSG" ] && { echo '{}'; exit 0; }
 
-# Match in_flight item ids (BK-NNN) or title fragments against the commit
-SUGGESTION=$(python3 - "$BACKLOG_JSON" <<PY 2>/dev/null
-import json, re, sys
+# Match in_flight item ids (BK-NNN) or title fragments against the commit.
+# v1.39.0+: heredoc QUOTED (<<'PY'), COMMIT_MSG passed via env. The
+# prior unquoted `<<PY` + `"""$COMMIT_MSG"""` pattern was an injection
+# vector if reached (any commit body containing `"""\n<python>\n"""`
+# would execute at hook time).
+SUGGESTION=$(KAIZEN_COMMIT_MSG="$COMMIT_MSG" \
+    python3 - "$BACKLOG_JSON" <<'PY' 2>/dev/null
+import json, os, re, sys
 data = json.load(open(sys.argv[1]))
-commit = """$COMMIT_MSG"""
+commit = os.environ.get("KAIZEN_COMMIT_MSG", "")
 matches = []
 for it in data.get("items", []):
     if it.get("section") != "in_flight":
@@ -79,11 +90,10 @@ for it in data.get("items", []):
     if len(title_frag) >= 16 and title_frag.lower() in commit.lower():
         matches.append((item_id, it["title"], "title"))
 if matches:
-    short_sha = ""
-    print(f"⚙ kaizen: commit landed; in_flight backlog item(s) likely tied:")
+    print("⚙ kaizen: commit landed; in_flight backlog item(s) likely tied:")
     for mid, title, kind in matches:
         print(f"  - {mid} ({kind}-match): {title}")
-    print(f"  Tick: /kaizen:backlog tick <id> --committed <short-sha>")
+    print("  Tick: /kaizen:backlog tick <id> --committed <short-sha>")
 PY
 )
 
@@ -92,12 +102,11 @@ if [ -z "$SUGGESTION" ]; then
     exit 0
 fi
 
-python3 -c "
-import json
+KAIZEN_SUGGESTION="$SUGGESTION" python3 -c '
+import json, os
 print(json.dumps({
-    'hookSpecificOutput': {
-        'hookEventName': 'PostToolUse',
-        'additionalContext': '''$SUGGESTION''',
+    "hookSpecificOutput": {
+        "hookEventName": "PostToolUse",
+        "additionalContext": os.environ.get("KAIZEN_SUGGESTION", ""),
     }
-}))
-"
+}))'

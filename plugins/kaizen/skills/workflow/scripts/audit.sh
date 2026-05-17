@@ -239,17 +239,31 @@ render_section() {
 }
 
 if [ "$JSON" -eq 1 ]; then
-  python3 - <<PY
-import json
+  # v1.39.0+: pass arrays via env (newline-joined) instead of
+  # interpolating into the heredoc. Mechanically identical output
+  # but no shell-substitution into Python source.
+  KAIZEN_TS="$TS_HUMAN" \
+  KAIZEN_SCOPE="$SCOPE_LABEL" \
+  KAIZEN_TOTAL="$TOTAL" \
+  KAIZEN_CRITICAL="$(printf '%s\n' "${CRITICAL[@]:-}")" \
+  KAIZEN_HIGH="$(printf '%s\n' "${HIGH[@]:-}")" \
+  KAIZEN_MEDIUM="$(printf '%s\n' "${MEDIUM[@]:-}")" \
+  KAIZEN_LOW="$(printf '%s\n' "${LOW[@]:-}")" \
+  KAIZEN_INFO="$(printf '%s\n' "${INFO[@]:-}")" \
+  python3 <<'PY'
+import json, os
+def _list(env_name):
+    raw = os.environ.get(env_name, "")
+    return [line for line in raw.split("\n") if line.strip()]
 out = {
-    "ts": "$TS_HUMAN",
-    "scope": "$SCOPE_LABEL",
-    "total_findings": $TOTAL,
-    "critical": $(printf '%s\n' "${CRITICAL[@]:-}" | python3 -c "import sys,json; print(json.dumps([l for l in sys.stdin.read().split('\n') if l.strip()]))"),
-    "high":     $(printf '%s\n' "${HIGH[@]:-}"     | python3 -c "import sys,json; print(json.dumps([l for l in sys.stdin.read().split('\n') if l.strip()]))"),
-    "medium":   $(printf '%s\n' "${MEDIUM[@]:-}"   | python3 -c "import sys,json; print(json.dumps([l for l in sys.stdin.read().split('\n') if l.strip()]))"),
-    "low":      $(printf '%s\n' "${LOW[@]:-}"      | python3 -c "import sys,json; print(json.dumps([l for l in sys.stdin.read().split('\n') if l.strip()]))"),
-    "info":     $(printf '%s\n' "${INFO[@]:-}"     | python3 -c "import sys,json; print(json.dumps([l for l in sys.stdin.read().split('\n') if l.strip()]))"),
+    "ts": os.environ.get("KAIZEN_TS", ""),
+    "scope": os.environ.get("KAIZEN_SCOPE", ""),
+    "total_findings": int(os.environ.get("KAIZEN_TOTAL", "0")),
+    "critical": _list("KAIZEN_CRITICAL"),
+    "high":     _list("KAIZEN_HIGH"),
+    "medium":   _list("KAIZEN_MEDIUM"),
+    "low":      _list("KAIZEN_LOW"),
+    "info":     _list("KAIZEN_INFO"),
 }
 print(json.dumps(out, indent=2))
 PY
