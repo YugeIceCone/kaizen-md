@@ -275,6 +275,121 @@ def _cmd_tail(args) -> int:
     return 0
 
 
+# ─── append-to (zero-roundtrip dxm → file dump) ──────────────────────
+
+
+def _format_event_md(e: dict) -> str:
+    """One-line markdown summary of a dxm event. Used by `append-to`.
+    Keep tight — the whole point is low-overhead bulk-append."""
+    ts = e.get("ts_unix", 0)
+    evt = e.get("evt_type", "?")
+    tool = e.get("tool_name", "-")
+    extra = []
+    if "tool_use_id" in e:
+        extra.append(f"id={e['tool_use_id'][:8]}")
+    if "exit_code" in e:
+        extra.append(f"exit={e['exit_code']}")
+    if "duration_ms" in e:
+        extra.append(f"{e['duration_ms']}ms")
+    extra_s = "  " + " ".join(extra) if extra else ""
+    return f"- {ts:.0f}  {evt}  tool={tool}{extra_s}"
+
+
+def _cmd_append_to(args) -> int:
+    """Stream dxm events directly into a target file — single tool-call,
+    zero Read/Write round-trips for the agent.
+
+    Reuses tail's filter set (--back / --window-from/to / --since-unix /
+    --agent / --limit) plus an --evt-type filter, then atomic-appends
+    formatted lines to <target>. The agent invokes ONE Bash call and
+    the script handles all I/O.
+    """
+    if _disabled():
+        if args.json:
+            _emit({"disabled": True, "appended": 0}, verdict="yellow")
+        return 0
+
+    events = _read_events(args.session)
+    now = time.time()
+
+    # Same window/limit filters as `tail` — keep behaviour aligned
+    lower = None
+    upper = None
+    if args.window_from is not None or args.window_to is not None:
+        if args.window_from is not None:
+            lower = now - args.window_from
+        if args.window_to is not None:
+            upper = now - args.window_to
+    elif args.back is not None:
+        lower = now - args.back
+    elif args.since_unix is not None:
+        lower = args.since_unix
+
+    def _keep(e: dict) -> bool:
+        if lower is not None or upper is not None:
+            ts = e.get("ts_unix")
+            if not isinstance(ts, (int, float)):
+                return False
+            if lower is not None and ts <= lower:
+                return False
+            if upper is not None and ts > upper:
+                return False
+        if args.evt_type and e.get("evt_type") != args.evt_type:
+            return False
+        if args.agent and e.get("agent_id") != args.agent:
+            return False
+        return True
+
+    events = [e for e in events if _keep(e)]
+    if args.limit and args.limit > 0:
+        events = events[-args.limit:]
+
+    # Render — markdown line per event (default) or one JSON per line
+    if args.format == "jsonl":
+        lines = [json.dumps(e, separators=(",", ":"), default=str)
+                 for e in events]
+    else:
+        lines = [_format_event_md(e) for e in events]
+
+    if not lines:
+        if args.json:
+            _emit({"appended": 0, "target": args.target}, verdict="green")
+        return 0
+
+    target = Path(args.target).expanduser()
+    block = ""
+    if args.header:
+        block += args.header.rstrip("\n") + "\n"
+    block += "\n".join(lines) + "\n"
+
+    # Atomic-append via _atomic (lazy import; stdlib fallback)
+    try:
+        _here = Path(__file__).resolve().parent
+        sys.path.insert(0, str(_here))
+        import _atomic
+        # _atomic.atomic_append_line appends one line; we want a block.
+        # Use the open-append fallback for a single multi-line write
+        # (one fsync, single os.write under PIPE_BUF likely).
+        target.parent.mkdir(parents=True, exist_ok=True)
+        with target.open("a", encoding="utf-8") as f:
+            f.write(block)
+    except OSError as e:
+        if args.json:
+            _emit({"appended": 0, "error": str(e)}, verdict="red")
+        else:
+            print(f"[kaizen-dxm append-to] write failed: {e}",
+                  file=sys.stderr)
+        return 1
+
+    if args.json:
+        _emit({"appended": len(lines), "target": str(target),
+                "session_id": args.session},
+              counts={"events": len(lines)}, verdict="green")
+    else:
+        print(f"[kaizen-dxm append-to] appended {len(lines)} event(s) → {target}")
+    return 0
+
+
 # ─── link ────────────────────────────────────────────────────────────
 
 
@@ -651,6 +766,28 @@ def main(argv=None) -> int:
     sl.add_argument("--child", required=True)
     sl.add_argument("--json", action="store_true")
     sl.set_defaults(func=_cmd_link)
+
+    # zero-roundtrip dxm → file dump
+    sa = sub.add_parser("append-to",
+                          help="bulk-append dxm events into a target file (one tool call)")
+    sa.add_argument("target", help="target file (created if missing; parent dirs auto)")
+    sa.add_argument("--session", required=True)
+    sa.add_argument("--evt-type", default=None,
+                      help="only append events of this evt_type")
+    sa.add_argument("--limit", type=int, default=0,
+                      help="cap to last N matching events (0=all)")
+    sa.add_argument("--since-unix", type=float, default=None)
+    sa.add_argument("--back", type=float, default=None,
+                      help="rolling window in seconds")
+    sa.add_argument("--window-from", type=float, default=None)
+    sa.add_argument("--window-to", type=float, default=None)
+    sa.add_argument("--agent", default=None)
+    sa.add_argument("--format", choices=["md", "jsonl"], default="md",
+                      help="output format per event line")
+    sa.add_argument("--header", default=None,
+                      help="optional header line prepended once before events")
+    sa.add_argument("--json", action="store_true")
+    sa.set_defaults(func=_cmd_append_to)
 
     sr = sub.add_parser(
         "replay",

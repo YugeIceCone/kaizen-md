@@ -272,6 +272,95 @@ class TestTailRollingWindow(DxmBase):
         self.assertNotEqual(r.returncode, 0)
 
 
+class TestAppendTo(DxmBase):
+    """Zero-roundtrip dxm → file dump. One CLI call appends N events
+    to a target file with no Read/Write spent on the agent side."""
+
+    def _capture_n(self, sid: str, n: int, evt: str = "tool.invoke") -> None:
+        for i in range(n):
+            self._run("capture", stdin=json.dumps({
+                "session_id": sid, "evt_type": evt,
+                "tool_name": f"T{i}",
+            }))
+            time.sleep(0.002)
+
+    def test_append_to_writes_md_lines(self):
+        self._capture_n("s_at", 3)
+        target = self.tmp / "out.md"
+        r = self._run("append-to", str(target), "--session", "s_at")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertTrue(target.is_file())
+        lines = target.read_text(encoding="utf-8").strip().splitlines()
+        self.assertEqual(len(lines), 3)
+        for ln in lines:
+            self.assertTrue(ln.startswith("- "))
+            self.assertIn("tool.invoke", ln)
+
+    def test_append_to_jsonl_format(self):
+        self._capture_n("s_at_j", 2)
+        target = self.tmp / "out.jsonl"
+        r = self._run("append-to", str(target), "--session", "s_at_j",
+                       "--format", "jsonl")
+        self.assertEqual(r.returncode, 0)
+        for ln in target.read_text().strip().splitlines():
+            rec = json.loads(ln)
+            self.assertEqual(rec["evt_type"], "tool.invoke")
+
+    def test_append_to_with_header_prepends_once(self):
+        self._capture_n("s_h", 2)
+        target = self.tmp / "out.md"
+        r = self._run("append-to", str(target), "--session", "s_h",
+                       "--header", "## My header")
+        self.assertEqual(r.returncode, 0)
+        text = target.read_text()
+        self.assertTrue(text.startswith("## My header\n"))
+        # Header appears ONCE even if appended twice (it's per-call, not per-event)
+        self.assertEqual(text.count("## My header"), 1)
+
+    def test_append_to_evt_type_filter(self):
+        self._capture_n("s_f", 2, evt="keep")
+        self._capture_n("s_f", 2, evt="drop")
+        target = self.tmp / "out.md"
+        r = self._run("append-to", str(target), "--session", "s_f",
+                       "--evt-type", "keep")
+        self.assertEqual(r.returncode, 0)
+        text = target.read_text()
+        self.assertEqual(text.count("keep"), 2)
+        self.assertNotIn("drop", text)
+
+    def test_append_to_limit_caps_lines(self):
+        self._capture_n("s_l", 5)
+        target = self.tmp / "out.md"
+        r = self._run("append-to", str(target), "--session", "s_l",
+                       "--limit", "2")
+        self.assertEqual(r.returncode, 0)
+        lines = target.read_text().strip().splitlines()
+        self.assertEqual(len(lines), 2)
+
+    def test_append_to_creates_parent_dirs(self):
+        self._capture_n("s_p", 1)
+        target = self.tmp / "deep" / "nested" / "out.md"
+        r = self._run("append-to", str(target), "--session", "s_p")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertTrue(target.is_file())
+
+    def test_append_to_no_match_creates_no_file(self):
+        # No events captured → 0 appends → file not written
+        target = self.tmp / "noop.md"
+        r = self._run("append-to", str(target), "--session", "s_empty")
+        self.assertEqual(r.returncode, 0)
+        self.assertFalse(target.is_file())
+
+    def test_append_to_atomic_append_two_calls_accumulate(self):
+        self._capture_n("s_a", 2)
+        target = self.tmp / "out.md"
+        self._run("append-to", str(target), "--session", "s_a", "--limit", "1")
+        self._run("append-to", str(target), "--session", "s_a", "--limit", "1")
+        # Two calls → two lines in the file
+        lines = target.read_text().strip().splitlines()
+        self.assertEqual(len(lines), 2)
+
+
 class TestHelp(unittest.TestCase):
     def test_help_works(self):
         r = subprocess.run([sys.executable, str(_DXM_PY), "--help"],
