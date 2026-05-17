@@ -29,7 +29,6 @@ gwtest-*/
 *.bak-*
 *.bak.[0-9]*
 
-# kaizen audit reports — auto-regenerated session artifacts.
-# Already-tracked reports stay tracked (git ignores ignore rules for
-# tracked files); only new reports are excluded.
-.kaizen/workflow/audits/*.md
+# Audit reports under `.kaizen/workflow/audits/` are excluded via
+# the per-dir `.kaizen/.gitignore` (re-ignores under the broad
+# workflow/** whitelist there). Kept local to avoid double-rules.
