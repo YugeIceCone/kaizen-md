@@ -51,6 +51,7 @@ _extract_num() {
 
 TOOL=$(_extract_str tool_name)
 TUID=$(_extract_str tool_use_id)
+AGENTID=$(_extract_str agent_id)
 DURMS=$(_extract_num duration_ms)
 EXITCODE=$(_extract_num exit_code)
 
@@ -71,6 +72,7 @@ EVENTS_FILE="$DXM_DIR/events-${SID}.jsonl"
 LINE="{\"ts_unix\":$TS,\"session_id\":\"$SID\",\"evt_type\":\"$EVT\""
 [ -n "$TOOL" ]     && LINE="$LINE,\"tool_name\":\"$TOOL\""
 [ -n "$TUID" ]     && LINE="$LINE,\"tool_use_id\":\"$TUID\""
+[ -n "$AGENTID" ]  && LINE="$LINE,\"agent_id\":\"$AGENTID\""
 [ -n "$DURMS" ]    && LINE="$LINE,\"duration_ms\":$DURMS"
 [ -n "$EXITCODE" ] && LINE="$LINE,\"exit_code\":$EXITCODE"
 LINE="$LINE}"

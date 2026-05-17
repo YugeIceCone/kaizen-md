@@ -255,6 +255,8 @@ def _cmd_tail(args) -> int:
             return True
         events = [e for e in events if _in_window(e)]
 
+    if args.agent:
+        events = [e for e in events if e.get("agent_id") == args.agent]
     if args.limit and args.limit > 0:
         events = events[-args.limit:]
 
@@ -391,6 +393,113 @@ def _cmd_replay(args) -> int:
               f"session={args.session}")
         print(f"  source: {src.resolve()}")
         print(f"  target: {target.resolve()}")
+    return 0
+
+
+# ─── session-id discovery ────────────────────────────────────────────
+
+
+def _cwd_to_slug(cwd: Path) -> str:
+    """Translate cwd → Claude Code project-slug shape (mirrors
+    _session_jsonl.cwd_to_slug)."""
+    return str(cwd.resolve()).replace("/", "-")
+
+
+def _cmd_session_id(args) -> int:
+    """Autodiscover the active session_id from cwd → slug → latest JSONL."""
+    cwd = Path(args.cwd or ".").resolve()
+    slug = _cwd_to_slug(cwd)
+    proj = Path.home() / ".claude" / "projects" / slug
+    sid: Optional[str] = None
+    jsonl_path: Optional[Path] = None
+    if proj.is_dir():
+        candidates = [p for p in proj.iterdir() if p.is_file() and p.suffix == ".jsonl"]
+        if candidates:
+            jsonl_path = max(candidates, key=lambda p: p.stat().st_mtime)
+            sid = jsonl_path.stem
+    data = {
+        "session_id": sid,
+        "jsonl_path": str(jsonl_path) if jsonl_path else None,
+        "cwd": str(cwd),
+        "slug": slug,
+    }
+    if args.json:
+        verdict = "green" if sid else "yellow"
+        _emit(data, verdict=verdict)
+    else:
+        if sid:
+            print(f"[kaizen-dxm session-id] {sid}")
+            print(f"  jsonl: {jsonl_path}")
+        else:
+            print(f"[kaizen-dxm session-id] no session found for cwd={cwd}",
+                  file=sys.stderr)
+    return 0
+
+
+# ─── chain walk ──────────────────────────────────────────────────────
+
+
+def _read_all_links() -> list[dict]:
+    """Return all parent→child link records, newest last."""
+    path = _sessions_path()
+    if not path.is_file():
+        return []
+    out = []
+    with path.open("r", encoding="utf-8") as f:
+        for line in f:
+            try:
+                out.append(json.loads(line))
+            except json.JSONDecodeError:
+                continue
+    return out
+
+
+def _cmd_chain(args) -> int:
+    """Walk parent_session_id from --session back to root. Cycle-safe."""
+    links = _read_all_links()
+    # Map child → parent (latest link wins)
+    parent_of: dict[str, str] = {}
+    for r in links:
+        c = r.get("child_session_id")
+        p = r.get("parent_session_id")
+        if c and p:
+            parent_of[c] = p
+
+    chain = [args.session]
+    seen = {args.session}
+    truncated = False
+    current = args.session
+    max_depth = max(1, args.max_depth)
+    for _ in range(max_depth):
+        parent = parent_of.get(current)
+        if not parent:
+            break
+        if parent in seen:
+            # Cycle detected — stop, mark truncated
+            truncated = True
+            break
+        chain.append(parent)
+        seen.add(parent)
+        current = parent
+    else:
+        # Loop exhausted depth → flag
+        if parent_of.get(current):
+            truncated = True
+
+    chain.reverse()  # root first → child last
+    data = {
+        "session_id": args.session,
+        "chain":      chain,
+        "depth":      len(chain),
+        "truncated":  truncated,
+    }
+    if args.json:
+        _emit(data, counts={"depth": len(chain)})
+    else:
+        print(f"[kaizen-dxm chain] {args.session}: depth={len(chain)}"
+              f"{' (truncated)' if truncated else ''}")
+        for s in chain:
+            print(f"  {s}")
     return 0
 
 
@@ -535,6 +644,8 @@ def main(argv=None) -> int:
     st.add_argument("--window-to", type=float, default=None,
                      help="window upper bound: SECONDS ago (inclusive). "
                           "Use with --window-from for a middle slice.")
+    st.add_argument("--agent", default=None,
+                     help="filter to events with this agent_id (sub-agent scope)")
     st.add_argument("--json", action="store_true")
     st.set_defaults(func=_cmd_tail)
 
@@ -558,6 +669,25 @@ def main(argv=None) -> int:
                           "truncating (default: truncate first)")
     sr.add_argument("--json", action="store_true")
     sr.set_defaults(func=_cmd_replay)
+
+    sid_parser = sub.add_parser(
+        "session-id",
+        help="autodiscover active session_id from cwd → slug → latest JSONL",
+    )
+    sid_parser.add_argument("--cwd", default=None,
+                              help="override cwd for slug derivation (test aid)")
+    sid_parser.add_argument("--json", action="store_true")
+    sid_parser.set_defaults(func=_cmd_session_id)
+
+    schain = sub.add_parser(
+        "chain",
+        help="walk parent_session_id from --session back to root (cycle-safe)",
+    )
+    schain.add_argument("--session", required=True)
+    schain.add_argument("--max-depth", type=int, default=20,
+                          help="bail out after walking this many hops (default 20)")
+    schain.add_argument("--json", action="store_true")
+    schain.set_defaults(func=_cmd_chain)
 
     scl = sub.add_parser(
         "clean",

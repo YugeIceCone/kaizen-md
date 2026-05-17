@@ -3,9 +3,221 @@
   "kind": "kaizen.backlog",
   "metadata": {
     "created": "2026-05-12",
-    "updated": "2026-05-12",
+    "updated": "2026-05-17",
     "active_workflow_ref": null
   },
-  "items": [],
+  "items": [
+    {
+      "id": "BK-001",
+      "section": "parked",
+      "title": "trace gap 1+2+3+6: emit internal events for lens-driven handlers",
+      "ref": null,
+      "probe": "kaizen trace search 'evt=handoff.verify' should surface hits; today returns 0 because outer Bash trace doesn't carry sub-command granularity",
+      "verify": "after change: kaizen-handoff verify + assess + scaffold + create + auto-finalize each fire a start/end trace event with sid + verdict/bucket payload. ~40 LOC across handlers + ~8 LOC lens-validation + ~8 LOC BucketWalker + ~12 LOC dispatchers = ~70 LOC total. Tests cover each emission",
+      "tags": [
+        "trace",
+        "observability",
+        "lens"
+      ],
+      "created": "2026-05-17",
+      "started_at": null,
+      "committed": null,
+      "committed_at": null,
+      "parked_reason": null,
+      "probe_output": null
+    },
+    {
+      "id": "BK-002",
+      "section": "parked",
+      "title": "trace gap 4: per-tool trace events from MCP servers (21 of 22 untraced internally)",
+      "ref": null,
+      "probe": "kaizen trace search 'src=mcp' returns events from state_mcp only; the other 21 mcp__kaizen__* invocations trace only via outer PreToolUse — internal phase/error/cache events are dark",
+      "verify": "shared trace_tool() helper in _mcp_trace.py wraps @mcp.tool; applied incrementally to each *_mcp.py — start+end events per tool call; tested via per-server import smoke",
+      "tags": [
+        "trace",
+        "observability",
+        "mcp"
+      ],
+      "created": "2026-05-17",
+      "started_at": null,
+      "committed": null,
+      "committed_at": null,
+      "parked_reason": null,
+      "probe_output": null
+    },
+    {
+      "id": "BK-003",
+      "section": "parked",
+      "title": "trace gap 5: nested subprocess.run calls invisible to trace (bridge, migrate, flow, scratch)",
+      "ref": null,
+      "probe": "handoff bridge --apply shells out to brain.py capture; the brain call doesn't appear in trace because it's subprocess.run not a Bash tool call. Same in migrate.py dispatcher (path_migrate.py / migrate_paths.sh), flow_cli.py (4 children), scratch.py (inner bash -c)",
+      "verify": "shared _traced_run(argv, evt, sid) helper in skills/workflow/scripts/_subproc.py wraps subprocess.run with before+after trace fires; applied at ~5 nested-exec sites; tests cover each",
+      "tags": [
+        "trace",
+        "observability",
+        "subprocess"
+      ],
+      "created": "2026-05-17",
+      "started_at": null,
+      "committed": null,
+      "committed_at": null,
+      "parked_reason": null,
+      "probe_output": null
+    },
+    {
+      "id": "BK-004",
+      "section": "parked",
+      "title": "trace gap 7: long-running ops emit no progress events (onboard/knowledge/brain index, scrape)",
+      "ref": null,
+      "probe": "kaizen trace search 'evt=progress' returns nothing; indexers run dark between PreToolUse and PostToolUse — minutes-long ops invisible mid-flight. Statusline can't surface 'indexing chunk 3000/12000'",
+      "verify": "new 'progress.tick' event schema; tick emission inside each indexer's inner loop (every N items or M seconds); statusline reads latest tick when available. Needs schema design first",
+      "tags": [
+        "trace",
+        "observability",
+        "progress",
+        "schema"
+      ],
+      "created": "2026-05-17",
+      "started_at": null,
+      "committed": null,
+      "committed_at": null,
+      "parked_reason": null,
+      "probe_output": null
+    },
+    {
+      "id": "BK-005",
+      "section": "parked",
+      "title": "trace gap 8+10: tool error details + etu rejection events not captured",
+      "ref": null,
+      "probe": "kaizen trace search 'evt=PostToolUse-Bash' shows result=err flag only; the actual error message isn't recorded. Same for etu_decision rejections (eval/find /, etc.) — surfaced to user but not traced",
+      "verify": "posttooluse-trace.sh data payload gains error_msg (truncated 200 chars, redacted for tokens/paths); _bash_gate.py::etu_decision fires evt=etu.reject before returning ask. Privacy review on redaction",
+      "tags": [
+        "trace",
+        "observability",
+        "errors",
+        "privacy"
+      ],
+      "created": "2026-05-17",
+      "started_at": null,
+      "committed": null,
+      "committed_at": null,
+      "parked_reason": null,
+      "probe_output": null
+    },
+    {
+      "id": "BK-006",
+      "section": "parked",
+      "title": "dxm: hooks-not-firing for install-session — replay history + document reload rule",
+      "ref": null,
+      "probe": "fresh install of dxm shows events-<current-sid>.jsonl is empty; CC loads hooks.json at session start only",
+      "verify": "SKILL.md callout + 'kaizen-dxm replay --session SID' subcommand that walks ~/.claude/projects/<slug>/<sid>.jsonl, synthesizes Pre/PostToolUse events into events-<sid>.jsonl. After replay, kaizen-dxm now matches the JSONL's tool call count",
+      "tags": [
+        "dxm",
+        "observability",
+        "onboarding"
+      ],
+      "created": "2026-05-17",
+      "started_at": null,
+      "committed": null,
+      "committed_at": null,
+      "parked_reason": null,
+      "probe_output": null
+    },
+    {
+      "id": "BK-007",
+      "section": "parked",
+      "title": "dxm: extract toolUseID + durationMs + exitCode + command from CC event attachments",
+      "ref": null,
+      "probe": "CC events carry attachment.{toolUseID,durationMs,exitCode,command,stderr} but dxm-event.sh extracts only tool_name + session_id",
+      "verify": "Hook script adds 4 grep -oE extractors + extended JSON line template; kaizen-dxm tail shows per-event tool_use_id + duration_ms + exit_code; pair Pre↔Post via tool_use_id is computable",
+      "tags": [
+        "dxm",
+        "observability",
+        "capture"
+      ],
+      "created": "2026-05-17",
+      "started_at": null,
+      "committed": null,
+      "committed_at": null,
+      "parked_reason": null,
+      "probe_output": null
+    },
+    {
+      "id": "BK-008",
+      "section": "parked",
+      "title": "dxm: wire remaining 7 CC lifecycle hooks (SessionStart/End, UserPromptSubmit, Stop, SubagentStop, PreCompact, Notification)",
+      "ref": null,
+      "probe": "hooks.json wires dxm-event.sh only into PreToolUse + PostToolUse; the other 7 lifecycle slots fire kaizen hooks but dxm doesn't capture them",
+      "verify": "hooks.json gains 7 entries each passing the event name as arg; kaizen-dxm tail filtered by evt_type shows SessionStart, SessionEnd, UserPromptSubmit, Stop, SubagentStop, PreCompact, Notification events",
+      "tags": [
+        "dxm",
+        "hooks",
+        "observability"
+      ],
+      "created": "2026-05-17",
+      "started_at": null,
+      "committed": null,
+      "committed_at": null,
+      "parked_reason": null,
+      "probe_output": null
+    },
+    {
+      "id": "BK-009",
+      "section": "parked",
+      "title": "dxm: retention/rotation via kaizen-dxm clean + daemon hygiene loop",
+      "ref": null,
+      "probe": "events-<sid>.jsonl grows append-only forever; no cap or GC",
+      "verify": "kaizen-dxm clean --older-than 7d removes stale per-session files; daemon.py hygiene loop calls it; max-file-size enforces in-session cap",
+      "tags": [
+        "dxm",
+        "retention",
+        "hygiene"
+      ],
+      "created": "2026-05-17",
+      "started_at": null,
+      "committed": null,
+      "committed_at": null,
+      "parked_reason": null,
+      "probe_output": null
+    },
+    {
+      "id": "BK-010",
+      "section": "parked",
+      "title": "dxm: close handoff integration loops (scaffold→dxm freshness, verify→dxm churn, auto-finalize→dxm link)",
+      "ref": null,
+      "probe": "scaffold knows jsonl_lag_seconds but doesn't query dxm when stale; verify ignores dxm tool churn; auto-finalize doesn't record session lineage",
+      "verify": "scaffold mining gains dxm fallback when lag>30s; verify reports last 60s tool churn from dxm; auto-finalize calls 'dxm link --parent --child' as part of indexing",
+      "tags": [
+        "dxm",
+        "handoff",
+        "integration"
+      ],
+      "created": "2026-05-17",
+      "started_at": null,
+      "committed": null,
+      "committed_at": null,
+      "parked_reason": null,
+      "probe_output": null
+    },
+    {
+      "id": "BK-011",
+      "section": "parked",
+      "title": "dxm: TDD the dxm-event.sh shell hot path",
+      "ref": null,
+      "probe": "dxm-event.sh has zero test coverage; regression in grep -oE / sed / printf template would silently break capture",
+      "verify": "tests/test_dxm_hook_sh.py feeds canned event JSON to the hook, asserts the resulting JSONL line shape; covers BSD date %N fallback + KAIZEN_DXM_DISABLE=1 early-exit + missing-session_id no-op",
+      "tags": [
+        "dxm",
+        "tdd",
+        "hooks"
+      ],
+      "created": "2026-05-17",
+      "started_at": null,
+      "committed": null,
+      "committed_at": null,
+      "parked_reason": null,
+      "probe_output": null
+    }
+  ],
   "decisions": []
 }
