@@ -1,4 +1,4 @@
-# kaizen brain starter — `yugecone`
+# kaizen brain starter — `kaizen`
 
 The maintainer's opinionated working principles, sanitized + bundled.
 A more prescriptive starting point than `default` for developers who
@@ -6,7 +6,7 @@ want strong architectural conventions out of the box.
 
 ## When to use this vs `default`
 
-| | `default` | `yugecone` |
+| | `default` | `kaizen` |
 |---|---|---|
 | **Audience** | Anyone | Developers who like opinionated discipline |
 | **Notes** | 3 (universal) | 13 (architecture + coding-skills + workflow patterns) |
@@ -22,7 +22,7 @@ If you prefer to author your own from scratch, use `default`.
 ## What's inside
 
 ```
-yugecone/
+kaizen/
 ├── Persona.md      — 8 directives + placeholders (name/timezone/...)
 ├── README.md       — this file
 ├── SessionNotes.md — running parking lot for ideas-for-later
