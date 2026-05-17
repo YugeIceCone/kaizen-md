@@ -691,6 +691,11 @@ def _cmd_scaffold(args) -> int:
         },
     }
     if jsonl_path:
+        import time as _time
+        try:
+            jsonl_lag = round(_time.time() - jsonl_path.stat().st_mtime, 3)
+        except OSError:
+            jsonl_lag = None
         data["mined_from_session"] = bool(mined)
         data["session_jsonl"] = str(jsonl_path)
         data["mined_summary"] = {
@@ -700,6 +705,7 @@ def _cmd_scaffold(args) -> int:
             "files_touched":      len(mined.get("files_touched") or set()),
             "skills_used":        sorted(mined.get("skills_used") or set()),
             "session_started_at": mined.get("session_started_at"),
+            "jsonl_lag_seconds":  jsonl_lag,
         }
     if args.json:
         try:

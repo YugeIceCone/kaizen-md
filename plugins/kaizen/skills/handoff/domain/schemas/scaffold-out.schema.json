@@ -47,7 +47,9 @@
         "pending_count":      { "type": "integer", "minimum": 0 },
         "files_touched":      { "type": "integer", "minimum": 0 },
         "skills_used":        { "type": "array", "items": { "type": "string" } },
-        "session_started_at": { "type": ["string", "null"] }
+        "session_started_at": { "type": ["string", "null"] },
+        "jsonl_lag_seconds":  { "type": ["number", "null"],
+                                "description": "Seconds since the active session JSONL was last flushed by Claude Code. Helps the agent judge mined-data freshness." }
       }
     }
   }

@@ -213,11 +213,48 @@ def _cmd_tail(args) -> int:
         if args.json:
             _emit({"disabled": True, "events": []}, verdict="yellow")
         return 0
+
+    # Rolling-window flags. Validate non-negative.
+    for flag, val in (("--back", args.back),
+                       ("--window-from", args.window_from),
+                       ("--window-to", args.window_to)):
+        if val is not None and val < 0:
+            print(f"[kaizen-dxm tail] {flag} must be >= 0 (got {val})",
+                  file=sys.stderr)
+            return 2
+
     events = _read_events(args.session)
-    if args.since_unix is not None:
-        events = [e for e in events
-                   if isinstance(e.get("ts_unix"), (int, float))
-                   and e["ts_unix"] > args.since_unix]
+    now = time.time()
+
+    # Compute the time bounds. Precedence:
+    #   --window-from / --window-to (explicit half-open range from past)
+    #   --back (events from (now - back) to now)
+    #   --since-unix (absolute lower bound)
+    lower = None  # ts_unix > lower
+    upper = None  # ts_unix <= upper
+
+    if args.window_from is not None or args.window_to is not None:
+        if args.window_from is not None:
+            lower = now - args.window_from
+        if args.window_to is not None:
+            upper = now - args.window_to
+    elif args.back is not None:
+        lower = now - args.back
+    elif args.since_unix is not None:
+        lower = args.since_unix
+
+    if lower is not None or upper is not None:
+        def _in_window(e: dict) -> bool:
+            ts = e.get("ts_unix")
+            if not isinstance(ts, (int, float)):
+                return False
+            if lower is not None and ts <= lower:
+                return False
+            if upper is not None and ts > upper:
+                return False
+            return True
+        events = [e for e in events if _in_window(e)]
+
     if args.limit and args.limit > 0:
         events = events[-args.limit:]
 
@@ -285,6 +322,13 @@ def main(argv=None) -> int:
     st.add_argument("--limit", type=int, default=20)
     st.add_argument("--since-unix", type=float, default=None,
                      help="filter events strictly after this unix timestamp")
+    st.add_argument("--back", type=float, default=None,
+                     help="rolling window: events from (now - SECONDS) to now")
+    st.add_argument("--window-from", type=float, default=None,
+                     help="window lower bound: SECONDS ago (exclusive)")
+    st.add_argument("--window-to", type=float, default=None,
+                     help="window upper bound: SECONDS ago (inclusive). "
+                          "Use with --window-from for a middle slice.")
     st.add_argument("--json", action="store_true")
     st.set_defaults(func=_cmd_tail)
 

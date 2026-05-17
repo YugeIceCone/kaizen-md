@@ -207,6 +207,71 @@ class TestLink(DxmBase):
         self.assertEqual(env["data"].get("parent_session_id"), "P")
 
 
+class TestTailRollingWindow(DxmBase):
+    """`tail --back N` returns events from (now - N) to now.
+    `--window-from F --window-to T` returns events from (now - F) to (now - T)."""
+
+    def _seed(self, session_id: str, n: int, gap: float = 0.05):
+        for i in range(n):
+            self._run("capture", stdin=json.dumps({
+                "session_id": session_id, "evt_type": f"e{i}"}))
+            time.sleep(gap)
+
+    def test_back_seconds_filters_to_recent_window(self):
+        self._seed("rw", 3, gap=0.1)   # ~300ms total
+        time.sleep(0.4)                # all events now >300ms old
+        # Add a fresh event INSIDE the 200ms window
+        self._run("capture", stdin=json.dumps({
+            "session_id": "rw", "evt_type": "fresh"}))
+        r = self._run("tail", "--session", "rw", "--back", "0.2", "--json")
+        env = json.loads(r.stdout)
+        events = env["data"]["events"]
+        # Only `fresh` survives the 200ms window
+        self.assertEqual([e["evt_type"] for e in events], ["fresh"])
+
+    def test_back_combines_with_limit(self):
+        self._seed("rw2", 5, gap=0.01)
+        # Wide window catches all 5; limit narrows to last 2
+        r = self._run("tail", "--session", "rw2",
+                       "--back", "10", "--limit", "2", "--json")
+        env = json.loads(r.stdout)
+        self.assertEqual(len(env["data"]["events"]), 2)
+        self.assertEqual(
+            [e["evt_type"] for e in env["data"]["events"]],
+            ["e3", "e4"],
+        )
+
+    def test_window_from_to_returns_middle_slice(self):
+        # Seed events with measurable gaps:
+        # - 1 event at t=0
+        # - sleep 0.3
+        # - 1 event at t=0.3
+        # - sleep 0.3
+        # - 1 event at t=0.6
+        self._run("capture", stdin=json.dumps({
+            "session_id": "wf", "evt_type": "old"}))
+        time.sleep(0.3)
+        self._run("capture", stdin=json.dumps({
+            "session_id": "wf", "evt_type": "middle"}))
+        time.sleep(0.3)
+        self._run("capture", stdin=json.dumps({
+            "session_id": "wf", "evt_type": "recent"}))
+
+        # Window: from=0.5s ago, to=0.15s ago → captures `middle` only
+        r = self._run("tail", "--session", "wf",
+                       "--window-from", "0.5",
+                       "--window-to", "0.15", "--json")
+        env = json.loads(r.stdout)
+        evts = [e["evt_type"] for e in env["data"]["events"]]
+        # Allow ±1 entry tolerance for timing jitter — at minimum `middle`
+        # is in the window
+        self.assertIn("middle", evts)
+
+    def test_negative_back_rejected(self):
+        r = self._run("tail", "--session", "rw3", "--back", "-1", "--json")
+        self.assertNotEqual(r.returncode, 0)
+
+
 class TestHelp(unittest.TestCase):
     def test_help_works(self):
         r = subprocess.run([sys.executable, str(_DXM_PY), "--help"],

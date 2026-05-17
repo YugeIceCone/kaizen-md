@@ -230,6 +230,25 @@ _FIXTURE_RECORDS = [
 ]
 
 
+class TestScaffoldJsonlLag(ScaffoldSessionMineBase):
+    """When mining succeeds, scaffold reports jsonl_lag_seconds so the
+    agent can judge freshness of the mined snapshot."""
+
+    def test_jsonl_lag_seconds_in_mined_summary(self):
+        self._commit("a", "1")
+        self._seed_jsonl(_FIXTURE_RECORDS)
+        r = self._run(
+            "--session", "s", "--goal", "g", "--now", "n",
+            "--since", "2000-01-01",
+            "--at", "2026-05-17_03-00", "--json",
+        )
+        env = json.loads(r.stdout)
+        ms = env["data"].get("mined_summary", {})
+        self.assertIn("jsonl_lag_seconds", ms,
+                       f"missing jsonl_lag_seconds; mined_summary={ms}")
+        self.assertGreaterEqual(ms["jsonl_lag_seconds"], 0)
+
+
 class TestScaffoldSessionMineSurfaces(ScaffoldSessionMineBase):
     def test_goal_filled_from_ai_title_when_omitted(self):
         self._commit("a", "1")
