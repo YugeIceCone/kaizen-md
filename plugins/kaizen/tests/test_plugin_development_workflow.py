@@ -94,6 +94,45 @@ class TestSlashCommandShape(unittest.TestCase):
                             f"missing case branch for {branch}")
 
 
+class TestIntakeChecklistSchema(unittest.TestCase):
+    """The intake-checklist.yaml must validate against its paired
+    schema. Catches drift if either evolves without the other."""
+
+    _CHECKLIST = (_KZ_DIR / "skills/plugin-development/domain"
+                            / "intake-checklist.yaml")
+    _SCHEMA = (_KZ_DIR / "skills/plugin-development/domain/schemas"
+                          / "intake-checklist.schema.json")
+
+    def test_files_present(self):
+        self.assertTrue(self._CHECKLIST.is_file())
+        self.assertTrue(self._SCHEMA.is_file())
+
+    def test_yaml_validates_against_schema(self):
+        try:
+            import jsonschema
+            import yaml
+        except ImportError:
+            self.skipTest("jsonschema or PyYAML not installed")
+        schema = json.loads(self._SCHEMA.read_text())
+        data = yaml.safe_load(self._CHECKLIST.read_text())
+        # Raises ValidationError on drift
+        jsonschema.validate(data, schema)
+
+    def test_every_work_type_has_required_fields(self):
+        """Manual structural check — runs even without jsonschema."""
+        try:
+            import yaml
+        except ImportError:
+            self.skipTest("PyYAML not installed")
+        data = yaml.safe_load(self._CHECKLIST.read_text())
+        self.assertEqual(data["version"], 1)
+        self.assertIn("always", data)
+        for wt in data["work_types"]:
+            self.assertIn("id", wt, f"work_type missing id: {wt}")
+            self.assertIn("triggers", wt, f"work_type {wt.get('id')} missing triggers")
+            self.assertIn("skills", wt, f"work_type {wt.get('id')} missing skills")
+
+
 class TestHelpGenClusterIncludesIt(unittest.TestCase):
     def test_plugin_development_in_clusters(self):
         helpgen_py = _KZ_DIR / "skills/workflow/scripts/help_gen.py"
