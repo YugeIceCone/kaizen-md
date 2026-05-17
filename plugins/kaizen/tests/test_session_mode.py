@@ -192,6 +192,68 @@ class TestBundlesSubcommand(Base):
         self.assertIn("kiss", data["simplicity"])
 
 
+class TestReminderSubcommand(Base):
+    def test_no_state_empty_output(self):
+        r = self._run("reminder")
+        self.assertEqual(r.returncode, 0)
+        self.assertEqual(r.stdout, "")
+
+    def test_state_without_skills_empty_output(self):
+        self._run("set", "neither")  # no --bundles, no --skills
+        r = self._run("reminder")
+        self.assertEqual(r.stdout, "")
+
+    def test_loop_with_simplicity_bundle_reminds_three_skills(self):
+        self._run("set", "loop", "--bundles", "simplicity")
+        r = self._run("reminder")
+        self.assertEqual(r.returncode, 0)
+        self.assertIn("kaizen disciplines pinned:", r.stdout)
+        self.assertIn("kiss", r.stdout)
+        self.assertIn("yagni", r.stdout)
+        self.assertIn("dry", r.stdout)
+        # Each pinned skill must come with its description
+        self.assertIn("keep it simple", r.stdout)
+
+    def test_unknown_skill_silently_dropped(self):
+        """Skills not in _SKILL_DESCRIPTIONS are skipped (typo resilience)."""
+        self._run("set", "loop", "--skills", "kiss,future-skill-xyz,dry")
+        r = self._run("reminder")
+        self.assertIn("kiss", r.stdout)
+        self.assertIn("dry", r.stdout)
+        self.assertNotIn("future-skill-xyz", r.stdout)
+
+    def test_json_output(self):
+        self._run("set", "loop", "--bundles", "simplicity")
+        r = self._run("reminder", "--json")
+        data = json.loads(r.stdout)
+        ids = [s["id"] for s in data["skills"]]
+        self.assertEqual(set(ids), {"kiss", "yagni", "dry"})
+        for s in data["skills"]:
+            self.assertIn("description", s)
+            self.assertGreater(len(s["description"]), 5)
+
+
+class TestSkillDescriptionsCatalog(Base):
+    """All bundled skills MUST have a description — otherwise the
+    reminder hook silently skips them and the user wonders why
+    their pin doesn't surface."""
+
+    def test_every_bundled_skill_has_a_description(self):
+        # Discover all skills from the bundle catalog
+        r = self._run("bundles", "--json")
+        bundles = json.loads(r.stdout)
+        all_bundled = set()
+        for skills in bundles.values():
+            all_bundled.update(skills)
+        # Pin every bundled skill, ensure the reminder includes ALL of them
+        self._run("set", "loop", "--skills", ",".join(all_bundled))
+        r = self._run("reminder", "--json")
+        reminded = {s["id"] for s in json.loads(r.stdout)["skills"]}
+        missing = all_bundled - reminded
+        self.assertEqual(missing, set(),
+                          f"bundled skills with no _SKILL_DESCRIPTIONS entry: {missing}")
+
+
 class TestModeOverwrite(Base):
     """set replaces prior state — no implicit merge."""
     def test_second_set_overwrites_first(self):
