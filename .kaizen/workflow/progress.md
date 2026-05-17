@@ -43,3 +43,4 @@
 | 2026-05-17 | perf     | +120   | stop_backlog_reminder.py — Stop hook 3 spawns → 1. Also drops a redundant backlog.json double-read + adds KAIZEN_BACKLOG_DISABLE bypass for hook discipline parity. |
 | 2026-05-17 | perf     | +60    | userprompt_inbox.py — UserPromptSubmit inbox capture 4 spawns → 1. KAIZEN_INBOX_DISABLE bypass parity. |
 | 2026-05-17 | perf     | +80    | intent_userprompt.py — UserPromptSubmit intent matcher 3 spawns → 1. Existing test_intent_scan_hook.py passes unchanged. |
+| 2026-05-17 | perf     | +130   | posttooluse_bash_commit.py — PostToolUse(Bash) git-commit suggester 4 spawns → 1. KAIZEN_BACKLOG_COMMIT_DISABLE bypass parity. |
