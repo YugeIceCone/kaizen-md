@@ -248,13 +248,104 @@ def _gate_validator(scope: str, repo_root: Path) -> list[GateFinding]:
     return out
 
 
+# ─── Sub-gate: token-bloat (waste-tokens threshold) ──────────────────
+
+def _gate_token_bloat(scope: str, repo_root: Path) -> list[GateFinding]:
+    """Surface findings from kaizen-token-bloat when waste exceeds the
+    notice threshold. Advisory only — never blocks the commit."""
+    script = _PLUGIN_ROOT / "skills" / "workflow" / "scripts" / "token_bloat.py"
+    if not script.is_file():
+        return []
+    try:
+        proc = subprocess.run(
+            [sys.executable, str(script), "scan", "--json"],
+            cwd=repo_root, capture_output=True, text=True, timeout=10,
+        )
+    except (subprocess.TimeoutExpired, OSError):
+        return []
+    out: list[GateFinding] = []
+    try:
+        data = json.loads(proc.stdout)
+    except (ValueError, json.JSONDecodeError):
+        return []
+    high = int(data.get("high", 0))
+    if high:
+        out.append(GateFinding(
+            gate="token-bloat", severity="warn",
+            rule_id="high-findings",
+            message=f"{high} high finding(s) — run `kaizen-token-bloat report`"))
+    return out
+
+
+# ─── Sub-gate: coverage (test-coverage gap) ──────────────────────────
+
+def _gate_coverage(scope: str, repo_root: Path) -> list[GateFinding]:
+    """Surface kaizen-coverage gaps — uncovered workflow scripts."""
+    script = _PLUGIN_ROOT / "skills" / "workflow" / "scripts" / "coverage.py"
+    if not script.is_file():
+        return []
+    try:
+        proc = subprocess.run(
+            [sys.executable, str(script), "gaps", "--json"],
+            cwd=repo_root, capture_output=True, text=True, timeout=10,
+        )
+    except (subprocess.TimeoutExpired, OSError):
+        return []
+    try:
+        data = json.loads(proc.stdout)
+    except (ValueError, json.JSONDecodeError):
+        return []
+    gaps = data.get("uncovered", []) or []
+    if gaps:
+        sample = ", ".join(gaps[:3]) + ("…" if len(gaps) > 3 else "")
+        return [GateFinding(
+            gate="coverage", severity="warn",
+            rule_id="uncovered-scripts",
+            message=f"{len(gaps)} uncovered script(s): {sample}")]
+    return []
+
+
+# ─── Sub-gate: schema-coverage (feature shape conformance) ───────────
+
+def _gate_schema_coverage(scope: str, repo_root: Path) -> list[GateFinding]:
+    """Surface kaizen-schema-coverage gaps — features that fail shape
+    conformance (lens-manifest / decision-rubric / plain-config /
+    rule-catalog)."""
+    script = _PLUGIN_ROOT / "skills" / "workflow" / "scripts" / "schema_coverage.py"
+    if not script.is_file():
+        return []
+    try:
+        proc = subprocess.run(
+            [sys.executable, str(script), "gaps", "--json"],
+            cwd=repo_root, capture_output=True, text=True, timeout=10,
+        )
+    except (subprocess.TimeoutExpired, OSError):
+        return []
+    try:
+        data = json.loads(proc.stdout)
+    except (ValueError, json.JSONDecodeError):
+        return []
+    if isinstance(data, list) and data:
+        sample = ", ".join(f["feature"] for f in data[:3])
+        if len(data) > 3:
+            sample += "…"
+        return [GateFinding(
+            gate="schema-coverage", severity="warn",
+            rule_id="shape-gaps",
+            message=f"{len(data)} feature(s) with shape gaps: {sample}")]
+    return []
+
+
 # ─── Orchestrator ───────────────────────────────────────────────────────
 
 SUB_GATES = {
-    "iron-laws": _gate_iron_laws,
-    "etu": _gate_etu,
-    "karpathy": _gate_karpathy,
-    "validator": _gate_validator,
+    "iron-laws":       _gate_iron_laws,
+    "etu":             _gate_etu,
+    "karpathy":        _gate_karpathy,
+    "validator":       _gate_validator,
+    "token-bloat":     _gate_token_bloat,
+    "code-to-test-coverage":   _gate_coverage,    # 1:1 script ↔ test-file mapping
+    "schema-coverage": _gate_schema_coverage,  # feature shape conformance
 }
 
 

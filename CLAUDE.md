@@ -184,3 +184,94 @@ source plugins/kaizen/skills/workflow/scripts/_paths.sh && env | grep KAIZEN_
 - `KAIZEN_<FEATURE>_DISABLE` — per-feature bypass (every hook honors this)
 
 When prose and these files disagree, **code wins** — the trio is the SSOT.
+
+### Domain organization — the 9 surface clusters
+
+The plugin has grown large (90 skills, 66 bins, 51 slash commands, 35 hooks,
+24 MCPs). New surface lands in **one** of these 9 domain clusters. Use the
+matching consolidated-CLI-parent when present; only mint a top-level bin when
+no parent fits.
+
+| Domain | Purpose | Aggregator | Members (representative) |
+|---|---|---|---|
+| **audit/quality** | gate the diff; surface bloat / shape gaps / coverage | **`kaizen-gatekeeper`** aggregates 7 sub-gates | iron-laws, etu, karpathy, validator, token-bloat, coverage, schema-coverage |
+| **observability** | trace lifetime, dxm live mirror, context window | (no parent — each is a distinct concern) | trace, dxm, metrics, observe, context, statusline |
+| **brain/memory** | Second Brain (Persona / PARA / Notes) | **`kaizen-brain`** multi-verb (audit / evolve / index / promote / migrate) | brain, remember, reflect, evolve, memory-state |
+| **workflow** | routine engines + backlog + handoff | (kept separate — different runtimes; see note below) | workflow, loop, flow, backlog, handoff, auto-handoff, roadmap |
+| **plugin-meta** | install / update / hygiene / cache | (no parent yet) | bootstrap, cache, daemon, enable-all, hygiene, manifests, migrate, surface, update, watch |
+| **discovery/search** | semantic indexes + grep wrappers | per-feature (each `<feature>-index` + matching MCP server) | onboard, knowledge, loc, drift, scrape, models, claude-docs |
+| **intent/session** | live phrase-matching + session mode + skill-suggest | (each distinct, no aggregator) | intent, session-mode, skill-suggest |
+| **writing/io** | atomic file writers + shim | `_atomic` is the shared helper | write, shim |
+| **dev-aids** | scratch tools + rubric / rules CLI | per-tool | rubric, rules, scratch, browser, code-lift, test, docs |
+
+**Workflow domain — why workflow / loop / flow are intentionally three things:**
+
+| Bin | Runtime | Cadence | State file | Driver |
+|---|---|---|---|---|
+| `kaizen-workflow` | multi-stage routine (audit / build-feature / fix-bug / refactor / migrate / harden / debug-with-pdb / mcp-build / minimalist / spec-driven / onion-tdd-strict / kaizen-default) | **per-stage**: agent calls `workflow advance` to move to the next stage; each stage has its own gate | `.kaizen/workflow/state.json` (current stage, completed list) + `snapshot.md` | agent-orchestrated; user picks routine + runs `/workflow <routine>` |
+| `kaizen-loop` | self-correcting iterative refinement (ralph-loop pattern) | **per-iteration**: every pass verifies → re-attempts until convergence or stop-condition | `.kaizen/loop.state.md` (active loop ledger; frontmatter + JSON body) | hook-fired (`Stop-ralph-loop` event) or agent-driven via `/kaizen:loop` |
+| `kaizen-flow` | Node+Flow primitives — the actual `AsyncNode` / `AsyncFlow` runtime (`skills/workflow/scripts/flow.py`) | **per-graph-execution**: a single flow runs once to completion | none (graph is built + executed in-process) | imported by every multi-step Python module (indexers, gate, brain promote, etc.) |
+
+Workflow drives the discipline (stage gates); loop drives the convergence
+(retry until verified); flow is the shared substrate both build on. Same
+family, three independent contracts — do NOT collapse them into one parent.
+
+### Consolidation patterns
+
+When adding a feature, follow these patterns instead of growing the top-level
+bin/ surface:
+
+1. **Audit-aggregation** (`kaizen-gatekeeper`): a new code-quality check joins
+   `SUB_GATES` in `skills/workflow/scripts/gatekeeper.py` — adds one row to
+   the unified green/yellow/red verdict. Use this for any check whose output
+   is "N findings of X kind". Examples: token-bloat, coverage, schema-coverage.
+2. **Consolidated CLI parent** (`kaizen-brain`, `kaizen-statusline`):
+   multi-verb dispatcher over a shared file family
+   (`brain_index.py` + `brain_promote.py` + `brain_audit.py`; or
+   `statusline_dxm.py` + `statusline_intent.py`). The parent script reads
+   `$1` as the verb and `exec`s the matching backing module. Sibling bins
+   for each verb stay (back-compat), declared `# consolidated-cli-parent: <parent>`
+   in their docstring (iron-laws bin-naming exemption).
+3. **MCP server without bin**: an MCP-only feature (loaded by Claude via
+   `plugin.json::mcpServers`, not invoked through shell) does NOT need a
+   `kaizen-<feature>-mcp` bin wrapper. The bin only exists when humans/scripts
+   invoke the MCP script directly. Audit: MCPs in `*_mcp.py` that are only
+   reached via Claude's MCP loader don't earn a bin slot.
+4. **Schema-driven feature** (the 4 canonical shapes): every config-driven
+   feature ships one of `lens-manifest` / `decision-rubric` / `plain-config` /
+   `rule-catalog` under `skills/<feature>/domain/` PLUS matching
+   `domain/schemas/*.schema.json`. Audit via `kaizen-schema-coverage`.
+
+### Coverage family — naming axes (don't conflate them)
+
+`coverage` is a category, not a single metric. The plugin distinguishes
+**at least four axes** — each measures conformance against a different
+target. Future audit additions should pick a fresh, specific name (avoid
+the bare `coverage` token).
+
+| Axis | Asks | Tool | Gate key | Status |
+|---|---|---|---|---|
+| **code-to-test-coverage** | does every `workflow/scripts/*.py` have a matching `tests/test_*.py`? (file-mapping presence — not runtime line coverage) | `kaizen-coverage` (bin) | `code-to-test-coverage` | shipped |
+| **schema-coverage** | does every `domain/`-having feature match one of the 4 canonical shapes (lens-manifest / decision-rubric / plain-config / rule-catalog)? | `kaizen-schema-coverage` | `schema-coverage` | shipped |
+| **rubric-coverage** | does every feature that *should* use a decision rubric actually ship one? (subset of schema-coverage; flags cases where `--bundles` or routing logic would benefit from a rubric but uses ad-hoc Python) | future — partially answered by `kaizen-schema-coverage feature <name>` | (planned) | not built |
+| **trace-coverage** | does every hook fire `_trace.sh` and every MCP server emit `kaizen-trace` events? | iron-laws law `every_hook_script_traces_its_firing` (partial) | `iron-laws` | partial — covers hooks, not MCPs |
+
+When adding a new coverage axis, name it `<thing>-coverage` (hyphenated;
+prefer specific phrasing — `code-to-test-coverage` beats `code-coverage`
+because the latter implies *runtime line coverage* which we don't
+measure here). Keep the bin as `kaizen-<thing>-coverage` for consistency
+with the existing pair, and register it as its own SUB_GATES key in
+gatekeeper (don't overload an existing axis).
+
+### Audit surface (one-command sanity)
+
+```bash
+kaizen-gatekeeper check --all   # 7 sub-gates aggregated (one verdict)
+kaizen-token-bloat scan         # bloat axis: per-tier waste across loaded content
+kaizen-coverage gaps            # code-to-test-coverage axis: 1:1 script ↔ test-file presence
+kaizen-schema-coverage gaps     # schema-coverage axis: feature shape conformance
+```
+
+All four also fire automatically — the SessionEnd hook refreshes the
+token-bloat cache, `kaizen-gatekeeper` runs in the pre-commit gate's
+unified verdict, and `kaizen-schema-coverage` surfaces via gatekeeper now too.

@@ -61,9 +61,13 @@ class TestGatekeeperAggregator(unittest.TestCase):
         self.gk = _load("gatekeeper_test", _GATEKEEPER)
 
     def test_list_subgates(self):
+        # 7 sub-gates post-consolidation: 4 originals + 3 audit aggregators
+        # (token-bloat, coverage, schema-coverage). The new ones surface
+        # advisory `warn` findings; they never block commits.
         self.assertEqual(
             set(self.gk.SUB_GATES.keys()),
-            {"iron-laws", "etu", "karpathy", "validator"},
+            {"iron-laws", "etu", "karpathy", "validator",
+             "token-bloat", "code-to-test-coverage", "schema-coverage"},
         )
 
     def test_norm_sev_maps_to_canonical(self):

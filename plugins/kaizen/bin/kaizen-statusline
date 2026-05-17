@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+# kaizen-statusline — multi-verb parent dispatcher for statusline segments.
+# Usage:
+#   kaizen-statusline dxm [...]      → forwards to statusline_dxm.py
+#   kaizen-statusline intent [...]   → forwards to statusline_intent.py
+#   kaizen-statusline (no args)      → lists subcommands
+#
+# Existing kaizen-statusline-{dxm,intent} bins remain (back-compat).
+
+set -uo pipefail
+_SCRIPT_REAL="$(readlink -f "${BASH_SOURCE[0]}" 2>/dev/null \
+  || python3 -c 'import os,sys; print(os.path.realpath(sys.argv[1]))' "${BASH_SOURCE[0]}")"
+_BIN_DIR="$(cd "$(dirname "$_SCRIPT_REAL")" && pwd)"
+# shellcheck source=../skills/workflow/scripts/_plugin_root.sh
+source "$_BIN_DIR/../skills/workflow/scripts/_plugin_root.sh"
+PLUGIN_ROOT="$(kaizen_plugin_root)" || { echo "kaizen-statusline: plugin root unresolved" >&2; exit 1; }
+
+SUB="${1:-}"
+shift || true
+
+case "$SUB" in
+  dxm)    exec python3 "$PLUGIN_ROOT/skills/workflow/scripts/statusline_dxm.py"    "$@" ;;
+  intent) exec python3 "$PLUGIN_ROOT/skills/workflow/scripts/statusline_intent.py" "$@" ;;
+  ""|-h|--help)
+    cat <<EOF
+kaizen-statusline — emit one statusline segment.
+
+Subcommands:
+  dxm     live dxm session state (PreToolUse / PostToolUse / Stop counts)
+  intent  active intent-rule match (UserPromptSubmit-driven)
+
+Both back-compat: kaizen-statusline-{dxm,intent} bins continue to work.
+EOF
+    [ -z "$SUB" ] && exit 1 || exit 0
+    ;;
+  *)
+    echo "kaizen-statusline: unknown subcommand '$SUB' (try: dxm | intent | --help)" >&2
+    exit 2
+    ;;
+esac
