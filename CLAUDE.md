@@ -62,6 +62,28 @@ fail CI — see Cross-platform below).
   `plugins/kaizen/CONTRIBUTING.md`). Plugin-original code is `skills/workflow/`,
   the kaizen-authored `skills/<feature>/`, and `scripts/ commands/ hooks/ bin/`.
 
+## Dispatching subagents — safe defaults
+
+The kaizen bash gate is **advisory-only by default** (`e2f0afa`
+inverted the deny default). Subagents see the warning and proceed.
+This bit us once: a `general-purpose` agent committed to `master` by
+accident, then ran `git reset --hard` to recover — destructive op
+unblocked because the gate was off.
+
+Use **`subagent_type: "kaizen:kaizen-implementer"`** for any agent
+doing multi-phase TDD work in an isolated worktree. Its `tools:`
+list narrows Bash + its `disallowedTools:` blocks the destructive
+git surface (`merge`, `reset *`, `checkout *`, `rebase *`, `clean *`,
+`push *`, `branch -D *`, `rm -rf *`, `curl *`/`wget *`). Branches are
+the agent's only escape route — and from the worktree branch they
+physically cannot touch master.
+
+When `kaizen-implementer` is too narrow (cross-repo work, exploration,
+hotfixes), fall back to `general-purpose` — but DO NOT use it for
+multi-commit TDD work without enabling strict mode
+(`touch ~/.claude/.kaizen/strict`) so the bash gate actively denies
+the destructive ops instead of just warning.
+
 ## Architecture
 
 ### The plugin eats its own dogfood
