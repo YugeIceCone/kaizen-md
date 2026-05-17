@@ -131,5 +131,51 @@ class TestSchemasUseDraft07(unittest.TestCase):
         )
 
 
+class TestReferenceDocs(unittest.TestCase):
+    """Two reference docs sit alongside the catalog: rubric-pattern
+    (deep dive) and trace-hook-tool-api (surface API reference)."""
+
+    REFS = _KZ_DIR / "skills/plugin-development/references"
+
+    def test_rubric_pattern_ref_exists(self):
+        p = self.REFS / "rubric-pattern.md"
+        self.assertTrue(p.is_file(), f"missing: {p}")
+        body = p.read_text(encoding="utf-8")
+        # Key sections covered
+        for section in ("When to use", "Anatomy", "Operators",
+                         "Action-mapping convention",
+                         "Runtime usage", "Reference examples"):
+            self.assertIn(section, body, f"section missing: {section}")
+        # All 6 BucketWalker operators listed
+        for op in (">=", ">", "<=", "<", "==", "!="):
+            self.assertIn(op, body)
+
+    def test_trace_hook_tool_api_ref_exists(self):
+        p = self.REFS / "trace-hook-tool-api.md"
+        self.assertTrue(p.is_file(), f"missing: {p}")
+        body = p.read_text(encoding="utf-8")
+        # All 9 CC lifecycle hooks documented
+        for evt in ("SessionStart", "UserPromptSubmit", "PreToolUse",
+                     "PostToolUse", "Stop", "SubagentStop",
+                     "PreCompact", "SessionEnd", "Notification"):
+            self.assertIn(evt, body, f"hook event missing: {evt}")
+        # Trace APIs
+        self.assertIn("trace.append_event", body)
+        self.assertIn("_dxm_emit", body)
+        self.assertIn("emit_subcommand_complete", body)
+        # Output decision shapes
+        for shape in ("permissionDecision", "additionalContext",
+                       "systemMessage", '"decision"', "block"):
+            self.assertIn(shape, body)
+        # Env-var index
+        self.assertIn("KAIZEN_DXM_DISABLE", body)
+        self.assertIn("KAIZEN_AUTO_HANDOFF_DISABLE", body)
+
+    def test_skill_md_links_both_references(self):
+        body = _SKILL_MD.read_text(encoding="utf-8")
+        self.assertIn("references/rubric-pattern.md", body)
+        self.assertIn("references/trace-hook-tool-api.md", body)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -421,10 +421,18 @@ Schemas + configs belong **under `skills/<feature>/domain/`**.
 #### When to pick which shape
 
 - **Need per-subcommand contracts?** → Lens manifest (v2)
-- **Classifying inputs into buckets?** → Decision rubric
+- **Classifying inputs into buckets?** → Decision rubric (deep dive:
+  [`references/rubric-pattern.md`](references/rubric-pattern.md))
 - **Single-feature settings tuned by user?** → Plain config
 - **List of rules with triggers?** → Rule catalog
 - **Persistent runtime state across hook fires?** → JSON state file under `.kaizen/`
+
+#### Surface API reference
+
+For the full trace + hook + tool API contracts (all 9 CC lifecycle
+hooks + payload shapes, trace.py + `_dxm_emit` functions, MCP server
+pattern, bash-gate behavior, env-var index), see
+[`references/trace-hook-tool-api.md`](references/trace-hook-tool-api.md).
 
 ---
 
