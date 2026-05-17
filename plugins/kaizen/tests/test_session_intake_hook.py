@@ -54,6 +54,25 @@ class TestEmitsIntakePromptWhenUnset(Base):
         self.assertIn("Neither", ctx)
         self.assertIn("kaizen-session-mode set", ctx)
 
+    def test_includes_bundles_question(self):
+        """Q2 must instruct multiSelect bundles."""
+        r = self._fire()
+        ctx = self._additional_context(r)
+        self.assertIn("Disciplines", ctx)
+        self.assertIn("Simplicity", ctx)
+        self.assertIn("Structure", ctx)
+        self.assertIn("Process", ctx)
+        self.assertIn("Karpathy", ctx)
+        self.assertIn("--bundles", ctx)
+
+    def test_prescribes_single_command_for_persistence(self):
+        """Mode + bundles persist via ONE call, not two."""
+        r = self._fire()
+        ctx = self._additional_context(r)
+        self.assertIn("kaizen-session-mode set", ctx)
+        # The example line shows mode + --bundles together
+        self.assertIn("--bundles", ctx)
+
 
 class TestSkipsWhenAlreadySet(Base):
     def test_existing_session_mode_skips(self):

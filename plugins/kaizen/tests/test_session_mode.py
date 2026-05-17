@@ -117,6 +117,81 @@ class TestInvalidMode(Base):
         self.assertFalse(self.state_path.is_file())
 
 
+class TestBundleExpansion(Base):
+    def test_simplicity_expands(self):
+        r = self._run("set", "loop", "--bundles", "simplicity")
+        data = json.loads(r.stdout)
+        self.assertEqual(set(data["skills"]), {"kiss", "yagni", "dry"})
+        self.assertEqual(data["bundles"], ["simplicity"])
+
+    def test_structure_expands_full_architecture_family(self):
+        r = self._run("set", "loop", "--bundles", "structure")
+        data = json.loads(r.stdout)
+        # SOLID classics
+        self.assertIn("solid", data["skills"])
+        self.assertIn("soc", data["skills"])
+        self.assertIn("lod", data["skills"])
+        # Layered / inward-deps family (the "same vein" as onion-ddd)
+        for tag in ("onion-ddd", "hexagonal", "clean-arch",
+                     "dip", "bounded-contexts"):
+            self.assertIn(tag, data["skills"],
+                          f"structure bundle missing {tag!r}")
+
+    def test_structure_bundle_has_no_typo_sof(self):
+        """Regression guard: prior 'sof' (typo for soc) shouldn't reappear."""
+        r = self._run("set", "loop", "--bundles", "structure")
+        data = json.loads(r.stdout)
+        self.assertNotIn("sof", data["skills"])
+
+    def test_multiple_bundles_merge(self):
+        r = self._run("set", "loop", "--bundles", "simplicity,process")
+        data = json.loads(r.stdout)
+        s = set(data["skills"])
+        self.assertTrue({"kiss", "yagni", "dry"}.issubset(s))
+        self.assertTrue({"tdd", "boy-scout", "convention"}.issubset(s))
+
+    def test_bundles_plus_explicit_skills_merge_unique(self):
+        # simplicity = kiss + yagni + dry; --skills adds tdd (new) and dry (dup)
+        r = self._run("set", "loop",
+                       "--bundles", "simplicity",
+                       "--skills", "tdd,dry")
+        data = json.loads(r.stdout)
+        # dry appears once (deduped)
+        self.assertEqual(data["skills"].count("dry"), 1)
+        self.assertIn("tdd", data["skills"])
+
+    def test_unknown_bundle_silently_dropped(self):
+        r = self._run("set", "loop", "--bundles", "simplicity,garbage,karpathy")
+        data = json.loads(r.stdout)
+        # only the valid two contribute
+        self.assertIn("kiss", data["skills"])
+        self.assertIn("karpathy", data["skills"])
+        # bundles field records what the user PICKED (including the typo —
+        # downstream consumers can detect drift if they care)
+        self.assertEqual(data["bundles"],
+                          ["simplicity", "garbage", "karpathy"])
+
+    def test_skills_lowercased(self):
+        r = self._run("set", "loop", "--skills", "KISS,YAGNI")
+        data = json.loads(r.stdout)
+        self.assertEqual(data["skills"], ["kiss", "yagni"])
+
+
+class TestBundlesSubcommand(Base):
+    def test_lists_4_bundles(self):
+        r = self._run("bundles")
+        self.assertEqual(r.returncode, 0)
+        for name in ("simplicity", "structure", "process", "karpathy"):
+            self.assertIn(name, r.stdout)
+
+    def test_json_emits_full_mapping(self):
+        r = self._run("bundles", "--json")
+        data = json.loads(r.stdout)
+        self.assertEqual(set(data.keys()),
+                          {"simplicity", "structure", "process", "karpathy"})
+        self.assertIn("kiss", data["simplicity"])
+
+
 class TestModeOverwrite(Base):
     """set replaces prior state — no implicit merge."""
     def test_second_set_overwrites_first(self):

@@ -64,10 +64,13 @@ import json
 body = '''MANDATORY — session intake (kaizen-md plugin)
 
 This session has no recorded mode. BEFORE responding to the user's
-first prompt, call the AskUserQuestion tool with EXACTLY this question:
+first prompt, call the AskUserQuestion tool with EXACTLY these two
+questions in a SINGLE call:
 
+QUESTION 1 — mode (single-select):
   question: \"How should this kaizen session be run?\"
   header:   \"Session mode\"
+  multiSelect: false
   options:
     - label: \"Loop\"
       description: \"Iterative self-correcting (ralph-loop). Best for greenfield with clear automated verification.\"
@@ -76,11 +79,32 @@ first prompt, call the AskUserQuestion tool with EXACTLY this question:
     - label: \"Neither\"
       description: \"Proceed directly without loop/workflow scaffolding.\"
 
-After the user picks, record the choice and proceed:
+QUESTION 2 — disciplines (multiSelect):
+  question: \"Which discipline bundles should be enforced this session?\"
+  header:   \"Disciplines\"
+  multiSelect: true
+  options:
+    - label: \"Simplicity (KISS + YAGNI + DRY)\"
+      description: \"Anti-bloat — small code, no premature abstraction, no repetition.\"
+    - label: \"Structure (SOLID + SoC + LoD + Onion-DDD + Hexagonal + Clean + DIP + Bounded-Contexts)\"
+      description: \"Architecture — layered systems, inward-only deps, ports & adapters, bounded contexts.\"
+    - label: \"Process (TDD + Boy-Scout + Convention)\"
+      description: \"How-you-work — test-first, leave it cleaner, follow existing patterns.\"
+    - label: \"Karpathy 4\"
+      description: \"Code-as-communication — readable intent over clever density.\"
 
-  Bash(kaizen-session-mode set <loop|workflow|neither>)
+After the user answers, persist BOTH choices in ONE command:
 
-Only AFTER recording the mode, address the user's original request.
+  Bash(kaizen-session-mode set <loop|workflow|neither> --bundles <csv-of-picked-lowercased-names>)
+
+Bundle name mapping (lowercase, comma-separated):
+  Simplicity → simplicity   Structure → structure
+  Process    → process      Karpathy 4 → karpathy
+
+Example: user picks Loop + (Simplicity, Process):
+  kaizen-session-mode set loop --bundles simplicity,process
+
+Only AFTER recording the choices, address the user's original request.
 
 To skip this intake permanently set KAIZEN_SESSION_INTAKE_DISABLE=1.
 '''
