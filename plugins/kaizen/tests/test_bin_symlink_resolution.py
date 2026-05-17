@@ -53,7 +53,14 @@ class TestBinSymlinkResolution(unittest.TestCase):
     """Every bin/kaizen-* with the new symlink-safe pattern must work
     when invoked via a symlink (mirrors /kaizen:setup's behavior)."""
 
-    PATCHED_BINS = ["kaizen-shim", "kaizen-loc", "kaizen-loop"]
+    PATCHED_BINS = [
+        "kaizen-shim", "kaizen-loc", "kaizen-loop",
+        # Added 2026-05-18 after audit found 3 bins missing the readlink
+        # resolver — kaizen-config / kaizen-export / kaizen-llm-proxy all
+        # sourced _plugin_root.sh via $_BIN_DIR/.., resolving to ~/.local/
+        # (the symlink dir) instead of the plugin tree.
+        "kaizen-config", "kaizen-export", "kaizen-llm-proxy",
+    ]
 
     def test_patched_bins_resolve_through_symlink(self):
         failures = []
