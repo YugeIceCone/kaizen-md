@@ -48,6 +48,7 @@ class TestInterception(unittest.TestCase):
 
     def test_write_event_atomic_writes_and_notes(self):
         target = self.tmp / "out.txt"
+        target.write_text("OLD")  # pre-create — only overwrites trigger pre-write
         evt = {
             "tool_name":  "Write",
             "tool_input": {"file_path": str(target), "content": "hello\n"},
@@ -66,8 +67,10 @@ class TestInterception(unittest.TestCase):
         self.assertIn("atomic-write", ho["additionalContext"])
         self.assertIn("DISABLE", ho["additionalContext"])
 
-    def test_creates_parent_dirs(self):
+    def test_overwrite_with_existing_parent_dirs(self):
         target = self.tmp / "deep/nested/out.txt"
+        target.parent.mkdir(parents=True)
+        target.write_text("OLD")  # pre-create — overwrite path triggers pre-write
         evt = {
             "tool_name":  "Write",
             "tool_input": {"file_path": str(target), "content": "x"},
@@ -75,6 +78,7 @@ class TestInterception(unittest.TestCase):
         r = _fire_py(evt)
         self.assertEqual(r.returncode, 0)
         self.assertTrue(target.is_file())
+        self.assertEqual(target.read_text(), "x")
 
     def test_non_write_tool_emits_empty(self):
         evt = {"tool_name": "Bash", "tool_input": {"command": "ls"}}
@@ -98,6 +102,54 @@ class TestInterception(unittest.TestCase):
         self.assertEqual(r.stdout.strip(), "{}")
 
 
+class TestSkipCreate(unittest.TestCase):
+    """For CREATEs (file doesn't exist yet), hook does NOT pre-write —
+    avoids CC's 'File has not been read yet' guard on the subsequent
+    Write. Atomic only matters for overwrites (partial-write of an
+    existing file loses prior data; CREATEs have nothing to lose)."""
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.tmp = Path(self._tmp.name)
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    def test_create_does_not_pre_write(self):
+        target = self.tmp / "fresh.txt"
+        self.assertFalse(target.exists())
+        evt = {
+            "tool_name":  "Write",
+            "tool_input": {"file_path": str(target), "content": "new"},
+        }
+        r = _fire_py(evt)
+        self.assertEqual(r.returncode, 0)
+        data = json.loads(r.stdout)
+        ho = data["hookSpecificOutput"]
+        # File NOT pre-written — hook skipped
+        self.assertFalse(target.exists())
+        # Context note explains the skip
+        self.assertIn("CREATE skipped", ho["additionalContext"])
+        # No deny
+        self.assertNotIn("permissionDecision", ho)
+
+    def test_overwrite_still_pre_writes(self):
+        target = self.tmp / "existing.txt"
+        target.write_text("OLD content")
+        evt = {
+            "tool_name":  "Write",
+            "tool_input": {"file_path": str(target), "content": "NEW content"},
+        }
+        r = _fire_py(evt)
+        self.assertEqual(r.returncode, 0)
+        data = json.loads(r.stdout)
+        ho = data["hookSpecificOutput"]
+        # Pre-write happened
+        self.assertEqual(target.read_text(), "NEW content")
+        self.assertIn("atomic-write/note", ho["additionalContext"])
+        self.assertNotIn("CREATE skipped", ho["additionalContext"])
+
+
 class TestEnforceMode(unittest.TestCase):
     """KAIZEN_ATOMIC_WRITE_MODE=enforce restores the legacy deny-shape:
     pre-write atomically + permissionDecision: deny so CC's Write is
@@ -112,6 +164,7 @@ class TestEnforceMode(unittest.TestCase):
 
     def test_enforce_denies_cc_write(self):
         target = self.tmp / "out.txt"
+        target.write_text("OLD")  # pre-create — CREATE-skip would bypass enforce
         evt = {
             "tool_name":  "Write",
             "tool_input": {"file_path": str(target), "content": "x"},
@@ -127,6 +180,7 @@ class TestEnforceMode(unittest.TestCase):
 
     def test_note_mode_is_default_when_unset(self):
         target = self.tmp / "out.txt"
+        target.write_text("OLD")  # pre-create — only overwrites trigger pre-write
         evt = {
             "tool_name":  "Write",
             "tool_input": {"file_path": str(target), "content": "x"},
@@ -140,6 +194,7 @@ class TestEnforceMode(unittest.TestCase):
 
     def test_unknown_mode_falls_back_to_note(self):
         target = self.tmp / "out.txt"
+        target.write_text("OLD")  # pre-create
         evt = {
             "tool_name":  "Write",
             "tool_input": {"file_path": str(target), "content": "x"},
@@ -205,22 +260,21 @@ class TestBypassKnob(unittest.TestCase):
 
 
 class TestFallbackOnIOError(unittest.TestCase):
-    def test_unwritable_target_falls_through(self):
-        # Use an obviously-unwritable path; the hook should emit an
-        # additionalContext explanation, not a deny — so CC's Write runs
-        # and gets the same OSError surfaced to the agent.
+    def test_unwritable_existing_target_falls_through(self):
+        # Existing file under /proc that we can't atomically replace.
+        # Hook should emit additionalContext explanation, not deny — so
+        # CC's Write runs and gets the same OSError surfaced to the agent.
+        # /proc/version is a real readable-but-unwritable existing file.
         evt = {
             "tool_name":  "Write",
-            "tool_input": {"file_path": "/proc/cannot-write-here.txt",
+            "tool_input": {"file_path": "/proc/version",
                             "content": "x"},
         }
         r = _fire_py(evt)
         self.assertEqual(r.returncode, 0)
         data = json.loads(r.stdout)
         ho = data.get("hookSpecificOutput", {})
-        # No deny (so CC's Write still runs as the fallback)
         self.assertNotIn("permissionDecision", ho)
-        # And we surfaced *why* via additionalContext
         self.assertIn("failed",
                        ho.get("additionalContext", ""))
 
@@ -241,6 +295,8 @@ class TestHookScriptIntegration(unittest.TestCase):
             "tool_name":  "Write",
             "tool_input": {"file_path": str(target), "content": "via-bash"},
         }
+        # Pre-create — only overwrites trigger pre-write
+        target.write_text("OLD")
         r = subprocess.run(
             ["bash", str(_HOOK_SH)],
             input=json.dumps(evt), capture_output=True, text=True, timeout=5,

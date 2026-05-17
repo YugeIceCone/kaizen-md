@@ -92,6 +92,27 @@ def main() -> int:
 
     size = len(content) if isinstance(content, str) else 0
 
+    # Skip pre-write for CREATEs (file doesn't exist yet). Reasoning:
+    #   - Atomic guarantee matters for OVERWRITES — partial-write of an
+    #     existing file loses prior data. CREATEs have nothing to lose.
+    #   - Pre-writing a new file triggers CC's "File has not been read
+    #     yet" guard on the subsequent Write, surfacing a spurious error
+    #     even though our pre-write succeeded.
+    #   - Net: atomic for in-place edits (the risky case); native for
+    #     fresh files (no risk + no error).
+    from pathlib import Path as _P
+    if not _P(path).exists():
+        return _emit({
+            "hookSpecificOutput": {
+                "hookEventName":     "PreToolUse",
+                "additionalContext": (
+                    f"[atomic-write/{mode}] {path} ({size}b) — CREATE skipped "
+                    f"(atomic only matters for overwrites; new files have "
+                    f"no prior data to lose). CC's Write runs normally."
+                ),
+            },
+        })
+
     # Always pre-write atomically when enabled — both modes share this.
     try:
         _atomic.atomic_write(path, content)
