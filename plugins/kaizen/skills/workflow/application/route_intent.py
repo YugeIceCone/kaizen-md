@@ -33,7 +33,6 @@ import json
 import re
 import sys
 from pathlib import Path
-from typing import Any
 
 # H1 dedup: shared YAML + JSON-Schema helpers.
 sys.path.insert(0, str(Path(__file__).resolve().parent))

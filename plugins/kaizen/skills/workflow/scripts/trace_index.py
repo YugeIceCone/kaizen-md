@@ -69,9 +69,7 @@ are NEVER embedded regardless of flag.
 
 from __future__ import annotations
 
-import argparse
 import datetime as dt
-import gzip
 import hashlib
 import json
 import os

@@ -7,7 +7,6 @@ Stdlib unittest; no pytest dep. Run directly:
 """
 from __future__ import annotations
 
-import os
 import sys
 import tempfile
 import unittest

@@ -17,7 +17,6 @@ from __future__ import annotations
 import datetime as dt
 import sqlite3
 import sys
-import tempfile
 import unittest
 from pathlib import Path
 

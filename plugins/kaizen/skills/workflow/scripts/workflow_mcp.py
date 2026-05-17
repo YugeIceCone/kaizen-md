@@ -40,8 +40,6 @@ directly. Same auth surface as the other 9 kaizen MCP servers.
 from __future__ import annotations
 
 import json
-import os
-import subprocess
 import sys
 from pathlib import Path
 

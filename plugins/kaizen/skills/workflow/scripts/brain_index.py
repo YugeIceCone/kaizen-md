@@ -447,9 +447,9 @@ def do_search(
                 f"sources_count, freshness, subdir, path, embedding "
                 f"FROM brain_notes{where} AND embedding IS NOT NULL"
                 if where
-                else f"SELECT id, name, description, type, confidence, tags, "
-                f"sources_count, freshness, subdir, path, embedding "
-                f"FROM brain_notes WHERE embedding IS NOT NULL",
+                else "SELECT id, name, description, type, confidence, tags, "
+                "sources_count, freshness, subdir, path, embedding "
+                "FROM brain_notes WHERE embedding IS NOT NULL",
                 params,
             ).fetchall()
             scored = []
@@ -474,10 +474,10 @@ def do_search(
             f"FROM brain_notes{where} AND (name LIKE ? OR description LIKE ? "
             f"OR body LIKE ?) LIMIT ?"
             if where
-            else f"SELECT id, name, description, type, confidence, tags, "
-            f"sources_count, freshness, subdir, path "
-            f"FROM brain_notes WHERE (name LIKE ? OR description LIKE ? "
-            f"OR body LIKE ?) LIMIT ?",
+            else "SELECT id, name, description, type, confidence, tags, "
+            "sources_count, freshness, subdir, path "
+            "FROM brain_notes WHERE (name LIKE ? OR description LIKE ? "
+            "OR body LIKE ?) LIMIT ?",
             like_params + [top_k],
         ).fetchall()
         return [_row_to_dict(r) for r in rows]

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 import sys
 import tempfile
 import unittest
@@ -43,9 +42,9 @@ class TestPromoteBase(unittest.TestCase):
         self.brain = Path(self._tmp.name) / "brain"
         self.brain.mkdir()
         # Build a fake project-memory dir at the path
-        # _brain.project_memory_root() would compute. We'll set env to
-        # override the lookup via monkey-patching the function rather
-        # than installing under the real ~/.claude/projects path.
+        # _brain.project_memory_root() would compute. We monkey-patch
+        # the lookup to point here so the test never touches the real
+        # per-user projects directory (KAIZEN_*_PATH-style sandboxing).
         self.pm_root = Path(self._tmp.name) / "pm-root"
         self.pm_root.mkdir()
         self._orig = bp._all_project_memory_roots

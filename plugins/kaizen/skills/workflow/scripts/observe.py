@@ -47,14 +47,13 @@ from __future__ import annotations
 
 import argparse
 import datetime as dt
-import gzip
 import hashlib
 import json
 import os
 import subprocess
 import sys
 from pathlib import Path
-from typing import Any, Optional
+from typing import Optional
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR))

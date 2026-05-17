@@ -23,9 +23,7 @@ Path resolution: backlog.json sits alongside backlog.md (same stem).
 
 import argparse
 import json
-import os
 import re
-import shutil
 import sys
 from datetime import datetime, timezone
 from pathlib import Path

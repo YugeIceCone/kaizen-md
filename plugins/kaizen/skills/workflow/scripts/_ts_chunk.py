@@ -43,7 +43,6 @@ Names come from the first ``identifier`` / ``type_identifier`` /
 
 from __future__ import annotations
 
-import dataclasses
 import sys
 from typing import Optional
 

@@ -46,9 +46,7 @@ from __future__ import annotations
 import argparse
 import dataclasses
 import json
-import os
 import re
-import shutil
 import sys
 from pathlib import Path
 from typing import Optional
@@ -676,7 +674,7 @@ def _cmd_preview(args) -> int:
     print(f"[kaizen-migrate preview] {src.relative_to(repo_root)}")
     print()
     if result.status == "skipped":
-        print(f"  status: SKIPPED — [targets] marks the project _skip")
+        print("  status: SKIPPED — [targets] marks the project _skip")
         return 0
     if result.status == "no-mapping":
         print("  status: NO MAPPING — add an entry in [targets]")

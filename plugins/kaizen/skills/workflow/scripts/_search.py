@@ -43,7 +43,6 @@ this with `k=50` weights `[1.3, 1.0, 0.7, 0.5]` for
 
 from __future__ import annotations
 
-import math
 import sqlite3
 import sys
 from pathlib import Path
@@ -462,7 +461,8 @@ def dense_search_q8(
             apply_prefix=apply_prefix,
         )
 
-    import _chunk, _quant
+    import _chunk
+    import _quant
     np = _embed.require_numpy()
     q = _chunk.apply_query_prefix(query) if apply_prefix else query
     qblob, _ = _embed.embed_one(q)

@@ -35,7 +35,6 @@ import shutil
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable
 
 # Optional dep: PyYAML for frontmatter parsing. We mirror _yaml.py's
 # graceful-degradation behavior — fail loudly on import so the user

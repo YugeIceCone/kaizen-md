@@ -227,10 +227,8 @@ class TestSparseSchemaMigration(unittest.TestCase):
 
     @requires_numpy
     def test_migration_adds_embedding_sparse_column(self):
-        import sqlite3
         import tempfile
         from pathlib import Path
-        from unittest.mock import patch
 
         sys.path.insert(0, str(_KZ_DIR / "skills/workflow/scripts"))
         import onboard_index as oi

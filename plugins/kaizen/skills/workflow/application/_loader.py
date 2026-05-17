@@ -24,15 +24,12 @@ constrained environments (e.g. snap-confined ruff/ty contexts).
 from __future__ import annotations
 
 import json
-import os
 import sys
 from pathlib import Path
-from typing import Any
 
 # H1 dedup: shared YAML + JSON-Schema helpers.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from _yaml import load_yaml as _load_yaml  # noqa: E402
-from _yaml import load_json as _load_json  # noqa: E402
 from _yaml import validate as _check  # noqa: E402
 
 DOMAIN_DIR = Path(__file__).resolve().parent.parent / "domain"

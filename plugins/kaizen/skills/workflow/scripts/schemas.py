@@ -58,7 +58,7 @@ the use case without a pip dep.
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field, fields
-from typing import Any, Optional
+from typing import Optional
 
 
 # ─── Helpers ─────────────────────────────────────────────────────────

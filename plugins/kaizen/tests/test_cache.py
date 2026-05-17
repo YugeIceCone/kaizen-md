@@ -18,18 +18,18 @@ Covers:
 
 from __future__ import annotations
 
-import json
 import os
 import sys
 import tempfile
 import unittest
 from pathlib import Path
+from types import ModuleType
 
 SCRIPT_DIR = Path(__file__).resolve().parent.parent / "skills" / "workflow" / "scripts"
 sys.path.insert(0, str(SCRIPT_DIR))
 
 
-def _fresh_cache(tmp: Path) -> "module":
+def _fresh_cache(tmp: Path) -> ModuleType:
     """Import cache.py with KAIZEN_CACHE_DIR pointing at a fresh tmp dir."""
     os.environ["KAIZEN_CACHE_DIR"] = str(tmp)
     if "cache" in sys.modules:

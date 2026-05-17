@@ -23,7 +23,6 @@ sys.path.insert(0, str(_KZ_DIR / "skills/workflow/scripts"))
 
 import _self_audit  # noqa: E402
 import self_audit_agent as agent  # noqa: E402
-from _self_audit import Finding  # noqa: E402
 
 
 def _checkpoint(cid: str, skill: str, targets=None, rationale="focus here"):

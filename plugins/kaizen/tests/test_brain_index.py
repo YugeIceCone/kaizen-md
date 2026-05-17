@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import json
 import os
-import sqlite3
 import sys
 import tempfile
 import unittest
@@ -19,7 +18,6 @@ from pathlib import Path
 _KZ_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_KZ_DIR / "skills/workflow/scripts"))
 
-import _brain  # noqa: E402
 import brain_index as bi  # noqa: E402
 
 

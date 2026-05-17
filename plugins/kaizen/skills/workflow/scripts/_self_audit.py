@@ -12,9 +12,7 @@ import dataclasses
 import hashlib
 import os
 import re
-import sys
 from pathlib import Path
-from typing import Optional
 
 
 SCRIPT_DIR = Path(__file__).resolve().parent

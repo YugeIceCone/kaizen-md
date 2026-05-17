@@ -51,7 +51,6 @@ first `mcp__plugin_kaizen_loop__*` tool fires.
 
 from __future__ import annotations
 
-import os
 import sys
 from pathlib import Path
 

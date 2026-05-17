@@ -101,7 +101,7 @@ class TestStatePathMigration(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertTrue(
                 (tmp / ".kaizen" / "loop.state.md").is_file(),
-                f"expected new state path .kaizen/loop.state.md; setup wrote elsewhere",
+                "expected new state path .kaizen/loop.state.md; setup wrote elsewhere",
             )
             self.assertFalse(
                 (tmp / ".codex" / "ralph-loop.local.md").is_file(),

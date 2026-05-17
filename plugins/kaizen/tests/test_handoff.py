@@ -18,7 +18,6 @@ _KZ_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_KZ_DIR / "skills/workflow/scripts"))
 
 import _handoff  # noqa: E402
-import handoff as handoff_cli  # noqa: E402
 
 
 _SAMPLE_HANDOFF = """\

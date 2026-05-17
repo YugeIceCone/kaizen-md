@@ -30,7 +30,6 @@ from __future__ import annotations
 import dataclasses
 import json
 import re
-import sys
 from pathlib import Path
 from typing import Iterable
 

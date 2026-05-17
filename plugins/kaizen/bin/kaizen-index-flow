@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# kaizen-index-flow — orchestrate the indexer pipeline.
+# Strict-name wrapper required by iron-law `bin-wrapper-per-cli`.
+
+set -euo pipefail
+
+_BIN_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=../skills/workflow/scripts/_plugin_root.sh
+source "$_BIN_DIR/../skills/workflow/scripts/_plugin_root.sh"
+PLUGIN_ROOT="$(kaizen_plugin_root)" || {
+    echo "kaizen-index-flow: plugin root unresolved" >&2
+    exit 1
+}
+
+exec python3 "$PLUGIN_ROOT/skills/workflow/scripts/index_flow.py" "$@"

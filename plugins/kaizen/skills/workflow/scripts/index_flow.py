@@ -61,7 +61,6 @@ from __future__ import annotations
 import asyncio
 import sys
 from pathlib import Path
-from typing import Any
 
 _SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(_SCRIPT_DIR))

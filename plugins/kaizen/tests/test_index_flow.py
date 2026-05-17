@@ -31,7 +31,7 @@ requires_numpy = unittest.skipUnless(NUMPY_AVAILABLE, "numpy not installed")
 
 
 def _vec(seed: int = 1) -> bytes:
-    return struct.pack(f"384f", *([seed / 100.0] * 384))
+    return struct.pack("384f", *([seed / 100.0] * 384))
 
 
 class TestDiscoverNode(unittest.TestCase):
