@@ -1,5 +1,5 @@
 ---
-name: structural-code-searching
+name: ast-grep-code
 description: Provides exact flags, pattern syntax, and rule schemas for structural code search with ast-grep. Use to ensure correct syntax for patterns and rules.
 allowed-tools: [Bash]
 version: "1.2"

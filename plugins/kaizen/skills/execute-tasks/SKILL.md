@@ -1,5 +1,5 @@
 ---
-name: tasks-executing
+name: execute-tasks
 description: Executes a batch of concrete task briefs sequentially with per-task verification. Use when the user asks to "execute tasks", "run the task list", "work through the tasks", "implement these tasks", "do the tasks in order", or when multiple scoped task briefs already exist and need disciplined one-at-a-time implementation with verification before each handoff.
 metadata:
   version: "1.2"

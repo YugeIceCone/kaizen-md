@@ -1,5 +1,5 @@
 ---
-name: task-performing
+name: task
 description: Executes single concrete implementation tasks from formal briefs, plan steps, or scoped requests. Use when changes need edits, focused verification, and clear outcomes.
 metadata:
   version: "1.2"

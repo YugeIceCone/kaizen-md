@@ -1,5 +1,5 @@
 ---
-name: code-migrating
+name: migrate
 description: Manages framework, version, API, and infrastructure migrations. Use when technical freshness and compatibility risk matter.
 metadata:
   version: "1.1"

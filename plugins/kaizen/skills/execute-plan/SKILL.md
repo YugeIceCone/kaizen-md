@@ -1,5 +1,5 @@
 ---
-name: plan-executing
+name: execute-plan
 description: Executes an agent-reusable plan in phased, verifiable steps with durable status updates. Use when the user asks to "execute the plan", "run the plan", "implement the plan", "continue the plan", "resume from plan X", "pick up the plan from phase Y", or when a plan file (or explicit ordered step list) already exists and should be advanced one phase at a time. Designed so subagents and fresh sessions can resume from any phase using the plan's Resume Protocol.
 metadata:
   version: "1.2"

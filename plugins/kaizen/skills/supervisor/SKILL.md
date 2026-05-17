@@ -1,5 +1,5 @@
 ---
-name: workflow-supervising
+name: supervisor
 description: Coordinates multi-stage workflows from start to finish. Use when choosing the next stage, tracking progress, and deciding when to replan or pause.
 metadata:
   version: "1.1"

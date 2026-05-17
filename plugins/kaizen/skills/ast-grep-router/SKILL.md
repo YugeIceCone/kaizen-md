@@ -1,5 +1,5 @@
 ---
-name: structural-search-routing
+name: ast-grep-router
 description: Routes structural code searches or rewrites to the correct ast-grep invocation. Use for AST-level find/replace that regex cannot handle cleanly.
 allowed-tools: [Bash]
 version: "1.2"

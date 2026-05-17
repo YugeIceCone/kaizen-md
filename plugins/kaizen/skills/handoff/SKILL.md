@@ -1,5 +1,5 @@
 ---
-name: handoff-managing
+name: handoff
 description: Creates and resumes session handoff documents for transferring work between sessions. Use to save context, resume from previous sessions, or manage handoff files.
 metadata:
   version: "2.0"

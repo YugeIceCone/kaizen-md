@@ -1,5 +1,5 @@
 ---
-name: proactive-auditing
+name: audit
 description: Proactively hunts for bugs, weak contracts, and missing regression coverage. Use to scan code for concrete failure candidates, prove them, and either fix them or report findings.
 metadata:
   version: "1.2"

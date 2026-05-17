@@ -1,5 +1,5 @@
 ---
-name: risk-guarding
+name: guardrails
 description: Applies policy and risk checks before the workflow proceeds. Use before destructive actions, external communication, or risky tool calls to ensure safety and compliance.
 metadata:
   version: "1.1"

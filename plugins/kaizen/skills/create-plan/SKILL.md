@@ -1,5 +1,5 @@
 ---
-name: plan-creating
+name: create-plan
 description: Creates phased, agent-reusable implementation plans for multi-step or risky work. Use when the user asks to "create a plan", "plan this out", "make a plan", "draft an implementation plan", "phase this work", "plan the migration", "plan the refactor", or when sequence, rollback, or blast radius needs explicit documentation. Plans are written so a fresh agent or subagent can resume execution at any phase without back-channel context.
 metadata:
   version: "1.2"

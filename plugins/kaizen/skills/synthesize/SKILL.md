@@ -1,5 +1,5 @@
 ---
-name: result-synthesizing
+name: synthesize
 description: Merges multiple outputs into one coherent result. Use when parallel findings, overlapping reviews, competing plans, or research from several sources must be reconciled.
 metadata:
   version: "1.1"

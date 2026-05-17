@@ -1,5 +1,5 @@
 ---
-name: code-refactoring
+name: refactor
 description: Restructures and cleans up code across one or more files. Use for extracting methods, renaming variables, or cleaning up architecture while preserving behavior. Each step clears the verify-before-execution RED-GREEN gate.
 metadata:
   version: "1.2"

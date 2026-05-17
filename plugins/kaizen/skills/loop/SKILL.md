@@ -1,5 +1,5 @@
 ---
-name: task-looping
+name: loop
 description: Runs tasks in self-correcting iteration loops where each pass builds on previous work. Use for autonomous refinement with automated verification.
 metadata:
   version: "1.2"

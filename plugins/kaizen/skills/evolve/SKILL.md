@@ -1,5 +1,5 @@
 ---
-name: remember:evolve
+name: evolve
 description: Evolve the brain — consolidate entities, reflect on beliefs, promote top beliefs to Persona. Run weekly or on demand.
 ---
 

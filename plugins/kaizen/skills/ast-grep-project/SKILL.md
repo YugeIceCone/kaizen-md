@@ -1,5 +1,5 @@
 ---
-name: structural-project-linting
+name: ast-grep-project
 description: Guides end-to-end structural project linting setup. Use to scaffold configs, author rules, test them, and run project-wide scans.
 allowed-tools: [Bash, Write, Edit, Read]
 version: "1.2"

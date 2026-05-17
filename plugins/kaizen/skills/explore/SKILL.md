@@ -1,5 +1,5 @@
 ---
-name: codebase-exploring
+name: explore
 description: Maps codebase structure, entry points, and existing patterns before acting. Use when entering an unfamiliar repo, module, or subsystem.
 metadata:
   version: "1.1"

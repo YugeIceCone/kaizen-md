@@ -1,5 +1,5 @@
 ---
-name: kaizen:init
+name: init
 description: Initialize kaizen Second Brain structure and configuration
 ---
 

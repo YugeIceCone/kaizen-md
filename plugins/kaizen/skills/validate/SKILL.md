@@ -1,5 +1,5 @@
 ---
-name: plan-validating
+name: validate
 description: Validates plans or risky changes against current best practices and local project checks. Use for a go or no-go recommendation before or after implementation, especially when freshness matters.
 metadata:
   version: "1.1"

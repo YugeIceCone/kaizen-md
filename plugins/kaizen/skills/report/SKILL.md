@@ -1,5 +1,5 @@
 ---
-name: report-generating
+name: report
 description: Packages results for their final destination. Use to turn validated work into user-facing answers, technical summaries, machine-readable output, or durable artifacts.
 metadata:
   version: "1.1"

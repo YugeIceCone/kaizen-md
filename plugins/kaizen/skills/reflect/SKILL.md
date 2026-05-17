@@ -1,5 +1,5 @@
 ---
-name: result-reflecting
+name: reflect
 description: Critiques intermediate results before they move forward. Use after research, implementation, or planning to compare output against the goal, score confidence, and decide whether to proceed.
 metadata:
   version: "1.1"

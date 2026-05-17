@@ -1,5 +1,5 @@
 ---
-name: change-reviewing
+name: review
 description: Reviews code, diffs, and plans for correctness, risk, and quality. Use to inspect changes before merge or critique implementation plans.
 metadata:
   version: "1.2"

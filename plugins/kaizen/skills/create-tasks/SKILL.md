@@ -1,5 +1,5 @@
 ---
-name: tasks-creating
+name: create-tasks
 description: Breaks plan phases or broad requests into concrete, verifiable execution tasks. Use when the user asks to "create tasks", "break this into tasks", "decompose this phase", "split this into work units", "make a task list", "what tasks are needed for X", or when a plan phase or feature request is too large to implement directly and needs scoped briefs with files, constraints, and verification.
 metadata:
   version: "1.2"

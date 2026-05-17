@@ -1,5 +1,5 @@
 ---
-name: change-analyzing
+name: analyze
 description: Assesses blast radius, affected interfaces, and risks for a proposed change or bug fix. Use when the question is "what matters for this change and what can break?" — after exploration or research, before planning or editing.
 metadata:
   version: "1.1"

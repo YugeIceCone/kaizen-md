@@ -1,5 +1,5 @@
 ---
-name: remember:status
+name: status
 description: Show kaizen Second Brain statistics and status (backing CLI: kaizen-brain status)
 ---
 

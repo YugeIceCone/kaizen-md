@@ -1,5 +1,5 @@
 ---
-name: memory-managing
+name: memory-state
 description: Manages short-term workflow state and long-term memory. Use when deciding what to recall before acting, what to persist after learning, and how to preserve continuity.
 metadata:
   version: "1.1"

@@ -1,5 +1,5 @@
 ---
-name: topic-researching
+name: research
 description: Gathers external facts from official docs, APIs, standards, and comparable implementations. Use when answers depend on sources outside the repo.
 metadata:
   version: "1.1"

@@ -1,5 +1,5 @@
 ---
-name: bug-fixing
+name: fix
 description: Diagnoses and repairs bugs or broken workflows with focused verification. Use to take a symptom from investigation through minimal code change, regression coverage, review, and validation.
 metadata:
   version: "1.1"

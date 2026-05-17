@@ -1,5 +1,5 @@
 ---
-name: sub-agent-managing
+name: sub-agents
 description: Provides internal sub-agent reference and delegation guidance. Use when explicit delegation is requested to manage agent roles, models, and scope.
 metadata:
   version: "1.1"

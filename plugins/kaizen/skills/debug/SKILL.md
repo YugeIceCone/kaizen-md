@@ -1,5 +1,5 @@
 ---
-name: debugging-failures
+name: debug
 description: Investigates failures to isolate root causes before editing code. Use when reproduction steps, logs, git state, or runtime evidence are needed and the cause is still unclear.
 metadata:
   version: "1.1"

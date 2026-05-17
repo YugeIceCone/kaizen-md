@@ -1,5 +1,5 @@
 ---
-name: structural-project-scanning
+name: ast-grep-scan
 description: Lints whole projects with configured structural rules. Use for repo-wide audits, finding violations, and gating CI on structural rules.
 allowed-tools: [Bash]
 version: "1.2"

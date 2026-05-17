@@ -1,5 +1,5 @@
 ---
-name: structural-rule-authoring
+name: ast-grep-rule
 description: Authors, iterates, and snapshot-tests structural lint rules. Use to codify patterns, flag practices, and ensure rule correctness with fixtures.
 allowed-tools: [Bash, Write, Edit, Read]
 version: "1.2"
