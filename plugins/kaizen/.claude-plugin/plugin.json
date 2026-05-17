@@ -28,6 +28,8 @@
   ],
   "permissions": {
     "allow": [
+      "Bash(${CLAUDE_PLUGIN_ROOT}/bin/kaizen-coverage:*)",
+      "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/coverage.py:*)",
       "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/backlog.py:*)",
       "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/rules.py:*)",
       "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/cache.py:*)",
