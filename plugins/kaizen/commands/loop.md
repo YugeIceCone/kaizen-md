@@ -2,7 +2,7 @@
 name: loop
 description: "Start (or cancel) a self-correcting Ralph loop — cross-CLI"
 argument-hint: "PROMPT [--its N] [--promise TEXT] | --cancel"
-allowed-tools: ["Bash(${CLAUDE_PLUGIN_ROOT}/skills/loop/scripts/setup-ralph-loop.sh:*)", "Bash(test -f .kaizen/loop.state.md:*)", "Bash(rm .kaizen/loop.state.md)", "Read(.kaizen/loop.state.md)"]
+allowed-tools: ["Bash(${CLAUDE_PLUGIN_ROOT}/skills/loop/scripts/setup-ralph-loop.sh:*)", "Bash(test -f .kaizen/loop.state.md:*)", "Bash(rm .kaizen/loop.state.md)", "Read(.kaizen/loop.state.md)", "Bash(${CLAUDE_PLUGIN_ROOT}/bin/kaizen-session-mode:*)"]
 ---
 
 # /kaizen:loop — self-correcting Stop-hook loop
@@ -10,6 +10,26 @@ allowed-tools: ["Bash(${CLAUDE_PLUGIN_ROOT}/skills/loop/scripts/setup-ralph-loop
 Starts (or cancels) a Ralph-pattern self-correcting loop. The Stop hook
 intercepts session exit and feeds the same prompt back until the
 completion promise is emitted or `--max-iterations` is reached.
+
+## Auto-honor session-mode
+
+Before composing the loop prompt, check `kaizen-session-mode get --json`:
+
+- **If `mode == "loop"`** → session intake already chose this mode; the
+  pinned disciplines (`skills[]`) and `auto_handoff_threshold` apply.
+  Mention the pinned disciplines verbatim in the loop prompt so the
+  agent's per-iteration reminders carry them forward — e.g.
+  *"…iterate per these disciplines: kiss, dry, tdd…"*.
+- **If `mode == "workflow"` or `"neither"`** → user picked a different
+  shape at intake. Confirm with the user before running a loop anyway
+  (they may want to override their intake choice, but the mismatch is
+  worth surfacing).
+- **If no session-mode is set** → proceed normally; no auto-honor.
+
+The auto-handoff `--threshold` (when set in session-mode) fires
+independently of /kaizen:loop — it's a Stop-hook contract enforced by
+`hooks/claude/auto-handoff.sh`. The loop continues until it lands,
+then the threshold-block forces a handoff before exiting.
 
 **State file:** `.kaizen/loop.state.md` (shared between Claude Code and Codex
 hosts). **Stop hooks:** auto-installed via the kaizen plugin
