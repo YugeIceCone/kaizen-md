@@ -1,8 +1,8 @@
 ---
 name: loop
-description: "Start (or cancel) a self-correcting Ralph loop — cross-CLI"
-argument-hint: "PROMPT [--its N] [--promise TEXT] | --cancel"
-allowed-tools: ["Bash(${CLAUDE_PLUGIN_ROOT}/skills/loop/scripts/setup-ralph-loop.sh:*)", "Bash(test -f .kaizen/loop.state.md:*)", "Bash(rm .kaizen/loop.state.md)", "Read(.kaizen/loop.state.md)", "Bash(${CLAUDE_PLUGIN_ROOT}/bin/kaizen-session-mode:*)"]
+description: "Start (or cancel) a self-correcting Ralph loop — cross-CLI. No-args → 2-question wizard (iteration budget + stop conditions) bridges from /kaizen:workflow Q2=Loop."
+argument-hint: "(empty = 2-Q wizard) | PROMPT [--its N] [--promise TEXT] | --cancel"
+allowed-tools: ["AskUserQuestion", "Bash(${CLAUDE_PLUGIN_ROOT}/skills/loop/scripts/setup-ralph-loop.sh:*)", "Bash(test -f .kaizen/loop.state.md:*)", "Bash(rm .kaizen/loop.state.md)", "Read(.kaizen/loop.state.md)", "Bash(${CLAUDE_PLUGIN_ROOT}/bin/kaizen-session-mode:*)", "Bash(${CLAUDE_PLUGIN_ROOT}/bin/kaizen-workflow-config:*)"]
 ---
 
 # /kaizen:loop — self-correcting Stop-hook loop
@@ -57,6 +57,95 @@ hosts). **Stop hooks:** auto-installed via the kaizen plugin
 
 **Flag aliases:** `--its` ≡ `--max-iterations`. `--promise` ≡ `--completion-promise`.
 The short forms are the recommended spelling; long forms preserved for back-compat.
+
+## Interactive wizard (when `$ARGUMENTS` is empty)
+
+When `/kaizen:loop` is invoked with **no arguments**, step the user
+through a 2-question AskUserQuestion call to capture the loop's
+budget + exit conditions, then ask separately for the loop prompt /
+ledger items (which can't be menu-picked), and finally re-invoke this
+command with the assembled flags.
+
+This wizard also serves as the **P3 bridge from `/kaizen:workflow`
+Q2=Loop**: when the workflow super-menu picks Loop as the default
+run-mode, the agent chains into this 2-Q follow-up to capture
+`--loop-its` + `--loop-stop` for the persisted workflow config.
+
+### Question 1 — iteration budget
+
+```
+question:    "Max iterations (loop budget — hard cap)?"
+header:      "Budget"
+multiSelect: false
+options:
+  - label: "10 (quick task)"
+    description: "Small carve-out / single-file change with verify items."
+  - label: "20"
+    description: "Multi-file change or short investigation."
+  - label: "30 (recommended)"
+    description: "Default. Covers most ledger-driven loops without burning context."
+  - label: "60 (long-arc)"
+    description: "Multi-phase work. Will likely cross compaction boundaries; ensure handoff/auto-handoff is configured."
+```
+
+If the user picks `Other`, parse their custom integer (≥1). Map:
+`10` → `--its 10`, `20` → `--its 20`, `30 (recommended)` → `--its 30`,
+`60 (long-arc)` → `--its 60`, custom → `--its <N>`.
+
+### Question 2 — stop conditions
+
+```
+question:    "Which exit signals should end the loop?"
+header:      "Stop conditions"
+multiSelect: true
+options:
+  - label: "Ledger empty (recommended primary)"
+    description: "Loop ends when all pending items are completed. The structured exit signal."
+  - label: "Completion promise"
+    description: "Loop ends when <promise>PHRASE</promise> is emitted (legacy / freeform mode). Requires --promise PHRASE."
+  - label: "Iteration cap"
+    description: "Loop ends when --its is reached (always-on safety net)."
+  - label: "Manual cancel"
+    description: "Loop honors /kaizen:loop --cancel mid-run. Always-on; toggle off only for fire-and-forget batch jobs."
+```
+
+**Iteration cap + Manual cancel are always honored** by the Stop hook
+regardless of selection — they're hard safety nets. Toggling them in
+the menu is documentation of intent, not a runtime switch. **Ledger
+empty** + **Completion promise** are the user-selectable primary
+exits.
+
+### After the 2 questions
+
+1. Ask the user for the loop prompt / ledger items separately (free
+   text — not a menu pick). Prompt template:
+   *"Drop the loop prompt, or `--item "desc|verify-cmd"` rows for a
+   structured ledger. Empty = abort the wizard."*
+2. Assemble the invocation:
+   ```bash
+   /kaizen:loop <user-prompt-or-items> --its <Q1> \
+       [--promise PHRASE]   # if Q2 picked "Completion promise"
+   ```
+3. If invoked via `/kaizen:workflow` Q2=Loop, ALSO persist via
+   `kaizen-workflow-config set --loop-its <Q1> --loop-stop <Q2-picks>`
+   so future sessions inherit the choice.
+
+### Arg assembly
+
+| Q1 answer       | Flag appended       |
+|-----------------|---------------------|
+| 10 (quick task) | `--its 10`          |
+| 20              | `--its 20`          |
+| 30 (recommended)| `--its 30`          |
+| 60 (long-arc)   | `--its 60`          |
+| Other / custom  | `--its <N>` (validate N ≥ 1) |
+
+| Q2 multi-select pick | Behavior                                                       |
+|----------------------|----------------------------------------------------------------|
+| Ledger empty         | (default; no flag needed — structured ledger is primary exit)  |
+| Completion promise   | `--promise <PHRASE>` (prompt user for the phrase separately)   |
+| Iteration cap        | (always-on safety; documents intent only)                      |
+| Manual cancel        | (always-on; documents intent only)                             |
 
 ## Behavior
 

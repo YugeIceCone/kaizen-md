@@ -53,7 +53,7 @@ generated from `commands/*.md` frontmatter via `kaizen-help-gen`.
 |---|---|
 | `backlog` | View or mutate the project's kaizen backlog (JSON-sourced, .md is generated). Usag |
 | `handoff` | Create or resume a session handoff document. `/kaizen:handoff create` wraps up the |
-| `loop` | Start (or cancel) a self-correcting Ralph loop — cross-CLI |
+| `loop` | Start (or cancel) a self-correcting Ralph loop — cross-CLI. No-args → 2-question w |
 | `flow` | Run the async pocketflow Node+Flow reference pipeline over the current workspace.  |
 | `session-mode` | Set this session's mode (loop | workflow | neither) and pick discipline bundles vi |
 | `migrate` | Migrate from loose skills / separate plugins / non-canonical layouts to the kaizen |

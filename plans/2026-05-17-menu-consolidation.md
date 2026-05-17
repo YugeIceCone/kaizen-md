@@ -209,7 +209,7 @@ Backs to `/kaizen:onboard`, `/kaizen:knowledge`, `/kaizen:claude-docs`,
    scope / run-mode / disciplines / threshold). Persists to
    `<repo>/.kaizen/workflow.json` OR `~/.claude/.kaizen/workflow-global.json`.
    Schema for the persisted config. Tests.
-- [ ] **P3**: Loop sub-menu — nested under workflow Q2=Loop. 2
+- [x] **P3**: Loop sub-menu — nested under workflow Q2=Loop. 2
    questions (budget + stop-conditions). `/kaizen:loop` standalone
    stays as alias.
 - [ ] **P4**: Extend `/kaizen:brain` (empty-args) with multiSelect
