@@ -1,7 +1,7 @@
 """Tests for brain.py — capture flow + CLI.
 
 Covers the AsyncNode pipeline end-to-end with a sandboxed brain root
-+ project-memory root so writes don't touch the real ~/.claude/brain/.
++ project-memory root so writes don't touch the real $KAIZEN_BRAIN_DIR.
 """
 
 from __future__ import annotations

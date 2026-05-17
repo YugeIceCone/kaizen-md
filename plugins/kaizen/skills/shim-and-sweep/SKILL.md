@@ -134,7 +134,7 @@ everything else is retired.
 The kaizen pre-commit gate ships a `pre_deletion_belief` check
 (`domain/git-discipline.yaml::no_deletion_without_auth`). It blocks
 any commit that stages a deletion when matching brain-belief notes
-exist (e.g. `~/.claude/brain/Notes/pref-no-deletions.md`). This is
+exist (e.g. `~/.claude/.kaizen/brain/Notes/pref-no-deletions.md`). This is
 **by design** — it forces the sweep phase to be explicit:
 
 ```bash

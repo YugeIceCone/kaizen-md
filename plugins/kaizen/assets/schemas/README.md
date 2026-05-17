@@ -10,7 +10,7 @@ Formal JSON Schema (draft 2020-12) definitions for kaizen's main data shapes. Mi
 | `workflow-state.schema.json`    | `WorkflowState`               | `<repo>/.workflow/state.json`                      |
 | `backlog.schema.json`           | `BacklogStore` + `BacklogItem` | `<repo>/.workflow/backlog.json`                    |
 | `knowledge-item.schema.json`    | `KnowledgeItem`               | `~/.claude/.kaizen-knowledge/index.db` rows        |
-| `brain-rule.schema.json`        | `KaizenBrainRule`             | `~/.claude/brain/Notes/*.md` frontmatter           |
+| `brain-rule.schema.json`        | `KaizenBrainRule`             | `<KAIZEN_BRAIN_DIR>/Notes/*.md` frontmatter        |
 | `agent-formatting.schema.json`  | `AgentFormattingSchema`       | `skills/agent-formatting/SKILL.md` embedded block  |
 | `code-file.schema.json`         | `CodeFile`                    | `<repo>/.kaizen/onboard.db` rows (v1.20.0+)        |
 | `trace-event.schema.json`       | `TraceEvent`                  | `~/.claude/.kaizen/trace/events.jsonl` (v1.23.0)   |

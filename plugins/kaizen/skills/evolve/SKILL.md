@@ -39,8 +39,8 @@ If no flag → run all three phases in order.
 
 ## Step 1: Resolve brain path & load config
 
-1. Read `$REMEMBER_BRAIN_PATH` (fallback `~/remember`). Call this `{brain}`.
-2. If missing → tell user to run `/remember:init` and stop.
+1. Read `$KAIZEN_BRAIN_DIR` (fallback `~/.claude/.kaizen/brain`). Call this `{brain}`.
+2. If missing → tell user to run `/kaizen:init` and stop.
 3. Run: `node ${CLAUDE_PLUGIN_ROOT}/scripts/build-index.js --compact` to get the brain index. Use throughout to resolve entities and prevent duplicates.
 4. Load thresholds + auto_promote flag:
    ```bash

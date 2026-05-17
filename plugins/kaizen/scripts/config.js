@@ -9,7 +9,11 @@ const { DEFAULT_THRESHOLDS } = require('./schema');
 let _cached = null;
 
 function getBrainRoot() {
-  const raw = process.env.REMEMBER_BRAIN_PATH || '~/remember';
+  // v1.38.0+ single-user clean cut: KAIZEN_BRAIN_DIR is the ONLY env
+  // that resolves; default mirrors _paths.py::BRAIN_DIR.
+  // Legacy REMEMBER_BRAIN_PATH is no longer consulted.
+  const raw = process.env.KAIZEN_BRAIN_DIR
+    || path.join(process.env.KAIZEN_DIR || path.join(os.homedir(), '.claude', '.kaizen'), 'brain');
   return raw.startsWith('~') ? path.join(os.homedir(), raw.slice(1)) : path.resolve(raw);
 }
 

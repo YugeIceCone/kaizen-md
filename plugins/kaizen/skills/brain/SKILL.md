@@ -90,12 +90,15 @@ Each node has one responsibility, three async methods (`prep_async`,
 ## Path resolution
 
 ```
-Brain root:   KAIZEN_BRAIN_PATH > REMEMBER_BRAIN_PATH > ~/.claude/brain
-Index db:     KAIZEN_BRAIN_DB > ~/.claude/.kaizen/brain.db
+Brain root:   KAIZEN_BRAIN_DIR (default ~/.claude/.kaizen/brain)
+Index db:     <brain_root>/brain.db (mirrored as _paths.BRAIN_DB)
 Project mem:  ~/.claude/projects/<cwd_slug>/memory
 ```
 
-Both env vars accept literal `$HOME` references plus `~` expansion.
+`KAIZEN_BRAIN_DIR` accepts literal `$HOME` references plus `~` expansion.
+Legacy envs (`REMEMBER_BRAIN_PATH` / `KAIZEN_BRAIN_PATH` / `KAIZEN_BRAIN`)
+are NO LONGER consulted as of v1.38.0 — single-user clean cut. To migrate
+an existing brain from the legacy location, run `kaizen-brain-migrate apply`.
 
 ## Capture decision tree (project-memory vs brain)
 
@@ -142,7 +145,7 @@ Each module has its own test file:
 - `tests/test_brain_audit.py` — extraction patterns + sources (~8)
 - `tests/test_brain_evolve.py` — duplicates / freshness / persona (~8)
 
-Tests sandbox the brain root via `KAIZEN_BRAIN_PATH=<tmp>` so no
+Tests sandbox the brain root via `KAIZEN_BRAIN_DIR=<tmp>` so no
 real-brain writes occur during CI.
 
 ## Hooks

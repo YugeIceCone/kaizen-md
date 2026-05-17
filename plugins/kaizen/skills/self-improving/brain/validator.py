@@ -23,8 +23,13 @@ import re
 import sys
 from pathlib import Path
 
-BRAIN = Path(os.path.expanduser("~/.claude/brain"))
+# Resolve brain root via the kaizen SSOT (v1.38.0+).
 SCRIPT_DIR = Path(__file__).resolve().parent
+_SCRIPTS = SCRIPT_DIR.parents[1] / "workflow" / "scripts"
+sys.path.insert(0, str(_SCRIPTS))
+import _paths  # noqa: E402
+
+BRAIN = _paths.BRAIN_DIR
 SCHEMA = SCRIPT_DIR.parent.parent / "brain" / "domain" / "schemas" / "note.schema.json"
 
 try:

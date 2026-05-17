@@ -40,7 +40,7 @@ lifecycle:
     routing_table:
       project_correction: "<project>/CLAUDE.md"
       project_scoped_rule: ".claude/rules/<topic>.md"
-      cross_project_belief: "~/.claude/brain/Notes/pref-<slug>.md"
+      cross_project_belief: "~/.claude/.kaizen/brain/Notes/pref-<slug>.md"
       enforceable_rule: "kaizen:workflow::git-discipline.yaml::pre_commit_gates"
 
   - id: archive
@@ -57,7 +57,7 @@ sub_flows:
     description: "Scan MEMORY.md + brain Notes for promotion candidates"
     inputs:
       - "~/.claude/projects/<slug>/memory/*.md"
-      - "~/.claude/brain/Notes/pref-*.md"
+      - "~/.claude/.kaizen/brain/Notes/pref-*.md"
     output_format: markdown_report
     side_effects: none
 

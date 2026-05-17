@@ -1,6 +1,6 @@
 ---
 name: rule
-description: Inspect, validate, or generate templates for brain-sourced kaizen rules. Rules live as Markdown notes in ~/.claude/brain/Notes/ with a `kaizen:` frontmatter block, owned by the Remember plugin's Second Brain.
+description: Inspect, validate, or generate templates for brain-sourced kaizen rules. Rules live as Markdown notes in <KAIZEN_BRAIN_DIR>/Notes/ (default ~/.claude/.kaizen/brain/Notes/) with a `kaizen:` frontmatter block, owned end-to-end by the kaizen plugin.
 ---
 
 # kaizen rule
@@ -17,7 +17,7 @@ Inspect / validate / generate brain-sourced kaizen rules. Rules let you customiz
 - `severity <check_id>` → check if a gate check has a severity override (`skip` / `warn` / `block` / `default`)
 - `custom-patterns` → print all custom-pattern rules as JSON
 - `validate` → schema-check all rules; exits 1 on any error
-- `template <rule_type>` → print a brain-note template for the given rule type. Pipe to `/remember:remember` or copy into a new note.
+- `template <rule_type>` → print a brain-note template for the given rule type. Pipe to `/kaizen:remember` or copy into a new note.
 
 ## Rule types
 
@@ -36,7 +36,7 @@ See `kaizen:behaviour-config` skill (`/kaizen:menu` lists it) for the full schem
    /kaizen:rule template deletion-allow
    ```
 2. **Save as a brain note:**
-   `~/.claude/brain/Notes/kaizen-<your-rule-name>.md` (any name works; the plugin discovers all `.md` files with a `kaizen:` frontmatter block).
+   `<KAIZEN_BRAIN_DIR>/Notes/kaizen-<your-rule-name>.md` (default `~/.claude/.kaizen/brain/Notes/`; any name works — the plugin discovers all `.md` files with a `kaizen:` frontmatter block).
 3. **Validate:**
    ```
    /kaizen:rule validate
@@ -46,6 +46,6 @@ See `kaizen:behaviour-config` skill (`/kaizen:menu` lists it) for the full schem
 ## Why brain-sourced?
 
 - **Survives across projects** — set once, applies everywhere kaizen runs.
-- **Survives across sessions** — Remember plugin handles persistence.
+- **Survives across sessions** — kaizen owns the brain end-to-end; persistence is via the file tree under `<KAIZEN_BRAIN_DIR>`.
 - **Single source of truth** — no plugin-local config sprawl; rules are user preferences, owned by the brain.
 - **Reversible** — rename `<rule>.md` → `<rule>.md.disabled` to disable (same trick `/kaizen:disable-dupes` uses for skills).

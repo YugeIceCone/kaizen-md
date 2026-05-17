@@ -112,7 +112,7 @@ when new mandatory-skill rules land):
 | Skill | Triggers (touched-file patterns) | Rationale |
 |---|---|---|
 | `plugin-development` | `plugins/kaizen/{skills,commands,hooks,bin}/`, `plugin.json`, `hooks.json` | `iron-laws.yaml::skill-cant-be-skipped` |
-| `brain` | `skills/brain/`, `brain*.py`, `~/.claude/brain/` | Touching brain files without the skill |
+| `brain` | `skills/brain/`, `brain*.py`, `~/.claude/.kaizen/brain/` | Touching brain files without the skill |
 | `workflow` | `workflow/scripts/workflow*`, `commands/workflow.md` | Touching workflow scripts |
 
 When SessionEnd fires + skip-detection finds violations, the

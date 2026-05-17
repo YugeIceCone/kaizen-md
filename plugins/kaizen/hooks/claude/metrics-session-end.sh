@@ -30,9 +30,11 @@ PLUGIN_ROOT="$(kaizen_plugin_root 2>/dev/null)" || exit 0
 echo '{}' | bash "$PLUGIN_ROOT/hooks/claude/_trace.sh" \
     SessionEnd-metrics-skip-check 2>/dev/null || true
 
-# Resolve brain root via the brain feature's own resolver.
-BRAIN_ROOT="${KAIZEN_BRAIN_PATH:-${REMEMBER_BRAIN_PATH:-$HOME/.claude/brain}}"
-BRAIN_ROOT="$(python3 -c "import os; print(os.path.expandvars('$BRAIN_ROOT'))" 2>/dev/null)"
+# Resolve brain root via the kaizen SSOT (post v1.38.0 — KAIZEN_BRAIN_DIR
+# is the ONLY resolver; legacy envs no longer consulted).
+# shellcheck source=../../skills/workflow/scripts/_paths.sh
+source "$PLUGIN_ROOT/skills/workflow/scripts/_paths.sh"
+BRAIN_ROOT="$KAIZEN_BRAIN_DIR"
 [ -d "$BRAIN_ROOT" ] || exit 0
 
 # Run skip-detection on the latest session.

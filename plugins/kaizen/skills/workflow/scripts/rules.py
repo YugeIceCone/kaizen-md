@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""kaizen rules — read brain-sourced behaviour rules from Remember's Notes/.
+"""kaizen rules — read brain-sourced behaviour rules from the kaizen Second Brain.
 
-Scans `~/.claude/brain/Notes/*.md` for files with a `kaizen:` block in their
+Scans `~/.claude/.kaizen/brain/Notes/*.md` for files with a `kaizen:` block in their
 YAML frontmatter. Each becomes a runtime rule the gate consults.
 
 Four rule_types:

@@ -3,7 +3,7 @@
 
 ## What it does
 
-Scans `~/.claude/brain/Notes/pref-*.md`, sorts by confidence × sources_count,
+Scans `~/.claude/.kaizen/brain/Notes/pref-*.md`, sorts by confidence × sources_count,
 and emits a canonical `## Top Beliefs` block. Either previews to stdout or
 writes back to Persona.md preserving the surrounding sections.
 
@@ -25,8 +25,13 @@ import re
 import sys
 from pathlib import Path
 
-BRAIN = Path(os.path.expanduser("~/.claude/brain"))
-PERSONA = BRAIN / "Persona.md"
+# Resolve brain root via the kaizen SSOT (v1.38.0+).
+_SCRIPTS = Path(__file__).resolve().parents[2] / "workflow" / "scripts"
+sys.path.insert(0, str(_SCRIPTS))
+import _paths  # noqa: E402
+
+BRAIN = _paths.BRAIN_DIR
+PERSONA = _paths.BRAIN_PERSONA
 
 try:
     import yaml

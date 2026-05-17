@@ -1,6 +1,6 @@
 ---
 name: self-improving
-description: Use to curate Claude Code's auto-memory into durable project knowledge. Analyze MEMORY.md for promotion candidates, graduate proven learnings to CLAUDE.md / .claude/rules/ / `~/.claude/brain/Notes/pref-*.md`, extract recurring solutions into reusable kaizen skills. Triggers on "review memory", "promote this learning", "extract a skill from", "graduate this pattern", "what has Claude learned", "memory health", "curate auto-memory", "self-improve". Also implements the `self-analyze` workflow stage and the `self-improving` workflow routine (see "Workflow integration" section). Pairs with `kaizen:remember` (capture), `kaizen:evolve` (consolidate), `kaizen:reflect` (think). Originally based on claude-code-skills/engineering-team/self-improving-agent (per ATTRIBUTIONS.md) — now plugin-original.
+description: Use to curate Claude Code's auto-memory into durable project knowledge. Analyze MEMORY.md for promotion candidates, graduate proven learnings to CLAUDE.md / .claude/rules/ / `~/.claude/.kaizen/brain/Notes/pref-*.md`, extract recurring solutions into reusable kaizen skills. Triggers on "review memory", "promote this learning", "extract a skill from", "graduate this pattern", "what has Claude learned", "memory health", "curate auto-memory", "self-improve". Also implements the `self-analyze` workflow stage and the `self-improving` workflow routine (see "Workflow integration" section). Pairs with `kaizen:remember` (capture), `kaizen:evolve` (consolidate), `kaizen:reflect` (think). Originally based on claude-code-skills/engineering-team/self-improving-agent (per ATTRIBUTIONS.md) — now plugin-original.
 version: 1.1.0
 tags: [memory, curation, promotion, self-improvement, brain, rules, workflow]
 ---
@@ -9,7 +9,7 @@ tags: [memory, curation, promotion, self-improvement, brain, rules, workflow]
 
 Auto-memory captures. This skill curates.
 
-Claude Code's auto-memory (v2.1.32+) automatically records project patterns, debugging insights, and your preferences in `~/.claude/projects/<slug>/memory/MEMORY.md`. The kaizen brain (`~/.claude/brain/`) adds a durable second layer. This skill adds the intelligence layer in between: analyze what Claude has learned, promote proven patterns into project rules, and extract recurring solutions into reusable skills.
+Claude Code's auto-memory (v2.1.32+) automatically records project patterns, debugging insights, and your preferences in `~/.claude/projects/<slug>/memory/MEMORY.md`. The kaizen brain (`~/.claude/.kaizen/brain/`) adds a durable second layer. This skill adds the intelligence layer in between: analyze what Claude has learned, promote proven patterns into project rules, and extract recurring solutions into reusable skills.
 
 ## How this slots into kaizen
 
@@ -30,13 +30,13 @@ Where things live, in priority order:
 
 - **`~/.claude/CLAUDE.md`** — global preferences. You write. Full-file load every session.
 - **`./CLAUDE.md`** (project root) — project rules. You + `/kaizen:self-improving promote` write. Full-file load every session.
-- **`~/.claude/brain/Persona.md`** — load-bearing directives + Top Beliefs. Loaded every session via SessionStart hook.
-- **`~/.claude/brain/Notes/pref-*.md`** — beliefs with `confidence` + `sources_count` + `freshness`. Linked from Persona.md `## Top Beliefs`.
+- **`~/.claude/.kaizen/brain/Persona.md`** — load-bearing directives + Top Beliefs. Loaded every session via SessionStart hook.
+- **`~/.claude/.kaizen/brain/Notes/pref-*.md`** — beliefs with `confidence` + `sources_count` + `freshness`. Linked from Persona.md `## Top Beliefs`.
 - **`~/.claude/projects/<slug>/memory/MEMORY.md`** — project learnings. Claude (auto) writes. First 200 lines loaded.
 - **`~/.claude/projects/<slug>/memory/feedback_*.md`** — corrections specific to one project.
 - **`.claude/rules/*.md`** — scoped rules. Loaded when matching files open.
 
-The kaizen brain (`~/.claude/brain/`) is itself a git repo, so promotion to a `Notes/pref-*.md` is a tracked, reversible action.
+The kaizen brain (`~/.claude/.kaizen/brain/`) is itself a git repo, so promotion to a `Notes/pref-*.md` is a tracked, reversible action.
 
 ## Promotion lifecycle (the core flow)
 
@@ -45,7 +45,7 @@ The kaizen brain (`~/.claude/brain/`) is itself a git repo, so promotion to a `N
 2. Pattern recurs ≥2 sessions → review flags it as promotion candidate
 3. You approve → promote graduates it:
      a. Project-scope rule? → .claude/rules/<topic>.md OR <project>/CLAUDE.md
-     b. Cross-project belief? → ~/.claude/brain/Notes/pref-<slug>.md + link in Persona.md ## Top Beliefs
+     b. Cross-project belief? → ~/.claude/.kaizen/brain/Notes/pref-<slug>.md + link in Persona.md ## Top Beliefs
      c. Reusable workflow? → extract into a new kaizen skill at skills/<name>/SKILL.md
 4. Pattern becomes enforced (rule) or invokable (skill) — not just a note
 5. MEMORY.md entry archived → frees space for new learnings
@@ -71,7 +71,7 @@ Output: a markdown report with recommendations. No writes.
 Take a specific learning from auto-memory or feedback notes and move it up the priority chain:
 
 - Project-scope correction → `<project>/CLAUDE.md` OR `.claude/rules/<topic>.md`
-- Cross-project belief → `~/.claude/brain/Notes/pref-<slug>.md` + link from Persona.md `## Top Beliefs`
+- Cross-project belief → `~/.claude/.kaizen/brain/Notes/pref-<slug>.md` + link from Persona.md `## Top Beliefs`
 - Codified rule → `kaizen:workflow::domain/git-discipline.yaml::pre_commit_gates[]` if it's enforceable
 
 Each promotion:

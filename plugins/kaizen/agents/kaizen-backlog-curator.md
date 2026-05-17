@@ -53,7 +53,7 @@ For each candidate, before emitting:
 
 1. Run `python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/backlog.py list all`
 2. Skip the candidate if its title or substance matches an existing item (substring overlap or paraphrase). Better to under-propose than to duplicate.
-3. Also check if the candidate is already in the brain — `grep -l "<topic>" ~/.claude/brain/Notes/` — if it's already a stable belief, it doesn't need a backlog item; report it in `notes`, not `candidates`.
+3. Also check if the candidate is already in the brain — `grep -l "<topic>" ~/.claude/.kaizen/brain/Notes/` — if it's already a stable belief, it doesn't need a backlog item; report it in `notes`, not `candidates`.
 
 ## Output schema
 

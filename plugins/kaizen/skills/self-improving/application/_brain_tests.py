@@ -19,10 +19,15 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 DOMAIN = SCRIPT_DIR.parent / "domain"
 BRAIN_TOOLS = SCRIPT_DIR.parent / "brain"
 # Canonical note schema lives in the brain skill (not self-improving) — single
-# source of truth for ~/.claude/brain/Notes/*.md frontmatter.
+# source of truth for <KAIZEN_BRAIN_DIR>/Notes/*.md frontmatter.
 BRAIN_SCHEMA_DOMAIN = SCRIPT_DIR.parent.parent / "brain" / "domain"
 
-BRAIN = Path(os.path.expanduser("~/.claude/brain"))
+# Resolve brain root via the kaizen SSOT (v1.38.0+). KAIZEN_BRAIN_DIR
+# is the only env that resolves; default ~/.claude/.kaizen/brain.
+_SCRIPTS = SCRIPT_DIR.parent.parent / "workflow" / "scripts"
+sys.path.insert(0, str(_SCRIPTS))
+import _paths  # noqa: E402
+BRAIN = _paths.BRAIN_DIR
 
 try:
     import yaml

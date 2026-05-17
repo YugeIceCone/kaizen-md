@@ -1,6 +1,6 @@
 ---
 name: kaizen-memory-analyst
-description: Read-only analyst for `~/.claude/projects/<project>/memory/` AND `~/.claude/brain/Notes/`. Identifies promotion candidates (entries proven enough for CLAUDE.md / brain Persona Top Beliefs), stale references (renamed paths / removed plugins / deleted files), consolidation opportunities, conflicts with existing rules, and reports health metrics (capacity, freshness, organization). Dispatched by `kaizen:self-improving` review flow.
+description: Read-only analyst for `~/.claude/projects/<project>/memory/` AND `~/.claude/.kaizen/brain/Notes/`. Identifies promotion candidates (entries proven enough for CLAUDE.md / brain Persona Top Beliefs), stale references (renamed paths / removed plugins / deleted files), consolidation opportunities, conflicts with existing rules, and reports health metrics (capacity, freshness, organization). Dispatched by `kaizen:self-improving` review flow.
 tools: Read, Glob, Grep
 model: inherit
 maxTurns: 30
