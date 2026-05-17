@@ -74,6 +74,22 @@ def discover_session_jsonl(jsonl_dir: Path) -> Optional[Path]:
     return max(candidates, key=lambda p: p.stat().st_mtime)
 
 
+def discover_active_session_id(cwd: Optional[Path] = None) -> Optional[str]:
+    """One-call helper: cwd → ~/.claude/projects/<slug>/ → latest JSONL → stem.
+
+    Returns the active session_id string (or None when not running under
+    Claude Code, no project dir, or empty project dir).
+
+    Single source for the cwd-based session discovery used by
+    statusline_dxm, statusline_intent, dxm._cmd_session_id, and any
+    future consumer that needs "what session am I in?"."""
+    cwd_path = Path(cwd or ".").resolve()
+    slug = cwd_to_slug(cwd_path)
+    proj = Path.home() / ".claude" / "projects" / slug
+    jsonl = discover_session_jsonl(proj)
+    return jsonl.stem if jsonl else None
+
+
 def _iter_records(jsonl_path: Path):
     """Yield parsed JSON records from a JSONL file, skipping malformed
     lines silently. The miner must never raise on bad input — partial
@@ -244,4 +260,5 @@ def mine_session(jsonl_path: Path) -> dict[str, Any]:
     }
 
 
-__all__ = ["cwd_to_slug", "discover_session_jsonl", "mine_session"]
+__all__ = ["cwd_to_slug", "discover_session_jsonl",
+            "discover_active_session_id", "mine_session"]

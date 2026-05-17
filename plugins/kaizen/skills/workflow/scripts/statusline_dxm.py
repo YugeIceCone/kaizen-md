@@ -31,16 +31,11 @@ def _dxm_dir() -> Path:
 
 
 def _discover_session(cwd: Path) -> str | None:
-    """Mirror dxm.py session-id discovery without spawning a subprocess."""
-    slug = str(cwd.resolve()).replace("/", "-")
-    proj = Path.home() / ".claude" / "projects" / slug
-    if not proj.is_dir():
-        return None
-    candidates = [p for p in proj.iterdir()
-                   if p.is_file() and p.suffix == ".jsonl"]
-    if not candidates:
-        return None
-    return max(candidates, key=lambda p: p.stat().st_mtime).stem
+    """Shared session discovery via _session_jsonl helper."""
+    _SCRIPT_DIR = Path(__file__).resolve().parent
+    sys.path.insert(0, str(_SCRIPT_DIR))
+    from _session_jsonl import discover_active_session_id
+    return discover_active_session_id(cwd)
 
 
 def _read_events(sid: str) -> list[dict]:

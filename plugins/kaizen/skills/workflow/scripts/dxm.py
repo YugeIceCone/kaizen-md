@@ -400,23 +400,20 @@ def _cmd_replay(args) -> int:
 
 
 def _cwd_to_slug(cwd: Path) -> str:
-    """Translate cwd → Claude Code project-slug shape (mirrors
-    _session_jsonl.cwd_to_slug)."""
-    return str(cwd.resolve()).replace("/", "-")
+    """Translate cwd → Claude Code project-slug shape. Delegates to
+    _session_jsonl.cwd_to_slug for single-source consistency."""
+    import _session_jsonl as _sj
+    return _sj.cwd_to_slug(cwd)
 
 
 def _cmd_session_id(args) -> int:
     """Autodiscover the active session_id from cwd → slug → latest JSONL."""
+    import _session_jsonl as _sj
     cwd = Path(args.cwd or ".").resolve()
-    slug = _cwd_to_slug(cwd)
+    slug = _sj.cwd_to_slug(cwd)
     proj = Path.home() / ".claude" / "projects" / slug
-    sid: Optional[str] = None
-    jsonl_path: Optional[Path] = None
-    if proj.is_dir():
-        candidates = [p for p in proj.iterdir() if p.is_file() and p.suffix == ".jsonl"]
-        if candidates:
-            jsonl_path = max(candidates, key=lambda p: p.stat().st_mtime)
-            sid = jsonl_path.stem
+    jsonl_path = _sj.discover_session_jsonl(proj) if proj.is_dir() else None
+    sid = jsonl_path.stem if jsonl_path else None
     data = {
         "session_id": sid,
         "jsonl_path": str(jsonl_path) if jsonl_path else None,

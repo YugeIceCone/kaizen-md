@@ -12,6 +12,7 @@ memory cost.
 from __future__ import annotations
 
 import json
+import os
 import sys
 import tempfile
 import textwrap
@@ -123,6 +124,48 @@ class TestCwdToProjectSlug(unittest.TestCase):
         slug = sj.cwd_to_slug(Path("/"))
         # Just "/" → "-" or empty leading is fine; matches CC behavior
         self.assertTrue(slug.startswith("-"))
+
+
+class TestDiscoverActiveSessionId(unittest.TestCase):
+    """Shared helper: cwd → slug → latest JSONL → stem in one call."""
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.tmp = Path(self._tmp.name)
+        self.fake_home = self.tmp / "home"
+        self.fake_home.mkdir()
+        self._orig = os.environ.get("HOME")
+        os.environ["HOME"] = str(self.fake_home)
+
+    def tearDown(self):
+        self._tmp.cleanup()
+        if self._orig is None: os.environ.pop("HOME", None)
+        else: os.environ["HOME"] = self._orig
+
+    def test_returns_session_id_when_jsonl_exists(self):
+        import _session_jsonl as sj
+        cwd = self.tmp / "proj"
+        cwd.mkdir()
+        slug = str(cwd.resolve()).replace("/", "-")
+        proj_dir = self.fake_home / ".claude" / "projects" / slug
+        proj_dir.mkdir(parents=True)
+        (proj_dir / "abc-123.jsonl").write_text("{}\n")
+        sid = sj.discover_active_session_id(cwd)
+        self.assertEqual(sid, "abc-123")
+
+    def test_returns_none_when_no_project(self):
+        import _session_jsonl as sj
+        cwd = self.tmp / "no-proj"
+        cwd.mkdir()
+        self.assertIsNone(sj.discover_active_session_id(cwd))
+
+    def test_uses_process_cwd_when_none_passed(self):
+        import _session_jsonl as sj
+        # Without HOME-tracked project, returns None — semantics ok
+        result = sj.discover_active_session_id()
+        # Either None or a real string from the actual process cwd —
+        # both valid; the assertion is no-exception
+        self.assertTrue(result is None or isinstance(result, str))
 
 
 class TestMineSession(unittest.TestCase):
