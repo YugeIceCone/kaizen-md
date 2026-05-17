@@ -49,7 +49,9 @@
         "skills_used":        { "type": "array", "items": { "type": "string" } },
         "session_started_at": { "type": ["string", "null"] },
         "jsonl_lag_seconds":  { "type": ["number", "null"],
-                                "description": "Seconds since the active session JSONL was last flushed by Claude Code. Helps the agent judge mined-data freshness." }
+                                "description": "Seconds since the active session JSONL was last flushed by Claude Code. Helps the agent judge mined-data freshness." },
+        "dxm_event_count":    { "type": "integer", "minimum": 0,
+                                "description": "BK-010: live count of dxm events for this session. Complements jsonl_lag_seconds — when dxm_event_count > 0 but jsonl_lag_seconds > 5s, dxm has fresher state than JSONL." }
       }
     }
   }

@@ -33,6 +33,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import subprocess
 import sys
@@ -439,6 +440,11 @@ def _cmd_verify(args) -> int:
         "commit_delta": commit_delta,
         "qualitative_residue": qualitative,
     }
+    # BK-010: when caller passes --dxm-session, surface live tool churn
+    # from the last 60s of dxm capture. Optional field.
+    if args.dxm_session:
+        data["recent_tool_churn"] = _query_dxm_recent_churn(
+            args.dxm_session, back_seconds=60.0)
 
     if args.json:
         # The lens validates output against verify-report.schema.json
@@ -468,6 +474,83 @@ def _cmd_verify(args) -> int:
         if qualitative:
             print(f"  qualitative_residue: {[q['section'] for q in qualitative]}")
     return 0
+
+
+# ─── BK-010: dxm integration helpers ─────────────────────────────────
+
+
+def _dxm_events_path(session_id: str) -> Path:
+    """Mirror dxm.py's _events_path so we don't shell out for a count."""
+    env = os.environ.get("KAIZEN_DXM_DIR")
+    if env:
+        root = Path(os.path.expandvars(env)).expanduser()
+    else:
+        root = Path.home() / ".claude" / ".kaizen" / "dxm"
+    return root / f"events-{session_id}.jsonl"
+
+
+def _query_dxm_event_count(session_id: str) -> int:
+    """Return the count of events in dxm for the given session. 0 when
+    dxm dir/file is absent. Best-effort — never raises."""
+    if os.environ.get("KAIZEN_DXM_DISABLE") == "1":
+        return 0
+    path = _dxm_events_path(session_id)
+    if not path.is_file():
+        return 0
+    try:
+        with path.open("r", encoding="utf-8") as f:
+            return sum(1 for line in f if line.strip())
+    except OSError:
+        return 0
+
+
+def _query_dxm_recent_churn(session_id: str, back_seconds: float = 60.0) -> dict:
+    """Return {tool_name: count} of events in last back_seconds. Empty
+    dict when dxm has nothing. Best-effort — never raises."""
+    if os.environ.get("KAIZEN_DXM_DISABLE") == "1":
+        return {}
+    path = _dxm_events_path(session_id)
+    if not path.is_file():
+        return {}
+    import time as _t
+    cutoff = _t.time() - back_seconds
+    out: dict[str, int] = {}
+    try:
+        with path.open("r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    e = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                ts = e.get("ts_unix")
+                if not isinstance(ts, (int, float)) or ts < cutoff:
+                    continue
+                tn = e.get("tool_name")
+                if not tn:
+                    continue
+                out[tn] = out.get(tn, 0) + 1
+    except OSError:
+        return {}
+    return out
+
+
+def _dxm_link(parent: str, child: str) -> bool:
+    """Call kaizen-dxm link via subprocess. Returns True on success.
+    Best-effort — failures don't propagate."""
+    if os.environ.get("KAIZEN_DXM_DISABLE") == "1":
+        return False
+    try:
+        r = subprocess.run(
+            ["python3", str(_SCRIPT_DIR / "dxm.py"),
+              "link", "--parent", parent, "--child", child],
+            capture_output=True, text=True, timeout=10,
+        )
+        return r.returncode == 0
+    except (subprocess.SubprocessError, OSError):
+        return False
 
 
 # ─── scaffold — git-driven YAML pre-fill ─────────────────────────────
@@ -696,6 +779,9 @@ def _cmd_scaffold(args) -> int:
             jsonl_lag = round(_time.time() - jsonl_path.stat().st_mtime, 3)
         except OSError:
             jsonl_lag = None
+        # BK-010: query dxm for live event count of this session — best-effort
+        # (dxm dir may not exist, session may have no events). Falls back to 0.
+        dxm_event_count = _query_dxm_event_count(jsonl_path.stem)
         data["mined_from_session"] = bool(mined)
         data["session_jsonl"] = str(jsonl_path)
         data["mined_summary"] = {
@@ -706,6 +792,7 @@ def _cmd_scaffold(args) -> int:
             "skills_used":        sorted(mined.get("skills_used") or set()),
             "session_started_at": mined.get("session_started_at"),
             "jsonl_lag_seconds":  jsonl_lag,
+            "dxm_event_count":    dxm_event_count,
         }
     if args.json:
         try:
@@ -999,6 +1086,11 @@ def _cmd_auto_finalize(args) -> int:
         session_id, rewritten, str(fp.resolve()), status=args.status,
     )
 
+    # BK-010: optionally record cross-session continuity in dxm
+    dxm_linked = False
+    if args.parent_session:
+        dxm_linked = _dxm_link(args.parent_session, session_id)
+
     result = {
         "id": rid,
         "session_id": session_id,
@@ -1007,6 +1099,8 @@ def _cmd_auto_finalize(args) -> int:
         "outcome": args.outcome,
         "outcome_assigned_by": args.assigned_by,
         "outcome_justification": args.justification,
+        "dxm_parent_session": args.parent_session,
+        "dxm_linked": dxm_linked,
     }
     if args.json:
         verdict = "green" if args.outcome == "SUCCEEDED" else "yellow"
@@ -1127,6 +1221,11 @@ def main(argv: Optional[list[str]] = None) -> int:
         "--repo-root", default=None,
         help="git working tree root (default: cwd)",
     )
+    s_verify.add_argument(
+        "--dxm-session", default=None,
+        help="when set, query kaizen-dxm for last 60s of this session's "
+             "tool churn and include in envelope.data.recent_tool_churn",
+    )
     s_verify.add_argument("--json", action="store_true")
     s_verify.set_defaults(func=_cmd_verify)
 
@@ -1156,6 +1255,11 @@ def main(argv: Optional[list[str]] = None) -> int:
     s_auto.add_argument(
         "--session", default=None,
         help="session/project name (default: parent-dir of --file)",
+    )
+    s_auto.add_argument(
+        "--parent-session", default=None,
+        help="when set, calls `kaizen-dxm link --parent PARENT --child <session>` "
+             "to record cross-session continuity in dxm's sessions.jsonl",
     )
     s_auto.add_argument("--json", action="store_true")
     s_auto.set_defaults(func=_cmd_auto_finalize)

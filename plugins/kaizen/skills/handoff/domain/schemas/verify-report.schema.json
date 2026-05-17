@@ -69,6 +69,11 @@
           "items":   { "type": "array" }
         }
       }
+    },
+    "recent_tool_churn": {
+      "type": "object",
+      "description": "BK-010: when --dxm-session is set, surfaces last-60s per-tool counts from dxm. Empty object when dxm is empty or unavailable.",
+      "additionalProperties": { "type": "integer", "minimum": 0 }
     }
   },
   "$defs": {
