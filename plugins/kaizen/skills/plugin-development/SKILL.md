@@ -519,6 +519,39 @@ Sync or async hooks; the flow awaits if needed.
 
 ## Part 5 — Lazy load + graceful fallback (heavy deps)
 
+### ⚠ Two distinct patterns, pick the right one
+
+Heavy-dep scripts come in two flavours; route each to its idiomatic
+delivery:
+
+| Shape | When | Mechanism |
+|---|---|---|
+| **PEP-723 inline-deps + `uv run --script`** | The script IS the entry point AND needs heavy deps (sentence-transformers, torch, mcp, ollama) | `#!/usr/bin/env -S uv run --script` shebang + `# /// script` block declaring `dependencies = [...]`. Auto-installs on first invocation; kaizen-bootstrap pre-warms the venv. |
+| **Lazy-load + graceful-fallback** | The script is a LIBRARY (`_embed.py`, `_chunk.py`) consumed in-process by many callers, and a missing dep should not crash callers | `try: import heavy; except ImportError: return None` (NOT `sys.exit`! — see gotcha) — let callers route to a stdlib fallback. |
+
+**EXPLICIT routing rule** (real failure mode hit this session): when a
+**bin wrapper** dispatches to a heavy-dep script via `python3
+<script>`, the PEP-723 shebang is ignored — Python sees the docstring
++ decorators but never runs the uv-managed env. Symptom: `brain.db`
+populated with 0 embeddings because `_embed.py` raised `SystemExit(1)`
+on missing numpy and the import-path silently caught it.
+
+**Fix:** the bin wrapper MUST `exec uv run --script <script>` for
+verbs that need the heavy venv (route in bash, not via importlib).
+The bin/kaizen-brain wrapper now does this explicitly for `index` and
+`evolve` verbs; other verbs stay on plain `python3` (capture / detect
+/ path / status — no heavy deps needed).
+
+**Library-side gotcha** — `_embed.embed_one()` and friends MUST NOT
+call `sys.exit()` on missing deps; they should return `(None, 0)` or
+raise a regular `Exception`. Else `except Exception` in callers
+silently misses the `SystemExit` (which is `BaseException`, not
+`Exception`). If you must guard against missing deps via a top-level
+exit, callers wrapping the call MUST catch `BaseException` not
+`Exception`.
+
+### Canonical 4-element library shape (for the lazy-load pattern)
+
 When a feature depends on a HEAVY package (transformers, torch,
 tree-sitter wheels, mcp, PyYAML, etc.), use the canonical 4-element
 shape:

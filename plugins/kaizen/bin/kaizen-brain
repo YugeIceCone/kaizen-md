@@ -24,4 +24,29 @@ PLUGIN_ROOT="$(kaizen_plugin_root)" || {
     exit 1
 }
 
-exec python3 "$PLUGIN_ROOT/skills/workflow/scripts/brain.py" "$@"
+# EXPLICIT uv-dispatch for verbs that need the heavy-dep venv
+# (numpy + sentence-transformers + torch). In-process importlib in
+# brain.py would silently bypass the PEP-723 shebang on brain_index.py
+# — we'd fall back to LIKE-only search without anyone noticing.
+# Route here, not there, so the user-visible bin always gets the right
+# Python env. Other verbs (capture/detect/path/status/audit/promote/
+# migrate) stay on plain python3 — no heavy deps needed.
+case "${1:-}" in
+    index|evolve)
+        # `kaizen-brain index ...` → uv run --script brain_index.py ...
+        # `kaizen-brain evolve ...` → uv run --script brain_evolve.py ...
+        # (evolve uses the same embed pipeline for clustering)
+        verb="$1"; shift
+        script="$PLUGIN_ROOT/skills/workflow/scripts/brain_${verb}.py"
+        if command -v uv >/dev/null 2>&1; then
+            exec uv run --script "$script" "$@"
+        else
+            echo "kaizen-brain: uv not on PATH — install via: curl -LsSf https://astral.sh/uv/install.sh | sh" >&2
+            echo "kaizen-brain: falling back to plain python3 (semantic search may be LIKE-only)" >&2
+            exec python3 "$script" "$@"
+        fi
+        ;;
+    *)
+        exec python3 "$PLUGIN_ROOT/skills/workflow/scripts/brain.py" "$@"
+        ;;
+esac

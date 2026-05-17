@@ -1,3 +1,11 @@
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.10"
+# dependencies = [
+#     "numpy>=1.24",
+#     "sentence-transformers>=2.2",
+# ]
+# ///
 # consolidated-cli-parent: brain
 
 """kaizen brain index — SQLite + sentence-transformers over the
@@ -226,11 +234,16 @@ def _record_text_for_embed(rec: dict) -> str:
 def _maybe_embed(text: str):
     """Try the kaizen embed pipeline. Returns (bytes, dim) or
     (None, 0) when no embedding backend is available — search still
-    works via LIKE filtering on stored fields."""
+    works via LIKE filtering on stored fields.
+
+    Catches BaseException because `_embed.embed_one` calls `sys.exit(1)`
+    on missing-numpy (raises SystemExit, which is NOT caught by
+    `except Exception`). Without this, brain_index crashes and writes
+    0 rows — the bug that left brain.db at 0 bytes pre-fix."""
     try:
         import _embed
         return _embed.embed_one(text)
-    except Exception:
+    except BaseException:
         return None, 0
 
 
