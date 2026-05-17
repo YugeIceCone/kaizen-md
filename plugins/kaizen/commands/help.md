@@ -75,7 +75,7 @@ generated from `commands/*.md` frontmatter via `kaizen-help-gen`.
 | `status` | Show the kaizen setup for this repo at a glance — config, gate state, backlog summ |
 | `surface` | Unified MCP+hooks registry / validator. `list` enumerates all 22 MCP sub-servers a |
 | `disable-dupes` | Find and reversibly disable duplicate skills (loose ~/.claude/skills/X vs bundled  |
-| `plugin-development` | Multi-verb entry point for adding/auditing features in the kaizen-md plugin. Defau |
+| `plugin-development` | Single-entry hub for everything plugin-development in kaizen-md — routing, context |
 
 ## discovery/search (8)
 

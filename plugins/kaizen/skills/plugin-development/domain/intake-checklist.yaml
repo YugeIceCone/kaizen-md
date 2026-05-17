@@ -1,0 +1,107 @@
+# Plugin-development intake checklist — work-type → skills to load.
+#
+# Consumed by /kaizen:plugin-development intake [<work-type>].
+# Prints a QA-style checklist so the agent loads the right skills BEFORE
+# writing code, not after the first wrong-direction commit.
+#
+# Match-order: first-match-wins on work-type substring. If no arg given,
+# the full table is printed.
+
+version: 1
+
+# Always-load: the trio that applies to EVERY plugin-development task.
+# These are added on top of any work-type-specific bundle below.
+always:
+  - plugin:plugin-development      # canonical feature shape + iron laws
+  - plugin:coding-skills           # the 8 principles (KISS/YAGNI/DRY/...)
+
+work_types:
+  # ── New surfaces (most common path)
+  - id: new-cli
+    triggers: ["new cli", "new bin", "argparse main", "new command line"]
+    skills:
+      - plugin:schema-driven-cli   # v2 manifest + per-subcommand schemas
+      - plugin:onion-ddd-theory    # layer the new feature properly
+      - plugin:tdd                 # RED first, GREEN second
+
+  - id: new-skill
+    triggers: ["new skill", "skill.md", "new agent-facing"]
+    skills:
+      - plugin:agent-formatting    # frontmatter conventions
+      - plugin:coding-skills:kiss
+      - plugin:coding-skills:convention
+
+  - id: new-hook
+    triggers: ["new hook", "lifecycle hook", "pretooluse", "posttooluse", "sessionend"]
+    skills:
+      - plugin:behaviour-config    # KAIZEN_*_DISABLE knobs + _trace.sh
+      - plugin:coding-skills:kiss
+      - plugin:efficient-tool-use  # bash gate patterns
+
+  - id: new-mcp-server
+    triggers: ["new mcp", "fastmcp", "mcp server"]
+    skills:
+      - plugin:schema-driven-cli
+      - plugin:coding-skills:separation-of-concerns
+      - plugin:coding-skills:solid
+
+  - id: new-rubric-feature
+    triggers: ["rubric", "classifier", "decision rule", "bucket walker"]
+    skills:
+      - plugin:decision-rubric     # rule shape + ordering discipline
+      - plugin:schema-driven-cli   # pair with lens manifest
+      - plugin:coding-skills:kiss
+
+  - id: new-indexer
+    triggers: ["new indexer", "semantic search", "sqlite index", "embed"]
+    skills:
+      - plugin:optional-features   # is_available + graceful fallback
+      - plugin:coding-skills:solid
+      - plugin:tdd
+
+  # ── Modifying existing surfaces
+  - id: bug-fix
+    triggers: ["bug", "fix", "broken", "regression"]
+    skills:
+      - plugin:tdd                 # regression test before fix
+      - plugin:karpathy-coder      # the 4 principles
+      - plugin:coding-skills:boy-scout
+
+  - id: refactor
+    triggers: ["refactor", "restructure", "carve", "rename"]
+    skills:
+      - plugin:onion-ddd-workflow  # full layering audit
+      - plugin:coding-skills:boy-scout
+      - plugin:coding-skills:separation-of-concerns
+      - plugin:coding-skills:dry
+
+  - id: add-tests
+    triggers: ["add test", "more coverage", "test gap"]
+    skills:
+      - plugin:tdd
+      - plugin:coding-skills:convention
+
+  - id: rename-command
+    triggers: ["rename command", "alias command", "deprecate command"]
+    skills:
+      - plugin:coding-skills:convention   # back-compat shape
+      - plugin:coding-skills:boy-scout    # fix all touched conventions
+      # No new skills — the rename is convention + alias discipline
+
+  # ── Cross-cutting concerns
+  - id: dispatch-subagent
+    triggers: ["dispatch subagent", "which agent", "subagent type"]
+    skills:
+      - plugin:agent-formatting    # dispatch-rubric pattern
+      # The dispatch-rubric itself: skills/agent-formatting/domain/dispatch-rubric.yaml
+
+  - id: schema-or-config
+    triggers: ["schema", "config yaml", "feature manifest", "domain yaml"]
+    skills:
+      - plugin:schema-driven-cli
+      - plugin:coding-skills:solid
+
+  # ── Fallback when no work-type matches
+  - id: generic-plugin-work
+    triggers: []   # never matched by trigger; the fallback when nothing else hits
+    skills: []     # falls back to `always:` only
