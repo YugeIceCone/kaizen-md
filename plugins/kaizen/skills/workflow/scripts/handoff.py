@@ -808,6 +808,19 @@ def _cmd_scaffold(args) -> int:
         # BK-010: query dxm for live event count of this session — best-effort
         # (dxm dir may not exist, session may have no events). Falls back to 0.
         dxm_event_count = _query_dxm_event_count(jsonl_path.stem)
+        # BK-016: peak-aware context signal so the next session knows
+        # the prior session compacted / hit red. Without this, post-
+        # compact handoffs hide the context-pressure history.
+        try:
+            import context as _ctx
+            usage = _ctx.get_usage_summary(cwd_path=repo)
+            limit = _ctx.get_limit()
+            peak_tokens = usage.get("peak_tokens")
+            peak_pct = (peak_tokens * 100 // limit) if peak_tokens else None
+        except Exception:
+            usage = {"peak_tokens": None, "peak_pre_compact": False,
+                      "compact_count": 0}
+            peak_pct = None
         data["mined_from_session"] = bool(mined)
         data["session_jsonl"] = str(jsonl_path)
         data["mined_summary"] = {
@@ -819,6 +832,10 @@ def _cmd_scaffold(args) -> int:
             "session_started_at": mined.get("session_started_at"),
             "jsonl_lag_seconds":  jsonl_lag,
             "dxm_event_count":    dxm_event_count,
+            "peak_tokens":        usage.get("peak_tokens"),
+            "peak_context_pct":   peak_pct,
+            "peak_pre_compact":   usage.get("peak_pre_compact", False),
+            "compact_count":      usage.get("compact_count", 0),
         }
     _dxm_emit.emit_event(
         "handoff.scaffold.complete", tool_name="kaizen-handoff",

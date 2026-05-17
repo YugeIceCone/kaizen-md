@@ -230,6 +230,85 @@ _FIXTURE_RECORDS = [
 ]
 
 
+class TestScaffoldPeakAndCompact(ScaffoldSessionMineBase):
+    """BK-016: scaffold's mined_summary must expose peak context tokens
+    and compact_count so the handoff carries the pre-compact signal
+    forward — otherwise the next session has no idea the prior session
+    peaked at red and compacted."""
+
+    def _usage_turn(self, total: int, ts: str) -> dict:
+        return {
+            "type": "assistant", "timestamp": ts,
+            "message": {
+                "content": [{"type": "text", "text": "ok"}],
+                "usage": {
+                    "input_tokens": total // 4,
+                    "cache_creation_input_tokens": total // 4,
+                    "cache_read_input_tokens": total // 4,
+                    "output_tokens": total - 3 * (total // 4),
+                },
+            },
+        }
+
+    def _compact(self) -> dict:
+        return {"type": "user", "timestamp": "2026-05-17T03:00:30.000Z",
+                "isCompactSummary": True,
+                "isVisibleInTranscriptOnly": True,
+                "message": {"role": "user", "content": "summary"}}
+
+    def test_mined_summary_includes_peak_and_compact_fields(self):
+        self._commit("a", "1")
+        records = [
+            {"type": "ai-title", "aiTitle": "test"},
+            self._usage_turn(800_000, "2026-05-17T03:00:00.000Z"),
+            self._usage_turn(950_000, "2026-05-17T03:00:10.000Z"),
+            self._compact(),
+            self._usage_turn(50_000, "2026-05-17T03:00:40.000Z"),
+        ]
+        self._seed_jsonl(records)
+        env_extra = os.environ.copy()
+        env_extra["KAIZEN_CONTEXT_LIMIT"] = "1000000"
+        r = subprocess.run(
+            [sys.executable, str(_HANDOFF_PY), "scaffold",
+              "--session", "s", "--goal", "g", "--now", "n",
+              "--since", "2000-01-01",
+              "--at", "2026-05-17_03-00", "--json"],
+            capture_output=True, text=True, timeout=30,
+            cwd=str(self.repo), env=env_extra,
+        )
+        self.assertEqual(r.returncode, 0, r.stderr)
+        env = json.loads(r.stdout)
+        ms = env["data"].get("mined_summary", {})
+        self.assertEqual(ms.get("peak_tokens"), 950_000)
+        self.assertEqual(ms.get("peak_context_pct"), 95)
+        self.assertEqual(ms.get("compact_count"), 1)
+        self.assertTrue(ms.get("peak_pre_compact"))
+
+    def test_no_compact_peak_equals_current(self):
+        self._commit("a", "1")
+        records = [
+            {"type": "ai-title", "aiTitle": "test"},
+            self._usage_turn(100_000, "2026-05-17T03:00:00.000Z"),
+            self._usage_turn(200_000, "2026-05-17T03:00:10.000Z"),
+        ]
+        self._seed_jsonl(records)
+        env_extra = os.environ.copy()
+        env_extra["KAIZEN_CONTEXT_LIMIT"] = "1000000"
+        r = subprocess.run(
+            [sys.executable, str(_HANDOFF_PY), "scaffold",
+              "--session", "s", "--goal", "g", "--now", "n",
+              "--since", "2000-01-01",
+              "--at", "2026-05-17_03-00", "--json"],
+            capture_output=True, text=True, timeout=30,
+            cwd=str(self.repo), env=env_extra,
+        )
+        env = json.loads(r.stdout)
+        ms = env["data"]["mined_summary"]
+        self.assertEqual(ms["peak_tokens"], 200_000)
+        self.assertEqual(ms["compact_count"], 0)
+        self.assertFalse(ms["peak_pre_compact"])
+
+
 class TestScaffoldJsonlLag(ScaffoldSessionMineBase):
     """When mining succeeds, scaffold reports jsonl_lag_seconds so the
     agent can judge freshness of the mined snapshot."""
