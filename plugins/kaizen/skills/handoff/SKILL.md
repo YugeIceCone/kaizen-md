@@ -127,42 +127,88 @@ the row in place, never duplicates. Status starts `partial`; Step 4
 sets the final value. The store is plugin-owned (`handoff.py`); no
 external-script dependency.
 
-### Step 4 — Mark session outcome (REQUIRED)
+### Step 4 — Self-assess the outcome (REQUIRED)
 
-Step 2 wrote placeholder `status:` / `outcome:`. Now get the real
-values from the user and write them back.
+Step 2 wrote placeholder `status:` / `outcome:`. Now finalize them.
 
-Ask about the session outcome via the **AskUserQuestion** tool:
+**Default: agent-assigned.** You (the agent) self-assess the session
+against the rubric below, write the outcome directly, and re-index in
+one shot via `handoff.py auto-finalize`. No `AskUserQuestion` prompt
+— that path was the old default and now applies only when the user
+explicitly asks for an interactive sign-off.
 
-```
-Question: "How did this session go?"
-Options:
-  - SUCCEEDED:     Task completed successfully
-  - PARTIAL_PLUS:  Mostly done, minor issues remain
-  - PARTIAL_MINUS: Some progress, major issues remain
-  - FAILED:        Task abandoned or blocked
-```
+Reasons to use the auto-assigned default:
+- **Subagent invocations** — sub-agents have no `AskUserQuestion` access.
+- **High-context-pressure sessions** (≥90% context used) — set
+  `KAIZEN_HANDOFF_AGENT=1` to mark the intent clearly in the audit
+  trail; the auto-finalize behavior is the same.
+- **`/loop` / `/schedule` / autonomous runs** — no human to prompt.
+- **Default interactive sessions** — Claude has the full session in
+  context and can pick more reliably than asking the user "how did it
+  go?" out of nowhere. The audit field `outcome_assigned_by: agent`
+  records who picked.
 
-After the user responds:
+#### Rubric — pick exactly one bucket
 
-1. **Update the YAML file** (the system of record) — use the **Edit**
-   tool to replace the placeholder frontmatter:
-   - `status:` → `complete` (or `partial` / `blocked` per the work)
-   - `outcome:` → the user's literal answer (`SUCCEEDED` / `PARTIAL_PLUS` / `PARTIAL_MINUS` / `FAILED`)
+Look at four signals together: (1) which `done_this_session` tasks
+landed, (2) whether the project's test baseline held (the `test:` line
+should still pass), (3) what `blockers` / `questions` remain open, (4)
+whether the `next:` items are forward-looking refinements or blocking
+must-dos.
 
-2. **Re-index into the store** — pick up the updated frontmatter:
+| Bucket | When to pick |
+|---|---|
+| **SUCCEEDED** | All planned `done_this_session` tasks landed AND the test baseline holds AND `blockers` is empty AND no `next:` item is blocking the session's stated goal. Tests green, goal met. |
+| **PARTIAL_PLUS** | Most tasks landed; tests still green; at most minor open `questions` / non-blocking `next:` items. Net forward progress, no regressions. |
+| **PARTIAL_MINUS** | Some tasks landed but **major** issues remain — pre-existing tests broken, a `blockers` entry surfaced, or `next:` items include must-fix-before-merge work. Partial progress, real follow-up required. |
+| **FAILED** | Few/no tasks landed OR the session was abandoned mid-flight OR tests went red without a fix. Goal not met; the resume needs to triage before continuing. |
+
+Bias toward the more conservative bucket when on the line. A
+`PARTIAL_PLUS` that should have been `PARTIAL_MINUS` misleads the next
+session's triage; the reverse is harmless.
+
+#### Run auto-finalize
 
 ```bash
 python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/handoff.py \
-  save --session "{session-name}" \
-       --file ~/.claude/thoughts/handoffs/{session-name}/{filename}.yaml \
-       --status complete
+  auto-finalize \
+    --file ~/.claude/thoughts/handoffs/{session-name}/{filename}.yaml \
+    --outcome SUCCEEDED \
+    --justification "all 7 task chain landed; tests 1591→1608; no open blockers"
 ```
 
-`--status` is the work-lifecycle state — `complete` when the session's
-work is done (`partial` / `blocked` otherwise). `save` upserts, so this
-updates the Step 3 row in place. The YAML frontmatter stays
-authoritative; the store mirrors it for fast `latest` / `list`.
+Flags:
+- `--outcome SUCCEEDED | PARTIAL_PLUS | PARTIAL_MINUS | FAILED` — required
+- `--status complete | partial | blocked` — default `complete` (most
+  agent-assigned finalizations end with the work-lifecycle done)
+- `--assigned-by agent | user` — default `agent`; set to `user` only
+  when the user explicitly overrode your pick
+- `--justification "<one line>"` — required-in-practice. The one-line
+  rationale that links the outcome to evidence (test counts, task
+  ratios, blocker shape). **No `: ` (colon-space) inside** — YAML
+  reads it as a nested mapping; use ` — ` or `;` instead.
+- `--session <name>` — default: parent-dir of `--file` (matches
+  Step 1's session-name → folder convention)
+- `--json` — emit canonical envelope on stdout
+
+What it does in one shot:
+1. Rewrites the YAML frontmatter (`status`, `outcome`,
+   `outcome_assigned_by`, optional `outcome_justification`) atomically
+   (tempfile + rename). Body preserved byte-for-byte.
+2. Re-indexes into the SQLite store via the same `save_handoff`
+   upsert Step 3 used — no duplicate row.
+
+The YAML stays the system of record; the store stays the queryable
+index. `auto-finalize` keeps the two in sync without a separate Edit
++ save sequence.
+
+#### Interactive override (optional)
+
+If the user explicitly asks for a sign-off ("walk me through the
+outcome before saving" / "let me pick"), use `AskUserQuestion` with
+the rubric buckets as options and your recommended pick as the first
+option. After the user responds, pass their pick to `auto-finalize
+--assigned-by user`.
 
 ### Step 5 — Bridge durable learnings to brain
 

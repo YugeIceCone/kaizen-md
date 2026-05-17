@@ -38,6 +38,16 @@ DOMAIN_DIR = PLUGIN_ROOT / "skills" / "handoff" / "domain"
 # coerce defensively without a yaml load on the hot path.
 VALID_STATUS = ("partial", "complete", "blocked")
 
+# Outcome buckets the agent (or user) can assign at session-end. Mirrors
+# the AskUserQuestion options the handoff skill historically used —
+# adding new values here means updating SKILL.md's rubric in the same
+# commit.
+VALID_OUTCOME = ("SUCCEEDED", "PARTIAL_PLUS", "PARTIAL_MINUS", "FAILED")
+
+# Audit field: who picked the outcome. Auto-finalize defaults to "agent";
+# the legacy AskUserQuestion path can pass "user" explicitly.
+VALID_ASSIGNED_BY = ("agent", "user")
+
 _SCHEMA_SQL = """
 CREATE TABLE IF NOT EXISTS handoffs (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -91,6 +101,72 @@ def now_iso() -> str:
         .isoformat(timespec="milliseconds")
         .replace("+00:00", "Z")
     )
+
+
+# ─── Frontmatter rewrite (auto-finalize Step 4) ──────────────────────
+
+
+# Keys auto-finalize is allowed to touch. Everything else in the
+# frontmatter is preserved verbatim.
+_FINALIZE_KEYS = (
+    "status",
+    "outcome",
+    "outcome_assigned_by",
+    "outcome_justification",
+)
+
+
+def update_frontmatter(text: str, updates: dict[str, str]) -> str:
+    """Rewrite a YAML handoff's frontmatter in-place (line-based,
+    no PyYAML dep). The handoff skill body's `: ` (colon-space) rule
+    keeps every frontmatter line as a flat `key: value` pair, so this
+    parser is reliable AND preserves comments / ordering verbatim.
+
+    Behavior:
+    - Updates each key in `updates` if it already exists in the frontmatter.
+    - Appends new keys (in `updates` insertion order) at the bottom of the
+      frontmatter block when absent.
+    - Body (everything after the closing `---`) is preserved byte-for-byte.
+
+    Raises ValueError if the input has no opening `---` line."""
+    lines = text.splitlines(keepends=True)
+    if not lines or lines[0].rstrip("\n").strip() != "---":
+        raise ValueError("handoff YAML missing opening `---` frontmatter delimiter")
+
+    # Find the closing `---` line bounding the frontmatter.
+    end_idx: Optional[int] = None
+    for i in range(1, len(lines)):
+        if lines[i].rstrip("\n").strip() == "---":
+            end_idx = i
+            break
+    if end_idx is None:
+        raise ValueError("handoff YAML missing closing `---` frontmatter delimiter")
+
+    fm_lines = lines[1:end_idx]
+    new_fm: list[str] = []
+    pending = dict(updates)  # consumed as we walk; leftovers append at end
+    newline = "\n"
+
+    for line in fm_lines:
+        stripped = line.rstrip("\n")
+        if ":" in stripped:
+            key = stripped.split(":", 1)[0].strip()
+            if key in pending:
+                new_fm.append(f"{key}: {pending.pop(key)}{newline}")
+                continue
+        new_fm.append(line)
+
+    # Append any keys not already present, in insertion order.
+    for key, value in pending.items():
+        new_fm.append(f"{key}: {value}{newline}")
+
+    rebuilt = (
+        lines[0]
+        + "".join(new_fm)
+        + lines[end_idx]
+        + "".join(lines[end_idx + 1:])
+    )
+    return rebuilt
 
 
 # ─── Store ───────────────────────────────────────────────────────────

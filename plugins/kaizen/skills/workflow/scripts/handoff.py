@@ -159,6 +159,104 @@ def _cmd_path(args) -> int:
     return 0
 
 
+def _cmd_auto_finalize(args) -> int:
+    """Agent-assigned Step 4 of the handoff create flow — no AskUserQuestion.
+
+    Rewrites the YAML frontmatter status/outcome (+ optional justification
+    and assigned_by audit fields) and re-indexes into the DB store. Used
+    by:
+      - Subagent contexts (no AskUserQuestion available)
+      - KAIZEN_HANDOFF_AGENT=1 mode (explicit signal that an agent is
+        finalizing the handoff)
+      - The interactive default per current handoff skill — Claude
+        self-assesses against the rubric in SKILL.md Step 4 before
+        the YAML lands
+    """
+    fp = Path(args.file).expanduser()
+    if not fp.is_file():
+        msg = f"file not found: {fp}"
+        if args.json:
+            _emit({"error": msg}, verdict="red")
+        else:
+            print(f"[kaizen-handoff auto-finalize] {msg}", file=sys.stderr)
+        return 1
+
+    if args.outcome not in _core.VALID_OUTCOME:
+        msg = (
+            f"invalid --outcome {args.outcome!r} "
+            f"(expected one of: {', '.join(_core.VALID_OUTCOME)})"
+        )
+        print(f"[kaizen-handoff auto-finalize] {msg}", file=sys.stderr)
+        return 2
+
+    if args.status not in _core.VALID_STATUS:
+        msg = (
+            f"invalid --status {args.status!r} "
+            f"(expected one of: {', '.join(_core.VALID_STATUS)})"
+        )
+        print(f"[kaizen-handoff auto-finalize] {msg}", file=sys.stderr)
+        return 2
+
+    if args.assigned_by not in _core.VALID_ASSIGNED_BY:
+        msg = (
+            f"invalid --assigned-by {args.assigned_by!r} "
+            f"(expected one of: {', '.join(_core.VALID_ASSIGNED_BY)})"
+        )
+        print(f"[kaizen-handoff auto-finalize] {msg}", file=sys.stderr)
+        return 2
+
+    updates: dict[str, str] = {
+        "status": args.status,
+        "outcome": args.outcome,
+        "outcome_assigned_by": args.assigned_by,
+    }
+    if args.justification:
+        updates["outcome_justification"] = args.justification
+
+    original = fp.read_text(encoding="utf-8")
+    try:
+        rewritten = _core.update_frontmatter(original, updates)
+    except ValueError as exc:
+        msg = f"frontmatter rewrite failed: {exc}"
+        if args.json:
+            _emit({"error": msg}, verdict="red")
+        else:
+            print(f"[kaizen-handoff auto-finalize] {msg}", file=sys.stderr)
+        return 1
+
+    # Atomic write: tempfile in same dir → rename.
+    tmp = fp.with_suffix(fp.suffix + ".auto-finalize.tmp")
+    tmp.write_text(rewritten, encoding="utf-8")
+    tmp.replace(fp)
+
+    # Re-index. Session name = parent dir name (matches the skill's
+    # "session-name groups handoffs into one folder" convention).
+    session_id = args.session or fp.parent.name
+    rid = _core.save_handoff(
+        session_id, rewritten, str(fp.resolve()), status=args.status,
+    )
+
+    result = {
+        "id": rid,
+        "session_id": session_id,
+        "file_path": str(fp.resolve()),
+        "status": args.status,
+        "outcome": args.outcome,
+        "outcome_assigned_by": args.assigned_by,
+        "outcome_justification": args.justification,
+    }
+    if args.json:
+        verdict = "green" if args.outcome == "SUCCEEDED" else "yellow"
+        _emit(result, verdict=verdict)
+    else:
+        print(
+            f"[kaizen-handoff auto-finalize] indexed #{rid} — "
+            f"{session_id} (status={args.status}, outcome={args.outcome}, "
+            f"by={args.assigned_by})\n  {fp.resolve()}"
+        )
+    return 0
+
+
 def main(argv: Optional[list[str]] = None) -> int:
     p = argparse.ArgumentParser(
         prog="kaizen-handoff",
@@ -202,6 +300,36 @@ def main(argv: Optional[list[str]] = None) -> int:
 
     s_path = sub.add_parser("path", help="print store + yaml-dir paths")
     s_path.set_defaults(func=_cmd_path)
+
+    s_auto = sub.add_parser(
+        "auto-finalize",
+        help="agent-assigned Step 4 — rewrite frontmatter outcome + status, "
+             "re-index, no AskUserQuestion",
+    )
+    s_auto.add_argument("--file", required=True, help="path to the handoff YAML")
+    s_auto.add_argument(
+        "--outcome", required=True, choices=list(_core.VALID_OUTCOME),
+        help="agent-assigned outcome bucket — see SKILL.md rubric",
+    )
+    s_auto.add_argument(
+        "--status", default="complete", choices=list(_core.VALID_STATUS),
+        help="work-lifecycle state (default: complete)",
+    )
+    s_auto.add_argument(
+        "--assigned-by", default="agent", choices=list(_core.VALID_ASSIGNED_BY),
+        help="audit field — who picked the outcome (default: agent)",
+    )
+    s_auto.add_argument(
+        "--justification", default=None,
+        help="one-line rationale for the outcome bucket "
+             "(no `: ` colon-space inside — see SKILL.md)",
+    )
+    s_auto.add_argument(
+        "--session", default=None,
+        help="session/project name (default: parent-dir of --file)",
+    )
+    s_auto.add_argument("--json", action="store_true")
+    s_auto.set_defaults(func=_cmd_auto_finalize)
 
     args = p.parse_args(argv)
     if args.cmd is None:
