@@ -108,8 +108,12 @@ if find "$SCOPE_DIR" -name 'Cargo.toml' -print -quit | grep -q .; then
 fi
 
 # eval / exec / shell in Python (security smell)
+# Pattern excludes:
+#   - method calls (.eval() / .exec()) — preceded by `.` (PyTorch model.eval(), etc.)
+#   - docstring/prose mentions — `shell=True` only matches when preceded by `(` or `,`
+#     (i.e., real argument position in a call, not text inside a string)
 if find "$SCOPE_DIR" -name 'pyproject.toml' -o -name '*.py' -print -quit | grep -q .; then
-  EVAL_HITS=$(grep -rlE '(^|[^a-zA-Z_])eval\(|(^|[^a-zA-Z_])exec\(|shell=True' \
+  EVAL_HITS=$(grep -rlE '(^|[^a-zA-Z_.])eval\(|(^|[^a-zA-Z_.])exec\(|[(,][[:space:]]*shell[[:space:]]*=[[:space:]]*True' \
     --include='*.py' "$SCOPE_DIR" 2>/dev/null | grep -vE 'test|spec' | wc -l)
   [ "$EVAL_HITS" -gt 0 ] && add "high" "security" \
     "eval/exec/shell=True in $EVAL_HITS Python file(s) — review for injection vectors"
