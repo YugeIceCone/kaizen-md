@@ -292,6 +292,169 @@ def cmd_reset(args: argparse.Namespace) -> int:
     return 0
 
 
+# ─── dry-run (classify task → bucket → stage list, no execution) ─────
+
+
+def _resolve_schema_dir(name: str) -> Path | None:
+    """Locate <schema_name>/ — env override, project CWD walk, user, built-in.
+
+    Mirrors workflow_runner.resolve_schema() ordering but adds the
+    KAIZEN_PROJECT_ROOT_OVERRIDE env hook for tests + arbitrary CWD.
+    """
+    # 1. Test-time override
+    override = os.environ.get("KAIZEN_PROJECT_ROOT_OVERRIDE")
+    if override:
+        candidate = Path(override) / ".kaizen" / "workflow" / "schemas" / name
+        if (candidate / "schema.yaml").exists():
+            return candidate
+    # 2. project (CWD walk to .git)
+    cur = Path.cwd().resolve()
+    while cur != cur.parent:
+        if (cur / ".git").exists():
+            candidate = cur / ".kaizen" / "workflow" / "schemas" / name
+            if (candidate / "schema.yaml").exists():
+                return candidate
+            break
+        cur = cur.parent
+    # 3. user
+    user_schemas = Path(
+        os.environ.get("KAIZEN_DIR", Path.home() / ".claude" / ".kaizen")
+    ) / "schemas"
+    candidate = user_schemas / name
+    if (candidate / "schema.yaml").exists():
+        return candidate
+    # 4. built-in
+    builtin = Path(__file__).resolve().parent.parent.parent.parent / "schemas"
+    candidate = builtin / name
+    if (candidate / "schema.yaml").exists():
+        return candidate
+    return None
+
+
+def _parse_bucket_stage_skips(rubric_text: str) -> dict[str, dict[str, list[str]]]:
+    """Extract the `bucket_stage_skips:` section from rubric.yaml.
+
+    Lightweight stdlib parser — the section is project-specific and not
+    handled by schema_cli.BucketWalker.from_yaml. Returns
+    {bucket_name: {'keep': [...], 'skip': [...]}}.
+    """
+    out: dict[str, dict[str, list[str]]] = {}
+    lines = rubric_text.splitlines()
+    in_section = False
+    current_bucket: str | None = None
+    current_field: str | None = None
+    for line in lines:
+        stripped = line.split("#", 1)[0].rstrip()
+        if not stripped:
+            continue
+        # Section start
+        if stripped.startswith("bucket_stage_skips:"):
+            in_section = True
+            continue
+        if not in_section:
+            continue
+        # New top-level key ends the section
+        if not line.startswith((" ", "\t")) and ":" in stripped:
+            break
+        # Bucket name (2-space indent)
+        if line.startswith("  ") and not line.startswith("    "):
+            name = stripped.strip().rstrip(":")
+            if name and ":" in stripped:
+                current_bucket = name
+                out.setdefault(current_bucket, {"keep": [], "skip": []})
+                current_field = None
+            continue
+        # Field name (4-space indent) — `keep:` / `skip:`
+        if line.startswith("    ") and not line.startswith("      "):
+            content = stripped.strip()
+            if content.startswith("keep:") or content.startswith("skip:"):
+                field, _, rest = content.partition(":")
+                current_field = field.strip()
+                rest = rest.strip()
+                if rest.startswith("[") and rest.endswith("]") and current_bucket:
+                    items = [s.strip().strip("\"'") for s in rest[1:-1].split(",") if s.strip()]
+                    out[current_bucket][current_field] = items
+    return out
+
+
+def cmd_dry_run(args) -> int:
+    """Classify a task without executing it: signals → bucket → stages."""
+    import importlib.util  # noqa: I001
+    # Lazy import to avoid cost on hot path of other subcommands
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    import schema_cli as _sc  # noqa: E402
+
+    # Schema name: --schema arg, else persisted schema_name in merged config
+    schema_name = getattr(args, "schema", None)
+    if not schema_name:
+        cfg = _merge(_read(_global_path()), _read(_project_path()))
+        schema_name = cfg.get("schema_name")
+    if not schema_name:
+        print("workflow_config dry-run: no --schema given and none persisted",
+              file=sys.stderr)
+        return 2
+
+    schema_dir = _resolve_schema_dir(schema_name)
+    if schema_dir is None:
+        print(f"workflow_config dry-run: schema {schema_name!r} not found",
+              file=sys.stderr)
+        return 1
+
+    schema_path = schema_dir / "schema.yaml"
+    sigs_path = schema_dir / "_signals.py"
+    rubric_path = schema_dir / "rubric.yaml"
+
+    if not sigs_path.exists():
+        print(f"workflow_config dry-run: missing {sigs_path}", file=sys.stderr)
+        return 1
+    if not rubric_path.exists():
+        print(f"workflow_config dry-run: missing {rubric_path}", file=sys.stderr)
+        return 1
+
+    # Load _signals.py from the schema dir
+    spec = importlib.util.spec_from_file_location("_per_rubric_signals", sigs_path)
+    sigs_mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(sigs_mod)
+
+    # Compute signals
+    paths = [p.strip() for p in (args.paths or "").split(",") if p.strip()]
+    dirs = [d.strip() for d in (args.dirs or "").split(",") if d.strip()]
+    signals = sigs_mod.compute_signals(args.prompt or "", paths, dirs)
+
+    # Walk rubric
+    walker = _sc.BucketWalker.from_yaml(rubric_path)
+    result = walker.evaluate(signals)
+
+    # bucket_stage_skips (project-specific extension)
+    skips_map = _parse_bucket_stage_skips(rubric_path.read_text(encoding="utf-8"))
+    bucket_skips = skips_map.get(result.bucket, {"keep": [], "skip": []})
+
+    payload = {
+        "schema":       schema_name,
+        "schema_path":  str(schema_path),
+        "bucket":       result.bucket,
+        "method":       result.method,
+        "confidence":   result.confidence,
+        "rationale":    result.rationale,
+        "signals":      signals,
+        "keep_stages":  bucket_skips.get("keep", []),
+        "skip_stages":  bucket_skips.get("skip", []),
+    }
+
+    if args.json:
+        print(json.dumps(payload, indent=2))
+    else:
+        print(f"[workflow_config dry-run] schema={schema_name}")
+        print(f"  bucket:      {result.bucket}")
+        print(f"  method:      {result.method}  (confidence {result.confidence:.2f})")
+        print(f"  rationale:   {result.rationale}")
+        if bucket_skips.get("keep"):
+            print(f"  keep stages: {', '.join(bucket_skips['keep'])}")
+        if bucket_skips.get("skip"):
+            print(f"  skip stages: {', '.join(bucket_skips['skip'])}")
+    return 0
+
+
 # ─── argparse wiring ─────────────────────────────────────────────────
 
 
@@ -344,6 +507,24 @@ def _build_parser() -> argparse.ArgumentParser:
     r.add_argument("--yes", action="store_true",
                     help="Confirm destructive op (default: dry-run).")
     r.set_defaults(func=cmd_reset)
+
+    dr = sub.add_parser(
+        "dry-run",
+        help="Classify a task (rubric walk) without executing — emits "
+              "bucket + stage skip/keep list. Reads schema_name from "
+              "persisted config unless --schema given.",
+    )
+    dr.add_argument("--prompt", default="",
+                     help="Task description (free text). Default: empty.")
+    dr.add_argument("--paths", default="",
+                     help="Comma-separated touched-file paths.")
+    dr.add_argument("--dirs", default="",
+                     help="Comma-separated newly-created dirs.")
+    dr.add_argument("--schema", default=None,
+                     help="Override the persisted schema_name.")
+    dr.add_argument("--json", action="store_true",
+                     help="Emit envelope JSON instead of prose.")
+    dr.set_defaults(func=cmd_dry_run)
 
     return p
 
