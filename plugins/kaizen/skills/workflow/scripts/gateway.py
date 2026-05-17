@@ -77,6 +77,8 @@ SUBSERVERS: list[tuple[str, str]] = [
     ("quality", "quality_mcp"),
     # Phase 7 — stack detection
     ("detect_stack", "detect_stack_mcp"),
+    # Phase 8 — handoff read-mostly queries
+    ("handoff", "handoff_mcp"),
 ]
 
 gw = FastMCP("kaizen")
