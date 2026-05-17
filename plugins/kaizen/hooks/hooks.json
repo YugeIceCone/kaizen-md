@@ -33,6 +33,11 @@
             "type": "command",
             "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/claude/session-start-token-bloat.sh",
             "timeout": 2
+          },
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/claude/session-start-detect-stack.sh",
+            "timeout": 5
           }
         ]
       },

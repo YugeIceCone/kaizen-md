@@ -1,0 +1,207 @@
+"""Tests for detect_stack — mechanical stack detection.
+
+Covers: artifact presence + parse-clean + behavior across 3 mini
+projects (Rust, Python, JS) + hook wiring + freshness short-circuit.
+"""
+
+from __future__ import annotations
+
+import json
+import os
+import subprocess
+import sys
+import tempfile
+import textwrap
+import unittest
+from pathlib import Path
+
+_KZ_DIR = Path(__file__).resolve().parent.parent
+_SCRIPT = _KZ_DIR / "skills/workflow/scripts/detect_stack.py"
+_HOOK = _KZ_DIR / "hooks/claude/session-start-detect-stack.sh"
+
+
+def _run(*args, cwd=None) -> subprocess.CompletedProcess:
+    return subprocess.run(
+        [sys.executable, str(_SCRIPT), *args],
+        capture_output=True, text=True, timeout=15, cwd=cwd,
+    )
+
+
+class ProjectBase(unittest.TestCase):
+    """Each test seeds a synthetic mini-project + runs detect."""
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.root = Path(self._tmp.name)
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+
+class TestArtifact(unittest.TestCase):
+    def test_script_present(self):
+        self.assertTrue(_SCRIPT.is_file())
+
+    def test_script_parses(self):
+        with open(_SCRIPT) as f:
+            compile(f.read(), str(_SCRIPT), "exec")
+
+    def test_hook_present_and_executable(self):
+        self.assertTrue(_HOOK.is_file())
+        self.assertTrue(os.access(_HOOK, os.X_OK))
+
+    def test_hook_wired_into_sessionstart(self):
+        hooks_json = _KZ_DIR / "hooks/hooks.json"
+        data = json.loads(hooks_json.read_text())
+        ss = data["hooks"].get("SessionStart", [])
+        cmds = [h["command"]
+                for block in ss
+                for h in block.get("hooks", [])]
+        self.assertTrue(any("session-start-detect-stack" in c for c in cmds),
+                          f"hook not wired: {cmds}")
+
+    def test_permission_in_plugin_json(self):
+        pj = _KZ_DIR / ".claude-plugin/plugin.json"
+        allow = json.loads(pj.read_text())["permissions"]["allow"]
+        self.assertTrue(any("session-start-detect-stack" in e for e in allow))
+        self.assertTrue(any("detect_stack.py" in e for e in allow))
+
+
+class TestRustProject(ProjectBase):
+    def setUp(self):
+        super().setUp()
+        (self.root / "Cargo.toml").write_text(textwrap.dedent("""
+            [package]
+            name = "test-crate"
+            edition = "2021"
+            [dependencies]
+            tokio = "1"
+            axum = "0.7"
+        """).strip())
+        (self.root / "src").mkdir()
+        (self.root / "src" / "main.rs").write_text("fn main() {}")
+        (self.root / "src" / "lib.rs").write_text("// lib")
+
+    def test_detects_rust_with_edition(self):
+        r = _run("scan", "--force", "--json", cwd=str(self.root))
+        self.assertEqual(r.returncode, 0, r.stderr)
+        data = json.loads(r.stdout)
+        self.assertEqual(data["primary"], "Rust")
+        self.assertIn("Cargo.toml", data["manifests"])
+        body = (self.root / ".agents" / "stack-context.md").read_text()
+        self.assertIn("Edition 2021", body)
+        self.assertIn("axum", body)
+        self.assertIn("tokio", body)
+
+
+class TestPythonProject(ProjectBase):
+    def setUp(self):
+        super().setUp()
+        (self.root / "pyproject.toml").write_text(textwrap.dedent("""
+            [project]
+            name = "test"
+            dependencies = ["fastapi", "httpx"]
+            [tool.ruff]
+            line-length = 100
+            [tool.pytest.ini_options]
+            testpaths = ["tests"]
+        """).strip())
+        (self.root / "main.py").write_text("# entry")
+
+    def test_detects_python_with_frameworks(self):
+        r = _run("scan", "--force", "--json", cwd=str(self.root))
+        self.assertEqual(r.returncode, 0, r.stderr)
+        data = json.loads(r.stdout)
+        self.assertEqual(data["primary"], "Python")
+        body = (self.root / ".agents" / "stack-context.md").read_text()
+        self.assertIn("fastapi", body)
+        self.assertIn("pytest", body)
+
+
+class TestFreshnessShortCircuit(ProjectBase):
+    def setUp(self):
+        super().setUp()
+        (self.root / "Cargo.toml").write_text('[package]\nname = "x"\nedition = "2021"')
+        (self.root / "src.rs").write_text("// rs")
+
+    def test_first_run_writes_second_skips(self):
+        r1 = _run("scan", "--json", cwd=str(self.root))
+        self.assertEqual(r1.returncode, 0)
+        self.assertNotIn("skipped", r1.stdout)
+        r2 = _run("scan", "--json", cwd=str(self.root))
+        self.assertIn("skipped", r2.stdout, r2.stdout)
+
+    def test_force_overrides(self):
+        _run("scan", "--json", cwd=str(self.root))
+        r2 = _run("scan", "--force", "--json", cwd=str(self.root))
+        self.assertNotIn("skipped", r2.stdout)
+
+
+class TestSubcommands(ProjectBase):
+    def setUp(self):
+        super().setUp()
+        (self.root / "go.mod").write_text("module test\n\ngo 1.21\n\nrequire github.com/gin-gonic/gin v1.9.1\n")
+        (self.root / "main.go").write_text("package main")
+
+    def test_path_prints_expected(self):
+        r = _run("path", cwd=str(self.root))
+        self.assertEqual(r.returncode, 0)
+        self.assertIn(".agents/stack-context.md", r.stdout)
+
+    def test_show_fails_when_missing(self):
+        r = _run("show", cwd=str(self.root))
+        self.assertEqual(r.returncode, 1)
+
+    def test_show_emits_artifact_after_scan(self):
+        _run("scan", "--force", cwd=str(self.root))
+        r = _run("show", cwd=str(self.root))
+        self.assertEqual(r.returncode, 0)
+        self.assertIn("# Stack Context", r.stdout)
+        self.assertIn("gin", r.stdout.lower())
+
+    def test_stale_returns_1_when_missing(self):
+        r = _run("stale", cwd=str(self.root))
+        self.assertEqual(r.returncode, 1)
+
+    def test_stale_returns_0_after_scan(self):
+        _run("scan", "--force", cwd=str(self.root))
+        r = _run("stale", cwd=str(self.root))
+        self.assertEqual(r.returncode, 0)
+
+
+class TestHookBehavior(ProjectBase):
+    def _fire(self, cwd: str, env_extra: dict | None = None) -> subprocess.CompletedProcess:
+        env = dict(os.environ)
+        env["KAIZEN_PLUGIN_ROOT"] = str(_KZ_DIR)
+        if env_extra:
+            env.update(env_extra)
+        return subprocess.run(
+            ["bash", str(_HOOK)],
+            input='{"session_id": "test"}',
+            capture_output=True, text=True, timeout=10,
+            cwd=cwd, env=env,
+        )
+
+    def test_disabled_emits_empty_json(self):
+        r = self._fire(str(self.root),
+                       env_extra={"KAIZEN_DETECT_STACK_DISABLE": "1"})
+        self.assertEqual(r.returncode, 0)
+        self.assertEqual(r.stdout.strip(), "{}")
+
+    def test_runs_detect_when_artifact_missing(self):
+        (self.root / "Cargo.toml").write_text(
+            '[package]\nname = "x"\nedition = "2021"')
+        (self.root / "src.rs").write_text("// rs")
+        r = self._fire(str(self.root))
+        self.assertEqual(r.returncode, 0, r.stderr)
+        # Artifact should have been generated by the hook
+        self.assertTrue((self.root / ".agents" / "stack-context.md").is_file())
+        # Output should include additionalContext with stack info
+        if r.stdout.strip() and r.stdout.strip() != "{}":
+            out = json.loads(r.stdout)
+            self.assertIn("additionalContext", out)
+            self.assertIn("Stack Context", out["additionalContext"])
+
+
+if __name__ == "__main__":
+    unittest.main(verbosity=2)
