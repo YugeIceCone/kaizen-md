@@ -433,8 +433,13 @@ def cmd_rollback(args) -> int:
         rescue = None
 
     src.parent.mkdir(parents=True, exist_ok=True)
+    # filter="data" (Py3.12+) rejects path-traversal members
+    # (../../), absolute paths, dangerous device files, and symlinks
+    # pointing outside the extraction root. Tarfile's default is
+    # unsafe (CVE-2007-4559 class). Tarfile changes the default in
+    # Python 3.14 — until then, we MUST be explicit.
     with tarfile.open(latest, "r:gz") as tar:
-        tar.extractall(src.parent)
+        tar.extractall(src.parent, filter="data")
 
     payload = {
         "action": "rolled-back",

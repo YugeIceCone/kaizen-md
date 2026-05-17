@@ -340,10 +340,12 @@ def cmd_rollback(args) -> int:
                 f"[kaizen-path-migrate rollback] no backup at {_paths.BACKUP_DIR}")
         return 1
     latest = backups[-1]
-    # Extract over the user-dir parent (the tar was rooted at .kaizen/)
+    # Extract over the user-dir parent (the tar was rooted at .kaizen/).
+    # filter="data" (Py3.12+) rejects path-traversal, absolute paths,
+    # and dangerous symlinks (CVE-2007-4559 class).
     target_parent = _paths.KAIZEN_USER_DIR.parent
     with tarfile.open(latest, "r:gz") as tar:
-        tar.extractall(target_parent)
+        tar.extractall(target_parent, filter="data")
     _report(args, {"action": "rolled-back", "backup_used": str(latest)},
             verdict="green", text=
             f"[kaizen-path-migrate rollback] restored from {latest}")
