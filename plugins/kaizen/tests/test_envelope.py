@@ -39,11 +39,17 @@ except ImportError:
 # `verdict=None` means "any verdict is fine" — the schema validates
 # the SHAPE, not the value. Args run from REPO_ROOT.
 _RETROFIT_TOOLS = [
-    ("gatekeeper", [str(_SCRIPTS / "gatekeeper.py"), "check", "--staged", "--json"]),
+    ("gatekeeper",      [str(_SCRIPTS / "gatekeeper.py"), "check", "--staged", "--json"]),
     ("surface validate", [str(_SCRIPTS / "surface.py"), "validate", "--json"]),
-    ("surface list", [str(_SCRIPTS / "surface.py"), "list", "--json"]),
+    ("surface list",    [str(_SCRIPTS / "surface.py"), "list", "--json"]),
     ("iron-laws check", [str(_SCRIPTS / "iron_laws.py"), "check", "--staged", "--json"]),
-    ("iron-laws list", [str(_SCRIPTS / "iron_laws.py"), "list", "--json"]),
+    ("iron-laws list",  [str(_SCRIPTS / "iron_laws.py"), "list", "--json"]),
+    ("metrics session", [str(_SCRIPTS / "metrics.py"), "session", "--json"]),
+    ("metrics top",     [str(_SCRIPTS / "metrics.py"), "top", "--json"]),
+    ("metrics path",    [str(_SCRIPTS / "metrics.py"), "path"]),
+    # roadmap_status needs a handoff file in the repo — skip from default
+    # validation since not all repos have plans/. Manual smoke covered
+    # the shape; re-enable here once a fixture is in place.
 ]
 
 

@@ -311,24 +311,10 @@ def render_json(v: Verdict, argv: list[str] | None = None) -> str:
     """Canonical-envelope-wrapped JSON output. Schema:
     `assets/schemas/tool-output.schema.json`. Use this over hand-rolled
     JSON so consumers get the same shape across all kaizen tools."""
-    # Lazy import — _envelope.py lives in the same dir
     sys.path.insert(0, str(_SCRIPT_DIR))
-    try:
-        import _envelope  # type: ignore
-    except ImportError:
-        # Fallback: legacy bare-JSON shape if helper missing
-        return json.dumps({
-            "overall": v.overall,
-            "counts": v.counts,
-            "durations_ms": v.durations_ms,
-            "findings": [asdict(f) for f in v.findings],
-        }, indent=2)
-
-    # Total elapsed = sum of sub-gate durations (parallelism would skew
-    # this; current gates run sequentially so sum is accurate).
+    import _envelope  # peer module — must exist
     total_ms = sum(v.durations_ms.values()) if v.durations_ms else None
-
-    envelope = _envelope.wrap(
+    return _envelope.render(_envelope.wrap(
         tool="kaizen-gatekeeper",
         tool_version="1.0.0",
         data={
@@ -339,8 +325,7 @@ def render_json(v: Verdict, argv: list[str] | None = None) -> str:
         counts=v.counts,
         duration_ms=total_ms,
         argv=argv,
-    )
-    return _envelope.render(envelope)
+    ))
 
 
 # ─── CLI ────────────────────────────────────────────────────────────────

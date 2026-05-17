@@ -56,6 +56,18 @@ sys.path.insert(0, str(_SCRIPT_DIR))
 # YAGNI: __all__ is the single source of truth, no list to maintain).
 from _metrics import *  # noqa: F401,F403
 
+# Canonical tool-output envelope — every --json path emits through this
+# (programmable + reproducible + consistent JSON across kaizen tools).
+import _envelope  # noqa: E402
+
+
+def _emit(data, *, verdict=None, counts=None):
+    """One-liner per subcommand. Always tool="kaizen-metrics"."""
+    _envelope.emit(
+        tool="kaizen-metrics", tool_version="1.0.0",
+        data=data, verdict=verdict, counts=counts, argv=sys.argv,
+    )
+
 
 # ─── CLI ─────────────────────────────────────────────────────────────
 
@@ -63,13 +75,13 @@ from _metrics import *  # noqa: F401,F403
 def _cmd_session(args) -> int:
     sid = args.sid or latest_session_id()
     if not sid:
-        print(json.dumps({"error": "no sessions found in trace"}))
+        _emit({"sid": None}, verdict=None, counts=None)
         return 0
     r = rollup_events(sid=sid)
     d = r.to_dict()
     d["sid"] = sid
     if args.json:
-        print(json.dumps(d, indent=2))
+        _emit(d)
         return 0
     _print_rollup(d, title=f"Session {sid[:12]}")
     return 0
@@ -80,7 +92,7 @@ def _cmd_lifetime(args) -> int:
     r = rollup_events(since=since)
     d = r.to_dict()
     if args.json:
-        print(json.dumps(d, indent=2))
+        _emit(d)
         return 0
     _print_rollup(d, title=f"Lifetime{(' since ' + args.since) if args.since else ''}")
     return 0
@@ -89,7 +101,11 @@ def _cmd_lifetime(args) -> int:
 def _cmd_never_used(args) -> int:
     result = never_used(args.kind)
     if args.json:
-        print(json.dumps(result, indent=2))
+        _emit(result, counts={
+            "available": result.get("available_count", result.get("expected_count", 0)),
+            "used": result["used_count"],
+            "never_used": len(result["never_used"]),
+        })
         return 0
     print(f"\n[kaizen-metrics never-used] kind={result['kind']}")
     print(f"  available: {result.get('available_count', result.get('expected_count', 0))}")
@@ -105,7 +121,8 @@ def _cmd_never_used(args) -> int:
 def _cmd_top(args) -> int:
     items = top_n(args.kind, args.n)
     if args.json:
-        print(json.dumps([{"name": n, "count": c} for n, c in items], indent=2))
+        _emit([{"name": n, "count": c} for n, c in items],
+              counts={"items": len(items)})
         return 0
     print(f"\n[kaizen-metrics top-{args.n}] kind={args.kind}")
     if not items:
@@ -117,15 +134,15 @@ def _cmd_top(args) -> int:
 
 
 def _cmd_path(args) -> int:
-    print(json.dumps({"trace_log": str(trace_log_path())}, indent=2))
+    _emit({"trace_log": str(trace_log_path())})
     return 0
 
 
 def _cmd_skips(args) -> int:
     skips = detect_skips(sid=args.sid)
     if args.json:
-        print(json.dumps({"sid": args.sid or latest_session_id(),
-                          "skips": skips}, indent=2))
+        _emit({"sid": args.sid or latest_session_id(), "skips": skips},
+              counts={"skips": len(skips)})
         return 0
     sid = args.sid or latest_session_id()
     print(f"\n[kaizen-metrics skips] session={sid}")

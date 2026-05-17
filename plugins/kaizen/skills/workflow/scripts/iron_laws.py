@@ -35,14 +35,13 @@ import codegen  # noqa: E402
 def _cmd_list(args) -> int:
     laws = list(_loader.load_laws())
     if getattr(args, "json", False):
-        env = _envelope_wrap(
+        _emit_envelope(
             data={"laws": laws},
             verdict=None,
             counts={"total": len(laws),
                     "auto": sum(1 for l in laws if l.get("enforcement") == "auto"),
                     "manual": sum(1 for l in laws if l.get("enforcement") == "manual")},
         )
-        print(env)
         return 0
     for law in laws:
         check = law.get("check", "—")
@@ -81,12 +80,11 @@ def _cmd_check(args) -> int:
         except (TypeError, ImportError):
             findings_data = [vars(f) for f in findings]
         verdict = "red" if hard else ("yellow" if soft else "green")
-        env = _envelope_wrap(
+        _emit_envelope(
             data={"scope": scope, "findings": findings_data},
             verdict=verdict,
             counts={"hard": hard, "soft": soft},
         )
-        print(env)
         return 1 if hard else 0
 
     if not findings:
@@ -129,25 +127,16 @@ def build_parser() -> argparse.ArgumentParser:
     return p
 
 
-def _envelope_wrap(*, data, verdict, counts) -> str:
-    """Thin wrapper around `_envelope.wrap + render`. Inline import keeps
-    the rest of the file dep-free for the text path."""
+def _emit_envelope(*, data, verdict, counts) -> None:
+    """Thin shim around `_envelope.emit()` — local convenience so the
+    `--json` call sites stay one-line. Inline import keeps the text
+    path dep-free."""
     sys.path.insert(0, str(Path(__file__).resolve().parent))
-    try:
-        import _envelope as _env  # type: ignore
-        return _env.render(_env.wrap(
-            tool="kaizen-iron-laws",
-            tool_version="1.0.0",
-            data=data,
-            verdict=verdict,
-            counts=counts,
-            argv=sys.argv,
-        ))
-    except ImportError:
-        # Fallback: bare JSON (no envelope) if helper missing
-        import json
-        return json.dumps({"data": data, "verdict": verdict,
-                           "counts": counts}, indent=2, sort_keys=True)
+    import _envelope  # peer module — must exist
+    _envelope.emit(
+        tool="kaizen-iron-laws", tool_version="1.0.0",
+        data=data, verdict=verdict, counts=counts, argv=sys.argv,
+    )
 
 
 def main(argv: list[str] | None = None) -> int:

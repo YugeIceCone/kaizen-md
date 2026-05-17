@@ -37,6 +37,18 @@ import re
 import sys
 from pathlib import Path
 
+# Canonical tool-output envelope — see assets/schemas/tool-output.schema.json
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _envelope  # noqa: E402
+
+
+def _emit_roadmap(data, *, verdict=None, counts=None) -> None:
+    """One-liner: tool="kaizen-roadmap", argv=sys.argv."""
+    _envelope.emit(
+        tool="kaizen-roadmap", tool_version="1.0.0",
+        data=data, verdict=verdict, counts=counts, argv=sys.argv,
+    )
+
 
 # ─── Constants ────────────────────────────────────────────────────────
 
@@ -284,6 +296,7 @@ def cmd_progress(args) -> int:
         sys.stderr.write("kaizen-roadmap: no handoff file found in plans/\n")
         return 1
     if args.json:
+        nxt = find_next_pending(phases)
         out = {
             "handoff": str(path),
             "phases": [
@@ -297,10 +310,13 @@ def cmd_progress(args) -> int:
                 }
                 for p in phases
             ],
-            "next": dataclasses.asdict(find_next_pending(phases))
-            if find_next_pending(phases) else None,
+            "next": dataclasses.asdict(nxt) if nxt else None,
         }
-        print(json.dumps(out, indent=2))
+        total_done = sum(p.done for p in phases)
+        total = sum(p.total for p in phases)
+        _emit_roadmap(out, counts={"phases": len(phases),
+                                    "items_done": total_done,
+                                    "items_total": total})
     else:
         print(render_dashboard(phases))
     return 0
@@ -314,12 +330,13 @@ def cmd_next(args) -> int:
     nxt = find_next_pending(phases)
     if nxt is None:
         if args.json:
-            print(json.dumps(None))
+            _emit_roadmap(None, verdict="green",
+                          counts={"pending": 0})
         else:
             print("(no pending items — all phases complete)")
         return 0
     if args.json:
-        print(json.dumps(dataclasses.asdict(nxt), indent=2))
+        _emit_roadmap(dataclasses.asdict(nxt), verdict="yellow")
     else:
         print(f"{nxt.item_id} — {nxt.title}")
     return 0
@@ -331,11 +348,11 @@ def cmd_phases(args) -> int:
         sys.stderr.write("kaizen-roadmap: no handoff file found\n")
         return 1
     if args.json:
-        print(json.dumps([
+        _emit_roadmap([
             {"number": p.number, "title": p.title,
              "done": p.done, "total": p.total}
             for p in phases
-        ], indent=2))
+        ], counts={"phases": len(phases)})
     else:
         for p in phases:
             print(f"Phase {p.number} — {p.title}: {p.done}/{p.total}")

@@ -134,6 +134,56 @@ def opt_in_json(argv: list[str]) -> bool:
     return "--json" in argv
 
 
+def emit(
+    tool: str,
+    data,
+    *,
+    tool_version: str | None = None,
+    verdict: str | None = None,
+    counts: dict[str, int] | None = None,
+    duration_ms: int | None = None,
+    argv: list[str] | None = None,
+    errors: list[str] | None = None,
+    include_time: bool = False,
+    indent: int = 2,
+    file=None,
+) -> None:
+    """One-liner replacement for the `--json` branch of CLI tools.
+
+    Equivalent to: `print(render(wrap(...)))` but consolidates the
+    8-line "try import / fallback to bare json.dumps" boilerplate that
+    early retrofits (gatekeeper, surface, iron-laws) duplicated.
+
+    Tools that support BOTH text + JSON output structure their main()
+    as:
+
+        if args.json:
+            _envelope.emit(tool="kaizen-foo", tool_version="1.0.0",
+                           data=data, verdict=verdict, counts=counts,
+                           argv=sys.argv)
+        else:
+            print(render_text(...))
+
+    Args mirror `wrap()` plus `indent` (render formatting) and `file`
+    (default stdout — pass sys.stderr or any file-like for redirection).
+    """
+    out = render(
+        wrap(
+            tool=tool,
+            data=data,
+            tool_version=tool_version,
+            verdict=verdict,
+            counts=counts,
+            duration_ms=duration_ms,
+            argv=argv,
+            errors=errors,
+            include_time=include_time,
+        ),
+        indent=indent,
+    )
+    print(out, file=file if file is not None else sys.stdout)
+
+
 if __name__ == "__main__":
     # Self-test: round-trip a sample envelope
     sample = wrap(

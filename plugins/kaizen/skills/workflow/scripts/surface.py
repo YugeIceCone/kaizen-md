@@ -345,32 +345,22 @@ def main(argv: list[str]) -> int:
 
     args = parser.parse_args(argv)
 
-    # Lazy import — _envelope.py is a sibling
     sys.path.insert(0, str(Path(__file__).resolve().parent))
-    try:
-        import _envelope as _env  # type: ignore
-    except ImportError:
-        _env = None  # graceful fallback to legacy JSON
+    import _envelope  # peer module — must exist
 
     if args.cmd == "list":
         servers = list_mcp_servers()
         hooks = list_hook_entries()
         if args.json:
-            data = {
-                "mcp_servers": [asdict(s) for s in servers],
-                "hooks": [asdict(h) for h in hooks],
-            }
-            if _env:
-                print(_env.render(_env.wrap(
-                    tool="kaizen-surface",
-                    tool_version="1.0.0",
-                    data=data,
-                    verdict=None,  # list isn't a verdict-producing op
-                    counts={"mcp_servers": len(servers), "hooks": len(hooks)},
-                    argv=argv,
-                )))
-            else:
-                print(json.dumps(data, indent=2))
+            _envelope.emit(
+                tool="kaizen-surface", tool_version="1.0.0",
+                data={
+                    "mcp_servers": [asdict(s) for s in servers],
+                    "hooks": [asdict(h) for h in hooks],
+                },
+                counts={"mcp_servers": len(servers), "hooks": len(hooks)},
+                argv=argv,
+            )
         else:
             print(render_list_text(servers, hooks, kind=args.kind))
         return 0
@@ -384,17 +374,11 @@ def main(argv: list[str]) -> int:
             verdict = "red" if counts.get("error") else (
                 "yellow" if counts.get("warn") else "green"
             )
-            if _env:
-                print(_env.render(_env.wrap(
-                    tool="kaizen-surface",
-                    tool_version="1.0.0",
-                    data={"findings": [asdict(f) for f in findings]},
-                    verdict=verdict,
-                    counts=counts,
-                    argv=argv,
-                )))
-            else:
-                print(json.dumps([asdict(f) for f in findings], indent=2))
+            _envelope.emit(
+                tool="kaizen-surface", tool_version="1.0.0",
+                data={"findings": [asdict(f) for f in findings]},
+                verdict=verdict, counts=counts, argv=argv,
+            )
         else:
             print(render_validate_text(findings))
         return 1 if any(f.severity == "error" for f in findings) else 0

@@ -5,6 +5,73 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [S
 
 ## [Unreleased]
 
+### Added — envelope expansion (+ DRY): `_envelope.emit()` + 2 more retrofitted tools (metrics, roadmap_status)
+
+Continues the canonical-envelope effort from the prior commit. Adds a one-liner `emit()` helper so callers replace 8-line `try/except + json.dumps fallback` blocks with a single function call. Refactors the 3 existing retrofits to use it (pure DRY win) + retrofits 2 more tools (metrics.py, roadmap_status.py).
+
+**DRY helper** (`_envelope.emit()`):
+
+```python
+# Before (3× duplicated across gatekeeper/surface/iron-laws):
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+try:
+    import _envelope as _env
+except ImportError:
+    _env = None
+
+if args.json:
+    if _env:
+        print(_env.render(_env.wrap(tool="kaizen-foo", ...)))
+    else:
+        print(json.dumps(data, indent=2))   # legacy fallback
+else:
+    print(text_render(...))
+
+# After:
+import _envelope
+if args.json:
+    _envelope.emit(tool="kaizen-foo", data=data, verdict=verdict,
+                   counts=counts, argv=sys.argv)
+else:
+    print(text_render(...))
+```
+
+Dropped the defensive `try/except ImportError` fallback. `_envelope.py` is a peer module — if it's missing the whole plugin is broken; failing loudly is correct.
+
+**Refactored to use `emit()`** (DRY — no behavior change):
+- `gatekeeper.py::render_json` — 30 LOC → 12 LOC
+- `surface.py` — both `list` and `validate` arms simplified
+- `iron_laws.py::_envelope_wrap` (returns string) → `_emit_envelope` (prints directly)
+
+**Newly retrofitted**:
+- **`metrics.py`** — 6 emit sites across `session` / `lifetime` / `never-used` / `top` / `path` / `skips`. Each now emits the envelope with appropriate counts (e.g. `never-used` → `{available, used, never_used}` counts; `top` → `{items}` count). Inline `_emit()` helper to keep call sites one-line.
+- **`roadmap_status.py`** — 4 emit sites across `progress` / `next` / `next` (no-pending case) / `phases`. Each verdict-aware: `progress` no verdict, `next` → `yellow` when pending / `green` when done.
+
+**Tests**: `_RETROFIT_TOOLS` in `test_envelope.py` extended from 5 → 8 tool surfaces (added `metrics session`, `metrics top`, `metrics path`). The parameterized `test_all_retrofit_tools` now validates all 8 against the canonical schema in one run. `roadmap_status` excluded from default validation (needs a handoff fixture in `plans/`); manually smoke-tested.
+
+**Aggregate retrofit progress**:
+
+| Surface | Before this commit | After this commit |
+|---|---|---|
+| Tool surfaces emitting envelope | 5 (gatekeeper + surface×2 + iron-laws×2) | 8 (+ metrics×3) |
+| Schema-validated test coverage | 5 | 8 |
+| Total `--json` flag additions | iron-laws (was text-only) | metrics already had it; roadmap_status already had it |
+
+**LOC delta**:
+- `_envelope.py`: +50 (new `emit()` function with docstring)
+- `gatekeeper.py`: −18 (DRY refactor)
+- `surface.py`: −18 (DRY refactor)
+- `iron_laws.py`: −7 (DRY refactor)
+- `metrics.py`: +13 (retrofit + helper)
+- `roadmap_status.py`: +12 (retrofit + helper)
+- Net: +32 LOC, +3 tool surfaces wrapped in canonical envelope
+
+**Validation**:
+- 8/8 envelope tests pass (parameterized test now exercises 8 tool surfaces)
+- All cross-tool tests pass (29 across envelope + gatekeeper + surface)
+- plugin-development validator: 52/52 features clean
+- metrics + roadmap_status smoke: both emit valid envelopes
+
 ### Added — canonical tool-output envelope: programmable + reproducible + consistent JSON across tools
 
 Every kaizen CLI with `--json` now emits through the same envelope shape so agents (and CI / pipes) consume them with one parser instead of N. Schema-validated, deterministically rendered, reproducible across runs.
