@@ -26,38 +26,39 @@ DETECT="$PLUGIN_ROOT/skills/workflow/scripts/detect_stack.py"
 # Resolve repo root (where .agents/ lives). Skip silently if we're
 # not inside a project (no git, no manifest).
 REPO=$(git rev-parse --show-toplevel 2>/dev/null) || REPO="$(pwd)"
-ARTIFACT="$REPO/.agents/stack-context.md"
+# JSON is the system of record; .md is the derived view. We inject
+# the markdown (denser, agent-friendlier than raw JSON) but persist
+# both files.
+JSON_ARTIFACT="$REPO/.agents/stack-context.json"
+MD_ARTIFACT="$REPO/.agents/stack-context.md"
 
-# Regen if missing or stale (>30 days). The `scan` subcommand
-# self-short-circuits when fresh, so this is just a forced run on
-# absence to ensure the artifact exists.
-if [ ! -f "$ARTIFACT" ]; then
+# Regen if JSON is missing or stale (>30 days).
+if [ ! -f "$JSON_ARTIFACT" ]; then
     cd "$REPO" && python3 "$DETECT" scan >/dev/null 2>&1 || {
-        # Detection bailed (no manifests, no source files). Silent exit.
         echo '{}'
         exit 0
     }
 fi
 
-if [ ! -f "$ARTIFACT" ]; then
+if [ ! -f "$JSON_ARTIFACT" ]; then
     echo '{}'
     exit 0
 fi
 
-# Inject artifact contents as additionalContext. Bounded to ~4KB
-# (the typical artifact is well under) so we don't bloat the prompt.
-python3 - "$ARTIFACT" <<'PYEOF'
+# Inject the markdown view as additionalContext. Bounded to ~4KB.
+python3 - "$MD_ARTIFACT" "$JSON_ARTIFACT" <<'PYEOF'
 import json, sys
 from pathlib import Path
-p = Path(sys.argv[1])
-body = p.read_text(encoding="utf-8", errors="ignore")
+md_path, json_path = Path(sys.argv[1]), Path(sys.argv[2])
+body = md_path.read_text(encoding="utf-8", errors="ignore") if md_path.is_file() else json_path.read_text(encoding="utf-8", errors="ignore")
 if len(body) > 4096:
     body = body[:4093] + "..."
 print(json.dumps({
     "additionalContext": (
-        f"## Detected stack ({p})\n\n"
+        f"## Detected stack ({md_path})\n\n"
         f"{body}\n"
         f"\n(Auto-injected by session-start-detect-stack hook. "
+        f"Schema-validated source: `{json_path.name}`. "
         f"Disable: KAIZEN_DETECT_STACK_DISABLE=1)"
     )
 }))

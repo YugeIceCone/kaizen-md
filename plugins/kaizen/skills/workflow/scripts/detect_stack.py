@@ -131,8 +131,20 @@ def _project_root(start: Optional[Path] = None) -> Path:
     return cwd
 
 
-def _output_path(root: Optional[Path] = None) -> Path:
+def _output_path_json(root: Optional[Path] = None) -> Path:
+    """Primary output — schema-validated JSON. System of record."""
+    return (root or _project_root()) / ".agents" / "stack-context.json"
+
+
+def _output_path_md(root: Optional[Path] = None) -> Path:
+    """Derived view — markdown rendered from the JSON. Human-readable
+    + back-compat with the original .md-only artifact path."""
     return (root or _project_root()) / ".agents" / "stack-context.md"
+
+
+# Back-compat shim: tests + callers that used _output_path get the JSON.
+def _output_path(root: Optional[Path] = None) -> Path:
+    return _output_path_json(root)
 
 
 # ─── Walkers + counters ──────────────────────────────────────────────
@@ -269,56 +281,98 @@ _SNIFFERS = {
 # ─── Render ──────────────────────────────────────────────────────────
 
 
-def _render(root: Path, lang_counts: Counter, manifests: list,
-             ci: list[str], conventions: list[str],
-             sniffed: dict) -> str:
+def _build_record(root: Path, lang_counts: Counter, manifests: list,
+                    ci: list[str], conventions: list[str],
+                    sniffed: dict) -> dict:
+    """Build the schema-validated dict — the system of record. The
+    markdown view is derived from this."""
     primary = lang_counts.most_common(1)[0][0] if lang_counts else "Unknown"
     secondary = [(l, n) for l, n in lang_counts.most_common(4) if l != primary]
 
+    lang_version = None
+    if sniffed.get("edition"):
+        lang_version = f"Edition {sniffed['edition']}"
+    elif sniffed.get("go_version"):
+        lang_version = f"go {sniffed['go_version']}"
+
+    lint_field = sniffed.get("lint", [])
+    if isinstance(lint_field, str):
+        lint_field = [lint_field]
+
+    return {
+        "schema_version": 1,
+        "generated":      _dt.date.today().isoformat(),
+        "tool":           "kaizen-detect-stack",
+        "root":           str(root),
+        "stack": {
+            "primary_language": primary,
+            "language_version": lang_version,
+            "frameworks":       sniffed.get("frameworks", []),
+            "build_cmd":        sniffed.get("build"),
+            "test_cmd":         sniffed.get("test"),
+            "lint":             lint_field,
+        },
+        "secondary_languages": [
+            {"language": l, "file_count": n} for l, n in secondary
+        ],
+        "manifests": [
+            {"name": name, "language": lang, "path": str(path)}
+            for name, lang, path in manifests
+        ],
+        "ci_systems":       ci,
+        "convention_files": conventions,
+    }
+
+
+def _render_md(rec: dict) -> str:
+    """Render the JSON record as markdown — same shape the original
+    .md artifact had, for human reading + back-compat with consumers
+    that grep .md."""
+    s = rec["stack"]
     lines = ["# Stack Context", ""]
-    lines.append(f"Generated: {_dt.date.today().isoformat()}")
+    lines.append(f"Generated: {rec['generated']}")
     lines.append("")
     lines.append("## Stack")
-    lines.append(f"- **Language**: {primary}"
-                 + (f" (Edition {sniffed.get('edition')})" if sniffed.get('edition')
-                    else (f" (v{sniffed.get('go_version')})" if sniffed.get('go_version')
-                          else "")))
-    if sniffed.get("frameworks"):
-        lines.append(f"- **Framework**: {', '.join(sniffed['frameworks'])}")
-    if sniffed.get("build"):
-        lines.append(f"- **Build**: `{sniffed['build']}`")
-    if sniffed.get("test"):
-        lines.append(f"- **Test**: `{sniffed['test']}`")
-    if sniffed.get("lint"):
-        lints = sniffed["lint"] if isinstance(sniffed["lint"], list) else [sniffed["lint"]]
-        lines.append(f"- **Lint**: {', '.join(lints)} [CI gate: {('yes' if ci else 'unknown')}]")
+    suffix = f" ({s['language_version']})" if s.get("language_version") else ""
+    lines.append(f"- **Language**: {s['primary_language']}{suffix}")
+    if s.get("frameworks"):
+        lines.append(f"- **Framework**: {', '.join(s['frameworks'])}")
+    if s.get("build_cmd"):
+        lines.append(f"- **Build**: `{s['build_cmd']}`")
+    if s.get("test_cmd"):
+        lines.append(f"- **Test**: `{s['test_cmd']}`")
+    if s.get("lint"):
+        ci_gate = "yes" if rec.get("ci_systems") else "unknown"
+        lines.append(f"- **Lint**: {', '.join(s['lint'])} [CI gate: {ci_gate}]")
     lines.append("")
 
-    if secondary:
+    if rec.get("secondary_languages"):
         lines.append("## Secondary Languages")
-        for l, n in secondary:
-            lines.append(f"- {l} ({n} files)")
+        for sl in rec["secondary_languages"]:
+            lines.append(f"- {sl['language']} ({sl['file_count']} files)")
         lines.append("")
 
-    lines.append("## Detected manifests")
-    for name, lang, _ in manifests:
-        lines.append(f"- `{name}` → {lang}")
-    lines.append("")
+    if rec.get("manifests"):
+        lines.append("## Detected manifests")
+        for m in rec["manifests"]:
+            lines.append(f"- `{m['name']}` → {m['language']}")
+        lines.append("")
 
-    if ci:
+    if rec.get("ci_systems"):
         lines.append("## CI Systems")
-        for c in ci:
+        for c in rec["ci_systems"]:
             lines.append(f"- {c}")
         lines.append("")
 
-    if conventions:
+    if rec.get("convention_files"):
         lines.append("## Convention files present")
-        for c in conventions:
+        for c in rec["convention_files"]:
             lines.append(f"- `{c}`")
         lines.append("")
 
     lines.append(("---\n"
                   "Mechanically generated by `kaizen-detect-stack scan`. "
+                  "Schema-validated source: `stack-context.json`. "
                   "For nuanced conventions/CI-gate analysis, load the "
                   "`kaizen:detect-stack` skill and let the agent enrich this file."))
     return "\n".join(lines) + "\n"
@@ -339,14 +393,15 @@ def _is_stale(p: Path, max_days: int = 30) -> bool:
 
 def cmd_scan(args) -> int:
     root = _project_root()
-    out_path = Path(args.out) if args.out else _output_path(root)
+    json_path = Path(args.out) if args.out else _output_path_json(root)
+    md_path = json_path.with_suffix(".md")
 
-    if not args.force and not _is_stale(out_path, max_days=args.max_days):
+    if not args.force and not _is_stale(json_path, max_days=args.max_days):
         if args.json:
-            print(json.dumps({"skipped": True, "path": str(out_path),
+            print(json.dumps({"skipped": True, "path": str(json_path),
                                 "reason": "fresh"}))
         else:
-            print(f"[detect-stack] skipped — {out_path} is fresh "
+            print(f"[detect-stack] skipped — {json_path} is fresh "
                   f"(< {args.max_days} days). Use --force to regenerate.")
         return 0
 
@@ -359,27 +414,34 @@ def cmd_scan(args) -> int:
     for name, _, path in manifests:
         if name in _SNIFFERS:
             sniffed.update(_SNIFFERS[name](_read_safe(path)))
-            break  # first matching manifest wins (per the skill spec)
+            break
 
-    body = _render(root, lang_counts, manifests, ci, conventions, sniffed)
-    out_path.parent.mkdir(parents=True, exist_ok=True)
-    out_path.write_text(body, encoding="utf-8")
+    record = _build_record(root, lang_counts, manifests, ci, conventions, sniffed)
+    json_body = json.dumps(record, indent=2) + "\n"
+    md_body = _render_md(record)
+
+    json_path.parent.mkdir(parents=True, exist_ok=True)
+    json_path.write_text(json_body, encoding="utf-8")
+    md_path.write_text(md_body, encoding="utf-8")
 
     if args.json:
         print(json.dumps({
-            "path":      str(out_path),
-            "bytes":     len(body),
-            "primary":   lang_counts.most_common(1)[0][0] if lang_counts else None,
-            "manifests": [m[0] for m in manifests],
-            "ci":        ci,
+            "json_path": str(json_path),
+            "md_path":   str(md_path),
+            "json_bytes": len(json_body),
+            "primary":   record["stack"]["primary_language"],
+            "manifests": [m["name"] for m in record["manifests"]],
+            "ci":        record["ci_systems"],
         }))
     else:
-        print(f"[detect-stack] wrote {out_path} ({len(body)} bytes)")
+        print(f"[detect-stack] wrote {json_path} ({len(json_body)}b JSON) "
+              f"+ {md_path} ({len(md_body)}b md)")
     return 0
 
 
 def cmd_show(args) -> int:
-    p = _output_path()
+    """Print the JSON artifact by default; --md prints the markdown view."""
+    p = _output_path_md() if args.md else _output_path_json()
     if not p.is_file():
         sys.stderr.write(f"[detect-stack] no artifact at {p} — run scan first\n")
         return 1
@@ -412,7 +474,9 @@ def main(argv=None) -> int:
     sc.add_argument("--json", action="store_true")
     sc.set_defaults(func=cmd_scan)
 
-    sh = sub.add_parser("show", help="print existing artifact")
+    sh = sub.add_parser("show", help="print existing artifact (JSON by default; --md for markdown view)")
+    sh.add_argument("--md", action="store_true",
+                     help="print the markdown view instead of the JSON record")
     sh.set_defaults(func=cmd_show)
 
     ph = sub.add_parser("path", help="print resolved output path")

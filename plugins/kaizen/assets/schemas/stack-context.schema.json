@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/YugeIceCone/kaizen-md/assets/schemas/stack-context.schema.json",
+  "title": "kaizen detect-stack artifact",
+  "description": "Schema for `<repo>/.agents/stack-context.{json,md}` — mechanical stack detection output. JSON is the system of record; markdown is a derived human-readable view. Consumed by SessionStart hook to auto-inject stack into agent context.",
+  "type": "object",
+  "required": ["schema_version", "generated", "stack"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "const": 1,
+      "description": "Bump on breaking shape changes."
+    },
+    "generated": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
+      "description": "ISO date the artifact was generated (YYYY-MM-DD)."
+    },
+    "tool": {
+      "type": "string",
+      "description": "Generator id (e.g. 'kaizen-detect-stack')."
+    },
+    "root": {
+      "type": "string",
+      "description": "Absolute path of the project root detected."
+    },
+    "stack": {
+      "type": "object",
+      "required": ["primary_language"],
+      "additionalProperties": false,
+      "properties": {
+        "primary_language": { "type": "string" },
+        "language_version": {
+          "type": ["string", "null"],
+          "description": "Edition / runtime version when pinned by manifest (e.g. 'Edition 2021', 'go 1.21', 'Python 3.11')."
+        },
+        "frameworks": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Detected from the primary manifest's dependency block. Bounded to top-5."
+        },
+        "build_cmd": { "type": ["string", "null"] },
+        "test_cmd":  { "type": ["string", "null"] },
+        "lint":      {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Linter names detected (ruff/clippy/eslint/etc.)."
+        }
+      }
+    },
+    "secondary_languages": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["language", "file_count"],
+        "additionalProperties": false,
+        "properties": {
+          "language":   { "type": "string" },
+          "file_count": { "type": "integer", "minimum": 1 }
+        }
+      }
+    },
+    "manifests": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "language"],
+        "additionalProperties": false,
+        "properties": {
+          "name":     { "type": "string" },
+          "language": { "type": "string" },
+          "path":     { "type": "string" }
+        }
+      }
+    },
+    "ci_systems": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Detected CI systems (GitHub Actions / GitLab CI / etc.)."
+    },
+    "convention_files": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Project-convention files present (CLAUDE.md / AGENTS.md / CONTRIBUTING.md / etc.)."
+    }
+  }
+}
