@@ -16,5 +16,6 @@ Safe transitions between layouts. **Default is dry-run.** Pass `--execute` to ap
 - `retire-marketplace <name>` → print instructions (no auto-uninstall)
 - `convert-backlog <md-path> [--execute]` → parse hand-written BACKLOG.md → JSON items
 - `migrate-backlog-to-workflow [--execute]` → root BACKLOG.md → `.workflow/backlog.{json,md}`
+- `paths [--execute]` → pre-v1.22 path restructure (idempotent). Old `/kaizen:migrate-paths` is now a deprecated alias for this.
 
 Move-not-rm. Plugin uninstall is manual via `/plugin uninstall`.

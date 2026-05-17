@@ -288,8 +288,14 @@ case "$cmd" in
     retire-marketplace)            retire_marketplace "$@" ;;
     convert-backlog)               convert_backlog "$@" ;;
     migrate-backlog-to-workflow)   migrate_backlog_to_workflow "$@" ;;
+    paths)
+        # Pre-v1.22 path-restructure migrator; delegate to sibling script.
+        # Kept here as a subcommand so `kaizen migrate` is the single
+        # entry point — the old `/kaizen:migrate-paths` slash command is
+        # a deprecated alias that dispatches here.
+        exec "$_SCRIPT_REAL_DIR/migrate_paths.sh" "$@" ;;
     -h|--help)
-        echo "Usage: migrate.sh {scan|retire-loose-skill|retire-marketplace|convert-backlog|migrate-backlog-to-workflow}"
+        echo "Usage: migrate.sh {scan|retire-loose-skill|retire-marketplace|convert-backlog|migrate-backlog-to-workflow|paths}"
         ;;
     *)
         echo "migrate: unknown subcommand '$cmd'" >&2; exit 2 ;;

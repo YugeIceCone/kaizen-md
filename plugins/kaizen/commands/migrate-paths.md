@@ -1,13 +1,15 @@
 ---
 name: migrate-paths
-description: Migrate kaizen's pre-v1.22 scattered state into the unified ~/.claude/.kaizen/ layout (user-global) and <repo>/.kaizen/workflow/ (project-side). Idempotent — already-migrated paths are no-ops. Auto-invoked by /kaizen:setup and /kaizen:setup --enable-all so most users never need to run this directly.
+description: "DEPRECATED ALIAS — use `/kaizen:migrate paths` instead. Migrate kaizen's pre-v1.22 scattered state into the unified ~/.claude/.kaizen/ layout (user-global) and <repo>/.kaizen/workflow/ (project-side). Idempotent. Aliased here for back-compat; the canonical entry point is now `migrate paths` (single parent for all migration ops)."
 ---
 
-# kaizen migrate-paths
+# kaizen migrate-paths (deprecated alias)
 
-One-shot mover from the v1.21-and-earlier scatter to the v1.22.0+ unified layout.
+**Use `/kaizen:migrate paths` instead.** This command remains as a
+thin alias dispatching the same `migrate_paths.sh` script under the
+`migrate` parent so existing muscle-memory keeps working.
 
-!`bash ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/migrate_paths.sh ${ARGUMENTS}`
+!`bash ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/migrate.sh paths ${ARGUMENTS}`
 
 ## What it moves
 
