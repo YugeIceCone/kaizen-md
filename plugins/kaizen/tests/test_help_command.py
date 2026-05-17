@@ -61,10 +61,19 @@ class TestBodyContent(unittest.TestCase):
                          "/kaizen:status", "/kaizen:menu"):
             self.assertIn(pointer, self.body, f"missing pointer: {pointer}")
 
-    def test_under_50_lines(self):
-        """Single-screen budget — full taxonomy should fit on one screen."""
-        self.assertLess(self.body.count("\n"), 60,
-                         "help body should be one-screen (~30-50 lines)")
+    def test_under_120_lines(self):
+        """Body budget — tight per-command descriptions but bounded."""
+        self.assertLess(self.body.count("\n"), 120,
+                         "help body should be precise+concise (~100 lines max)")
+
+    def test_each_command_has_description(self):
+        """Per-command row format: `command` | description.
+        Spot-check a few clusters to ensure descriptions are present."""
+        for cmd in ("audit", "gatekeeper", "brain", "backlog",
+                     "setup", "onboard", "rule"):
+            # row format: `cmd` | <description>
+            self.assertRegex(self.body, rf"`{cmd}`\s*\|",
+                              f"missing per-command row for {cmd}")
 
 
 if __name__ == "__main__":
