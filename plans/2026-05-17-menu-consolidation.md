@@ -202,7 +202,7 @@ Backs to `/kaizen:onboard`, `/kaizen:knowledge`, `/kaizen:claude-docs`,
 
 ### Phases (1 commit per phase)
 
-- [ ] **P1**: Extend `/kaizen:setup` menu (be7638b) — add Q1 master
+- [x] **P1**: Extend `/kaizen:setup` menu (be7638b) — add Q1 master
    action picker + branch into existing 4-question custom flow + add
    detect-stack-driven defaults path. Update tests.
 - [ ] **P2**: New `/kaizen:workflow` slash command (4 questions:

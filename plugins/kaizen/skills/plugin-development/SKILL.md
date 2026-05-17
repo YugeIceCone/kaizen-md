@@ -251,6 +251,105 @@ Shebang script with `# /// script` dep block:
 - Always `exit 0` at the bottom — hooks blocking the session is a
   failure mode
 
+### Slash command body — interactive menu (AskUserQuestion)
+
+When a slash command exposes a user-facing menu (no-args → wizard
+mode), the body in `commands/<feature>.md` is **instructional** — the
+agent runs the AskUserQuestion calls; the body documents the questions,
+options, and arg-assembly rules. The backing script (`<feature>.sh` /
+`<feature>.py`) stays unchanged; the menu is purely a slash-body
+concern.
+
+**Tool contract limits** (from the AskUserQuestion schema):
+
+- **≤4 options per question.** Hard limit. A 5+ option picker becomes
+  a 2-level routing: master picker (≤4 buckets) → per-bucket follow-up.
+- **≤4 questions per AskUserQuestion call.** Independent questions
+  can batch in one call; branched questions (where Q2 depends on Q1's
+  answer) need separate sequential calls — the agent runs Q1 in one
+  call, then picks the follow-up question set from the answer and
+  fires a second call.
+
+**Frontmatter wiring (required for menus):**
+
+```yaml
+---
+name: <feature>
+description: "... super-menu ... triggers on ..."
+argument-hint: "(empty = interactive menu) | [sub ...] [--flag ...]"
+allowed-tools: [
+  "AskUserQuestion",
+  "Bash(bash ${CLAUDE_PLUGIN_ROOT}/.../<feature>.sh:*)"
+]
+---
+```
+
+`AskUserQuestion` MUST be declared in `allowed-tools` or the menu
+fails silently. Always document `argument-hint: "(empty = interactive
+menu) ..."` so the help surface signals the no-args wizard mode.
+
+**Document each question as a fenced block** so the menu-lint can
+parse them and the test can pin them:
+
+````markdown
+### Question 1 — top-level action
+
+```
+question:    "What do you want to do?"
+header:      "Action"
+multiSelect: false
+options:
+  - label: "Install"
+    description: "..."
+  - label: "Uninstall"
+    description: "..."
+```
+
+Routing:
+
+- **Install** → Q2 (install-mode picker)
+- **Uninstall** → Q-Uninstall (dry-run yes/no)
+````
+
+**Arg-assembly table** — maps each answer to a CLI flag, so the
+agent assembles deterministically and the test pins each mapping:
+
+```markdown
+| Q3 multi-select pick | Flag appended (per pick)        |
+|----------------------|---------------------------------|
+| Semantic indexes     | `--with-index`                  |
+| Playwright browser   | `--with-browser`                |
+```
+
+**Branched menus** — when Q1 picks the master action and Q2+ depends
+on it, document each branch under its own `### Question N (path)` so
+the lint can group them and the test can assert per-path question
+counts. Each branch's chain still respects the 4-question-per-call
+ceiling (split into multiple AskUserQuestion calls if needed).
+
+**Re-invoke pattern** — after assembly, the agent re-fires the slash
+with the resolved args (`/kaizen:<feature> install --with-index`). The
+top-of-file `!` exec block then dispatches the backing script with
+the assembled flags. For branches that map to sibling slashes (e.g.
+the Maintenance branch in `/kaizen:setup` dispatching `/kaizen:hygiene`),
+the agent invokes the sibling slash directly — don't grow the backing
+script into a sibling-dispatcher.
+
+**Reference implementations** (read these before authoring a new menu):
+
+- `commands/setup.md` — branched super-menu (master action picker →
+  install / uninstall / health / maintenance flows; detect-stack-driven
+  Default mode; multi-call routing).
+- `commands/session-mode.md` — flat menu (single AskUserQuestion call,
+  4 questions, persists to JSON state file).
+- `commands/audit/axis.md` — multiSelect-only checklist (one question,
+  one call).
+
+**Tests** for menu commands live at `tests/test_<feature>_menu.py` and
+pin: frontmatter has `AskUserQuestion` in `allowed-tools`, every
+documented `### Question N` block parses, every arg-assembly table row
+maps to a real backing flag.
+
 ---
 
 ## Part 3 — Schema-driven domain/yaml pattern

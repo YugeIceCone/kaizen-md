@@ -62,7 +62,7 @@ generated from `commands/*.md` frontmatter via `kaizen-help-gen`.
 
 | Command | Does |
 |---|---|
-| `setup` | Unified kaizen setup. No-args → interactive QA menu (4 AskUserQuestion steps). Wit |
+| `setup` | Unified kaizen setup. No-args → interactive QA super-menu (master action picker →  |
 | `bootstrap` | Provision the kaizen plugin's uv-managed Python surface — verifies uv is installed |
 | `update` | Single-command kaizen maintenance — `git pull` the marketplace, refresh Claude Cod |
 | `daemon` | Manage the kaizen auto-daemon — cron-driven worker that hash-compares source↔cache |

@@ -9,6 +9,16 @@
 # Flags --enable-all / --with-* / --no-* route to enable_all.sh (curated
 # project + global stack).
 #
+# Super-menu (P1, v1.40+): commands/setup.md's empty-args interactive
+# flow routes the user through a master action picker (Install / Uninstall
+# / Health / Maintenance) → branched sub-flows. The agent assembles flags
+# and re-invokes this script with the resolved args; setup.sh itself does
+# NOT own the menu — only the install / uninstall / cache surface. The
+# menu's "Default" mode pre-fills add-on flags from detect-stack output;
+# "Reconfigure" is an idempotent re-run of install with new flags;
+# "Maintenance" dispatches to sibling slashes (/kaizen:hygiene,
+# /kaizen:update, /kaizen:backup) rather than wrapping them here.
+#
 # Does (install path):
 #   1. mkdir .kaizen/hooks/
 #   2. symlink .kaizen/hooks/pre-commit → skill's pre-commit.sh
