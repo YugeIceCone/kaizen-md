@@ -1,8 +1,8 @@
 ---
 name: workflow
-description: "Persist + read the workflow-shape DEFAULTS for this project (or globally): scope / run-mode / disciplines / auto-handoff threshold. Sister to /kaizen:session-mode — session-mode captures the CURRENT session's intake; this captures the persistent DEFAULTS future sessions start from. No-args → 4-question AskUserQuestion wizard. With-args → direct dispatch to `kaizen-workflow-config`. Triggers on \"set workflow defaults\", \"configure workflow\", \"workflow shape\", \"persistent disciplines\", \"workflow menu\"."
+description: "Unified workflow-shape config — scope / run-mode / disciplines / auto-handoff threshold. Persistent (project / user-global) or ephemeral (this-session-only). Folds the retired /kaizen:session-mode slash into a single tool: session = ephemeral per session; project = persistent in repo; global = persistent across all projects. No-args → 4-question AskUserQuestion wizard. With-args → direct dispatch. Triggers on \"set session mode\", \"start loop\", \"start workflow\", \"choose disciplines\", \"set workflow defaults\", \"configure workflow\", \"workflow shape\", \"persistent disciplines\", \"workflow menu\"."
 argument-hint: "(empty = interactive 4-Q wizard) | [set|get|show|path|reset ...]"
-allowed-tools: ["AskUserQuestion", "Bash(${CLAUDE_PLUGIN_ROOT}/bin/kaizen-workflow-config:*)", "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/workflow_config.py:*)"]
+allowed-tools: ["AskUserQuestion", "Bash(${CLAUDE_PLUGIN_ROOT}/bin/kaizen-workflow-config:*)", "Bash(${CLAUDE_PLUGIN_ROOT}/bin/kaizen-session-mode:*)", "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/workflow_config.py:*)"]
 ---
 
 # /kaizen:workflow — persistent workflow-shape defaults
@@ -32,15 +32,28 @@ questions fit in a single AskUserQuestion call (within the
 ### Question 1 — scope
 
 ```
-question:    "Persist these defaults at which scope?"
+question:    "Apply these workflow defaults at which scope?"
 header:      "Scope"
 multiSelect: false
 options:
+  - label: "This session only (.kaizen/session-mode.json)"
+    description: "Ephemeral — applies just to the current session; resets at session boundary. Folds the retired /kaizen:session-mode slash."
   - label: "This project (.kaizen/workflow.json)"
-    description: "Lives in the repo. Commit it to share with the team."
+    description: "Persistent — lives in the repo. Commit it to share with the team."
   - label: "User-global (~/.claude/.kaizen/workflow-global.json)"
-    description: "Applies across every project for this user. Project file overrides it."
+    description: "Persistent across every project for this user. Project file overrides it."
 ```
+
+When Q1 picks **This session only**, the agent dispatches
+`kaizen-session-mode set <mode> --skills <comma-sep>
+--threshold <N|disabled>` instead of `kaizen-workflow-config set` —
+the file format + consumer hooks (`auto-handoff.sh`,
+`userprompt-skills-reminder.sh`, `session-intake.sh`) all read from
+`.kaizen/session-mode.json`, so the session scope intentionally uses
+the session-mode storage rather than workflow-config's JSON.
+
+The two remaining persistent scopes (project / global) use
+`kaizen-workflow-config set --scope <project|global>` as before.
 
 ### Question 2 — run mode
 
@@ -109,7 +122,22 @@ options:
 ### Arg assembly
 
 After all four answers (plus optional loop sub-wizard from P3 when
-Q2=Loop), assemble:
+Q2=Loop), pick the dispatcher based on Q1.
+
+**Session scope (Q1 = "This session only")** — dispatch `kaizen-session-mode`:
+
+```bash
+kaizen-session-mode set <Q2-mode> \
+    --skills <expanded Q3>          # comma-sep discipline tags
+    --threshold <Q4>                # 25 | 50 | 75 | 85 | disabled
+```
+
+`<Q2-mode>` maps as: Routine → `workflow`, Loop → `loop`, Schema → `workflow`
+(session-mode's `mode` field only knows `loop` / `workflow` / `neither`;
+schema-flavored runs surface as `workflow`).
+
+**Project / global scope (Q1 = "This project" or "User-global")** —
+dispatch `kaizen-workflow-config`:
 
 ```bash
 kaizen-workflow-config set \
@@ -138,20 +166,30 @@ Then re-invoke: `/kaizen:workflow show` to confirm the persisted state.
 | `/kaizen:workflow path [--scope ...]` | Print the JSON file location. |
 | `/kaizen:workflow reset [--scope ...] [--yes]` | Delete the file. Default dry-run. |
 
-## Relationship to /kaizen:session-mode
+## Folded surface — what happened to /kaizen:session-mode
 
-| Concern | `/kaizen:session-mode` | `/kaizen:workflow` |
-|---|---|---|
-| **Scope** | Current session only | Persists across sessions |
-| **Storage** | `.kaizen/session-mode.json` (per session id) | `.kaizen/workflow.json` (project) OR `workflow-global.json` (user) |
-| **Lifetime** | Reset at session boundary | Until manually changed |
-| **Purpose** | "What disciplines apply RIGHT NOW" | "What this project defaults to" |
-| **Consumer** | per-prompt hook, auto-handoff hook | session-intake pre-fill + downstream hooks when no session-mode is set |
+**Retired.** `/kaizen:session-mode` was a separate slash for ephemeral
+per-session disciplines + mode + threshold. Its functionality folded
+into `/kaizen:workflow` Q1 scope = "This session only". One slash, three
+scopes (session / project / global), one mental model.
 
-The two are designed to compose: workflow.json sets the project's
-defaults; session-mode lets the user override for a single session
-without mutating the durable file. SessionStart QA reads workflow.json
-as the pre-fill source for its questions when present.
+The underlying storage + bin + python module (`session_mode.py`,
+`kaizen-session-mode`, `.kaizen/session-mode.json`) all stay — they're
+the back-end implementation of the session scope (and consumed directly
+by `auto-handoff.sh`, `userprompt-skills-reminder.sh`, and
+`session-intake.sh`). Only the slash retires.
+
+**Scope comparison:**
+
+| Scope            | Storage                                          | Lifetime         | Dispatcher                              |
+|------------------|--------------------------------------------------|------------------|-----------------------------------------|
+| Session only     | `.kaizen/session-mode.json`                      | Per session      | `kaizen-session-mode set ...`           |
+| This project     | `.kaizen/workflow.json`                          | Until changed    | `kaizen-workflow-config set --scope project ...` |
+| User-global      | `~/.claude/.kaizen/workflow-global.json`         | Until changed    | `kaizen-workflow-config set --scope global ...`  |
+
+Persistent scopes act as pre-fill sources for the SessionStart QA;
+session scope overrides them for a single session without mutating
+the durable files.
 
 ## Schema
 

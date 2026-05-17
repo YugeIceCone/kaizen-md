@@ -114,14 +114,16 @@ intents:
 
   # ─── Mode / intake intents ───────────────────────────────────────
   #
-  # User is gesturing toward a session mode. Surface /kaizen:session-mode so
-  # they can record the choice + pick disciplines once, instead of
+  # User is gesturing toward a session shape. Surface /kaizen:workflow
+  # so they can record the choice + pick disciplines once, instead of
   # the agent having to re-derive the right shape each turn. Three
   # rules: explicit loop intent, explicit workflow intent, and a
-  # generic "set up the session" catch-all.
+  # generic "set up the session" catch-all. All three pick the
+  # session-scope branch of /kaizen:workflow — Q1 = "This session only"
+  # (the folded /kaizen:session-mode replacement).
 
   - id: start-loop
-    description: User wants iterative self-correcting work — suggest /kaizen:session-mode loop.
+    description: User wants iterative self-correcting work — suggest /kaizen:workflow session-scope=loop.
     triggers:
       - { kind: phrase, pattern: "(iterate|loop) on (this|that|it)", case_insensitive: true }
       - { kind: phrase, pattern: "(use|start|run) (a |the )?(ralph[- ]?)?loop", case_insensitive: true }
@@ -130,12 +132,12 @@ intents:
       - { kind: phrase, pattern: "(keep|continue) (trying|working|going) until", case_insensitive: true }
       - { kind: phrase, pattern: "(iterate|loop) until (it|the|all)", case_insensitive: true }
     action:
-      suggest: "/kaizen:session-mode loop  # records mode + picks discipline bundles via 1 AskUserQuestion"
+      suggest: "/kaizen:workflow  # Q1 → 'This session only', Q2 → 'Loop' (replaces retired /kaizen:session-mode loop)"
       subcommand: mode-loop
       confidence: 0.8
 
   - id: start-workflow
-    description: User wants multi-stage routine work — suggest /kaizen:session-mode workflow.
+    description: User wants multi-stage routine work — suggest /kaizen:workflow session-scope=workflow.
     triggers:
       - { kind: phrase, pattern: "(use|start|run) (a |the )?workflow", case_insensitive: true }
       - { kind: phrase, pattern: "multi[- ]stage", case_insensitive: true }
@@ -144,19 +146,19 @@ intents:
       - { kind: phrase, pattern: "(audit|review).{0,30}(remediate|fix)", case_insensitive: true }
       - { kind: phrase, pattern: "(create|write).{0,15}plan.{0,30}execute", case_insensitive: true }
     action:
-      suggest: "/kaizen:session-mode workflow  # records mode + picks discipline bundles via 1 AskUserQuestion"
+      suggest: "/kaizen:workflow  # Q1 → 'This session only', Q2 → 'Routine' (replaces retired /kaizen:session-mode workflow)"
       subcommand: mode-workflow
       confidence: 0.8
 
   - id: set-mode-generic
-    description: User wants to configure the session shape — suggest /kaizen:session-mode (full QA).
+    description: User wants to configure the session shape — suggest /kaizen:workflow full QA.
     triggers:
       - { kind: phrase, pattern: "(set|configure|pin|choose).{0,15}(session )?mode", case_insensitive: true }
       - { kind: phrase, pattern: "what (mode|kind of session)", case_insensitive: true }
       - { kind: phrase, pattern: "(pin|enforce|apply).{0,15}(disciplines?|skills?)", case_insensitive: true }
       - { kind: phrase, pattern: "configure (this |the )?session", case_insensitive: true }
     action:
-      suggest: "/kaizen:session-mode  # full intake QA — mode (loop/workflow/neither) + discipline bundles"
+      suggest: "/kaizen:workflow  # full 4-Q wizard — scope (session/project/global), run-mode, disciplines, threshold (folds the retired /kaizen:session-mode slash)"
       subcommand: mode-qa
       confidence: 0.7
 

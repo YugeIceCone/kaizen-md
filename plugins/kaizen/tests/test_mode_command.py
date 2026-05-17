@@ -1,101 +1,77 @@
-"""Tests for /kaizen:mode slash command — structural + content."""
+"""Retirement tests for /kaizen:mode + /kaizen:session-mode.
+
+History:
+- /kaizen:mode renamed to /kaizen:session-mode (slash/bin alignment).
+- /kaizen:mode alias retired 2026-05-17 (P0 of menu consolidation).
+- /kaizen:session-mode FOLDED INTO /kaizen:workflow 2026-05-17 (this commit) —
+  the 3-scope picker (session / project / global) covers what
+  session-mode used to own as a separate slash. session-mode.json,
+  kaizen-session-mode bin, and session_mode.py all stay (consumed
+  directly by auto-handoff.sh / userprompt-skills-reminder.sh /
+  session-intake.sh).
+
+This test pins both retirements so a future drift re-adds neither.
+"""
 
 from __future__ import annotations
 
-import re
 import unittest
 from pathlib import Path
 
 _KZ_DIR = Path(__file__).resolve().parent.parent
-# /kaizen:mode was renamed to /kaizen:session-mode (slash/bin alignment).
-# The mode.md alias was retired 2026-05-17 (deprecation period expired);
-# canonical content lives at session-mode.md.
-_CMD = _KZ_DIR / "commands/session-mode.md"
-_RETIRED_ALIAS = _KZ_DIR / "commands/mode.md"
+_RETIRED_MODE = _KZ_DIR / "commands/mode.md"
+_RETIRED_SESSION_MODE = _KZ_DIR / "commands/session-mode.md"
+_CANONICAL = _KZ_DIR / "commands/workflow.md"
 
 
-class TestCommandFile(unittest.TestCase):
-    def test_command_file_exists(self):
-        self.assertTrue(_CMD.is_file(), f"missing: {_CMD}")
+class TestRetiredAliases(unittest.TestCase):
+    def test_mode_alias_retired(self):
+        """commands/mode.md was retired in P0 (commit 15392f1)."""
+        self.assertFalse(
+            _RETIRED_MODE.is_file(),
+            f"retired alias re-appeared: {_RETIRED_MODE}",
+        )
 
-    def test_retired_alias_is_gone(self):
-        """commands/mode.md was retired 2026-05-17 — alias should not exist."""
-        self.assertFalse(_RETIRED_ALIAS.is_file(),
-                          f"retired alias still present: {_RETIRED_ALIAS}")
+    def test_session_mode_slash_retired(self):
+        """commands/session-mode.md folded into /kaizen:workflow.
+        Only the slash retires — bin + python module + storage file
+        stay (consumed by hooks)."""
+        self.assertFalse(
+            _RETIRED_SESSION_MODE.is_file(),
+            f"retired slash re-appeared: {_RETIRED_SESSION_MODE}",
+        )
 
 
-class TestFrontmatter(unittest.TestCase):
+class TestCanonicalSurface(unittest.TestCase):
+    """The fold's canonical surface is /kaizen:workflow Q1=Session."""
+
     def setUp(self):
-        self.text = _CMD.read_text(encoding="utf-8")
-        # Split frontmatter
-        m = re.match(r"^---\n(.*?)\n---\n(.*)$", self.text, re.DOTALL)
-        self.assertIsNotNone(m, "no YAML frontmatter")
-        self.fm = m.group(1)
-        self.body = m.group(2)
+        self.assertTrue(_CANONICAL.is_file(),
+                          f"canonical slash missing: {_CANONICAL}")
+        self.text = _CANONICAL.read_text(encoding="utf-8")
 
-    def test_name_is_session_mode(self):
-        self.assertIn("name: session-mode", self.fm)
+    def test_workflow_slash_covers_session_scope(self):
+        """Q1 must list 'This session only' as a scope option."""
+        self.assertIn("This session only", self.text)
 
-    def test_argument_hint_lists_three_modes(self):
-        self.assertIn("argument-hint:", self.fm)
-        self.assertIn("loop", self.fm)
-        self.assertIn("workflow", self.fm)
-        self.assertIn("neither", self.fm)
-
-    def test_allowed_tools_grants_bin_and_askuser(self):
-        self.assertIn("kaizen-session-mode", self.fm)
-        self.assertIn("AskUserQuestion", self.fm)
-
-    def test_no_default_spaces_in_arguments_pattern(self):
-        """Iron-law: $ARGUMENTS must not use a ${ARGUMENTS:-default with
-        spaces} pattern (matches plugin-dev iron-law spec)."""
-        self.assertNotRegex(self.body, r"\$\{ARGUMENTS:-[^}]* [^}]*\}")
+    def test_workflow_slash_dispatches_kaizen_session_mode_bin(self):
+        """Session scope keeps using kaizen-session-mode under the hood."""
+        self.assertIn("kaizen-session-mode", self.text)
 
 
-class TestBodyContent(unittest.TestCase):
-    def setUp(self):
-        self.body = _CMD.read_text(encoding="utf-8")
+class TestBackingInfrastructureKept(unittest.TestCase):
+    """Even with the slash retired, the bin + python module + storage
+    file must stay — hooks consume them directly."""
 
-    def test_body_references_all_4_bundles(self):
-        for bundle in ("Simplicity", "Structure", "Process", "Karpathy"):
-            self.assertIn(bundle, self.body,
-                          f"body missing {bundle!r} bundle option")
+    def test_bin_kaizen_session_mode_present(self):
+        bin_path = _KZ_DIR / "bin/kaizen-session-mode"
+        self.assertTrue(bin_path.is_file(),
+                         f"backing bin removed: {bin_path}")
 
-    def test_body_references_operational_bundles(self):
-        """New operational tier — Quality / Security / Brain hygiene / Plugin-dev."""
-        for bundle in ("Quality", "Security", "Brain hygiene", "Plugin-dev"):
-            self.assertIn(bundle, self.body,
-                          f"body missing {bundle!r} operational bundle option")
-
-    def test_body_references_work_mode_bundles(self):
-        """Work-mode tier — Discovery / Debugging / Refactoring / Planning."""
-        for bundle in ("Discovery", "Debugging", "Refactoring", "Planning"):
-            self.assertIn(bundle, self.body,
-                          f"body missing {bundle!r} work-mode bundle option")
-
-    def test_body_prescribes_kaizen_session_mode_set(self):
-        self.assertIn("kaizen-session-mode set", self.body)
-        self.assertIn("--bundles", self.body)
-
-    def test_body_handles_three_arg_branches(self):
-        """Doc covers: known-mode arg, empty arg, invalid arg."""
-        self.assertIn("empty", self.body.lower())
-        self.assertIn("invalid", self.body.lower())
-
-    def test_body_includes_threshold_options(self):
-        """Q2 (threshold) must list all 4 % choices + Disabled."""
-        for pct in ("25%", "50%", "75%", "85%"):
-            self.assertIn(pct, self.body)
-        self.assertIn("Disabled", self.body)
-        self.assertIn("--threshold", self.body)
-
-    def test_body_references_bundle_name_lowercase_mapping(self):
-        # Agent needs to know which label → which lowercased bundle id
-        for lc in ("simplicity", "structure", "process", "karpathy",
-                    "quality", "security", "brain-hygiene", "plugin-dev",
-                    "discovery", "debugging", "refactoring", "planning"):
-            self.assertIn(lc, self.body,
-                          f"body missing lowercase bundle id {lc!r}")
+    def test_session_mode_py_present(self):
+        py_path = _KZ_DIR / "skills/workflow/scripts/session_mode.py"
+        self.assertTrue(py_path.is_file(),
+                         f"backing module removed: {py_path}")
 
 
 if __name__ == "__main__":

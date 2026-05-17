@@ -21,7 +21,7 @@ SHOULD ALSO step the user through the AskUserQuestion super-menu below,
 then re-call this command with the resolved args (or dispatch a sibling
 slash for non-setup ops).
 
-Follow the `/kaizen:session-mode` orchestration pattern: the body is
+Follow the `/kaizen:workflow` orchestration pattern: the body is
 instructional, the agent does the AskUserQuestion calls. The super-menu
 is **branching** — Q1 is a single-question call; the per-branch
 follow-ups run in a separate AskUserQuestion call once Q1 is answered.

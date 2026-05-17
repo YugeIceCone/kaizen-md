@@ -6,7 +6,7 @@ argument-hint: "(none) | <command-name>"
 
 # /kaizen:help
 
-Static taxonomy of all 56 `/kaizen:*` commands. **One screen, zero bash
+Static taxonomy of all 55 `/kaizen:*` commands. **One screen, zero bash
 execution.** For full per-command docs use `kaizen help <name>`. Auto-
 generated from `commands/*.md` frontmatter via `kaizen-help-gen`.
 
@@ -47,7 +47,7 @@ generated from `commands/*.md` frontmatter via `kaizen-help-gen`.
 | `self-improving` | Curate Claude Code's auto-memory into durable project knowledge. `review` flags pr |
 | `gold` | Incidental-discovery + learnings tracker. Capture mid-work patterns + gotchas + hi |
 
-## workflow (6)
+## workflow (5)
 
 | Command | Does |
 |---|---|
@@ -55,7 +55,6 @@ generated from `commands/*.md` frontmatter via `kaizen-help-gen`.
 | `handoff` | Create or resume a session handoff document. `/kaizen:handoff create` wraps up the |
 | `loop` | Start (or cancel) a self-correcting Ralph loop — cross-CLI. No-args → 2-question w |
 | `flow` | Run the async pocketflow Node+Flow reference pipeline over the current workspace.  |
-| `session-mode` | Set this session's mode (loop | workflow | neither) and pick discipline bundles vi |
 | `migrate` | Migrate from loose skills / separate plugins / non-canonical layouts to the kaizen |
 
 ## plugin-meta (13)
@@ -104,7 +103,7 @@ generated from `commands/*.md` frontmatter via `kaizen-help-gen`.
 | Command | Does |
 |---|---|
 | `intent` | Inspect or test kaizen's intent system — declarative phrase/event triggers that au |
-| `workflow` | Persist + read the workflow-shape DEFAULTS for this project (or globally): scope / |
+| `workflow` | Unified workflow-shape config — scope / run-mode / disciplines / auto-handoff thre |
 
 ## Drill-down (single CLI roundtrip)
 

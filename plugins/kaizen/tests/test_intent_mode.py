@@ -89,28 +89,47 @@ class TestSetModeGenericIntent(_MatchBase):
         self.assertEqual(self._intent_id(env), "set-mode-generic")
 
 
-class TestAllSuggestionsRouteToModeCommand(_MatchBase):
-    """All three mode intents must suggest a /kaizen:session-mode invocation
-    (the agent surfaces the command verbatim to the user)."""
+class TestAllSuggestionsRouteToWorkflowCommand(_MatchBase):
+    """All three mode intents must suggest a /kaizen:workflow invocation
+    (the agent surfaces the command verbatim to the user). The retired
+    /kaizen:session-mode slash folded into /kaizen:workflow's session
+    scope — the picker's Q1 = 'This session only' branch."""
 
-    def test_start_loop_suggests_mode_loop(self):
+    def test_start_loop_suggests_workflow(self):
         env = self._suggest("iterate on this")
         suggest = env["data"]["intent"]["action"]["suggest"]
-        self.assertIn("/kaizen:session-mode loop", suggest)
+        self.assertIn("/kaizen:workflow", suggest)
+        # Must NOT regress to the retired slash
+        # The suggestion may mention `/kaizen:session-mode` in a historical
+        # ("replaces retired ...") note — what matters is that the
+        # ACTIVE invocation starts with /kaizen:workflow.
+        self.assertTrue(
+            suggest.lstrip().startswith("/kaizen:workflow"),
+            f"suggestion must lead with /kaizen:workflow; got: {suggest!r}",
+        )
 
-    def test_start_workflow_suggests_mode_workflow(self):
+    def test_start_workflow_suggests_workflow(self):
         env = self._suggest("use a workflow")
         suggest = env["data"]["intent"]["action"]["suggest"]
-        self.assertIn("/kaizen:session-mode workflow", suggest)
+        self.assertIn("/kaizen:workflow", suggest)
+        # The suggestion may mention `/kaizen:session-mode` in a historical
+        # ("replaces retired ...") note — what matters is that the
+        # ACTIVE invocation starts with /kaizen:workflow.
+        self.assertTrue(
+            suggest.lstrip().startswith("/kaizen:workflow"),
+            f"suggestion must lead with /kaizen:workflow; got: {suggest!r}",
+        )
 
-    def test_set_mode_generic_suggests_full_qa(self):
+    def test_set_mode_generic_suggests_workflow_full_qa(self):
         env = self._suggest("set mode")
         suggest = env["data"]["intent"]["action"]["suggest"]
-        # Full QA invocation = /kaizen:session-mode with no arg
+        self.assertIn("/kaizen:workflow", suggest)
+        # The suggestion may mention `/kaizen:session-mode` in a historical
+        # ("replaces retired ...") note — what matters is that the
+        # ACTIVE invocation starts with /kaizen:workflow.
         self.assertTrue(
-            suggest.startswith("/kaizen:session-mode  ") or
-            suggest.startswith("/kaizen:session-mode\n"),
-            f"expected bare /kaizen:session-mode (no arg); got: {suggest!r}",
+            suggest.lstrip().startswith("/kaizen:workflow"),
+            f"suggestion must lead with /kaizen:workflow; got: {suggest!r}",
         )
 
 

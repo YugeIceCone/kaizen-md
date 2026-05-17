@@ -121,20 +121,36 @@ class TestArgAssembly(unittest.TestCase):
                            f"bundle expansion missing tag list: {tag}")
 
 
-class TestRelationshipToSessionMode(unittest.TestCase):
-    """The body must explicitly document how /kaizen:workflow relates
-    to /kaizen:session-mode so future readers don't merge them."""
+class TestFoldedSessionModeSurface(unittest.TestCase):
+    """After the session-mode → workflow fold, the body must document
+    the retirement of /kaizen:session-mode and the 3-scope surface
+    (session / project / global) it folds into."""
 
     def setUp(self):
         self.text = _CMD.read_text()
 
-    def test_session_mode_section_present(self):
-        self.assertRegex(self.text, r"##\s+Relationship to.*session-mode")
+    def test_folded_surface_section_present(self):
+        self.assertRegex(self.text, r"##\s+Folded surface")
 
-    def test_distinguishes_session_vs_persistent(self):
-        sec = self.text.split("## Relationship to /kaizen:session-mode")[1]
-        self.assertIn("session", sec.lower())
-        self.assertRegex(sec.lower(), r"persist|across sessions|durable")
+    def test_session_mode_retirement_documented(self):
+        self.assertIn("/kaizen:session-mode", self.text)
+        self.assertRegex(self.text.lower(), r"retired|folded")
+
+    def test_three_scope_table_present(self):
+        """Session / project / global scopes each documented with
+        their storage path + dispatcher."""
+        for scope in ("Session only", "This project", "User-global"):
+            self.assertIn(scope, self.text, f"missing scope row: {scope}")
+        for storage in (".kaizen/session-mode.json",
+                         ".kaizen/workflow.json",
+                         "workflow-global.json"):
+            self.assertIn(storage, self.text,
+                           f"missing storage path: {storage}")
+
+    def test_session_scope_dispatches_kaizen_session_mode_bin(self):
+        """Session scope keeps using kaizen-session-mode under the hood
+        because the consumer hooks read session-mode.json directly."""
+        self.assertIn("kaizen-session-mode", self.text)
 
 
 class TestSubcommandsDocumented(unittest.TestCase):
