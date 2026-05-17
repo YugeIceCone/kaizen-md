@@ -6,7 +6,7 @@
 #   .workflow/                  (backlog.json, backlog.md, state.json,
 #                                snapshot.md, progress.md, decisions.md,
 #                                audit logs, migration-loop-state.md, ...)
-#   ~/.claude/brain/            (optional, with --include-brain)
+#   $KAIZEN_BRAIN_DIR/          (optional, with --include-brain — default ~/.claude/.kaizen/brain)
 #   ~/.claude/projects/<slug>/memory/  (optional, with --include-memory)
 #
 # Backups land at: ~/.claude/.kaizen/backups/<repo-slug>/<UTC>[-label].tar.gz
@@ -84,8 +84,9 @@ if [ "$cmd" = "create" ]; then
 
     # Optional brain / project memory (separate tar in same archive)
     EXTRA=()
-    if [ "$INCLUDE_BRAIN" = "1" ] && [ -d "$HOME/.claude/brain" ]; then
-        EXTRA+=("$HOME/.claude/brain")
+    if [ "$INCLUDE_BRAIN" = "1" ]; then
+        BRAIN_TO_BACKUP="${KAIZEN_BRAIN_DIR:-$HOME/.claude/.kaizen/brain}"
+        [ -d "$BRAIN_TO_BACKUP" ] && EXTRA+=("$BRAIN_TO_BACKUP")
     fi
     if [ "$INCLUDE_MEMORY" = "1" ]; then
         MEM_DIR="$HOME/.claude/projects/$(echo "$REPO_ROOT" | sed 's|/|-|g')/memory"

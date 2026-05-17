@@ -6,7 +6,7 @@ version: 1.0.0
 
 # kaizen behaviour-config — brain-sourced runtime rules
 
-The kaizen pre-commit gate has a fixed surface (10 checks documented in the `kaizen:workflow` skill PART 3). Users customize that behaviour via **brain-sourced rules** — Markdown notes in `~/.claude/brain/Notes/` with a `kaizen:` block in their YAML frontmatter. The Remember plugin owns the storage; kaizen scripts read the rules at runtime.
+The kaizen pre-commit gate has a fixed surface (10 checks documented in the `kaizen:workflow` skill PART 3). Users customize that behaviour via **brain-sourced rules** — Markdown notes in `<KAIZEN_BRAIN_DIR>/Notes/` (default `~/.claude/.kaizen/brain/Notes/`) with a `kaizen:` block in their YAML frontmatter. The kaizen plugin owns the storage end-to-end (post-Remember-retirement).
 
 ## Why brain-sourced?
 
@@ -21,7 +21,7 @@ This is the natural fit: kaizen rules are **personal preferences** about how str
 
 ## Rule schema (general shape)
 
-Every kaizen rule lives in a brain note at `~/.claude/brain/Notes/<slug>.md`:
+Every kaizen rule lives in a brain note at `~/.claude/.kaizen/brain/Notes/<slug>.md`:
 
 ```yaml
 ---
@@ -120,7 +120,7 @@ Examples:
 1. /kaizen:rule template deletion-allow > /tmp/new-rule.md
    (then edit /tmp/new-rule.md to taste)
 
-2. cp /tmp/new-rule.md ~/.claude/brain/Notes/kaizen-<name>.md
+2. cp /tmp/new-rule.md ~/.claude/.kaizen/brain/Notes/kaizen-<name>.md
 
 3. /kaizen:rule validate
    → ✓ all N rules valid
@@ -138,7 +138,7 @@ Or via the Remember plugin's `/remember:remember` capture flow if the rule is al
 Same trick as `/kaizen:disable-dupes`: rename the file.
 
 ```bash
-mv ~/.claude/brain/Notes/<rule>.md ~/.claude/brain/Notes/<rule>.md.disabled
+mv ~/.claude/.kaizen/brain/Notes/<rule>.md ~/.claude/.kaizen/brain/Notes/<rule>.md.disabled
 ```
 
 The plugin's rule scanner skips `.disabled` files. Reverse the rename to re-enable. Files stay in place; one rename is the full state transition.

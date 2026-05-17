@@ -1,11 +1,11 @@
 ---
-name: remember:init
-description: Initialize Remember Second Brain structure and configuration
+name: kaizen:init
+description: Initialize kaizen Second Brain structure and configuration
 ---
 
-# /remember:init - Initialize Remember
+# /kaizen:init - Initialize Brain
 
-Creates the Second Brain directory structure, Persona file, REMEMBER.md, and configures `REMEMBER_BRAIN_PATH` in Claude settings.
+Creates the Second Brain directory structure, Persona file, REMEMBER.md, and configures `KAIZEN_BRAIN_DIR` in Claude settings.
 
 ## Steps
 
@@ -15,11 +15,11 @@ Creates the Second Brain directory structure, Persona file, REMEMBER.md, and con
 ```
 Where should I create your Second Brain?
 
-Default: ~/remember
+Default: ~/.claude/.kaizen/brain
 Custom: Enter a full path (e.g., ~/Documents/my-brain)
 ```
 
-If user presses Enter → use default `~/remember`.
+If user presses Enter → use default `~/.claude/.kaizen/brain`.
 Validate: expand `~`, check if writable. If exists, confirm or choose different.
 
 ### 2. Detect Install Scope & Configure Settings
@@ -30,12 +30,12 @@ Detect scope:
 
 Ask: **"Install globally or for this project?"** to let user override.
 
-**Read the target settings.json**, then **MERGE** (don't overwrite existing keys):
+**Read the target settings.json**, then **MERGE** (don't overwrite existing keys). Only set `KAIZEN_BRAIN_DIR` if the chosen path differs from the default (`~/.claude/.kaizen/brain`):
 
 ```json
 {
   "env": {
-    "REMEMBER_BRAIN_PATH": "/chosen/path"
+    "KAIZEN_BRAIN_DIR": "/chosen/path"
   },
   "permissions": {
     "additionalDirectories": ["/chosen/path"],
@@ -110,12 +110,12 @@ Second Brain initialized at {brain_path}/
 Structure: Inbox, Journal, Projects, Areas, Notes, People, Tasks, Resources, Archive
 Persona: Created (will learn your patterns over time)
 REMEMBER.md: Created (edit to customize brain behavior)
-Settings: REMEMBER_BRAIN_PATH written to {settings_file}
+Settings: KAIZEN_BRAIN_DIR written to {settings_file}
 
 Next steps:
 - Work normally — Persona loads every session
 - Say "remember this: ..." to capture thoughts
-- Run /remember:process to extract value from past sessions
+- Run /kaizen:process to extract value from past sessions
 - Edit REMEMBER.md to customize capture and processing rules
 ```
 

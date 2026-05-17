@@ -179,7 +179,7 @@ pre_deletion_belief:
     Read → analyze → dedup → migrate → consolidate. Never `git rm` until
     the user has explicitly approved that specific deletion.
   scan_sources:
-    - "~/.claude/brain/Persona.md ## Top Beliefs"
+    - "~/.claude/.kaizen/brain/Persona.md ## Top Beliefs"
     - "<project>/.claude/projects/<slug>/memory/MEMORY.md"
   bypass_env: KAIZEN_ALLOW_DELETE
   error_action: confirm_or_abort

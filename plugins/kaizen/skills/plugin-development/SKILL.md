@@ -60,7 +60,7 @@ Four layers:
    loads at every session start. When the user is editing
    kaizen-md, this directive is in context.
 
-3. **Brain rule** at `~/.claude/brain/Notes/pref-kaizen-plugin-dev.md`
+3. **Brain rule** at `~/.claude/.kaizen/brain/Notes/pref-kaizen-plugin-dev.md`
    with `kaizen:` frontmatter. Surfaces via the kaizen gate's
    custom-pattern check when commits touch `plugins/kaizen/`.
 
@@ -123,7 +123,7 @@ for the user's stated preference.
 Every kaizen-original feature ("kaizen-original" = code in
 `skills/workflow/`, `skills/<feature>/`, `commands/`, `bin/`, `hooks/`
 — not vendored bundles) follows this shape. Land each file in its
-own atomic commit using the [phased-work commit template](../../../../.claude/brain/Notes/pref-phased-work-commit-template.md).
+own atomic commit using the [phased-work commit template](../../../../.claude/.kaizen/brain/Notes/pref-phased-work-commit-template.md).
 
 ```text
 plugins/kaizen/
@@ -429,7 +429,7 @@ Indexers/search probe `is_available()` and return `[]` / `None` on
 miss — they NEVER raise, never spam stderr per-call, never auto-install.
 
 See cross-project belief
-`~/.claude/brain/Notes/pref-optional-feature-graceful-fallback.md`
+`~/.claude/.kaizen/brain/Notes/pref-optional-feature-graceful-fallback.md`
 for the full pattern + 4 proven instances.
 
 ---
@@ -669,7 +669,7 @@ the universal hook skips Bash to avoid the double.
 
 ### Commit-message template
 
-See [`~/.claude/brain/Notes/pref-phased-work-commit-template.md`](../../../../.claude/brain/Notes/pref-phased-work-commit-template.md).
+See [`~/.claude/.kaizen/brain/Notes/pref-phased-work-commit-template.md`](../../../../.claude/.kaizen/brain/Notes/pref-phased-work-commit-template.md).
 Shape per atomic commit:
 
 ```text

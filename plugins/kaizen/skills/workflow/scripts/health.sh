@@ -156,7 +156,7 @@ echo ""
 
 # ─── Section 6: Brain / project memory ─────────────────────────────────
 echo "${BOLD}[ memory ]${RESET}"
-BRAIN=$(toml_get brain_path "$HOME/.claude/brain")
+BRAIN=$(toml_get brain_path "${KAIZEN_BRAIN_DIR:-$HOME/.claude/.kaizen/brain}")
 PMEM=$(toml_get project_memory_path "")
 if [ -f "$BRAIN/Persona.md" ]; then
     log_pass "brain Persona.md: $BRAIN/Persona.md"
@@ -166,7 +166,7 @@ if [ -f "$BRAIN/Persona.md" ]; then
         log_skip "no pref-no-deletions.md in brain (deletion gate will pass-through)"
     fi
 else
-    log_skip "no brain at $BRAIN (Remember plugin not initialized)"
+    log_skip "no brain at $BRAIN (run kaizen-brain-migrate or kaizen-brain init)"
 fi
 [ -n "$PMEM" ] && [ -d "$PMEM" ] && log_pass "project memory: $PMEM" \
     || log_skip "no project memory configured"

@@ -21,7 +21,7 @@ Only use Bash for running Node.js scripts. Use Read/Write/Edit/Glob/Grep for all
 
 ## Step 1: Build Knowledge Index
 
-1. Read `$REMEMBER_BRAIN_PATH` env var (fallback `~/remember`). Call this `{brain}`.
+1. Read `$KAIZEN_BRAIN_DIR` env var (fallback `~/.claude/.kaizen/brain`). Call this `{brain}`.
 2. If missing → tell user to run `/remember:init` and stop.
 3. Run: `node ${CLAUDE_PLUGIN_ROOT}/scripts/build-index.js`
 4. Read output — this is your map of everything that exists.

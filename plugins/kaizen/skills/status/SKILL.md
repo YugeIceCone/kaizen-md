@@ -25,7 +25,7 @@ Displays brain statistics: file counts, recent activity, and brain health.
 | Read files | `Read` tool | `bash cat` |
 | Write/create files | `Write` tool | `bash echo >` / `bash tee` |
 | Count files | `Glob` tool + count results | `bash wc` |
-| Check env vars | Already available as `$REMEMBER_BRAIN_PATH` | `bash echo $VAR` |
+| Check env vars | Already available as `$KAIZEN_BRAIN_DIR` | `bash echo $VAR` |
 
 **For complex operations** (stats, counting, multi-step), use a **subagent** (Task tool) that uses the same built-in tools.
 
@@ -36,7 +36,7 @@ Displays brain statistics: file counts, recent activity, and brain health.
 
 ### 1. Resolve Brain Path
 
-Read `$REMEMBER_BRAIN_PATH` env var, fallback `~/remember`. Use this as `{brain_path}`.
+Read `$KAIZEN_BRAIN_DIR` env var, fallback `~/.claude/.kaizen/brain`. Use this as `{brain_path}`.
 If brain path doesn't exist → tell user to run `/remember:init`.
 
 ### 2. Show Brain Statistics

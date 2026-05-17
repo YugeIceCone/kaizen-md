@@ -410,8 +410,10 @@ SKIP_RULES = [
             "plugins/kaizen/skills/brain/",
             "plugins/kaizen/skills/workflow/scripts/_brain.py",
             "plugins/kaizen/skills/workflow/scripts/brain",  # prefix match
-            "~/.claude/brain/Notes/",
-            "~/.claude/brain/Persona.md",
+            ".kaizen/brain/Notes/",       # v1.38.0+ canonical location
+            ".kaizen/brain/Persona.md",   # v1.38.0+ canonical location
+            "/brain/Notes/",              # any-prefix match (legacy + new)
+            "/brain/Persona.md",          # any-prefix match (legacy + new)
         ],
         "rationale": "Touching brain Notes / pipeline without the brain skill loaded",
     },

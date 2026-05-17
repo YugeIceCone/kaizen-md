@@ -6,7 +6,7 @@ Templates and merge rules for `/remember:init`.
 
 ## Settings Merge Rules
 
-- `env`: add/update `REMEMBER_BRAIN_PATH` key, keep other env vars
+- `env`: add/update `KAIZEN_BRAIN_DIR` key, keep other env vars
 - `permissions.additionalDirectories`: append brain path if not present, keep existing
 - `permissions.allow`: append rules if not present, keep existing
 - All other keys: preserve unchanged

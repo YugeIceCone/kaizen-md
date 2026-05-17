@@ -203,7 +203,7 @@ class ApplyNode(_flow.AsyncNode):
 
         ---
         name: <original>
-        promoted_to: ~/.claude/brain/Notes/<dest>.md
+        promoted_to: <KAIZEN_BRAIN_DIR>/Notes/<dest>.md
         promoted_at: <today>
         type: world-fact
         ---

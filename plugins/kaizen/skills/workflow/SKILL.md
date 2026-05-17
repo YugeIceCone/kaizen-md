@@ -98,7 +98,7 @@ Full list with probe commands + bypass envs in `references/git-discipline.md`.
 
 ## Pre-deletion belief
 
-`git rm` triggers a scan of `~/.claude/brain/Persona.md ## Top Beliefs` and the project's `MEMORY.md`. Hits → confirm-or-abort with the user. Bypass for one commit: `KAIZEN_ALLOW_DELETE=1 git commit ...`. This belief is non-negotiable; the gate is the enforcement, but the *discipline* is to never reach for deletion as a shortcut around an obstacle.
+`git rm` triggers a scan of `~/.claude/.kaizen/brain/Persona.md ## Top Beliefs` and the project's `MEMORY.md`. Hits → confirm-or-abort with the user. Bypass for one commit: `KAIZEN_ALLOW_DELETE=1 git commit ...`. This belief is non-negotiable; the gate is the enforcement, but the *discipline* is to never reach for deletion as a shortcut around an obstacle.
 
 ## Plan files vs BACKLOG vs architecture log
 

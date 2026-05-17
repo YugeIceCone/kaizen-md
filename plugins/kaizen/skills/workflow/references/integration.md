@@ -110,7 +110,7 @@ Load skill: superpowers:executing-plans
 **Gate signal:**
 ```
 ✗ deletion staged + matching deletion-prevention belief(s) found:
-   → ~/.claude/brain/Notes/pref-no-deletions.md
+   → ~/.claude/.kaizen/brain/Notes/pref-no-deletions.md
    → ~/.claude/projects/<slug>/memory/feedback_borg_loop_no_deletions.md
 Override: KAIZEN_ALLOW_DELETE=1 git commit ...
 ```

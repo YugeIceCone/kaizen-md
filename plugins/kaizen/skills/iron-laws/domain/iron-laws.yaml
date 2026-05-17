@@ -55,7 +55,7 @@ laws:
     enforcement: auto
     check: lazy_heavy_deps
     detect: "top-level `import torch` or `import transformers` outside try/except"
-    why: "Default kaizen install must not require ~3GB ML stack. See ~/.claude/brain/Notes/pref-optional-feature-graceful-fallback.md"
+    why: "Default kaizen install must not require ~3GB ML stack. See ~/.claude/.kaizen/brain/Notes/pref-optional-feature-graceful-fallback.md"
 
   - id: sandbox-tests
     statement: "Tests sandbox via env vars (KAIZEN_<X>_PATH=<tmp>). Never touch real ~/.claude/."
@@ -102,7 +102,7 @@ laws:
     severity: soft
     enforcement: manual
     detect: "git commit message length < 200 chars on a structural change"
-    why: "Phased commits read as a coherent rollout in git log. See ~/.claude/brain/Notes/pref-phased-work-commit-template.md. Manual: needs the commit message, which the pre-commit hook does not have (the commit-msg hook is the right home)."
+    why: "Phased commits read as a coherent rollout in git log. See ~/.claude/.kaizen/brain/Notes/pref-phased-work-commit-template.md. Manual: needs the commit message, which the pre-commit hook does not have (the commit-msg hook is the right home)."
 
   - id: paired-tests
     statement: "Every new .py / .sh script in plugin-original code has a matching test in tests/test_<x>.py."
@@ -166,7 +166,7 @@ laws:
     why: "Hit 2026-05-14: loading Skill(plugin-development) errored — its SKILL.md had `!`bash -c '...'`` examples inside a ```bash fence that the loader ran anyway (the literal `...` in the example then failed as a command). plugin-pitfalls documents the same gotcha but keeps its example inside a ```markdown fence which apparently didn't fire — fragile. SKILL.md is documentation; only commands/*.md files carry live exec markers."
 
   - id: skill-md-no-external-script-paths
-    statement: "A SKILL.md must not invoke a script or interpreter from OUTSIDE the plugin — no `~/.claude/scripts/...`, no `.venv/bin/python` that isn't under ${CLAUDE_PLUGIN_ROOT}. The skill ships to users who don't have your personal ~/.claude/ setup; an unshipped external dependency makes the skill structurally broken for everyone but the author. Reading/writing DATA under ~/.claude/ (a handoff YAML, ~/.claude/brain/) is fine — this law is about EXECUTING unshipped code. If a SKILL.md genuinely needs such a path, guard it (`if [ -f <path> ]; then ... else <graceful skip> fi`) and make the in-plugin path the system of record."
+    statement: "A SKILL.md must not invoke a script or interpreter from OUTSIDE the plugin — no `~/.claude/scripts/...`, no `.venv/bin/python` that isn't under ${CLAUDE_PLUGIN_ROOT}. The skill ships to users who don't have your personal ~/.claude/ setup; an unshipped external dependency makes the skill structurally broken for everyone but the author. Reading/writing DATA under ~/.claude/ (a handoff YAML, ~/.claude/.kaizen/brain/) is fine — this law is about EXECUTING unshipped code. If a SKILL.md genuinely needs such a path, guard it (`if [ -f <path> ]; then ... else <graceful skip> fi`) and make the in-plugin path the system of record."
     severity: soft
     enforcement: auto
     check: skill_md_no_external_script_paths

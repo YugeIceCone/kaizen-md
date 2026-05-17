@@ -86,7 +86,7 @@ Heavy deps (transformers, torch, tree-sitter, etc.) lazy-load with is_available(
 
 **Detect:** top-level `import torch` or `import transformers` outside try/except
 
-**Why:** Default kaizen install must not require ~3GB ML stack. See ~/.claude/brain/Notes/pref-optional-feature-graceful-fallback.md
+**Why:** Default kaizen install must not require ~3GB ML stack. See ~/.claude/.kaizen/brain/Notes/pref-optional-feature-graceful-fallback.md
 
 ### `sandbox-tests` (hard · auto)
 
@@ -144,7 +144,7 @@ Atomic per-item commit using the phased-work template (subject / motivation / Fi
 
 **Detect:** git commit message length < 200 chars on a structural change
 
-**Why:** Phased commits read as a coherent rollout in git log. See ~/.claude/brain/Notes/pref-phased-work-commit-template.md. Manual: needs the commit message, which the pre-commit hook does not have (the commit-msg hook is the right home).
+**Why:** Phased commits read as a coherent rollout in git log. See ~/.claude/.kaizen/brain/Notes/pref-phased-work-commit-template.md. Manual: needs the commit message, which the pre-commit hook does not have (the commit-msg hook is the right home).
 
 ### `paired-tests` (soft · auto)
 
@@ -222,7 +222,7 @@ Don't put a `!`-backtick exec marker in a SKILL.md body. The Skill tool executes
 
 ### `skill-md-no-external-script-paths` (soft · auto)
 
-A SKILL.md must not invoke a script or interpreter from OUTSIDE the plugin — no `~/.claude/scripts/...`, no `.venv/bin/python` that isn't under ${CLAUDE_PLUGIN_ROOT}. The skill ships to users who don't have your personal ~/.claude/ setup; an unshipped external dependency makes the skill structurally broken for everyone but the author. Reading/writing DATA under ~/.claude/ (a handoff YAML, ~/.claude/brain/) is fine — this law is about EXECUTING unshipped code. If a SKILL.md genuinely needs such a path, guard it (`if [ -f <path> ]; then ... else <graceful skip> fi`) and make the in-plugin path the system of record.
+A SKILL.md must not invoke a script or interpreter from OUTSIDE the plugin — no `~/.claude/scripts/...`, no `.venv/bin/python` that isn't under ${CLAUDE_PLUGIN_ROOT}. The skill ships to users who don't have your personal ~/.claude/ setup; an unshipped external dependency makes the skill structurally broken for everyone but the author. Reading/writing DATA under ~/.claude/ (a handoff YAML, ~/.claude/.kaizen/brain/) is fine — this law is about EXECUTING unshipped code. If a SKILL.md genuinely needs such a path, guard it (`if [ -f <path> ]; then ... else <graceful skip> fi`) and make the in-plugin path the system of record.
 
 **Check:** `skill_md_no_external_script_paths` (in `_iron_laws.py`)
 

@@ -202,7 +202,7 @@ Each is a self-locating bash shim that resolves to the real script via `python3 
 | Open a real browser | invoke `mcp__plugin_kaizen_kaizen-browser__open_browser` (headless=True default-safe) |
 | Generate per-package docs | `kaizen-docs scan` |
 | Refresh plugin cache after a kaizen push | `/kaizen:update` (auto-reloads on changes) |
-| Add a brain rule | `kaizen-rules template deletion-allow > ~/.claude/brain/Notes/kaizen-allow-X.md` then edit |
+| Add a brain rule | `kaizen-rules template deletion-allow > ~/.claude/.kaizen/brain/Notes/kaizen-allow-X.md` then edit |
 
 ## State data streams (where to look)
 
@@ -220,7 +220,7 @@ Each is a self-locating bash shim that resolves to the real script via `python3 
 | Architecture log | `<repo>/.workflow/progress.md` | Append-only structural change log |
 | Snapshot | `<repo>/.workflow/snapshot.md` | Last session handoff |
 | Backups | `~/.claude/backups/kaizen/<repo-slug>/*.tar.gz` | Pre-risky-op snapshots |
-| Brain rules | `~/.claude/brain/Notes/kaizen-*.md` | deletion-allow / check-severity / custom-pattern |
+| Brain rules | `~/.claude/.kaizen/brain/Notes/kaizen-*.md` | deletion-allow / check-severity / custom-pattern |
 
 ## Pointers to deeper skills
 

@@ -19,7 +19,7 @@ brain rules, agent-formatting). Full inventory:
     WorkflowApply           —   nested under .apply
     WorkflowState           — `<repo>/.workflow/state.json`
     KnowledgeItem           — `~/.claude/.kaizen-knowledge/index.db` rows
-    KaizenBrainRule         — `~/.claude/brain/Notes/*.md` kaizen: block
+    KaizenBrainRule         — `<KAIZEN_BRAIN_DIR>/Notes/*.md` kaizen: block
     AgentFormattingSchema   — `skills/agent-formatting/SKILL.md` body block
     FormattingRule          —   nested under .rules[]
     ForbiddenConstruct      —   nested under .forbidden_constructs[]
@@ -304,7 +304,8 @@ class KnowledgeItem:
 
 # ─── KaizenBrainRule ─────────────────────────────────────────────────
 #
-# `~/.claude/brain/Notes/*.md` with a `kaizen:` frontmatter block.
+# `<KAIZEN_BRAIN_DIR>/Notes/*.md` with a `kaizen:` frontmatter block
+# (default `~/.claude/.kaizen/brain/Notes/`).
 # Producer: hand-authored brain notes. Consumer: rules.py.
 
 

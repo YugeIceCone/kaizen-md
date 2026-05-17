@@ -224,7 +224,7 @@ verify_cmd        = ""
 allow_deletion_env = "KAIZEN_ALLOW_DELETE"
 skip_tdd_check_env = "KAIZEN_SKIP_TDD_CHECK"
 
-brain_path           = "$HOME/.claude/brain"
+brain_path           = "$HOME/.claude/.kaizen/brain"
 project_memory_path  = "$PMEM"
 TOML
     echo "  ✓ wrote starter $CONFIG_PATH"

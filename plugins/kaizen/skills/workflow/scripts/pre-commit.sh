@@ -50,7 +50,7 @@ PLAN_DIR=$(toml_get plan_dir "plans")
 VERIFY_CMD=$(toml_get verify_cmd "")
 ALLOW_DELETE_ENV=$(toml_get allow_deletion_env "KAIZEN_ALLOW_DELETE")
 SKIP_TDD_ENV=$(toml_get skip_tdd_check_env "KAIZEN_SKIP_TDD_CHECK")
-BRAIN_PATH=$(toml_get brain_path "$HOME/.claude/brain")
+BRAIN_PATH=$(toml_get brain_path "${KAIZEN_BRAIN_DIR:-$HOME/.claude/.kaizen/brain}")
 PROJECT_MEMORY=$(toml_get project_memory_path "")
 DELETIONS_LOG=$(toml_get deletions_log ".kaizen/workflow/deletions.jsonl")
 

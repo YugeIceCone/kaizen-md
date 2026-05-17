@@ -166,7 +166,7 @@ framing for threat modeling.
 
 System-level self-improvement routine. Analyzes project memory
 (~/.claude/projects/<slug>/memory/) + brain Notes
-(~/.claude/brain/Notes/pref-*.md), surfaces patterns ready for
+(~/.claude/.kaizen/brain/Notes/pref-*.md), surfaces patterns ready for
 promotion (recur >= 2 sessions for rules / >= 3 for skill
 extraction), creates a plan for user approval, then executes the
 promotions (writes destination file with proper frontmatter,
