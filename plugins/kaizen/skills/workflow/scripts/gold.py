@@ -187,6 +187,8 @@ def _cmd_list(args) -> int:
         recs = [r for r in recs if r.get("tag") == args.tag]
     if args.unpromoted:
         recs = [r for r in recs if not r.get("promoted")]
+    if args.promoted:
+        recs = [r for r in recs if r.get("promoted")]
     if args.limit and args.limit > 0:
         recs = recs[-args.limit:]
     if args.json:
@@ -346,6 +348,8 @@ def main(argv=None) -> int:
     pl.add_argument("--tag", default=None)
     pl.add_argument("--unpromoted", action="store_true",
                      help="only entries not yet promoted")
+    pl.add_argument("--promoted", action="store_true",
+                     help="only entries already promoted (graduated to a rule/Note)")
     pl.add_argument("--limit", type=int, default=0)
     pl.add_argument("--json", action="store_true")
     pl.set_defaults(func=_cmd_list)

@@ -77,6 +77,18 @@ class TestList(GoldBase):
         self.assertIn("alpha", r.stdout)
         self.assertNotIn("beta", r.stdout)
 
+    def test_list_promoted_filter(self):
+        """Inverse of --unpromoted. Brain-side navigation: 'what has
+        graduated to a rule/Note?'"""
+        self._run("capture", "alpha")
+        self._run("capture", "beta")
+        target = self.tmp / "rules.md"
+        self._run("promote", "1", "--to", str(target))
+        r = self._run("list", "--promoted", "--json")
+        recs = json.loads(r.stdout)
+        ids = [r["id"] for r in recs]
+        self.assertEqual(ids, [1])
+
     def test_list_unpromoted_filter(self):
         self._run("capture", "alpha")
         self._run("capture", "beta")
