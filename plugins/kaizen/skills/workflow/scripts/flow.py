@@ -573,18 +573,21 @@ class WriteReport(AsyncNode):
         }
 
     async def exec_async(self, data: dict) -> dict:
+        # records are CrateProfile dataclass instances (docs_gen.analyze_package).
+        # Use attribute access; the field is `total_loc`, files-list length
+        # stands in for total files count.
         records = data["doc_records"]
         return {
             "workspace_root": data["workspace_root"],
             "backlog_items": data["backlog_size"],
             "packages_detected": data["package_count"],
             "packages_scanned": len(records),
-            "total_loc": sum(r["loc"]["total"] for r in records),
-            "total_files": sum(r["files"]["total"] for r in records),
-            "by_language": dict(Counter(r["language"] for r in records)),
+            "total_loc": sum(r.total_loc for r in records),
+            "total_files": sum(len(r.files) for r in records),
+            "by_language": dict(Counter(r.language for r in records)),
             "top_5_by_loc": [
-                {"name": r["name"], "loc": r["loc"]["total"]}
-                for r in sorted(records, key=lambda r: -r["loc"]["total"])[:5]
+                {"name": r.name, "loc": r.total_loc}
+                for r in sorted(records, key=lambda r: -r.total_loc)[:5]
             ],
             "per_node_us": data["timing"],
         }
