@@ -13,6 +13,31 @@ Start by understanding the current project context, then ask questions one at a 
 Do NOT invoke any implementation skill, write any code, scaffold any project, or take any implementation action until you have presented a design and the user has approved it. This applies to EVERY project regardless of perceived simplicity.
 </HARD-GATE>
 
+## Required research tools (MUST use during brainstorming)
+
+When generating ideas at scale (>10), or when validating assumptions
+on ANY proposed approach, you MUST consult both:
+
+- **context7** — `mcp__claude_ai_Context7__resolve-library-id` then
+  `mcp__claude_ai_Context7__query-docs` to ground proposals in actual
+  library/tool documentation. Catches "we should use X" before
+  building when X already exists upstream with a different shape.
+- **arxiv** — `mcp__arxiv__search_papers` (and `semantic_search`
+  when prior downloads exist) to surface established
+  research/techniques. Catches "this is a novel idea" claims that are
+  actually well-trodden ground.
+
+Skip allowed ONLY when:
+- The brainstorm is < 10 ideas AND clearly bounded to one project's
+  internal conventions (no upstream / no academic literature relevant).
+- A tool is rate-limited / unavailable — note the gap explicitly in
+  the output rather than silently skipping.
+
+Use in parallel where possible (both tools in one message) to avoid
+serial round-trips. When tools surface a mature pick (high reputation
++ high benchmark score in context7 — see kaizen-token-bloat → LLMLingua
+session), prefer adopting upstream over reinventing.
+
 ## Anti-Pattern: "This Is Too Simple To Need A Design"
 
 Every project goes through this process. A todo list, a single-function utility, a config change — all of them. "Simple" projects are where unexamined assumptions cause the most wasted work. The design can be short (a few sentences for truly simple projects), but you MUST present it and get approval.

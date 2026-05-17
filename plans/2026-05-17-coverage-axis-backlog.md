@@ -372,3 +372,54 @@ substrate, then 30+ axes become trivial.
    axes land, this is the consolidation the pattern-note in Round 1 called for.
 3. **C28** — per-prompt event diff (Round 2 winner). Cheapest live-monitoring
    primitive that surfaces in-flight context-bloat before auto-handoff fires.
+
+---
+
+# Round 5 — 150 new ideas across 10 buckets (151-300 cumulative)
+
+Research-informed (context7: DuckDB + Radon; arxiv rate-limited — gap noted).
+
+## P. SQL-over-streams (DuckDB) — 15
+151 `kaizen-sql 'SELECT ...'` thin wrapper • 152 pre-built views • 153 JSONL-as-table (no ETL) • 154 cross-stream JOIN • 155 window-function cumulative cost • 156 CTEs for multi-stage • 157 materialised views • 158 SQL-driven coverage axes • 159 `time_bucket` rollups • 160 `approx_quantile` p95 dashboards • 161 EXPLAIN for slow queries • 162 SQL REPL • 163 SQL→markdown renderer • 164 per-session VIEW • 165 Parquet archive (DuckDB COPY)
+
+## Q. Code metrics (Radon) — 15
+166 `kaizen-complexity` per-fn CC • 167 MI per file • 168 Halstead volume/effort • 169 CC SUB_GATE • 170 CC trend over time • 171 CC vs test-coverage corr • 172 CC vs bloat corr • 173 per-feature CC budget • 174 fn-length histogram • 175 LCOM class cohesion • 176 import-fanout • 177 PR CC gate • 178 big-bang refactor candidates • 179 dead-complexity (radon + vulture + trace) • 180 hotspot (CC × churn)
+
+## R. Visualization & rendering — 15
+181 statusline live cost + bloat • 182 ASCII sparklines • 183 Sankey tool-chain • 184 heatmap PNG (hour×day×tool) • 185 timeline graph per session • 186 Mermaid from rubric YAML • 187 colour terminal tables • 188 HTML report bundle • 189 live dashboard server • 190 visual snapshot diff • 191 file-touch heatmap • 192 skill-load co-occurrence graphviz • 193 cost-gauge glyph • 194 per-prompt cost mini-table • 195 end-of-session card
+
+## S. CI/CD integration — 15
+196 GH Actions kaizen gatekeeper • 197 pre-commit framework • 198 PR coverage-delta comment • 199 auto-label by feature changes • 200 `kaizen-bench` latency baselines • 201 failure-replay artifact • 202 PR token-bloat comment • 203 snapshot-diff bot • 204 branch protection (red gate blocks) • 205 dependabot for vendored skills • 206 auto-publish on tag • 207 release-notes generator • 208 hook health-check CI • 209 MCP smoke-test CI • 210 cross-OS matrix
+
+## T. Multi-user / collaboration — 15
+211 per-user session-mode prefs • 212 shared team brain overlays • 213 pair-coding session linking • 214 code-review handoff • 215 conflict detection (kaizen.toml) • 216 team-wide axis pinning • 217 per-user inbox routing • 218 per-user audit log • 219 perm-grant approval workflow • 220 cross-user backlog • 221 shared metric dashboards • 222 per-user iron-law overrides • 223 mentor/junior roles • 224 brain-export knowledge handoff • 225 team retrospective generator
+
+## U. Privacy / redaction / safety — 15
+226 auto-redact secrets in trace • 227 per-event PII tagger • 228 redaction profile per surface • 229 network-egress trace • 230 SBOM-style MCP reach audit • 231 hash-only event storage • 232 local-only mode • 233 time-limited brain notes • 234 per-skill data classification • 235 encrypted trace storage • 236 audit hash-chain seal • 237 sandbox profile per skill • 238 egress allowlist • 239 `/kaizen:logout` memory cleanse • 240 per-project data residency
+
+## V. Cost telemetry — 15
+241 per-tool token cost coefficients • 242 per-session USD estimate • 243 burn-rate alert • 244 cost forecast • 245 most-expensive top-N • 246 per-feature cost attribution • 247 cost-vs-value heatmap • 248 monthly rollup • 249 cost-regression detector • 250 "/compact" suggestion when over • 251 per-task token envelope • 252 subagent cost amortisation • 253 cache-hit savings calc • 254 free-tier alert • 255 cost-aware tool selection
+
+## W. Plugin-marketplace meta — 15
+256 cross-plugin coordination • 257 compat matrix • 258 version-skew detection • 259 plugin permission audit • 260 plugin-load order analyser • 261 conflict detection (same MCP) • 262 marketplace local search • 263 update notifications • 264 per-plugin telemetry opt-in • 265 manifest schema validator • 266 uninstall cleanup verifier • 267 plugin-share manifest export • 268 trust score (signed manifests) • 269 plugin-pack bundles • 270 recommendation engine
+
+## X. Disaster recovery / state versioning — 15
+271 schema migration framework • 272 atomic state-bundle snapshot • 273 per-file rollback to ts • 274 corruption detection (checksums) • 275 state quorum • 276 portable archive export • 277 disaster-replay from event stream • 278 state-diff between timestamps • 279 versioning headers in JSON • 280 migration test fixtures • 281 brain auto-backup before evolve • 282 crashed-tool recovery • 283 hot-reload without restart • 284 read-only state-debug mode • 285 state-rebuild from events alone
+
+## Y. Agentic self-modification — 15
+286 recurring-fix → skill extraction • 287 frequent chains → macro • 288 phrasing → intent rule • 289 oversized file → split-plan (partial) • 290 repeated subagent prompts → agent def • 291 hook for repeated post-prompt actions • 292 auto-promote experiments to defaults • 293 self-tuning bloat thresholds • 294 self-extending iron-laws • 295 auto-deprecate unused after N weeks • 296 memory decay (low-confidence) • 297 self-tuning auto-handoff threshold • 298 CLAUDE.md update proposals • 299 auto-test from bug-fix sessions • 300 self-improving research-tool selection
+
+## Cross-thread synthesis (rounds 1-5)
+
+- **DuckDB unlocks Round 4 M (streams-as-SSOT)**: `read_json('events-*.jsonl')` = SQL queries over existing JSONL, zero new infra. Most-leveraged finding of the day.
+- **Radon is a drop-in** for Q (complexity axes), mirroring vulture's role for dead-code (round 1 Tier 1).
+- **arxiv gap noted** per the new brainstorming-skill required-tools rule (rate-limited; would have validated motif-mining + complexity-research literature).
+- **300 total ideas across 5 rounds.** Coverage axes (R1), stream exploitation (R2), interaction patterns (R3), streams-as-SSOT (R4), and SQL-substrate + complexity + viz + CI + multi-user + privacy + cost + marketplace + DR + self-modification (R5).
+
+## Updated recommended next 5 builds
+
+1. **R5#153 + R5#154** — DuckDB wrapper: `kaizen-sql` over event JSONL. Single small file, unlocks dozens of axes-as-queries.
+2. **R5#166** — `kaizen-complexity` via radon wrap. 5th audit gate.
+3. **R1#3** — `vulture-coverage` (Tier 1 from round 1 still standing).
+4. **R4#K1** — extend `append-to` to trace + metrics (after dxm proves the pattern this session).
+5. **R2#C28** — per-prompt event diff (cheapest in-flight bloat signal).
