@@ -5,6 +5,48 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [S
 
 ## [Unreleased]
 
+### Added — agent bash-loop 100% optimization: PreToolUse etu gate + long-form nudge + SessionStart cheat-sheet
+
+Three coordinated additions that close the gap between "kaizen CLI is shorter and on `$PATH`" (already true) and "agents actually use it instead of long-form paths". Now: long-form bash → systemMessage nudge; `eval $user_input`/`find /` → permissionDecision ask; SessionStart emits the cheat-sheet so agents see the surface up-front.
+
+**1. `etu_scan.scan_text(s)`** — text-scanning API in `skills/efficient-tool-use/application/etu_scan.py`. Applies the 15 detect-regex anti-patterns to a plain string instead of a file. Used by the bash gate to scan command strings before execution. Same `# noqa: etu` suppression semantics as the file scanner.
+
+**2. `_bash_gate.py` v2 — etu block + long-form nudge** in `hooks/claude/_bash_gate.py`:
+
+- **`etu_decision(command)`** — runs `etu_scan.scan_text` against the RAW command (not the heredoc/quote-stripped form — `eval "$x"` IS the pattern we want to catch). Error-severity findings → `permissionDecision: ask` with the matched patterns + fixes. Lazy-loaded — if `etu_scan` is absent (consumer repo), silently no-op. Bypass: `KAIZEN_ETU_GATE_DISABLE=1` (satisfies hook-bypass-knob iron-law).
+- **`long_form_nudge(command)`** — regex-detects `bash plugins/kaizen/bin/kaizen-FOO` or `python3 plugins/kaizen/skills/workflow/scripts/FOO.py` patterns. Returns a systemMessage suggesting the `kaizen <sub>` short-form equivalent. Advisory only — never blocks. Skips `_mcp.py` modules (those are for the MCP gateway, not direct CLI use) and `_*`-prefixed helpers.
+- **`decide()` ladder updated**: destructive ask → etu ask → (bash-discipline advisory + long-form nudge concatenated) systemMessage → clean.
+
+**3. `session-surface-kaizen-cli.sh`** — new SessionStart hook in `hooks/claude/` + registered in `hooks/hooks.json` alongside `session-surface-backlog.sh`. Emits an `additionalContext` cheat-sheet listing:
+- The `kaizen <sub>` / `kaizen commands` / `kaizen list --json` / `kaizen help <sub>` / `kaizen --time` / `kaizen --trace` surface
+- Hot-path examples (5 most-shelled-out commands with their short forms)
+- A note about the PreToolUse gate that nudges + blocks (so the agent knows why warnings will fire)
+- MCP equivalents for `gatekeeper_check` / `iron_laws_check` / `list_items`
+
+Live CLI subcommand count + slash command count are computed via `kaizen list --json` + `kaizen commands list --json` (~50ms — within SessionStart budget). Silent no-op when the dispatcher isn't on `$PATH` or `KAIZEN_CLI_SURFACE_DISABLE=1`.
+
+**Decision flow at PreToolUse(Bash)**:
+
+| Command | Verdict |
+|---|---|
+| `ls -la` | clean → `{}` |
+| `rm -rf /tmp/foo` | safe path → `{}` |
+| `rm -rf /etc/foo` | destructive ask |
+| `eval "$user_input"` | etu ask (was: clean) |
+| `find / -name foo` | etu ask (was: clean) |
+| `grep X file \| wc -l` | clean (info-level, no advisory) |
+| `bash plugins/kaizen/bin/kaizen-gatekeeper check` | long-form nudge → systemMessage |
+| `python3 plugins/kaizen/skills/workflow/scripts/gatekeeper.py` | same |
+
+**Tests**: +10 in `tests/test_bash_gate.py` (was 35, now 45). Covers etu-error blocks, info-severity-doesn't-block, bypass env var short-circuits, bin-form nudge, script-form nudge, mcp-modules not nudged, clean commands no-op, combined nudge+content.
+
+**Validation**:
+- 45/45 test_bash_gate.py tests pass
+- plugin-development validator: 52/52 features clean
+- `kaizen-surface validate` clean (new hook registered, not orphan)
+- bash syntax clean on new SessionStart hook
+- gateway smoke: `decide()` correctly classifies all 8 representative cases
+
 ### Added — `kaizen commands`: slash-command inventory surface
 
 `_kaizen_dispatcher.py` v1.1.0. Closes the discoverability gap where the 48 slash commands at `commands/*.md` (the `/kaizen:<name>` surface Claude Code exposes) had no CLI inventory — users discovered them only via Claude Code's menu autocomplete.

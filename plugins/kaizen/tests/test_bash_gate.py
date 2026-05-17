@@ -236,5 +236,76 @@ class TestModuleParses(unittest.TestCase):
             compile(f.read(), str(path), "exec")
 
 
+class TestEtuDecision(unittest.TestCase):
+    """etu_decision blocks on error-severity anti-patterns surfaced by
+    skills/efficient-tool-use/application/etu_scan.scan_text."""
+
+    def test_eval_user_input_blocks(self):
+        r = _bash_gate.decide('eval "$user_input"')
+        self.assertEqual(
+            r.get("hookSpecificOutput", {}).get("permissionDecision"), "ask"
+        )
+        self.assertIn("eval", r["hookSpecificOutput"]["permissionDecisionReason"])
+
+    def test_find_from_root_blocks(self):
+        r = _bash_gate.decide("find / -name foo")
+        self.assertEqual(
+            r.get("hookSpecificOutput", {}).get("permissionDecision"), "ask"
+        )
+
+    def test_warn_severity_not_blocked(self):
+        # grep | wc -l is INFO-severity — not an `ask` decision
+        r = _bash_gate.decide("grep X file | wc -l")
+        self.assertNotEqual(
+            r.get("hookSpecificOutput", {}).get("permissionDecision"), "ask"
+        )
+
+    def test_disable_env_var_short_circuits_etu(self):
+        import os
+        os.environ["KAIZEN_ETU_GATE_DISABLE"] = "1"
+        try:
+            r = _bash_gate.decide('eval "$x"')
+            # Without etu, eval doesn't trigger destructive-op decision either
+            self.assertNotEqual(
+                r.get("hookSpecificOutput", {}).get("permissionDecision"), "ask"
+            )
+        finally:
+            del os.environ["KAIZEN_ETU_GATE_DISABLE"]
+
+
+class TestLongFormNudge(unittest.TestCase):
+    """long_form_nudge advises (systemMessage) when kaizen scripts are
+    invoked via long paths instead of `kaizen <sub>`."""
+
+    def test_bin_long_form_caught(self):
+        cmd = "bash plugins/kaizen/bin/kaizen-gatekeeper check --staged"
+        r = _bash_gate.decide(cmd)
+        self.assertIn("kaizen-cli nudge", r.get("systemMessage", ""))
+        self.assertIn("kaizen gatekeeper", r["systemMessage"])
+
+    def test_script_long_form_caught(self):
+        cmd = "python3 plugins/kaizen/skills/workflow/scripts/gatekeeper.py check --all"
+        r = _bash_gate.decide(cmd)
+        self.assertIn("kaizen-cli nudge", r.get("systemMessage", ""))
+        self.assertIn("kaizen gatekeeper", r["systemMessage"])
+
+    def test_mcp_module_not_nudged(self):
+        # *_mcp.py modules aren't aliased — they're for the MCP gateway,
+        # not direct CLI invocation.
+        cmd = "uv run --script plugins/kaizen/skills/workflow/scripts/gatekeeper_mcp.py"
+        r = _bash_gate.decide(cmd)
+        self.assertNotIn("kaizen-cli nudge", r.get("systemMessage", ""))
+
+    def test_clean_command_no_nudge(self):
+        r = _bash_gate.decide("ls -la")
+        self.assertEqual(r, {})
+
+    def test_nudge_combines_cleanly(self):
+        cmd = "bash plugins/kaizen/bin/kaizen-audit"
+        r = _bash_gate.decide(cmd)
+        self.assertIn("kaizen-cli nudge", r.get("systemMessage", ""))
+        self.assertIn("kaizen audit", r["systemMessage"])
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -179,6 +179,55 @@ def scan_files(
     return findings
 
 
+def scan_text(text: str, source: str = "<command>") -> list[Finding]:
+    """Apply the catalog's `detect` regexes to a plain text string.
+
+    Used by callers that have the text in hand (no file to read) — most
+    notably the PreToolUse Bash gate (`hooks/claude/_bash_gate.py`),
+    which scans the about-to-run command string for anti-patterns
+    before letting Claude execute it.
+
+    Same `# noqa: etu` suppression semantics as the file scanner —
+    a marker on the same line OR within 5 prior non-code lines
+    silences the line.
+    """
+    patterns = _load_anti_patterns().get("anti_patterns", [])
+    compiled = []
+    for ap in patterns:
+        det = ap.get("detect")
+        if not det:
+            continue
+        try:
+            compiled.append((ap, re.compile(det)))
+        except re.error as e:
+            sys.stderr.write(
+                f"etu_scan: skipping pattern {ap.get('id')} — bad regex: {e}\n"
+            )
+
+    _NOQA_RX_T = re.compile(r"#\s*noqa\s*:\s*etu\b", re.IGNORECASE)
+    lines = text.splitlines() or [text]
+    findings: list[Finding] = []
+    for lineno, line in enumerate(lines, 1):
+        if _NOQA_RX_T.search(line):
+            continue
+        for ap, rx in compiled:
+            m = rx.search(line)
+            if m:
+                findings.append(
+                    Finding(
+                        pattern_id=ap["id"],
+                        severity=ap["severity"],
+                        tool=ap["tool"],
+                        file=source,
+                        line=lineno,
+                        matched=line.strip()[:200],
+                        why_bad=ap["why_bad"],
+                        replacement=ap["replacement"],
+                    )
+                )
+    return findings
+
+
 def _render_text(findings: list[Finding]) -> str:
     if not findings:
         return "etu_scan: no findings"
