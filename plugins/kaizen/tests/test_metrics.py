@@ -416,31 +416,31 @@ class TestCli(unittest.TestCase):
         result = self._run("path")
         self.assertEqual(result.returncode, 0)
         out = json.loads(result.stdout)
-        self.assertIn("trace_log", out)
+        self.assertIn("trace_log", out["data"])
 
     def test_lifetime_subcommand(self):
         result = self._run("lifetime", "--json")
         self.assertEqual(result.returncode, 0)
         out = json.loads(result.stdout)
-        self.assertGreaterEqual(out["total_events"], 1)
+        self.assertGreaterEqual(out["data"]["total_events"], 1)
 
     def test_session_subcommand(self):
         result = self._run("session", "--sid", "smoke", "--json")
         self.assertEqual(result.returncode, 0)
         out = json.loads(result.stdout)
-        self.assertEqual(out["sid"], "smoke")
+        self.assertEqual(out["data"]["sid"], "smoke")
 
     def test_top_subcommand(self):
         result = self._run("top", "--kind", "skill", "--n", "5", "--json")
         self.assertEqual(result.returncode, 0)
         out = json.loads(result.stdout)
-        self.assertIsInstance(out, list)
+        self.assertIsInstance(out["data"], list)
 
     def test_never_used_subcommand(self):
         result = self._run("never-used", "--kind", "skill", "--json")
         self.assertEqual(result.returncode, 0)
         out = json.loads(result.stdout)
-        self.assertEqual(out["kind"], "skill")
+        self.assertEqual(out["data"]["kind"], "skill")
 
 
 def _mcp_available():

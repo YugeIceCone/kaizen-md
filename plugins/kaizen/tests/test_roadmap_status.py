@@ -220,8 +220,8 @@ class TestCli(_CwdMixin, unittest.TestCase):
         )
         self.assertEqual(result.returncode, 0)
         data = json.loads(result.stdout)
-        self.assertEqual(len(data["phases"]), 3)
-        self.assertEqual(data["next"]["item_id"], "C")
+        self.assertEqual(len(data["data"]["phases"]), 3)
+        self.assertEqual(data["data"]["next"]["item_id"], "C")
 
     def test_next_subcommand(self):
         _write_handoff(self.tmp)

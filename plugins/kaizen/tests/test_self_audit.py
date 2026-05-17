@@ -181,8 +181,8 @@ class TestCli(unittest.TestCase):
         result = self._run("path")
         self.assertEqual(result.returncode, 0)
         out = json.loads(result.stdout)
-        self.assertIn("report_dir", out)
-        self.assertIn("pipeline", out)
+        self.assertIn("report_dir", out["data"])
+        self.assertIn("pipeline", out["data"])
 
     def test_list_stages_subcommand(self):
         try:
@@ -192,7 +192,7 @@ class TestCli(unittest.TestCase):
         result = self._run("list-stages")
         self.assertEqual(result.returncode, 0)
         out = json.loads(result.stdout)
-        self.assertGreater(len(out), 5)
+        self.assertGreater(len(out["data"]), 5)
 
     def test_run_subcommand_no_write(self):
         try:
@@ -202,7 +202,7 @@ class TestCli(unittest.TestCase):
         result = self._run("run", "--no-write", "--json")
         self.assertEqual(result.returncode, 0)
         out = json.loads(result.stdout)
-        self.assertIn("finding_count", out)
+        self.assertIn("finding_count", out["data"])
 
     def test_bare_invocation_runs(self):
         try:
