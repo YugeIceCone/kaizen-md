@@ -1,4 +1,4 @@
-"""Tree-sitter universal symbol chunker — roadmap O8 (Phase 4).
+"""kaizen ts-chunk — tree-sitter universal symbol chunker (roadmap O8 Phase 4).
 
 Generalizes the O2 Python-AST chunker to any language with a
 tree-sitter grammar (~30 languages via the ``tree_sitter_languages``

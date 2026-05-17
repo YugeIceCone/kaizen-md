@@ -1,4 +1,4 @@
-"""Per-language hygiene composite — roadmap X5.
+"""kaizen hygiene-lang — per-language hygiene composite (roadmap X5).
 
 Extends kaizen-hygiene with per-language audit chains:
   Rust       : cargo audit (security) + rustup toolchain check
