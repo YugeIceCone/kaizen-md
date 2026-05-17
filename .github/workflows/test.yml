@@ -25,7 +25,9 @@ jobs:
         # shell bash -n, Python ast.parse, JSON manifest validity, SKILL.md
         # frontmatter, iron-laws codegen drift, and the full unittest suite.
         # test.yml just calls it so the two can never drift.
-        run: bash plugins/kaizen/skills/workflow/scripts/ci-gate.sh
+        # --full opts INTO the unittest suite (default is static-only
+        # since the agent-callable surface needs to be fast).
+        run: bash plugins/kaizen/skills/workflow/scripts/ci-gate.sh --full
 
       - name: Run bash unit tests
         run: |

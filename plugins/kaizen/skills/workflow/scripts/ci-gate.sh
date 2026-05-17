@@ -2,11 +2,14 @@
 # kaizen ci-gate — runs the CI-equivalent merge gate locally.
 #
 # This is the SSOT for "what CI checks" — .github/workflows/test.yml
-# calls this script so the two never drift. It is the *merge* gate
-# (heavy, whole-repo) — distinct from pre-commit.sh, the *staged* gate.
+# calls this script (with --full) so the two never drift. It is the
+# *merge* gate (heavy, whole-repo) — distinct from pre-commit.sh, the
+# *staged* gate.
 #
-#   ci-gate.sh                run all checks (incl. the unittest suite)
-#   ci-gate.sh --syntax-only  skip the slow unittest suite (static checks only)
+#   ci-gate.sh                static-only (fast, agent-callable, ~1s)
+#   ci-gate.sh --syntax-only  same as default; kept for back-compat
+#   ci-gate.sh --full         static + the unittest suite (~80s)
+#                             also opt-in via KAIZEN_CI_GATE_FULL=1
 #
 # Exit 0 = all green; non-zero = first failing check.
 # Bypass: KAIZEN_CI_GATE_DISABLE=1 (exits 0 immediately).
@@ -18,8 +21,15 @@ if [ "${KAIZEN_CI_GATE_DISABLE:-}" = "1" ]; then
   exit 0
 fi
 
-SYNTAX_ONLY=0
-[ "${1:-}" = "--syntax-only" ] && SYNTAX_ONLY=1
+# Default is static-only. Explicit --full OR env knob opts into the
+# unittest suite. Empty args = honor env knob (don't override).
+RUN_UNITTESTS=0
+[ "${KAIZEN_CI_GATE_FULL:-}" = "1" ] && RUN_UNITTESTS=1
+case "${1:-}" in
+  --full)        RUN_UNITTESTS=1 ;;
+  --syntax-only) RUN_UNITTESTS=0 ;;
+  "")            : ;;  # honor env knob, don't reset
+esac
 
 # Resolve the repo root (the kaizen-md checkout). This script lives at
 # plugins/kaizen/skills/workflow/scripts/ — five levels below the root.
@@ -32,13 +42,23 @@ ok()   { echo "  ✓ $1"; }
 
 echo "kaizen ci-gate — $REPO_ROOT"
 
-# 1. Shell scripts pass bash syntax check
-for f in plugins/kaizen/skills/workflow/scripts/*.sh \
-         plugins/kaizen/hooks/*.sh plugins/kaizen/hooks/claude/*.sh \
-         plugins/kaizen/bin/kaizen plugins/kaizen/bin/kaizen-*; do
+# 1. Shell scripts pass bash syntax check.
+# Glob-discovery (post-refactor): walks the whole plugins/kaizen tree
+# so hooks/codex/, skills/loop/scripts/, and any future *.sh location
+# is auto-covered. Excludes vendored bundles (.bundle/, _disabled/)
+# and any tests-only scratch dirs. The bin/ glob picks up the `kaizen`
+# top-level binary plus every kaizen-* wrapper.
+while IFS= read -r f; do
   [ -f "$f" ] || continue
   bash -n "$f" || fail "bash syntax: $f"
-done
+done < <(
+  find plugins/kaizen -type f -name '*.sh' \
+       -not -path '*/.bundle/*' \
+       -not -path '*/_disabled/*' \
+       -not -path '*/node_modules/*'
+  find plugins/kaizen/bin -maxdepth 1 -type f \
+       \( -name 'kaizen' -o -name 'kaizen-*' \)
+)
 ok "shell scripts parse"
 
 # 2. Python scripts parse
@@ -76,14 +96,17 @@ if [ -f plugins/kaizen/skills/iron-laws/application/codegen.py ]; then
   ok "iron-laws codegen in sync"
 fi
 
-if [ "$SYNTAX_ONLY" = "1" ]; then
-  echo "ci-gate: static checks passed (--syntax-only; unittest suite skipped)"
+if [ "$RUN_UNITTESTS" = "0" ]; then
+  echo "ci-gate: static checks passed (unittests skipped; pass --full or set KAIZEN_CI_GATE_FULL=1 to include them)"
   exit 0
 fi
 
-# 6. Full unittest suite
-( cd plugins/kaizen && python3 -m unittest discover -s tests -p 'test_*.py' ) \
+# 6. Full unittest suite. Set KAIZEN_CI_GATE_RECURSION=1 so any
+# test that itself shells out to ci-gate.sh --full (test_ci_gate's
+# own --full-path tests) can detect it's already INSIDE a ci-gate
+# run and skip — without this guard the run is infinite.
+( cd plugins/kaizen && KAIZEN_CI_GATE_RECURSION=1 python3 -m unittest discover -s tests -p 'test_*.py' ) \
   || fail "unittest suite"
 ok "unittest suite"
 
-echo "ci-gate: all checks passed"
+echo "ci-gate: all checks passed (incl. unittest suite)"
