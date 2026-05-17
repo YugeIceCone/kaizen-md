@@ -678,6 +678,36 @@ class TestSplitPlan(unittest.TestCase):
         self.assertEqual(data["skill"], "onion-ddd-workflow")
         self.assertIn("candidates", data)
 
+    def test_scan_cache_appends_split_plans_to_session_md(self):
+        """The session-state snapshot now includes the split-plans
+        appendix automatically — no separate invocation required."""
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            snap = tmp / "session.md"
+            env = {"KAIZEN_DIR": str(tmp),
+                    "KAIZEN_BLOAT_SESSION_FILE": str(snap)}
+            r = _run("scan", "--cache", env=env)
+            self.assertEqual(r.returncode, 0, r.stderr)
+            text = snap.read_text()
+            self.assertIn("## Split plans", text)
+            self.assertIn("split-plan:", text)
+
+    def test_history_entry_carries_split_plans(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            snap = tmp / "session.md"
+            env = {"KAIZEN_DIR": str(tmp),
+                    "KAIZEN_BLOAT_SESSION_FILE": str(snap)}
+            _run("scan", "--cache", env=env)
+            hist = snap.with_suffix(".history.jsonl")
+            with hist.open() as f:
+                last = None
+                for line in f:
+                    if line.strip():
+                        last = json.loads(line)
+            self.assertIn("split_plans", last)
+            self.assertIsInstance(last["split_plans"], list)
+
     def test_split_plan_all_oversized_runs(self):
         """Plan-all (no --skill) processes every SKILL.md > medium threshold."""
         r = _run("split-plan", "--json")

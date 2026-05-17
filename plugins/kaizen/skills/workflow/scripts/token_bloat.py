@@ -662,7 +662,64 @@ def _rotate_history_if_huge(p: Path) -> None:
         pass
 
 
-def _render_snapshot(findings: list[dict], scanned_at: str) -> str:
+def _render_split_plans_section(plans: list[dict]) -> str:
+    """Render the auto-generated split-plan summaries as an appendix
+    on the session.md snapshot. Plans with 0 extract candidates are
+    listed as one-liners (silent skip); plans with candidates expand."""
+    if not plans:
+        return ""
+    actionable = [p for p in plans if p.get("estimated_tokens_saved", 0) > 0]
+    if not actionable and not plans:
+        return ""
+    lines = [
+        "",
+        "## Split plans (advisory — apply via manual section extraction)",
+        "",
+    ]
+    for plan in plans:
+        skill = plan.get("skill", "?")
+        ln = plan.get("current_lines", 0)
+        tok = plan.get("current_tokens", 0)
+        saved = plan.get("estimated_tokens_saved", 0)
+        head = (f"split-plan: {skill} ({ln} ln, ~{tok} tok) — "
+                f"~{saved} tok savings if extracted")
+        lines.append(head)
+        for c in plan.get("candidates", []):
+            if c.get("verdict") != "extract":
+                continue
+            lines.append(
+                f"  → L{c['start']:>4d}-{c['end']:<4d} "
+                f"[{c['kind']:18s}] ~{c['tokens']:>5d}tok "
+                f"{c['section']}  → {c['extract_to']}"
+            )
+        lines.append("")
+    return "\n".join(lines)
+
+
+def _generate_split_plans_for_oversized(root: Path | None = None) -> list[dict]:
+    """Auto-run split-plan against every SKILL.md > medium threshold.
+    Returns the same list shape `_cmd_split_plan` emits with --json."""
+    root = root or _plugin_root()
+    plans = []
+    skills_dir = root / "skills"
+    if not skills_dir.is_dir():
+        return plans
+    for p in sorted(skills_dir.iterdir()):
+        if not p.is_dir():
+            continue
+        skill_md = p / "SKILL.md"
+        if not skill_md.is_file():
+            continue
+        try:
+            if skill_md.read_text(encoding="utf-8").count("\n") + 1 >= _SKILLMD_LINES_MED:
+                plans.append(build_split_plan(p.name, root=root))
+        except OSError:
+            continue
+    return plans
+
+
+def _render_snapshot(findings: list[dict], scanned_at: str,
+                       split_plans: list[dict] | None = None) -> str:
     """Pure: render the markdown snapshot from findings + timestamp.
     Used by both _write_session_state and the restore path."""
     waste = _total_waste(findings)
@@ -690,7 +747,10 @@ def _render_snapshot(findings: list[dict], scanned_at: str) -> str:
         lines.append(
             f"`{path}:{s}-{e}` {sev}|{sens} q={q} ~{tok}tok {fire_str}→~{cumul_i}"
         )
-    return "\n".join(lines) + "\n"
+    body = "\n".join(lines) + "\n"
+    if split_plans:
+        body += _render_split_plans_section(split_plans)
+    return body
 
 
 def _write_session_state(findings: list[dict]) -> None:
@@ -728,9 +788,18 @@ def _write_session_state(findings: list[dict]) -> None:
             with Path(p).open("a", encoding="utf-8") as f:
                 f.write(line + ("" if line.endswith("\n") else "\n"))
 
-    # 1) Snapshot — atomic replace
+    # Auto-generate split plans for every oversized SKILL.md so the
+    # session state surfaces them alongside findings — no separate
+    # invocation needed. Best-effort; never raises.
+    split_plans: list[dict] = []
     try:
-        atomic_write(snap, _render_snapshot(findings, scanned_at))
+        split_plans = _generate_split_plans_for_oversized()
+    except Exception:
+        pass
+
+    # 1) Snapshot — atomic replace (now includes split-plans appendix)
+    try:
+        atomic_write(snap, _render_snapshot(findings, scanned_at, split_plans))
     except OSError:
         pass  # never raise from persistence
 
@@ -745,6 +814,7 @@ def _write_session_state(findings: list[dict]) -> None:
             "waste_tokens":      _total_waste(findings),
             "cumulative_tokens": sum(f.get("cumulative_tokens", f.get("tokens", 0)) for f in findings),
             "findings":          findings,
+            "split_plans":       split_plans,
         }, default=str))
     except OSError:
         pass
@@ -823,16 +893,17 @@ def _restore_snapshot_from_history() -> bool:
         return False
     snap = _session_state_path()
     findings = last_obj.get("findings") or []
+    split_plans = last_obj.get("split_plans") or []
     scanned_at = last_obj.get("scanned_at") or "unknown"
+    rendered = _render_snapshot(findings, scanned_at, split_plans)
     try:
         sys.path.insert(0, str(_SCRIPT_DIR))
         import _atomic
-        _atomic.atomic_write(snap, _render_snapshot(findings, scanned_at))
+        _atomic.atomic_write(snap, rendered)
     except (OSError, ImportError):
         try:
             snap.parent.mkdir(parents=True, exist_ok=True)
-            snap.write_text(_render_snapshot(findings, scanned_at),
-                             encoding="utf-8")
+            snap.write_text(rendered, encoding="utf-8")
         except OSError:
             return False
     return True
