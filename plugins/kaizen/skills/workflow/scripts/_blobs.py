@@ -138,10 +138,11 @@ def _load_manifest() -> dict:
 
 
 def _save_manifest(data: dict) -> None:
-    MANIFEST_FILE.parent.mkdir(parents=True, exist_ok=True)
-    tmp = MANIFEST_FILE.with_suffix(".json.tmp")
-    tmp.write_text(json.dumps(data, indent=2, sort_keys=True))
-    os.replace(tmp, MANIFEST_FILE)
+    import sys as _sys
+    from pathlib import Path as _Path
+    _sys.path.insert(0, str(_Path(__file__).resolve().parent))
+    import _atomic
+    _atomic.atomic_write_json(MANIFEST_FILE, data)
 
 
 def manifest() -> dict:
@@ -237,11 +238,12 @@ def put_bytes(
 ) -> str:
     sha = sha256_bytes(data)
     blob = _blob_path(sha)
-    BLOBS_DIR.mkdir(parents=True, exist_ok=True)
     if not blob.exists():
-        tmp = blob.with_suffix(".tmp")
-        tmp.write_bytes(data)
-        os.replace(tmp, blob)
+        import sys as _sys
+        from pathlib import Path as _Path
+        _sys.path.insert(0, str(_Path(__file__).resolve().parent))
+        import _atomic
+        _atomic.atomic_write_bytes(blob, data)
     _record(sha, kind, name, len(data), ref, context)
     if ref is not None:
         _materialise_ref(sha, ref)

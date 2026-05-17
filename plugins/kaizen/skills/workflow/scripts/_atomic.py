@@ -86,6 +86,30 @@ def atomic_write(path: os.PathLike | str, content: str,
         raise
 
 
+def atomic_write_bytes(path: os.PathLike | str, content: bytes) -> None:
+    """Write `content` (bytes) to `path` atomically. Creates parent dirs.
+
+    Symmetric to atomic_write but for binary content (blobs, sidecars).
+    """
+    target = Path(path)
+    _ensure_parent(target)
+    fd, tmp_name = tempfile.mkstemp(
+        prefix=f".{target.name}.",
+        suffix=".part",
+        dir=str(target.parent),
+    )
+    try:
+        with os.fdopen(fd, "wb") as f:
+            f.write(content)
+        os.replace(tmp_name, target)
+    except BaseException:
+        try:
+            os.unlink(tmp_name)
+        except FileNotFoundError:
+            pass
+        raise
+
+
 def atomic_write_json(path: os.PathLike | str, data: Any,
                        *, indent: int = 2, sort_keys: bool = True) -> None:
     """Write `data` as JSON to `path` atomically.

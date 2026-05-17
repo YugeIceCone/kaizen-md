@@ -494,11 +494,12 @@ def write_note(path: Path, fm: dict, body: str) -> None:
     fm = dict(fm)
     fm.setdefault("created", today)
     fm["updated"] = today
-    path.parent.mkdir(parents=True, exist_ok=True)
     content = serialize_frontmatter(fm) + "\n" + body.lstrip("\n")
-    tmp = path.with_suffix(path.suffix + ".tmp")
-    tmp.write_text(content, encoding="utf-8")
-    tmp.replace(path)
+    import sys as _sys
+    from pathlib import Path as _Path
+    _sys.path.insert(0, str(_Path(__file__).resolve().parent))
+    import _atomic
+    _atomic.atomic_write(path, content)
 
 
 # ─── Slug helpers ─────────────────────────────────────────────────────

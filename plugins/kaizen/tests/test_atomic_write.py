@@ -73,6 +73,28 @@ class TestAtomicWriteString(AtomicBase):
 # ─── atomic_write_json ───────────────────────────────────────────────
 
 
+class TestAtomicWriteBytes(AtomicBase):
+    def test_writes_binary_content(self):
+        import _atomic
+        target = self.tmp / "blob.bin"
+        payload = bytes(range(256))
+        _atomic.atomic_write_bytes(target, payload)
+        self.assertEqual(target.read_bytes(), payload)
+
+    def test_overwrites_existing_bytes(self):
+        import _atomic
+        target = self.tmp / "exists.bin"
+        target.write_bytes(b"OLD")
+        _atomic.atomic_write_bytes(target, b"NEW")
+        self.assertEqual(target.read_bytes(), b"NEW")
+
+    def test_creates_parent_dirs_for_bytes(self):
+        import _atomic
+        target = self.tmp / "deep" / "nest" / "blob.bin"
+        _atomic.atomic_write_bytes(target, b"x")
+        self.assertTrue(target.is_file())
+
+
 class TestAtomicWriteJson(AtomicBase):
     def test_writes_json_with_default_indent(self):
         import _atomic
