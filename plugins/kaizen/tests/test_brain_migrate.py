@@ -372,7 +372,13 @@ class Phase4EdgeCases(_BaseCase):
         _seed_brain(self.dst, n_notes=2)
         result = bm._verify_dirs(self.src, self.dst)
         self.assertFalse(result["ok"])
-        self.assertIn("file count", result["reason"])
+        # _migrator.verify_dir reports per-file misses ("missing at dst:
+        # ...") rather than a count summary — more actionable.
+        self.assertTrue(
+            "missing at dst" in result["reason"]
+            or "file count" in result["reason"],
+            f"unexpected reason: {result['reason']!r}",
+        )
 
     def test_verify_dirs_fails_on_size_loss_over_1pct(self):
         # Synthesize size mismatch: src has 1 large file, dst has 1 tiny
@@ -426,20 +432,12 @@ class Phase4EdgeCases(_BaseCase):
 
     # --- Subcommand smoke (CLI argparse paths) ------------------------
 
-    def test_edit_settings_subcommand_runs(self):
-        """The standalone `edit-settings` subcommand should be callable
-        without doing the data move."""
-        _seed_brain(self.src)  # src has data but...
-        self.settings.write_text(json.dumps(
-            {"env": {"REMEMBER_BRAIN_PATH": "/legacy"}}, indent=2) + "\n")
-        rc = bm.cmd_edit_settings(self._args())
-        self.assertEqual(rc, 0)
-        # data move NOT done
-        self.assertTrue(self.src.exists())
-        self.assertFalse(self.dst.exists())
-        # but settings WERE edited
-        loaded = json.loads(self.settings.read_text())
-        self.assertNotIn("REMEMBER_BRAIN_PATH", loaded.get("env", {}))
+    def test_cmd_edit_settings_removed_in_v1_39(self):
+        """cmd_edit_settings was deleted (DEBT-1 YAGNI). cmd_apply is
+        idempotent on already-migrated state, so a "settings only"
+        flow just re-runs apply."""
+        self.assertFalse(hasattr(bm, "cmd_edit_settings"),
+                          "cmd_edit_settings should be removed")
 
 
 class Phase4JsonEnvelope(_BaseCase):

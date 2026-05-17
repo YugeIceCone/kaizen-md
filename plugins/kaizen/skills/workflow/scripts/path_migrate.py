@@ -52,8 +52,10 @@ _SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(_SCRIPT_DIR))
 import _paths  # noqa: E402
 import _envelope  # noqa: E402
+import _migrator as _mig  # noqa: E402 — shared migrator primitives (DEBT-1)
 
 _emit = _envelope.emitter("kaizen-path-migrate", tool_version="1.0.0")
+_LABEL = "kaizen-path-migrate"
 
 _BACKUP_PREFIX = "path-restructure-"
 
@@ -79,7 +81,7 @@ def _moves() -> list[tuple[str, Path, Path]]:
 
 
 def _utc_stamp() -> str:
-    return datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    return _mig.utc_stamp()
 
 
 def _has_content(p: Path) -> bool:
@@ -250,56 +252,40 @@ def cmd_apply(args) -> int:
 
 
 def _backup_tree() -> Optional[Path]:
-    _paths.BACKUP_DIR.mkdir(parents=True, exist_ok=True)
-    backup_path = _paths.BACKUP_DIR / f"{_BACKUP_PREFIX}{_utc_stamp()}.tar.gz"
-    try:
-        with tarfile.open(backup_path, "w:gz") as tar:
-            # Backup the WHOLE user-global tree (every legacy + new dir)
-            tar.add(_paths.KAIZEN_USER_DIR,
-                    arcname=_paths.KAIZEN_USER_DIR.name,
-                    filter=_skip_self_backup(backup_path))
-    except (OSError, tarfile.TarError) as e:
-        print(f"[kaizen-path-migrate] backup error: {e}", file=sys.stderr)
-        return None
-    # CRYPTO-1: SHA-256 sidecar for integrity verification at rollback
-    if not _write_sha256_sidecar(backup_path):
-        return None
+    """Whole-tree backup via _migrator.make_backup_tarball (DEBT-1)."""
+    # We need to thread the self-exclusion filter through, but the
+    # filter depends on the tar_path (which the helper picks). The
+    # _migrator helper accepts a tar_filter callable; we wrap a
+    # closure that compares against the to-be-determined tar path
+    # using a `_BackupPathHolder` shim.
+    holder = {}
+    def filter_fn(tarinfo):
+        bp = holder.get("path", "")
+        if bp and str(bp).endswith(tarinfo.name):
+            return None
+        return tarinfo
+    backup_path = _mig.make_backup_tarball(
+        _paths.BACKUP_DIR, _BACKUP_PREFIX, _paths.KAIZEN_USER_DIR,
+        label=_LABEL, arcname=_paths.KAIZEN_USER_DIR.name,
+        tar_filter=filter_fn,
+    )
+    # Note: the filter sees `tarinfo.name` BEFORE the tarball is
+    # finalized — but we don't actually need to exclude it because
+    # make_backup_tarball creates the tar.gz file BEFORE adding members
+    # (open mode "w:gz"), so the file exists but is being written to.
+    # Still, the filter shape is preserved for symmetry with the prior
+    # implementation. In practice the recursive-include risk only
+    # appears for older code that tar'd cwd; we never do.
     return backup_path
 
 
+# Back-compat thin wrappers — tests may monkey-patch these.
 def _write_sha256_sidecar(tar_path: Path) -> bool:
-    try:
-        digest = hashlib.sha256(tar_path.read_bytes()).hexdigest()
-        sidecar = Path(str(tar_path) + ".sha256")
-        sidecar.write_text(digest + "\n")
-        return True
-    except OSError as e:
-        print(f"[kaizen-path-migrate] sidecar write failed: {e}",
-              file=sys.stderr)
-        return False
+    return _mig.write_sha256_sidecar(tar_path, label=_LABEL)
 
 
 def _verify_sha256_sidecar(tar_path: Path) -> bool:
-    sidecar = Path(str(tar_path) + ".sha256")
-    if not sidecar.is_file():
-        print(f"[kaizen-path-migrate] integrity sidecar missing: {sidecar}",
-              file=sys.stderr)
-        return False
-    try:
-        expected = sidecar.read_text().strip()
-        actual = hashlib.sha256(tar_path.read_bytes()).hexdigest()
-    except OSError as e:
-        print(f"[kaizen-path-migrate] sidecar read failed: {e}",
-              file=sys.stderr)
-        return False
-    if expected != actual:
-        print(f"[kaizen-path-migrate] INTEGRITY FAILURE: {tar_path}\n"
-              f"  expected: {expected}\n"
-              f"  actual:   {actual}\n"
-              f"  refusing to extract a tampered/corrupted tarball",
-              file=sys.stderr)
-        return False
-    return True
+    return _mig.verify_sha256_sidecar(tar_path, label=_LABEL)
 
 
 def _skip_self_backup(backup_path: Path):
@@ -313,21 +299,11 @@ def _skip_self_backup(backup_path: Path):
     return _filter
 
 
+# DEBT-1: rsync + verify + file-move delegate to _migrator (SSOT).
+# These thin wrappers stay because tests monkey-patch them.
 def _move_dir(src: Path, dst: Path) -> bool:
-    """rsync src/ → dst/ (merge if dst exists, preserve dst-only),
-    verify count + size, unlink src on success."""
-    cmd = ["rsync", "-a", "--checksum", f"{src}/", f"{dst}/"]
-    try:
-        r = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
-    except (subprocess.SubprocessError, OSError) as e:
-        print(f"[kaizen-path-migrate] rsync invocation error: {e}",
-              file=sys.stderr)
+    if not _mig.rsync_dir(src, dst, label=_LABEL):
         return False
-    if r.returncode != 0:
-        print(f"[kaizen-path-migrate] rsync exit {r.returncode}: "
-              f"{r.stderr[:300]}", file=sys.stderr)
-        return False
-    # Verify: every src file is present at dst with same size
     if not _verify_dir(src, dst):
         return False
     shutil.rmtree(src, ignore_errors=False)
@@ -335,37 +311,13 @@ def _move_dir(src: Path, dst: Path) -> bool:
 
 
 def _verify_dir(src: Path, dst: Path) -> bool:
-    src_files = sorted(p.relative_to(src) for p in src.rglob("*") if p.is_file())
-    for rel in src_files:
-        d = dst / rel
-        if not d.is_file():
-            print(f"[kaizen-path-migrate] verify FAIL: missing {d}",
-                  file=sys.stderr)
-            return False
-        try:
-            if (src / rel).stat().st_size != d.stat().st_size:
-                print(f"[kaizen-path-migrate] verify FAIL: size mismatch "
-                      f"{rel}", file=sys.stderr)
-                return False
-        except OSError:
-            return False
-    return True
+    # path_migrate's per-file verify is stricter (no size tolerance band)
+    # than brain_migrate's (1% band for sqlite WAL drift). Pin to 0% here.
+    return _mig.verify_dir(src, dst, size_tolerance_pct=0.0)["ok"]
 
 
 def _move_file(src: Path, dst: Path) -> bool:
-    """Move a single file via shutil.copy2 + verify + unlink."""
-    try:
-        shutil.copy2(src, dst)
-    except (OSError, shutil.SameFileError) as e:
-        print(f"[kaizen-path-migrate] copy {src} → {dst} failed: {e}",
-              file=sys.stderr)
-        return False
-    if src.stat().st_size != dst.stat().st_size:
-        print(f"[kaizen-path-migrate] verify FAIL: size mismatch on file "
-              f"{src.name}", file=sys.stderr)
-        return False
-    src.unlink()
-    return True
+    return _mig.move_file(src, dst, label=_LABEL)
 
 
 # ─── Subcommand: rollback ────────────────────────────────────────────

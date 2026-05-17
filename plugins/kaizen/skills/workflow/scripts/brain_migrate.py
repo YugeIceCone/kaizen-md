@@ -30,7 +30,7 @@ kaizen-owned ``~/.claude/.kaizen/brain`` (or wherever
     kaizen-brain-migrate dry-run       — print what would happen
     kaizen-brain-migrate apply         — do the move + settings edit
     kaizen-brain-migrate rollback      — restore from most-recent backup
-    kaizen-brain-migrate edit-settings — only update settings.json env
+    (edit-settings subcommand removed in v1.39.0 — apply is idempotent)
 
 Common flags:
 
@@ -65,8 +65,10 @@ _SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(_SCRIPT_DIR))
 import _paths  # noqa: E402
 import _envelope  # noqa: E402
+import _migrator as _mig  # noqa: E402 — shared migrator primitives (DEBT-1)
 
 _emit = _envelope.emitter("kaizen-brain-migrate", tool_version="1.0.0")
+_LABEL = "kaizen-brain-migrate"
 
 _BACKUP_PREFIX = "brain-pre-migration-"
 
@@ -79,8 +81,9 @@ _NEW_ENV_VAR = "KAIZEN_BRAIN_DIR"
 
 
 def _utc_stamp() -> str:
-    """UTC timestamp suitable for filenames — sortable, no colons."""
-    return datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    """Thin wrapper retained for in-file readability; delegates to
+    _migrator.utc_stamp (DEBT-1 SSOT)."""
+    return _mig.utc_stamp()
 
 
 def _resolve_src(args) -> Path:
@@ -338,115 +341,33 @@ def cmd_apply(args) -> int:
 
 
 def _backup_src(src: Path, args) -> Optional[Path]:
-    """Tar.gz the src dir to the backup location, write a SHA-256
-    sidecar for integrity verification at rollback time. Returns the
-    tar path on success, None on failure."""
-    _paths.BACKUP_DIR.mkdir(parents=True, exist_ok=True)
-    backup_path = _paths.BACKUP_DIR / f"{_BACKUP_PREFIX}{_utc_stamp()}.tar.gz"
-    try:
-        with tarfile.open(backup_path, "w:gz") as tar:
-            tar.add(src, arcname=src.name)
-    except (OSError, tarfile.TarError) as e:
-        print(f"[kaizen-brain-migrate] backup failed: {e}", file=sys.stderr)
-        return None
-    # Sanity-check: tarball is readable + non-trivial size
-    try:
-        with tarfile.open(backup_path, "r:gz") as tar:
-            count = sum(1 for _ in tar)
-        if count == 0:
-            print("[kaizen-brain-migrate] backup produced empty tarball",
-                  file=sys.stderr)
-            return None
-    except (OSError, tarfile.TarError) as e:
-        print(f"[kaizen-brain-migrate] backup verify failed: {e}",
-              file=sys.stderr)
-        return None
-    # CRYPTO-1: write SHA-256 sidecar for tamper detection at rollback
-    if not _write_sha256_sidecar(backup_path):
-        return None
-    return backup_path
+    """Tar.gz the src dir to the backup location + sha256 sidecar
+    (DEBT-1: delegates to _migrator.make_backup_tarball)."""
+    return _mig.make_backup_tarball(
+        _paths.BACKUP_DIR, _BACKUP_PREFIX, src,
+        label=_LABEL, arcname=src.name,
+    )
 
 
+# Back-compat thin wrappers — kept so existing tests that monkeypatch
+# `bm._write_sha256_sidecar` / `bm._verify_sha256_sidecar` still work.
 def _write_sha256_sidecar(tar_path: Path) -> bool:
-    """Compute SHA-256 of `tar_path` and write `<tar_path>.sha256`
-    next to it. Returns True on success."""
-    try:
-        digest = hashlib.sha256(tar_path.read_bytes()).hexdigest()
-        sidecar = Path(str(tar_path) + ".sha256")
-        sidecar.write_text(digest + "\n")
-        return True
-    except OSError as e:
-        print(f"[kaizen-brain-migrate] sidecar write failed: {e}",
-              file=sys.stderr)
-        return False
+    return _mig.write_sha256_sidecar(tar_path, label=_LABEL)
 
 
 def _verify_sha256_sidecar(tar_path: Path) -> bool:
-    """Verify `tar_path` against `<tar_path>.sha256`. Returns False
-    when sidecar is missing OR digest doesn't match. Used by
-    cmd_rollback before extraction."""
-    sidecar = Path(str(tar_path) + ".sha256")
-    if not sidecar.is_file():
-        print(f"[kaizen-brain-migrate] integrity sidecar missing: {sidecar}",
-              file=sys.stderr)
-        return False
-    try:
-        expected = sidecar.read_text().strip()
-        actual = hashlib.sha256(tar_path.read_bytes()).hexdigest()
-    except OSError as e:
-        print(f"[kaizen-brain-migrate] sidecar read failed: {e}",
-              file=sys.stderr)
-        return False
-    if expected != actual:
-        print(f"[kaizen-brain-migrate] INTEGRITY FAILURE: {tar_path}\n"
-              f"  expected: {expected}\n"
-              f"  actual:   {actual}\n"
-              f"  refusing to extract a tampered/corrupted tarball",
-              file=sys.stderr)
-        return False
-    return True
+    return _mig.verify_sha256_sidecar(tar_path, label=_LABEL)
 
 
+# DEBT-1: rsync + verify delegate to _migrator. These wrappers stay
+# because the test suite (test_brain_migrate.py) monkey-patches
+# `_rsync_dir` / `_verify_dirs` to simulate failures.
 def _rsync_dir(src: Path, dst: Path, args) -> bool:
-    """rsync -a --checksum src/ dst/  (preserves perms, content-hash
-    verify per file). Returns True on success."""
-    cmd = ["rsync", "-a", "--checksum", f"{src}/", f"{dst}/"]
-    try:
-        r = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
-    except (subprocess.SubprocessError, OSError) as e:
-        print(f"[kaizen-brain-migrate] rsync invocation failed: {e}",
-              file=sys.stderr)
-        return False
-    if r.returncode != 0:
-        print(f"[kaizen-brain-migrate] rsync exited {r.returncode}: "
-              f"{r.stderr[:500]}", file=sys.stderr)
-        return False
-    return True
+    return _mig.rsync_dir(src, dst, label=_LABEL)
 
 
 def _verify_dirs(src: Path, dst: Path) -> dict:
-    """Confirm dst received src's content. Returns dict with ok/reason
-    + dst stats."""
-    src_stats = _dir_stats(src)
-    dst_stats = _dir_stats(dst)
-    if dst_stats["file_count"] < src_stats["file_count"]:
-        return {"ok": False, "reason":
-                f"file count mismatch — src={src_stats['file_count']} "
-                f"dst={dst_stats['file_count']}",
-                "dst_files": dst_stats["file_count"],
-                "dst_size": dst_stats["size_bytes"]}
-    # Size tolerance: rsync may rewrite sqlite slightly differently due to
-    # WAL/journal files. Accept dst within 1% of src OR ≥ src.
-    src_size = src_stats["size_bytes"]
-    dst_size = dst_stats["size_bytes"]
-    if src_size > 0 and dst_size < int(src_size * 0.99):
-        return {"ok": False, "reason":
-                f"size mismatch — src={src_size} dst={dst_size} "
-                f"(>1% loss)",
-                "dst_files": dst_stats["file_count"],
-                "dst_size": dst_size}
-    return {"ok": True, "dst_files": dst_stats["file_count"],
-            "dst_size": dst_size}
+    return _mig.verify_dir(src, dst, size_tolerance_pct=1.0)
 
 
 # ─── Subcommand: rollback ────────────────────────────────────────────
@@ -506,23 +427,10 @@ def cmd_rollback(args) -> int:
     return 0
 
 
-# ─── Subcommand: edit-settings ───────────────────────────────────────
-
-
-def cmd_edit_settings(args) -> int:
-    dst = _resolve_dst(args)
-    settings_file = _resolve_settings(args)
-    result = _edit_settings(settings_file, dst, args)
-    if args.json:
-        _emit(result, verdict="green" if result.get("edited") else "yellow")
-    elif result.get("edited"):
-        print(f"[kaizen-brain-migrate edit-settings] ✓ updated {settings_file}")
-        print(f"  backup: {result['backup']}")
-        print(f"  rollback: cp {result['backup']} {settings_file}")
-    else:
-        print(f"[kaizen-brain-migrate edit-settings] no change needed "
-              f"({result.get('reason', 'unknown')})")
-    return 0
+# DEBT-1: cmd_edit_settings removed — zero call sites outside its own
+# tests. cmd_apply is idempotent on already-migrated state and handles
+# the settings edit internally; a user wanting "settings only" can
+# just re-run apply.
 
 
 # ─── Settings.json mutation (8-pattern foolproof recipe) ─────────────
@@ -688,11 +596,6 @@ def main(argv: Optional[list[str]] = None) -> int:
     r = sub.add_parser("rollback", help="restore from most-recent backup")
     _add_common_flags(r)
     r.set_defaults(func=cmd_rollback)
-
-    e = sub.add_parser("edit-settings",
-                       help="only update settings.json env var (no data move)")
-    _add_common_flags(e)
-    e.set_defaults(func=cmd_edit_settings)
 
     args = p.parse_args(argv)
     return args.func(args)
