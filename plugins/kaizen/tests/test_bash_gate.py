@@ -296,6 +296,64 @@ class TestEtuDecision(unittest.TestCase):
         )
 
 
+class TestAfkMode(unittest.TestCase):
+    """AFK mode (env KAIZEN_AFK_MODE=1 or sentinel ~/.claude/.kaizen/afk)
+    downgrades every `ask` decision to `allow + systemMessage` so an
+    unattended Claude session keeps making progress."""
+
+    def setUp(self):
+        import os
+        self._orig_afk = os.environ.pop("KAIZEN_AFK_MODE", None)
+        # Point sentinel at a tmp file we control — avoids reading the
+        # real user-global sentinel during tests.
+        import tempfile
+        self._tmp = tempfile.NamedTemporaryFile(delete=False)
+        self._tmp.close()
+        # Don't actually exist by default — tests opt in by writing.
+        Path(self._tmp.name).unlink(missing_ok=True)
+        os.environ["KAIZEN_AFK_FILE"] = self._tmp.name
+
+    def tearDown(self):
+        import os
+        Path(self._tmp.name).unlink(missing_ok=True)
+        os.environ.pop("KAIZEN_AFK_FILE", None)
+        if self._orig_afk is not None:
+            os.environ["KAIZEN_AFK_MODE"] = self._orig_afk
+
+    def test_afk_inactive_eval_still_asks(self):
+        r = _bash_gate.decide('eval "$x"')
+        self.assertEqual(
+            r.get("hookSpecificOutput", {}).get("permissionDecision"), "ask"
+        )
+
+    def test_afk_via_env_var_downgrades_eval_to_advisory(self):
+        import os
+        os.environ["KAIZEN_AFK_MODE"] = "1"
+        try:
+            r = _bash_gate.decide('eval "$x"')
+        finally:
+            os.environ.pop("KAIZEN_AFK_MODE", None)
+        self.assertNotIn("hookSpecificOutput", r)
+        self.assertIn("systemMessage", r)
+        self.assertIn("AFK", r["systemMessage"])
+        self.assertIn("eval", r["systemMessage"])
+
+    def test_afk_via_sentinel_downgrades_force_push_to_advisory(self):
+        Path(self._tmp.name).touch()
+        r = _bash_gate.decide('git push --force origin master')
+        self.assertNotIn("hookSpecificOutput", r)
+        self.assertIn("systemMessage", r)
+        self.assertIn("AFK", r["systemMessage"])
+        self.assertIn("force", r["systemMessage"])
+
+    def test_afk_does_not_swallow_advisory_only_findings(self):
+        # A discipline-warn command (no ask) under AFK is unchanged.
+        Path(self._tmp.name).touch()
+        r = _bash_gate.decide("grep X file | wc -l")
+        # Either clean or systemMessage — never ask.
+        self.assertNotIn("hookSpecificOutput", r)
+
+
 class TestLongFormNudge(unittest.TestCase):
     """long_form_nudge advises (systemMessage) when kaizen scripts are
     invoked via long paths instead of `kaizen <sub>`."""

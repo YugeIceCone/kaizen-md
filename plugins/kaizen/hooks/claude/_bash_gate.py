@@ -84,6 +84,39 @@ _RM_RF_SAFE = re.compile(
 
 _NO_DELETIONS_BELIEF = Path.home() / ".claude" / "brain" / "Notes" / "pref-no-deletions.md"
 
+# AFK mode — when active, every `ask` decision in this gate is downgraded
+# to a non-blocking `allow + systemMessage` advisory so unattended Claude
+# sessions can keep working. Two activation paths:
+#   • env var KAIZEN_AFK_MODE=1
+#   • sentinel file at ~/.claude/.kaizen/afk (override path via KAIZEN_AFK_FILE)
+# Toggle via `touch ~/.claude/.kaizen/afk` / `rm` the file.
+_AFK_SENTINEL = Path.home() / ".claude" / ".kaizen" / "afk"
+
+
+def _afk_active() -> bool:
+    """True if the user has explicitly opted into AFK / unattended mode."""
+    import os
+    if os.environ.get("KAIZEN_AFK_MODE") == "1":
+        return True
+    override = os.environ.get("KAIZEN_AFK_FILE")
+    sentinel = Path(override) if override else _AFK_SENTINEL
+    return sentinel.is_file()
+
+
+def _afk_advisory(reason: str) -> dict:
+    """Wrap an `ask` reason as a non-blocking advisory under AFK mode.
+
+    The original reason is preserved verbatim so the user still sees WHY
+    the gate would have asked — they just aren't blocked on a click.
+    """
+    return {
+        "systemMessage": (
+            "kaizen AFK mode (KAIZEN_AFK_MODE=1 or sentinel "
+            f"{_AFK_SENTINEL}) — gate downgraded `ask` to advisory:\n\n"
+            f"{reason}"
+        )
+    }
+
 # Heredoc body: `<<['"]?WORD['"]?` … newline … a line that is just WORD.
 # The body is opaque DATA (not re-interpreted as commands) — strip it so a
 # commit message that merely *mentions* `git push --force` doesn't trip the
@@ -239,14 +272,22 @@ def decide(command: str) -> dict:
       3. bash-discipline advisory + long-form-path nudge (concatenated)
          → systemMessage
       4. clean → {}
+
+    Under AFK mode (env KAIZEN_AFK_MODE=1 or sentinel ~/.claude/.kaizen/afk),
+    step 1 + step 2 emit `allow + systemMessage` instead of `ask`, so an
+    unattended session keeps making progress instead of stalling on a
+    user-confirmation prompt.
     """
     if not command:
         return {}
     scan_target = _strip_noncommand(command)
+    afk = _afk_active()
 
     destructive = destructive_decision(scan_target)
     if destructive:
         verb, reason = destructive
+        if afk:
+            return _afk_advisory(reason)
         return {
             "hookSpecificOutput": {
                 "hookEventName": "PreToolUse",
@@ -263,6 +304,8 @@ def decide(command: str) -> dict:
     etu = etu_decision(command)
     if etu:
         verb, reason = etu
+        if afk:
+            return _afk_advisory(reason)
         return {
             "hookSpecificOutput": {
                 "hookEventName": "PreToolUse",
