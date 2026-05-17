@@ -1,13 +1,12 @@
 ---
 name: pref-debug-command-hygiene
 description: Use kaizen-scratch (not ad-hoc /tmp + rm -rf) for one-off debug experiments. Gate-safe by construction.
-metadata:
-  type: belief
-  confidence: 0.9
-  freshness: stable
-  sources_count: 1
-  evidence:
-    - "Recurring pattern in debugging — chained `cd /tmp && rm -rf X && git init` trips kaizen's bash-gate even though the resolved path is under /tmp. A gate-safe sandbox tool removes the temptation."
+type: belief
+confidence: 0.9
+freshness: stable
+sources_count: 1
+evidence:
+  - "Recurring pattern in debugging — chained `cd /tmp && rm -rf X && git init` trips kaizen's bash-gate even though the resolved path is under /tmp. A gate-safe sandbox tool removes the temptation."
 ---
 
 # Debug experiments use `kaizen-scratch`

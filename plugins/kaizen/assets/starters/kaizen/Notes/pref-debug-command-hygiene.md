@@ -1,14 +1,13 @@
 ---
 name: pref-debug-command-hygiene
 description: Use kaizen-scratch (not ad-hoc /tmp + rm -rf) for one-off debug experiments. Gate-safe by construction.
-metadata:
-  type: belief
-  confidence: 0.95
-  freshness: stable
-  sources_count: 2
-  evidence:
-    - "2026-05-17 debug pattern surfaced during scaffold subcommand work — `cd /tmp && rm -rf .git && ...` tripped the bash-gate's _RM_RF check (rm path was relative; shell-state inference is intentionally not done by the gate)."
-    - "Same incident motivated building kaizen-scratch + this rule — pre-emptive codification rather than waiting for re-occurrence."
+type: belief
+confidence: 0.95
+freshness: stable
+sources_count: 2
+evidence:
+  - "2026-05-17 debug pattern surfaced during scaffold subcommand work — `cd /tmp && rm -rf .git && ...` tripped the bash-gate's _RM_RF check (rm path was relative; shell-state inference is intentionally not done by the gate)."
+  - "Same incident motivated building kaizen-scratch + this rule — pre-emptive codification rather than waiting for re-occurrence."
 ---
 
 # Debug experiments use `kaizen-scratch`

@@ -25,6 +25,10 @@ _HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$_HOOK_DIR/../../skills/workflow/scripts/_plugin_root.sh"
 PLUGIN_ROOT="$(kaizen_plugin_root 2>/dev/null)" || { echo '{}'; exit 0; }
 
+# Trace firing (iron-law: every-hook-script-traces-its-firing).
+EVENT_JSON="$(cat 2>/dev/null || echo '{}')"
+printf '%s' "$EVENT_JSON" | bash "$PLUGIN_ROOT/hooks/claude/_trace.sh" SessionStart-intake 2>/dev/null || true
+
 # Resolve repo root — intake only fires inside a git project (so we
 # have a stable .kaizen/ dir to write into).
 REPO=$(git rev-parse --show-toplevel 2>/dev/null) || { echo '{}'; exit 0; }

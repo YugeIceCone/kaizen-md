@@ -26,6 +26,10 @@ _HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$_HOOK_DIR/../../skills/workflow/scripts/_plugin_root.sh"
 PLUGIN_ROOT="$(kaizen_plugin_root 2>/dev/null)" || { echo '{}'; exit 0; }
 
+# Trace firing (iron-law: every-hook-script-traces-its-firing).
+EVENT_JSON="$(cat 2>/dev/null || echo '{}')"
+printf '%s' "$EVENT_JSON" | bash "$PLUGIN_ROOT/hooks/claude/_trace.sh" UserPromptSubmit-skills-reminder 2>/dev/null || true
+
 # Resolve repo root — reminder is only relevant inside a kaizen project.
 REPO=$(git rev-parse --show-toplevel 2>/dev/null) || { echo '{}'; exit 0; }
 cd "$REPO" || { echo '{}'; exit 0; }

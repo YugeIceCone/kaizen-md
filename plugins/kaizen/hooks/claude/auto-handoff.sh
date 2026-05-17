@@ -16,6 +16,10 @@ _HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$_HOOK_DIR/../../skills/workflow/scripts/_plugin_root.sh"
 PLUGIN_ROOT="$(kaizen_plugin_root 2>/dev/null)" || { echo '{}'; exit 0; }
 
+# Trace firing (iron-law: every-hook-script-traces-its-firing).
+EVENT_JSON="$(cat 2>/dev/null || echo '{}')"
+printf '%s' "$EVENT_JSON" | bash "$PLUGIN_ROOT/hooks/claude/_trace.sh" Stop-auto-handoff 2>/dev/null || true
+
 # Single python3 spawn — auto_handoff.py does threshold check,
 # dedupe, dxm event write, and JSON envelope emission.
 python3 "$PLUGIN_ROOT/skills/workflow/scripts/auto_handoff.py" check 2>/dev/null \
