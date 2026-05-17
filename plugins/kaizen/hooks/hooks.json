@@ -77,6 +77,11 @@
             "type": "command",
             "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/claude/pretooluse-trace.sh",
             "timeout": 3
+          },
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/claude/dxm-event.sh PreToolUse",
+            "timeout": 2
           }
         ]
       }
@@ -104,6 +109,11 @@
             "type": "command",
             "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/claude/posttooluse-trace.sh",
             "timeout": 3
+          },
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/claude/dxm-event.sh PostToolUse",
+            "timeout": 2
           }
         ]
       }

@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/YugeIceCone/kaizen-md/skills/deus-ex-machina/now-out.schema.json",
+  "title": "deus-ex-machina now snapshot",
+  "type": "object",
+  "required": ["session_id", "event_count", "by_tool"],
+  "additionalProperties": true,
+  "properties": {
+    "session_id":         { "type": "string" },
+    "event_count":        { "type": "integer", "minimum": 0 },
+    "by_tool":            { "type": "object", "additionalProperties": { "type": "integer" } },
+    "last_event_at_unix": { "type": ["number", "null"] },
+    "lag_seconds":        { "type": ["number", "null"],
+                            "description": "Seconds between now() and the most recent event timestamp" },
+    "parent_session_id":  { "type": ["string", "null"] }
+  }
+}

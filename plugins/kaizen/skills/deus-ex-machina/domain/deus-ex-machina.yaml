@@ -1,0 +1,43 @@
+# deus-ex-machina — live session-state mirror over Claude Code's JSONL.
+#
+# v2 lens manifest. Subcommands declare their input/output schemas;
+# schema_cli.Manifest.load walks them.
+
+version: 2
+feature: deus-ex-machina
+description: >-
+  Fast-store companion to Claude Code's session JSONL. Hook-driven
+  sub-millisecond event capture; queryable real-time. Closes the
+  3-15s lag gap that makes scaffold/verify see stale state. Plus
+  cross-session continuity (parent→child link).
+
+# Where data lives. KAIZEN_DXM_DIR overrides the root.
+paths:
+  events_dir: "~/.claude/.kaizen/dxm"
+  events_per_session: "events-<session_id>.jsonl"
+  sessions_lineage:   "sessions.jsonl"
+
+subcommands:
+  capture:
+    description: >-
+      Append an event to a session's stream. Called by hooks via
+      stdin JSON. Stamps ts_unix sub-millisecond.
+    input_schema: schemas/capture-in.schema.json
+    # output: canonical envelope (no per-subcommand schema yet)
+
+  now:
+    description: >-
+      Current-state snapshot for a session — event count, per-tool
+      breakdown, last_event_at_unix, lag_seconds (now - last_event),
+      parent_session_id when linked.
+    output_schema: schemas/now-out.schema.json
+
+  tail:
+    description: >-
+      Most-recent events for a session. --limit N (default 20),
+      --since-unix T filters strictly-after.
+
+  link:
+    description: >-
+      Record a parent→child session-continuity edge. Read by `now`
+      to surface lineage. Pairs with handoff create/resume.

@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/YugeIceCone/kaizen-md/skills/deus-ex-machina/capture-in.schema.json",
+  "title": "deus-ex-machina capture input",
+  "description": "JSON payload (stdin or --payload) for kaizen-dxm capture. ts_unix stamped by the script when absent.",
+  "type": "object",
+  "required": ["session_id", "evt_type"],
+  "additionalProperties": true,
+  "properties": {
+    "session_id": { "type": "string", "minLength": 1 },
+    "evt_type":   { "type": "string", "minLength": 1 },
+    "tool_name":  { "type": ["string", "null"] },
+    "ts_unix":    { "type": "number" },
+    "payload":    { "description": "Free-form per-event data; preserved verbatim" }
+  }
+}
