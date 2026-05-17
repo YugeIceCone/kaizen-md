@@ -218,3 +218,185 @@ intents:
       suggest: "kaizen gatekeeper check --staged + /kaizen:karpathy-check  # gate before commit"
       subcommand: gatekeeper
       confidence: 0.85
+
+  # ─── Plugin-development hub auto-routing ─────────────────────────
+
+  - id: plugin-dev-intake
+    description: User wants to start plugin-development work — suggest the intake QA so they Skill-load the right bundle BEFORE writing code.
+    triggers:
+      - { kind: phrase, pattern: "(add|build|ship|create).{0,20}(feature|skill|hook|command|mcp|bin)", case_insensitive: true }
+      - { kind: phrase, pattern: "plugin.dev (workflow|routine|intake)", case_insensitive: true }
+      - { kind: phrase, pattern: "(which|what) skills (should i|to) (load|use)", case_insensitive: true }
+      - { kind: phrase, pattern: "intake checklist", case_insensitive: true }
+      - { kind: phrase, pattern: "feature shape", case_insensitive: true }
+    action:
+      suggest: "/kaizen:plugin-development intake  # agent asks AskUserQuestion → returns the skill bundle for the work-type"
+      subcommand: plugin-development
+      confidence: 0.85
+
+  - id: plugin-dev-dispatch
+    description: User about to dispatch a subagent — suggest the dispatch-rubric to pick the right one.
+    triggers:
+      - { kind: phrase, pattern: "(dispatch|spawn|use) (a |the )?(sub)?agent", case_insensitive: true }
+      - { kind: phrase, pattern: "which (sub)?agent (type|should)", case_insensitive: true }
+      - { kind: phrase, pattern: "(implement|build).*in (a |an )?(isolated )?worktree", case_insensitive: true }
+    action:
+      suggest: "/kaizen:plugin-development dispatch  # walks the dispatch-rubric; recommends kaizen-implementer for TDD-in-worktree"
+      subcommand: plugin-development
+      confidence: 0.8
+
+  # ─── Audit-axis routing (per-axis suggestions) ───────────────────
+
+  - id: audit-coverage
+    description: User asks about test coverage — point at the code-to-test mapper.
+    triggers:
+      - { kind: phrase, pattern: "(test|code).coverage", case_insensitive: true }
+      - { kind: phrase, pattern: "what.{0,5}(untested|uncovered)", case_insensitive: true }
+      - { kind: phrase, pattern: "coverage (gap|report)", case_insensitive: true }
+    action:
+      suggest: "/kaizen:coverage gaps  # 1:1 script ↔ test-file presence"
+      subcommand: coverage
+      confidence: 0.85
+
+  - id: audit-schema-coverage
+    description: User asks about feature-shape conformance — point at schema-coverage.
+    triggers:
+      - { kind: phrase, pattern: "schema.coverage", case_insensitive: true }
+      - { kind: phrase, pattern: "feature shape (gap|conformance)", case_insensitive: true }
+    action:
+      suggest: "/kaizen:schema-coverage gaps  # which features deviate from canonical shapes"
+      subcommand: schema-coverage
+      confidence: 0.85
+
+  - id: audit-name-quality
+    description: User asks about filename intent — point at name-quality.
+    triggers:
+      - { kind: phrase, pattern: "name.quality", case_insensitive: true }
+      - { kind: phrase, pattern: "filename (intent|match)", case_insensitive: true }
+      - { kind: phrase, pattern: "(bad|poor) (file )?names?", case_insensitive: true }
+    action:
+      suggest: "/kaizen:name-quality gaps  # filename ↔ docstring intent mismatches"
+      subcommand: name-quality
+      confidence: 0.85
+
+  - id: audit-frontmatter
+    description: User asks about SKILL.md frontmatter health — point at frontmatter audit.
+    triggers:
+      - { kind: phrase, pattern: "frontmatter (gap|coverage|audit)", case_insensitive: true }
+      - { kind: phrase, pattern: "skill (routing|discoverable)", case_insensitive: true }
+      - { kind: phrase, pattern: "weak (routing|trigger)", case_insensitive: true }
+    action:
+      suggest: "/kaizen:frontmatter gaps  # SKILL.md name/trigger conformance"
+      subcommand: frontmatter
+      confidence: 0.85
+
+  - id: audit-token-bloat
+    description: User asks about token costs — point at token-bloat scanner.
+    triggers:
+      - { kind: phrase, pattern: "token.bloat", case_insensitive: true }
+      - { kind: phrase, pattern: "(too many|wasted|excess) tokens?", case_insensitive: true }
+      - { kind: phrase, pattern: "trim (the )?(skill|prompt)", case_insensitive: true }
+    action:
+      suggest: "/kaizen:gatekeeper check token-bloat  # scan for high-cost low-value content"
+      subcommand: gatekeeper
+      confidence: 0.85
+
+  # ─── Lifecycle commands (the 11 uncovered admin verbs) ───────────
+
+  - id: plugin-install
+    description: User wants to install/setup the plugin — suggest setup.
+    triggers:
+      - { kind: phrase, pattern: "install (the )?(kaizen )?plugin", case_insensitive: true }
+      - { kind: phrase, pattern: "(set up|setup) (the )?(kaizen )?(plugin|gate)", case_insensitive: true }
+      - { kind: phrase, pattern: "bootstrap (the )?(kaizen )?plugin", case_insensitive: true }
+    action:
+      suggest: "/kaizen:setup install  # or /kaizen:bootstrap for the uv venv warm-up"
+      subcommand: setup
+      confidence: 0.85
+
+  - id: plugin-update
+    description: User wants to update the plugin / refresh CC cache.
+    triggers:
+      - { kind: phrase, pattern: "(update|upgrade) (the )?(kaizen )?plugin", case_insensitive: true }
+      - { kind: phrase, pattern: "refresh (the )?(plugin )?cache", case_insensitive: true }
+      - { kind: phrase, pattern: "pull (the )?(plugin )?(updates|changes)", case_insensitive: true }
+    action:
+      suggest: "/kaizen:update  # git-pull + cache refresh + reload"
+      subcommand: update
+      confidence: 0.85
+
+  - id: plugin-health
+    description: User asks about plugin health / status / hygiene.
+    triggers:
+      - { kind: phrase, pattern: "(plugin|kaizen) (health|status)", case_insensitive: true }
+      - { kind: phrase, pattern: "(broken )?(symlinks?|missing scripts?)", case_invariant: true, case_insensitive: true }
+      - { kind: phrase, pattern: "(clean|hygiene|cleanup) (the )?plugin", case_insensitive: true }
+    action:
+      suggest: "/kaizen:health  # broken symlinks / missing scripts / schema drift  → /kaizen:hygiene to clean"
+      subcommand: health
+      confidence: 0.8
+
+  - id: plugin-backup
+    description: User wants to snapshot/restore plugin state.
+    triggers:
+      - { kind: phrase, pattern: "(backup|snapshot) (the )?(plugin|kaizen|state)", case_insensitive: true }
+      - { kind: phrase, pattern: "restore (a |from )?(backup|snapshot)", case_insensitive: true }
+    action:
+      suggest: "/kaizen:backup list  # then restore <id> or create"
+      subcommand: backup
+      confidence: 0.85
+
+  # ─── One-off helpers (gold / inbox / metrics / discovery) ────────
+
+  - id: gold-capture
+    description: User captured a gold pattern — point at /kaizen:gold.
+    triggers:
+      - { kind: phrase, pattern: "capture (a |this )?(gold )?pattern", case_insensitive: true }
+      - { kind: phrase, pattern: "(gold|incidental) (capture|learning|discovery)", case_insensitive: true }
+      - { kind: phrase, pattern: "promote.*to brain (note|file)", case_insensitive: true }
+    action:
+      suggest: "/kaizen:gold capture \"<pattern>\" --tag X  # or list / promote --brain"
+      subcommand: gold
+      confidence: 0.85
+
+  - id: inbox-review
+    description: User wants to review queued inbox items.
+    triggers:
+      - { kind: phrase, pattern: "(my |the )?inbox", case_insensitive: true }
+      - { kind: phrase, pattern: "(draft|pending) (memory|review)", case_insensitive: true }
+    action:
+      suggest: "/kaizen:inbox list  # peek / drain / clear"
+      subcommand: inbox
+      confidence: 0.7
+
+  - id: metrics-skips
+    description: User asks about skill-skip detection / adoption metrics.
+    triggers:
+      - { kind: phrase, pattern: "(skill )?skips?", case_insensitive: true }
+      - { kind: phrase, pattern: "(adoption|never.used) (metric|stat)", case_insensitive: true }
+      - { kind: phrase, pattern: "(session )?metrics", case_insensitive: true }
+    action:
+      suggest: "/kaizen:metrics skips  # also: lifetime | never-used | graveyard"
+      subcommand: metrics
+      confidence: 0.8
+
+  - id: discover-codebase
+    description: User starts onboarding to a new codebase — semantic index.
+    triggers:
+      - { kind: phrase, pattern: "(onboard|index) (the |this )?(codebase|repo|project)", case_insensitive: true }
+      - { kind: phrase, pattern: "semantic (search|index) (over|of)", case_insensitive: true }
+      - { kind: phrase, pattern: "(code )?tour", case_insensitive: true }
+    action:
+      suggest: "/kaizen:onboard <repo>  # semantic SQLite index; pair with /kaizen:code-tour for narrated walkthrough"
+      subcommand: onboard
+      confidence: 0.8
+
+  - id: discover-claude-docs
+    description: User asks about Claude API/Code docs — point at the local mirror.
+    triggers:
+      - { kind: phrase, pattern: "claude (api|code) (docs|reference|guide)", case_insensitive: true }
+      - { kind: phrase, pattern: "(how does|how do i) (claude|cc) (api|hook|mcp|tool)", case_insensitive: true }
+    action:
+      suggest: "/kaizen:claude-docs <query>  # local semantic search over the docs mirror"
+      subcommand: claude-docs
+      confidence: 0.75
