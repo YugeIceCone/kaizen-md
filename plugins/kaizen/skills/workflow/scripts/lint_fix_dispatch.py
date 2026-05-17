@@ -38,6 +38,7 @@ import json
 import os
 import re
 import subprocess
+import sys
 import urllib.request
 from collections import defaultdict
 from typing import Any
@@ -111,8 +112,52 @@ def _extract_diff(text: str) -> str:
     return ""
 
 
-def _apply_patch(diff: str, repo_root: str) -> bool:
-    """`git apply --3way --whitespace=nowarn`. Returns True on success."""
+# Scope guard helpers (SEC-3): an LLM-generated diff must touch only
+# the file(s) we asked it to fix. Without a scope check a prompt-
+# injected lint server could patch `.github/workflows/`, hook scripts,
+# `bin/`, or any other path it pleases.
+
+_DIFF_TARGET_RE = re.compile(
+    r"^\+\+\+\s+(?:b/)?(\S+)$", re.MULTILINE
+)
+
+
+def _diff_targets(diff: str) -> set[str]:
+    """Extract every `+++ b/<path>` target from a unified diff. Strips
+    the leading `b/` (git's default prefix). `/dev/null` (deletion
+    target) is dropped — that's not a write."""
+    targets = set()
+    for m in _DIFF_TARGET_RE.finditer(diff):
+        path = m.group(1)
+        if path == "/dev/null":
+            continue
+        targets.add(path)
+    return targets
+
+
+def _diff_in_scope(diff: str, allowed_paths: set[str]) -> bool:
+    """True iff every target in `diff` is a member of `allowed_paths`.
+    Empty target set = vacuously in-scope (nothing to apply)."""
+    targets = _diff_targets(diff)
+    return targets.issubset(allowed_paths)
+
+
+def _apply_patch(diff: str, repo_root: str,
+                  allowed_paths: set[str] | None = None) -> bool:
+    """`git apply --3way --whitespace=nowarn`. Returns True on success.
+
+    SEC-3: when `allowed_paths` is provided, REFUSE if the diff touches
+    any path outside the allow-list. Caller passes the set of files
+    associated with the lint findings — an LLM that returns a diff
+    against any other path gets refused before `git apply` runs.
+    """
+    if allowed_paths is not None and not _diff_in_scope(diff, allowed_paths):
+        targets = _diff_targets(diff)
+        rogue = targets - allowed_paths
+        print(f"[lint_fix_dispatch] REFUSED: diff targets {sorted(rogue)} "
+              f"outside the lint-finding scope {sorted(allowed_paths)}",
+              file=sys.stderr)
+        return False
     try:
         proc = subprocess.run(
             ["git", "apply", "--3way", "--whitespace=nowarn", "-"],
@@ -128,8 +173,19 @@ def _apply_patch(diff: str, repo_root: str) -> bool:
 # Local LLM HTTP — minimal OpenAI-compatible client
 # ───────────────────────────────────────────────────────────────────────
 
+_ALLOWED_SCHEMES = frozenset({"http", "https"})
+
+
 def _http_post(url: str, payload: dict, *, api_key: str | None = None,
                 timeout: float = 60.0) -> dict:
+    # SEC-4: explicit scheme allowlist (defense-in-depth — urllib will
+    # honor file:// / ftp:// otherwise).
+    from urllib.parse import urlparse as _urlparse
+    if _urlparse(url).scheme not in _ALLOWED_SCHEMES:
+        raise ValueError(
+            f"refusing non-http(s) URL scheme: {url!r} "
+            f"(allowed: {sorted(_ALLOWED_SCHEMES)})"
+        )
     headers = {"Content-Type": "application/json"}
     if api_key:
         headers["Authorization"] = f"Bearer {api_key}"
@@ -258,7 +314,9 @@ def dispatch(
                 task["patch_extraction_failed"] = True
                 task["apply_status"] = "skipped"
             elif apply:
-                ok = _apply_patch(diff, repo_root)
+                # SEC-3: scope the patch to ONLY this finding's file —
+                # a prompt-injected LLM can't patch hooks, CI, etc.
+                ok = _apply_patch(diff, repo_root, allowed_paths={file})
                 task["apply_status"] = "applied" if ok else "failed"
             else:
                 task["apply_status"] = "skipped"

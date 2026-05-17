@@ -50,9 +50,21 @@ _CANDIDATE_PORTS: tuple[tuple[int, str], ...] = (
 # Probe — low-level GET /v1/models with a tight timeout
 # ───────────────────────────────────────────────────────────────────────
 
+_ALLOWED_SCHEMES = frozenset({"http", "https"})
+
+
 def _probe(base_url: str, timeout: float = 1.0) -> dict | None:
-    """Return /v1/models JSON if reachable, else None. Never raises."""
+    """Return /v1/models JSON if reachable, else None. Never raises.
+
+    SEC-4: explicit scheme allowlist. urlopen honors `file://` /
+    `ftp://` / `gopher://`; a malicious LLM_BASE_URL=file:///etc/passwd
+    would turn this probe into an arbitrary-file-read primitive.
+    Incidentally, the socket.create_connection step would reject
+    schemeless URLs today — but defense-in-depth says don't rely on
+    that accident."""
     parsed = urlparse(base_url)
+    if parsed.scheme not in _ALLOWED_SCHEMES:
+        return None
     host = parsed.hostname or "127.0.0.1"
     port = parsed.port or (443 if parsed.scheme == "https" else 80)
     # Cheap TCP probe first so we don't wait for HTTP timeouts on dead ports
