@@ -61,10 +61,13 @@ class TestBodyContent(unittest.TestCase):
                          "/kaizen:status", "/kaizen:menu"):
             self.assertIn(pointer, self.body, f"missing pointer: {pointer}")
 
-    def test_under_120_lines(self):
-        """Body budget — tight per-command descriptions but bounded."""
-        self.assertLess(self.body.count("\n"), 120,
-                         "help body should be precise+concise (~100 lines max)")
+    def test_under_150_lines(self):
+        """Body budget — tight per-command descriptions but bounded.
+        Loosened from 120 → 150 after the command surface grew past 55
+        (added /kaizen:intent + nested /kaizen:audit:axis pushed
+        count to 59)."""
+        self.assertLess(self.body.count("\n"), 150,
+                         "help body should be precise+concise (~120 lines max for 60 commands)")
 
     def test_each_command_has_description(self):
         """Per-command row format: `command` | description.
