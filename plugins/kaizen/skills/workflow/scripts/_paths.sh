@@ -48,6 +48,14 @@ KAIZEN_CLAUDE_DOCS_SRC="${KAIZEN_CLAUDE_DOCS_SRC:-$KAIZEN_CLAUDE_DOCS_DIR/src}"
 # v1.30.0+ — install log (kaizen install/setup events).
 KAIZEN_INSTALL_LOG="${KAIZEN_INSTALL_LOG:-$KAIZEN_USER_DIR/install.log}"
 
+# v1.38.0+ — Second Brain (PARA + Persona + Notes + index DB).
+# Owned by kaizen post-Remember-retirement. Legacy REMEMBER_BRAIN_PATH
+# is NOT consulted — only KAIZEN_BRAIN_DIR resolves the location.
+KAIZEN_BRAIN_DIR="${KAIZEN_BRAIN_DIR:-$KAIZEN_USER_DIR/brain}"
+KAIZEN_BRAIN_DB="$KAIZEN_BRAIN_DIR/brain.db"
+KAIZEN_BRAIN_NOTES="$KAIZEN_BRAIN_DIR/Notes"
+KAIZEN_BRAIN_PERSONA="$KAIZEN_BRAIN_DIR/Persona.md"
+
 # v1.30.0+ — archive slot for legacy dirs migrated when canonical already exists.
 KAIZEN_LEGACY_ARCHIVE_DIR="$KAIZEN_USER_DIR/_legacy"
 
@@ -122,4 +130,5 @@ KAIZEN_LEGACY_BACKUPS="$HOME/.claude/backups/kaizen"
 KAIZEN_LEGACY_SCHEMAS="$HOME/.claude/kaizen-schemas"
 KAIZEN_LEGACY_OBSERVE="$HOME/.claude/.kaizen-observe"        # v1.30.0+
 KAIZEN_LEGACY_INSTALL_LOG="$HOME/.claude/kaizen-install.log" # v1.30.0+ (file, not dir)
+KAIZEN_LEGACY_BRAIN="$HOME/.claude/brain"                    # v1.38.0+ (Remember-owned location)
 KAIZEN_LEGACY_PROJECT_WORKFLOW=".workflow"   # appended to project root

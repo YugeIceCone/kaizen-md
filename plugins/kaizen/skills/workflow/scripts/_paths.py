@@ -47,7 +47,16 @@ Each path is individually overridable so users can pin a custom location:
     KAIZEN_INBOX_DIR        override the inbox subdir
     KAIZEN_BACKUP_DIR       override the backup subdir
     KAIZEN_USER_SCHEMAS     override the user schemas subdir
+    KAIZEN_BRAIN_DIR        override the Second Brain subdir (v1.38.0+)
     WORKFLOW_STATE_DIR      override the per-project workflow dir
+
+## Brain ownership (v1.38.0+)
+
+The Second Brain (formerly owned by the Remember plugin at
+``~/.claude/brain``) moves under kaizen's own ``.kaizen/brain``
+subtree. ``KAIZEN_BRAIN_DIR`` is the ONLY env var that resolves the
+location — legacy ``REMEMBER_BRAIN_PATH`` / ``KAIZEN_BRAIN`` /
+``KAIZEN_BRAIN_PATH`` are no longer consulted (single-user clean cut).
 """
 
 from __future__ import annotations
@@ -146,6 +155,16 @@ INSTALL_LOG = Path(
     os.environ.get("KAIZEN_INSTALL_LOG", KAIZEN_USER_DIR / _cfg.INSTALL_LOG_NAME)
 )
 
+# v1.38.0+ — Second Brain (PARA structure + Persona + Notes + index DB).
+# Owned by kaizen post-Remember-retirement. Resolves ONLY via
+# KAIZEN_BRAIN_DIR; legacy REMEMBER_BRAIN_PATH is no longer honored.
+BRAIN_DIR = Path(
+    os.environ.get("KAIZEN_BRAIN_DIR", KAIZEN_USER_DIR / _cfg.USER_BRAIN_NAME)
+)
+BRAIN_DB = BRAIN_DIR / "brain.db"
+BRAIN_NOTES = BRAIN_DIR / "Notes"
+BRAIN_PERSONA = BRAIN_DIR / "Persona.md"
+
 # v1.30.0+ — archive slot for stale legacy dirs migrated by `migrate_paths.sh`
 # when the canonical location already has live data. Lets every kaizen state
 # stay under the unified tree while preserving the legacy bits for inspection.
@@ -189,6 +208,7 @@ LEGACY_PATHS: dict[str, Path] = {
     "schemas": HOME / ".claude" / "kaizen-schemas",
     "observe": HOME / ".claude" / ".kaizen-observe",
     "install_log": HOME / ".claude" / "kaizen-install.log",
+    "brain": HOME / ".claude" / "brain",
 }
 
 LEGACY_TO_NEW: dict[Path, Path] = {
@@ -200,6 +220,7 @@ LEGACY_TO_NEW: dict[Path, Path] = {
     LEGACY_PATHS["schemas"]: USER_SCHEMAS,
     LEGACY_PATHS["observe"]: OBSERVE_DIR,
     LEGACY_PATHS["install_log"]: INSTALL_LOG,
+    LEGACY_PATHS["brain"]: BRAIN_DIR,
 }
 
 
@@ -212,6 +233,10 @@ def _self_test() -> None:
     assert KNOWLEDGE_DB.parent == KNOWLEDGE_DIR
     assert DAEMON_STATE == DAEMON_DIR / "state.json"
     assert BACKUP_DIR.parent == KAIZEN_USER_DIR
+    assert BRAIN_DIR.parent == KAIZEN_USER_DIR
+    assert BRAIN_DB == BRAIN_DIR / "brain.db"
+    assert BRAIN_NOTES == BRAIN_DIR / "Notes"
+    assert BRAIN_PERSONA == BRAIN_DIR / "Persona.md"
     pwd_root = project_workflow_dir(Path("/tmp/x"))
     assert pwd_root == Path("/tmp/x/.kaizen/workflow"), pwd_root
     sch = project_schemas_dir(Path("/tmp/x"))
@@ -221,6 +246,7 @@ def _self_test() -> None:
     print(f"  TRACE_DIR       = {TRACE_DIR}")
     print(f"  KNOWLEDGE_DB    = {KNOWLEDGE_DB}")
     print(f"  INBOX_DIR       = {INBOX_DIR}")
+    print(f"  BRAIN_DIR       = {BRAIN_DIR}")
 
 
 if __name__ == "__main__":

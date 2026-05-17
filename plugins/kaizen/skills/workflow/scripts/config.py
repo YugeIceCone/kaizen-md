@@ -69,6 +69,7 @@ USER_SCHEMAS_NAME       = "schemas"
 USER_SCRAPE_NAME        = "scrape"               # v1.24.0+ — scrape index dir
 USER_OBSERVE_NAME       = "observe"              # v1.30.0+ — observe snapshots dir
 USER_CLAUDE_DOCS_NAME   = "claude-docs"          # v1.30.0+ — Claude API/Code docs sem-index dir
+USER_BRAIN_NAME         = "brain"                # v1.38.0+ — Second Brain (PARA + Persona + Notes)
 INSTALL_LOG_NAME        = "install.log"          # v1.30.0+ — kaizen install/setup log
 LEGACY_ARCHIVE_NAME     = "_legacy"              # v1.30.0+ — archive slot for stale legacy dirs
 
@@ -286,6 +287,7 @@ def plugin_defaults_dict() -> dict:
         "KNOWLEDGE_SNIPPET_MAX": KNOWLEDGE_SNIPPET_MAX,
         "USER_SCRAPE_NAME": USER_SCRAPE_NAME,
         "USER_OBSERVE_NAME": USER_OBSERVE_NAME,
+        "USER_BRAIN_NAME": USER_BRAIN_NAME,
         "USER_CLAUDE_DOCS_NAME": USER_CLAUDE_DOCS_NAME,
         "CLAUDE_DOCS_REPO_URL": CLAUDE_DOCS_REPO_URL,
         "INSTALL_LOG_NAME": INSTALL_LOG_NAME,
