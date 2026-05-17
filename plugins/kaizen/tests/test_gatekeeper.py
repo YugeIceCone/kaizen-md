@@ -61,14 +61,17 @@ class TestGatekeeperAggregator(unittest.TestCase):
         self.gk = _load("gatekeeper_test", _GATEKEEPER)
 
     def test_list_subgates(self):
-        # 7 sub-gates post-consolidation: 4 originals + 3 audit aggregators
-        # (token-bloat, coverage, schema-coverage). The new ones surface
-        # advisory `warn` findings; they never block commits.
+        # 10 sub-gates: 4 commit-blocking originals + 6 audit aggregators
+        # (token-bloat, coverage, schema-coverage, name-quality-coverage,
+        # frontmatter-coverage, slash-collision). Frontmatter splits its
+        # findings — name-mismatch=error (blocks), weak-routing=warn
+        # (advisory). Slash-collision is advisory only.
         self.assertEqual(
             set(self.gk.SUB_GATES.keys()),
             {"iron-laws", "etu", "karpathy", "validator",
              "token-bloat", "code-to-test-coverage", "schema-coverage",
-             "name-quality-coverage", "frontmatter-coverage"},
+             "name-quality-coverage", "frontmatter-coverage",
+             "slash-collision"},
         )
 
     def test_norm_sev_maps_to_canonical(self):
@@ -144,3 +147,62 @@ class TestGatekeeperCollisionResistance(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestGateFrontmatterSplit(unittest.TestCase):
+    """Quality-check brainstorm #1 + #2 — _gate_frontmatter must split
+    its single warn-finding into TWO distinct findings:
+      - name-mismatch  → severity=error (hard-gate, blocks commit)
+      - weak-routing   → severity=warn  (soft-gate, advisory)
+    """
+
+    def setUp(self):
+        self.gk = _load("gatekeeper_split_test", _GATEKEEPER)
+
+    def test_no_gaps_returns_empty(self):
+        out = self.gk._classify_frontmatter_findings([
+            {"skill": "a", "name_match": True, "trigger_count": 5},
+        ])
+        self.assertEqual(out, [])
+
+    def test_name_mismatch_emits_error(self):
+        out = self.gk._classify_frontmatter_findings([
+            {"skill": "analyze", "name_match": False,
+             "name_field": "change-analyzing", "trigger_count": 5},
+        ])
+        self.assertEqual(len(out), 1)
+        self.assertEqual(out[0].severity, "error",
+                          "name-mismatch must be ERROR — blocks commit")
+        self.assertEqual(out[0].rule_id, "name-mismatch")
+        # Sample name appears in the message so the user can find it
+        self.assertIn("analyze", out[0].message)
+
+    def test_weak_routing_alone_emits_warn(self):
+        out = self.gk._classify_frontmatter_findings([
+            {"skill": "brain", "name_match": True, "trigger_count": 1},
+        ])
+        self.assertEqual(len(out), 1)
+        self.assertEqual(out[0].severity, "warn",
+                          "weak-routing alone is advisory")
+        self.assertEqual(out[0].rule_id, "weak-routing")
+
+    def test_both_kinds_emit_two_findings(self):
+        out = self.gk._classify_frontmatter_findings([
+            {"skill": "a", "name_match": False, "name_field": "wrong",
+             "trigger_count": 5},
+            {"skill": "b", "name_match": True, "trigger_count": 0},
+        ])
+        sevs = sorted(f.severity for f in out)
+        self.assertEqual(sevs, ["error", "warn"])
+
+    def test_name_mismatch_dominates_weak_routing_per_skill(self):
+        """A single skill with BOTH problems surfaces in the
+        name-mismatch (error) bucket — fixing the name often fixes
+        the routing concern too."""
+        out = self.gk._classify_frontmatter_findings([
+            {"skill": "x", "name_match": False, "name_field": "wrong",
+             "trigger_count": 0},
+        ])
+        # Two findings: one error (name), one warn (routing)
+        sevs = sorted(f.severity for f in out)
+        self.assertEqual(sevs, ["error", "warn"])

@@ -338,8 +338,50 @@ def _gate_schema_coverage(scope: str, repo_root: Path) -> list[GateFinding]:
 
 # ─── Orchestrator ───────────────────────────────────────────────────────
 
+def _classify_frontmatter_findings(audit_data: list) -> list[GateFinding]:
+    """Pure-function classifier: convert frontmatter audit rows into split
+    GateFinding(s). Two distinct findings emitted:
+
+      - name-mismatch  → severity=error (blocks commit; skill-loader can't route)
+      - weak-routing   → severity=warn  (advisory; skill-suggest may miss)
+
+    A single skill with BOTH issues surfaces in BOTH findings — they're
+    independent dimensions (rename fixes routing in many cases, but not all).
+    """
+    if not isinstance(audit_data, list):
+        return []
+    name_miss = [r for r in audit_data if not r.get("name_match", True)]
+    weak = [r for r in audit_data if r.get("trigger_count", 99) < 3]
+    out: list[GateFinding] = []
+    if name_miss:
+        sample = ", ".join(r.get("skill", "?") for r in name_miss[:3])
+        if len(name_miss) > 3:
+            sample += "…"
+        out.append(GateFinding(
+            gate="frontmatter-coverage", severity="error",
+            rule_id="name-mismatch",
+            message=(f"{len(name_miss)} skill(s) — frontmatter `name:` "
+                     f"≠ dir basename ({sample}). Fix with: kaizen-frontmatter gaps"),
+        ))
+    if weak:
+        sample = ", ".join(r.get("skill", "?") for r in weak[:3])
+        if len(weak) > 3:
+            sample += "…"
+        out.append(GateFinding(
+            gate="frontmatter-coverage", severity="warn",
+            rule_id="weak-routing",
+            message=(f"{len(weak)} skill(s) — description has <3 quoted "
+                     f"trigger phrases ({sample}). Skill-suggest may miss them."),
+        ))
+    return out
+
+
 def _gate_frontmatter(scope: str, repo_root: Path) -> list[GateFinding]:
-    """SKILL.md frontmatter conformance: name matches dir + ≥3 trigger phrases."""
+    """SKILL.md frontmatter conformance: name matches dir + ≥3 trigger phrases.
+
+    Emits TWO distinct findings (see ``_classify_frontmatter_findings``) —
+    name-mismatch as error (hard-gate), weak-routing as warn (soft-gate).
+    """
     script = _PLUGIN_ROOT / "skills" / "workflow" / "scripts" / "frontmatter.py"
     if not script.is_file():
         return []
@@ -354,17 +396,7 @@ def _gate_frontmatter(scope: str, repo_root: Path) -> list[GateFinding]:
         data = json.loads(proc.stdout)
     except (ValueError, json.JSONDecodeError):
         return []
-    if isinstance(data, list) and data:
-        name_misses = sum(1 for r in data if not r.get("name_match"))
-        weak_routes = sum(1 for r in data
-                          if r.get("trigger_count", 0) < 3
-                          and r.get("name_match"))
-        return [GateFinding(
-            gate="frontmatter-coverage", severity="warn",
-            rule_id="frontmatter-gaps",
-            message=(f"{len(data)} skill(s) with gaps "
-                     f"({name_misses} name-mismatch, {weak_routes} weak-routing)"))]
-    return []
+    return _classify_frontmatter_findings(data)
 
 
 def _gate_name_quality(scope: str, repo_root: Path) -> list[GateFinding]:
@@ -402,6 +434,45 @@ def _gate_name_quality(scope: str, repo_root: Path) -> list[GateFinding]:
     return []
 
 
+def _gate_slash_collision(scope: str, repo_root: Path) -> list[GateFinding]:
+    """Surface tab-completion-ambiguous slash pairs (>=4-char shared prefix).
+
+    Advisory — most collisions are intentional families (trace /
+    trace-search / trace-proxy) and the user accepts them. New
+    collisions surfacing means a fresh slash collided with an existing
+    one and the author should rename.
+    """
+    script = _PLUGIN_ROOT / "skills" / "workflow" / "scripts" / "slash_collision.py"
+    if not script.is_file():
+        return []
+    try:
+        proc = subprocess.run(
+            [sys.executable, str(script), "check", "--json"],
+            cwd=repo_root, capture_output=True, text=True, timeout=5,
+        )
+    except (subprocess.TimeoutExpired, OSError):
+        return []
+    try:
+        data = json.loads(proc.stdout)
+    except (ValueError, json.JSONDecodeError):
+        return []
+    collisions = data.get("collisions", []) if isinstance(data, dict) else []
+    if not collisions:
+        return []
+    sample = "; ".join(
+        f"'{c['prefix']}*': {','.join(c['members'])}"
+        for c in collisions[:3]
+    )
+    if len(collisions) > 3:
+        sample += "…"
+    return [GateFinding(
+        gate="slash-collision", severity="warn",
+        rule_id="prefix-collision",
+        message=(f"{len(collisions)} slash prefix collision(s): {sample}. "
+                 f"Run `kaizen-slash-collision check` for the full list."),
+    )]
+
+
 SUB_GATES = {
     "iron-laws":              _gate_iron_laws,
     "etu":                    _gate_etu,
@@ -412,6 +483,7 @@ SUB_GATES = {
     "schema-coverage":        _gate_schema_coverage,    # feature shape conformance
     "name-quality-coverage":  _gate_name_quality,       # filename ↔ docstring intent
     "frontmatter-coverage":   _gate_frontmatter,        # SKILL name=dir + ≥3 trigger phrases
+    "slash-collision":        _gate_slash_collision,   # tab-completion-ambiguous prefix pairs
 }
 
 
