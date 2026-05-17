@@ -30,6 +30,10 @@
     "allow": [
       "Bash(${CLAUDE_PLUGIN_ROOT}/bin/kaizen-coverage:*)",
       "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/coverage.py:*)",
+      "Bash(${CLAUDE_PLUGIN_ROOT}/bin/kaizen-token-bloat:*)",
+      "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/token_bloat.py:*)",
+      "Bash(bash ${CLAUDE_PLUGIN_ROOT}/hooks/claude/sessionend-token-bloat.sh:*)",
+      "Bash(bash ${CLAUDE_PLUGIN_ROOT}/hooks/claude/session-start-token-bloat.sh:*)",
       "Bash(bash ${CLAUDE_PLUGIN_ROOT}/hooks/claude/pretooluse-write-atomic.sh:*)",
       "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/hooks/claude/_write_atomic.py:*)",
       "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/backlog.py:*)",

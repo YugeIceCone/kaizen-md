@@ -28,6 +28,11 @@
             "type": "command",
             "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/claude/dxm-event.sh SessionStart",
             "timeout": 2
+          },
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/claude/session-start-token-bloat.sh",
+            "timeout": 2
           }
         ]
       },
@@ -257,6 +262,11 @@
             "type": "command",
             "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/claude/dxm-event.sh SessionEnd",
             "timeout": 2
+          },
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/claude/sessionend-token-bloat.sh",
+            "timeout": 5
           }
         ]
       }

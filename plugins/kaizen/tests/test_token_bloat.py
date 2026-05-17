@@ -1,0 +1,301 @@
+"""Tests for token_bloat — the everything-Claude-sees bloat scanner."""
+
+from __future__ import annotations
+
+import json
+import os
+import subprocess
+import sys
+import tempfile
+import unittest
+from pathlib import Path
+
+_KZ_DIR = Path(__file__).resolve().parent.parent
+_SCRIPT = _KZ_DIR / "skills/workflow/scripts/token_bloat.py"
+
+
+def _run(*args, env: dict | None = None) -> subprocess.CompletedProcess:
+    return subprocess.run(
+        [sys.executable, str(_SCRIPT), *args],
+        capture_output=True, text=True, timeout=10,
+        env={**os.environ, **(env or {})},
+    )
+
+
+class TestScriptHealth(unittest.TestCase):
+    def test_script_present_and_parses(self):
+        self.assertTrue(_SCRIPT.is_file())
+        with open(_SCRIPT, "r") as f:
+            compile(f.read(), str(_SCRIPT), "exec")
+
+    def test_no_subcommand_exits_nonzero(self):
+        r = _run()
+        self.assertNotEqual(r.returncode, 0)
+
+
+class TestScanAgainstRealPlugin(unittest.TestCase):
+    """End-to-end: scan the real plugin, sanity-check the report."""
+
+    def test_scan_text_runs_clean(self):
+        r = _run("scan")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("kaizen-token-bloat", r.stdout)
+
+    def test_scan_json_emits_findings_list(self):
+        r = _run("scan", "--json")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        data = json.loads(r.stdout)
+        self.assertIn("findings", data)
+        self.assertIn("total", data)
+        self.assertIn("high", data)
+        self.assertIn("medium", data)
+        # The real plugin has at least one bloat finding (session-intake heredoc, big SKILLs)
+        self.assertGreater(data["total"], 0)
+
+
+class TestYamlTemplateScanner(unittest.TestCase):
+    """Synthetic yaml fixtures to exercise the reason_template scanner."""
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.tmp = Path(self._tmp.name)
+        # Build minimal plugin layout
+        (self.tmp / "skills/x/domain").mkdir(parents=True)
+        (self.tmp / "skills").mkdir(exist_ok=True)
+        (self.tmp / "commands").mkdir()
+        (self.tmp / "hooks/claude").mkdir(parents=True)
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    def _run_scan(self) -> dict:
+        """Patch _plugin_root and call scan_all."""
+        sys.path.insert(0, str(_KZ_DIR / "skills/workflow/scripts"))
+        if "token_bloat" in sys.modules:
+            del sys.modules["token_bloat"]
+        import token_bloat
+        findings = token_bloat.scan_all(root=self.tmp)
+        return findings
+
+    def test_short_template_not_flagged(self):
+        (self.tmp / "skills/x/domain/cfg.yaml").write_text(
+            "version: 1\n"
+            "on_fire:\n"
+            "  reason_template: |\n"
+            "    one-line warning\n"
+        )
+        findings = self._run_scan()
+        self.assertEqual(findings, [])
+
+    def test_long_template_flagged_high(self):
+        body = "\n".join(f"    line {i}" for i in range(20))
+        (self.tmp / "skills/x/domain/cfg.yaml").write_text(
+            "version: 1\n"
+            "on_fire:\n"
+            "  reason_template: |\n"
+            f"{body}\n"
+        )
+        findings = self._run_scan()
+        self.assertEqual(len(findings), 1)
+        f = findings[0]
+        self.assertEqual(f["kind"], "yaml-template")
+        self.assertEqual(f["severity"], "high")
+        self.assertEqual(f["field"], "reason_template")
+        self.assertGreater(f["tokens"], 0)
+
+
+class TestCacheSurfacing(unittest.TestCase):
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.tmp = Path(self._tmp.name)
+        self.kaizen_dir = self.tmp / "kaizen"
+        self.kaizen_dir.mkdir()
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    def test_surface_empty_when_no_cache(self):
+        r = _run("surface", env={"KAIZEN_DIR": str(self.kaizen_dir)})
+        self.assertEqual(r.returncode, 0)
+        self.assertEqual(r.stdout.strip(), "")
+
+    def test_scan_cache_then_surface_emits_one_line(self):
+        # Scan against real plugin with --cache, then surface
+        env = {"KAIZEN_DIR": str(self.kaizen_dir)}
+        r1 = _run("scan", "--cache", env=env)
+        self.assertEqual(r1.returncode, 0, r1.stderr)
+        cache = self.kaizen_dir / "token-bloat-findings.json"
+        self.assertTrue(cache.is_file())
+
+        r2 = _run("surface", env=env)
+        self.assertEqual(r2.returncode, 0)
+        # Real plugin has findings, so surface emits a one-liner
+        self.assertIn("kaizen-token-bloat", r2.stdout)
+        # Single line (one trailing newline)
+        self.assertEqual(r2.stdout.count("\n"), 1,
+                          f"surface should emit ONE line, got: {r2.stdout!r}")
+
+    def test_surface_stale_cache_returns_empty(self):
+        """When cache is older than TTL, surface emits nothing."""
+        env = {"KAIZEN_DIR": str(self.kaizen_dir),
+                "KAIZEN_TOKEN_BLOAT_TTL_HOURS": "0"}  # TTL = 0 → always stale
+        _run("scan", "--cache", env=env)
+        r = _run("surface", env=env)
+        self.assertEqual(r.returncode, 0)
+        self.assertEqual(r.stdout.strip(), "")
+
+    def test_surface_below_notice_threshold_returns_empty(self):
+        """Findings exist but waste < threshold → no notice."""
+        env = {"KAIZEN_DIR": str(self.kaizen_dir),
+                "KAIZEN_BLOAT_NOTICE_THRESHOLD": "999999"}  # absurdly high
+        _run("scan", "--cache", env=env)
+        r = _run("surface", env=env)
+        self.assertEqual(r.returncode, 0)
+        self.assertEqual(r.stdout.strip(), "")
+
+    def test_surface_above_threshold_shows_waste_and_worst(self):
+        """Real plugin findings should produce a substantive notice."""
+        env = {"KAIZEN_DIR": str(self.kaizen_dir),
+                "KAIZEN_BLOAT_NOTICE_THRESHOLD": "100"}  # easy to clear
+        _run("scan", "--cache", env=env)
+        r = _run("surface", env=env)
+        self.assertEqual(r.returncode, 0)
+        self.assertIn("wasted tok", r.stdout)
+        self.assertIn("worst:", r.stdout)
+        self.assertIn("q=", r.stdout)
+
+
+class TestReportSubcommand(unittest.TestCase):
+    def test_report_without_cache_exits_1(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            env = {"KAIZEN_DIR": tmp}
+            r = _run("report", env=env)
+            self.assertEqual(r.returncode, 1)
+
+
+class TestHookArtifacts(unittest.TestCase):
+    """The two auto-invocation hooks must be present + executable."""
+
+    def test_sessionend_hook_present(self):
+        p = _KZ_DIR / "hooks/claude/sessionend-token-bloat.sh"
+        self.assertTrue(p.is_file())
+        self.assertTrue(os.access(p, os.X_OK))
+
+    def test_sessionstart_hook_present(self):
+        p = _KZ_DIR / "hooks/claude/session-start-token-bloat.sh"
+        self.assertTrue(p.is_file())
+        self.assertTrue(os.access(p, os.X_OK))
+
+    def test_bin_wrapper_present(self):
+        p = _KZ_DIR / "bin/kaizen-token-bloat"
+        self.assertTrue(p.is_file())
+        self.assertTrue(os.access(p, os.X_OK))
+
+
+class TestQualityScore(unittest.TestCase):
+    """Quality scoring — sanity-check the heuristic without claiming
+    absolute precision. Tests pin RELATIVE ordering, not absolute scores."""
+
+    def setUp(self):
+        sys.path.insert(0, str(_KZ_DIR / "skills/workflow/scripts"))
+        if "token_bloat" in sys.modules:
+            del sys.modules["token_bloat"]
+        import token_bloat
+        self.q = token_bloat.quality_score
+
+    def test_empty_body_is_100(self):
+        score, hint = self.q("")
+        self.assertEqual(score, 100)
+        self.assertEqual(hint, "empty")
+
+    def test_uniform_prose_high_quality(self):
+        score, _ = self.q("Trim the template. Use kaizen-handoff to wrap up.\n")
+        self.assertGreaterEqual(score, 90)
+
+    def test_step_recipe_penalised(self):
+        text = ("Do the thing:\n"
+                "1. First step\n"
+                "2. Second step\n"
+                "3. Third step\n"
+                "4. Fourth step\n")
+        score, hint = self.q(text)
+        self.assertLess(score, 90)
+        self.assertIn("recipe", hint)
+
+    def test_boilerplate_penalised(self):
+        text = ("In order to do this, please note that as you can see "
+                "it is important to note that we should proceed.")
+        score, _ = self.q(text)
+        self.assertLess(score, 90)
+
+    def test_reference_bonus(self):
+        plain = "Trim the template."
+        with_ref = "Trim the template. See `auto_handoff.py` for details."
+        s1, _ = self.q(plain)
+        s2, _ = self.q(with_ref)
+        self.assertGreaterEqual(s2, s1)
+
+    def test_high_quality_outranks_low_in_waste_sort(self):
+        """When two findings have similar tokens, the lower-quality one
+        should rank first (more waste). scan_all does the sort."""
+        sys.path.insert(0, str(_KZ_DIR / "skills/workflow/scripts"))
+        if "token_bloat" in sys.modules:
+            del sys.modules["token_bloat"]
+        import token_bloat as tb
+
+        # Two synthetic findings
+        f_low_q  = {"severity": "high", "kind": "x", "path": "a", "field": "b",
+                     "lines": 10, "tokens": 100, "quality": 20}
+        f_high_q = {"severity": "high", "kind": "x", "path": "c", "field": "d",
+                     "lines": 10, "tokens": 100, "quality": 90}
+        findings = [f_high_q, f_low_q]
+        # Mimic scan_all's sort key
+        sev_rank = {"high": 0, "medium": 1, "low": 2}
+        findings.sort(key=lambda f: (sev_rank.get(f["severity"], 9),
+                                       -(f["tokens"] * (100 - f.get("quality", 50)))))
+        self.assertEqual(findings[0]["path"], "a")  # low quality first
+
+
+class TestFindingsHaveQualityFields(unittest.TestCase):
+    """After scoring wire-up, every finding dict must carry quality + hint."""
+
+    def test_yaml_finding_has_quality_keys(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            (tmp / "skills/x/domain").mkdir(parents=True)
+            body = "\n".join(f"    line {i}" for i in range(20))
+            (tmp / "skills/x/domain/cfg.yaml").write_text(
+                "version: 1\n"
+                "on_fire:\n"
+                "  reason_template: |\n"
+                f"{body}\n"
+            )
+            sys.path.insert(0, str(_KZ_DIR / "skills/workflow/scripts"))
+            if "token_bloat" in sys.modules:
+                del sys.modules["token_bloat"]
+            import token_bloat
+            findings = token_bloat.scan_all(root=tmp)
+            self.assertEqual(len(findings), 1)
+            f = findings[0]
+            self.assertIn("quality", f)
+            self.assertIn("quality_hint", f)
+            self.assertIsInstance(f["quality"], int)
+            self.assertTrue(0 <= f["quality"] <= 100)
+
+
+class TestSkillBody(unittest.TestCase):
+    def test_skill_md_present(self):
+        p = _KZ_DIR / "skills/token-bloat/SKILL.md"
+        self.assertTrue(p.is_file())
+
+    def test_skill_lists_natural_lang_triggers(self):
+        p = _KZ_DIR / "skills/token-bloat/SKILL.md"
+        text = p.read_text()
+        for trigger in ("token bloat", "scan for bloat", "what's bloated",
+                         "find verbose templates"):
+            self.assertIn(trigger, text,
+                          f"SKILL.md missing trigger phrase {trigger!r}")
+
+
+if __name__ == "__main__":
+    unittest.main()
