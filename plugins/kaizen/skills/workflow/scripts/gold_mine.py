@@ -373,6 +373,30 @@ def _dxm_dir() -> Path:
     return Path.home() / ".claude" / ".kaizen" / "dxm"
 
 
+def _trace_path() -> Path:
+    """Single-file trace store at ~/.claude/.kaizen/indexes/trace/events.jsonl.
+    Overridable via KAIZEN_TRACE_DIR (matches trace.py's resolver)."""
+    env = os.environ.get("KAIZEN_TRACE_DIR")
+    if env:
+        return Path(os.path.expandvars(env)).expanduser() / "events.jsonl"
+    return Path.home() / ".claude" / ".kaizen" / "indexes" / "trace" / "events.jsonl"
+
+
+def _normalize_trace_event(e: dict) -> dict:
+    """Trace events use {evt, data, tool, src, sid, ts} shape; dxm uses
+    {evt_type, payload, tool_name, session_id, ts_unix}. Translate trace
+    → dxm so _filter_events / event_to_template / _build_hint reuse
+    without conditionals. DRY: one normalizer, one downstream shape."""
+    return {
+        "evt_type":   e.get("evt") or e.get("evt_type") or "",
+        "payload":    e.get("data") or e.get("payload") or {},
+        "tool_name":  e.get("tool") or e.get("tool_name") or "",
+        "session_id": e.get("sid") or e.get("session_id") or "",
+        "ts_unix":    e.get("ts_unix") or 0,
+        "_src":       "trace",
+    }
+
+
 def _next_proposal_id() -> int:
     p = proposals_path()
     if not p.is_file():
@@ -508,24 +532,21 @@ def run_mine() -> dict:
     if os.environ.get("KAIZEN_GOLD_DISABLE") == "1":
         return summary
 
-    # Load + advance cursor for every dxm JSONL in the dxm dir.
-    dxm_dir = _dxm_dir()
-    if not dxm_dir.is_dir():
-        return summary
-
     cursor = load_cursor()
-    dxm_cursor = cursor.get("dxm", {})
 
+    # ─── DXM scan ─────────────────────────────────────────────────
+    # Per-session JSONL files; cursor tracks each by filename.
     new_lines: list[str] = []
-    for f in sorted(dxm_dir.glob("events-*.jsonl")):
-        prior = dxm_cursor.get(f.name)
-        lines, new_c = read_new_lines(f, prior=prior)
-        new_lines.extend(lines)
-        if new_c:
-            dxm_cursor[f.name] = new_c
-
-    cursor["dxm"] = dxm_cursor
-    save_cursor(cursor)
+    dxm_dir = _dxm_dir()
+    if dxm_dir.is_dir():
+        dxm_cursor = cursor.get("dxm", {})
+        for f in sorted(dxm_dir.glob("events-*.jsonl")):
+            prior = dxm_cursor.get(f.name)
+            lines, new_c = read_new_lines(f, prior=prior)
+            new_lines.extend(lines)
+            if new_c:
+                dxm_cursor[f.name] = new_c
+        cursor["dxm"] = dxm_cursor
 
     events: list[dict] = []
     for line in new_lines:
@@ -533,6 +554,24 @@ def run_mine() -> dict:
             events.append(json.loads(line))
         except json.JSONDecodeError:
             continue
+
+    # ─── Trace scan ───────────────────────────────────────────────
+    # Single-file store; cursor tracks just events.jsonl.
+    trace_path = _trace_path()
+    if trace_path.is_file():
+        trace_cursor = cursor.get("trace", {})
+        prior = trace_cursor.get("events.jsonl")
+        t_lines, new_c = read_new_lines(trace_path, prior=prior)
+        if new_c:
+            trace_cursor["events.jsonl"] = new_c
+        cursor["trace"] = trace_cursor
+        for line in t_lines:
+            try:
+                events.append(_normalize_trace_event(json.loads(line)))
+            except json.JSONDecodeError:
+                continue
+
+    save_cursor(cursor)
     summary["scanned"] = len(events)
 
     filtered = _filter_events(events)
