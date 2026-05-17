@@ -613,6 +613,80 @@ class TestSessionStateSurvival(unittest.TestCase):
                           f"atomic_write left stray tempfiles: {leftover}")
 
 
+class TestSplitPlan(unittest.TestCase):
+    """Rubric-driven split-plan emitter — classifies SKILL.md sections."""
+
+    def setUp(self):
+        sys.path.insert(0, str(_KZ_DIR / "skills/workflow/scripts"))
+        if "token_bloat" in sys.modules:
+            del sys.modules["token_bloat"]
+        import token_bloat as tb
+        self.tb = tb
+
+    def test_rubric_loads_with_known_keys(self):
+        rubric = self.tb._load_split_rubric()
+        self.assertIn("rules", rubric)
+        self.assertGreater(len(rubric["rules"]), 0)
+        # First rule should be the THEORY → extract pattern
+        kinds = {r.get("kind") for r in rubric["rules"]}
+        self.assertIn("theory", kinds)
+        self.assertIn("iron-law", kinds)
+
+    def test_classify_theory_heading_marks_extract(self):
+        rubric = self.tb._load_split_rubric()
+        section = {"heading": "PART 1 — THEORY (the why)", "lines": 200,
+                    "body": "x" * 800, "start": 100, "end": 300, "level": 1}
+        out = self.tb._classify_section(section, rubric)
+        self.assertEqual(out["kind"], "theory")
+        self.assertEqual(out["verdict"], "extract")
+        self.assertIn("theory", out["extract_to"])
+
+    def test_classify_iron_law_keeps_inline(self):
+        rubric = self.tb._load_split_rubric()
+        section = {"heading": "⚠ Iron Law — read in full", "lines": 8,
+                    "body": "x" * 80, "start": 9, "end": 16, "level": 2}
+        out = self.tb._classify_section(section, rubric)
+        self.assertEqual(out["kind"], "iron-law")
+        self.assertEqual(out["verdict"], "keep-inline")
+        self.assertEqual(out["extract_to"], "")
+
+    def test_classify_unknown_short_section(self):
+        rubric = self.tb._load_split_rubric()
+        section = {"heading": "Random heading", "lines": 5,
+                    "body": "x" * 50, "start": 50, "end": 54, "level": 2}
+        out = self.tb._classify_section(section, rubric)
+        self.assertEqual(out["verdict"], "keep-inline")
+
+    def test_build_split_plan_returns_schema_shape(self):
+        # Run against onion-ddd-workflow (real plugin)
+        plan = self.tb.build_split_plan("onion-ddd-workflow")
+        for k in ("skill", "path", "current_lines", "current_tokens",
+                   "estimated_tokens_saved", "candidates"):
+            self.assertIn(k, plan)
+        self.assertEqual(plan["skill"], "onion-ddd-workflow")
+        self.assertIsInstance(plan["candidates"], list)
+
+    def test_split_plan_subcommand_runs(self):
+        r = _run("split-plan", "--skill", "onion-ddd-workflow")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("split-plan", r.stdout)
+
+    def test_split_plan_json_emits_valid_json(self):
+        r = _run("split-plan", "--skill", "onion-ddd-workflow", "--json")
+        self.assertEqual(r.returncode, 0)
+        data = json.loads(r.stdout)
+        self.assertEqual(data["skill"], "onion-ddd-workflow")
+        self.assertIn("candidates", data)
+
+    def test_split_plan_all_oversized_runs(self):
+        """Plan-all (no --skill) processes every SKILL.md > medium threshold."""
+        r = _run("split-plan", "--json")
+        self.assertEqual(r.returncode, 0)
+        data = json.loads(r.stdout)
+        self.assertIsInstance(data, list)
+        self.assertGreater(len(data), 0)
+
+
 class TestStaleEntryValidator(unittest.TestCase):
     """Stale / invalid finding detection + prune behavior."""
 

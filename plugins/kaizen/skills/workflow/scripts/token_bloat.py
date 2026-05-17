@@ -976,6 +976,214 @@ def _read_last_history_findings() -> list[dict]:
     return (last_obj or {}).get("findings") or []
 
 
+# ── Split-plan: rubric-driven section classifier ────────────────────
+
+def _load_split_rubric() -> dict:
+    """Load the section-split rubric. Stdlib YAML-subset parser; falls
+    back to PyYAML when available for safety on edge cases."""
+    p = (_SCRIPT_DIR.parents[1] / "token-bloat" / "domain" /
+         "split-rubric.yaml")
+    if not p.is_file():
+        return {"version": 1, "rules": []}
+    text = p.read_text(encoding="utf-8")
+    try:
+        import yaml  # type: ignore
+        return yaml.safe_load(text) or {"version": 1, "rules": []}
+    except ImportError:
+        pass
+    # Minimal stdlib parser for the rubric's shape:
+    #   version: 1
+    #   rules:
+    #     - kind: theory
+    #       heading_contains: "THEORY"
+    #       verdict: extract
+    #       ...
+    rules: list[dict] = []
+    cur: dict | None = None
+    for line in text.splitlines():
+        if line.startswith("#") or not line.strip():
+            continue
+        if line.lstrip().startswith("- "):
+            if cur is not None:
+                rules.append(cur)
+            cur = {}
+            rest = line.split("- ", 1)[1]
+            if ":" in rest:
+                k, v = rest.split(":", 1)
+                cur[k.strip()] = v.strip().strip('"\'')
+            continue
+        if cur is not None and ":" in line and line.startswith(" "):
+            k, v = line.split(":", 1)
+            v = v.strip().strip('"\'')
+            if v.isdigit():
+                v = int(v)
+            cur[k.strip()] = v
+    if cur is not None:
+        rules.append(cur)
+    return {"version": 1, "rules": rules}
+
+
+def _parse_skill_sections(path: Path) -> list[dict]:
+    """Walk a markdown file; return [{heading, level, start, end, lines, body}].
+    Heading levels 1-3. Frontmatter stripped."""
+    try:
+        text = path.read_text(encoding="utf-8")
+    except OSError:
+        return []
+    lines = text.splitlines()
+    # Strip frontmatter
+    if lines and lines[0].strip() == "---":
+        try:
+            close = next(i for i, ln in enumerate(lines[1:], start=1)
+                          if ln.strip() == "---")
+            lines = lines[close + 1:]
+            body_offset = close + 1
+        except StopIteration:
+            body_offset = 0
+    else:
+        body_offset = 0
+
+    sections: list[dict] = []
+    cur: dict | None = None
+    for i, ln in enumerate(lines):
+        m = re.match(r"^(#{1,3})\s+(.+?)\s*$", ln)
+        if m:
+            if cur is not None:
+                cur["end"] = i + body_offset  # 0-indexed → adjust later
+                cur["lines"] = cur["end"] - cur["start"] + 1
+                cur["body"] = "\n".join(
+                    lines[cur["start"] - body_offset - 1:cur["end"] - body_offset])
+                sections.append(cur)
+            cur = {
+                "heading": m.group(2),
+                "level":   len(m.group(1)),
+                "start":   i + body_offset + 1,  # 1-indexed
+            }
+    if cur is not None:
+        cur["end"] = len(lines) + body_offset
+        cur["lines"] = cur["end"] - cur["start"] + 1
+        cur["body"] = "\n".join(lines[cur["start"] - body_offset - 1:])
+        sections.append(cur)
+    return sections
+
+
+def _classify_section(section: dict, rubric: dict) -> dict:
+    """First-match-wins rule application. Returns the section dict
+    augmented with kind / verdict / extract_to / reason."""
+    heading = section.get("heading", "")
+    line_count = section.get("lines", 0)
+    for rule in rubric.get("rules", []):
+        if "heading_contains" in rule:
+            if rule["heading_contains"].lower() not in heading.lower():
+                continue
+        if "heading_regex" in rule:
+            if not re.search(rule["heading_regex"], heading):
+                continue
+        if "line_count_min" in rule:
+            if line_count < int(rule["line_count_min"]):
+                continue
+        return {
+            **section,
+            "kind":       rule.get("kind", "unknown"),
+            "verdict":    rule.get("verdict", "keep-inline"),
+            "extract_to": rule.get("extract_to", ""),
+            "reason":     rule.get("reason", ""),
+            "tokens":     estimate_tokens(section.get("body", "")),
+        }
+    return {
+        **section,
+        "kind":       "unknown",
+        "verdict":    "keep-inline",
+        "extract_to": "",
+        "reason":     "no rule matched; default keep-inline",
+        "tokens":     estimate_tokens(section.get("body", "")),
+    }
+
+
+def build_split_plan(skill: str, root: Path | None = None) -> dict:
+    """Generate a split plan for `skills/<skill>/SKILL.md`. Returns a
+    dict conforming to domain/schemas/split-plan.schema.json."""
+    root = root or _plugin_root()
+    skill_md = root / "skills" / skill / "SKILL.md"
+    if not skill_md.is_file():
+        return {"skill": skill, "error": "SKILL.md not found",
+                 "current_lines": 0, "current_tokens": 0,
+                 "candidates": [], "estimated_tokens_saved": 0}
+    sections = _parse_skill_sections(skill_md)
+    rubric = _load_split_rubric()
+    classified = [_classify_section(s, rubric) for s in sections]
+    candidates = []
+    saved = 0
+    for s in classified:
+        cand = {
+            "section":    s["heading"],
+            "start":      s["start"],
+            "end":        s["end"],
+            "kind":       s["kind"],
+            "extract_to": s["extract_to"],
+            "tokens":     s["tokens"],
+            "verdict":    s["verdict"],
+            "reason":     s["reason"],
+        }
+        candidates.append(cand)
+        if s["verdict"] == "extract":
+            saved += s["tokens"]
+    try:
+        body = skill_md.read_text(encoding="utf-8")
+        cur_lines = body.count("\n") + 1
+        cur_tokens = estimate_tokens(body)
+    except OSError:
+        cur_lines = 0; cur_tokens = 0
+    return {
+        "skill":                  skill,
+        "path":                   str(skill_md.relative_to(root)),
+        "current_lines":          cur_lines,
+        "current_tokens":         cur_tokens,
+        "estimated_tokens_saved": saved,
+        "candidates":             candidates,
+    }
+
+
+def _print_split_plan(plan: dict) -> None:
+    print(f"split-plan: {plan['skill']} "
+          f"({plan['current_lines']} ln, ~{plan['current_tokens']} tok) — "
+          f"~{plan['estimated_tokens_saved']} tok savings if extracted")
+    for c in plan["candidates"]:
+        mark = "→" if c["verdict"] == "extract" else " "
+        target = f"→ {c['extract_to']}" if c["extract_to"] else ""
+        print(f"  {mark} L{c['start']:>4d}-{c['end']:<4d} "
+              f"[{c['verdict']:11s}] {c['kind']:18s} "
+              f"~{c['tokens']:>5d}tok  {c['section']}  {target}")
+
+
+def _cmd_split_plan(args) -> int:
+    """Emit a split plan for one skill (--skill) or all oversized skills."""
+    if args.skill:
+        plans = [build_split_plan(args.skill)]
+    else:
+        # Plan-all: every skill whose SKILL.md exceeds the medium threshold
+        plans = []
+        skills_dir = _plugin_root() / "skills"
+        for p in sorted(skills_dir.iterdir()):
+            if not p.is_dir():
+                continue
+            skill_md = p / "SKILL.md"
+            if not skill_md.is_file():
+                continue
+            try:
+                if skill_md.read_text().count("\n") + 1 >= _SKILLMD_LINES_MED:
+                    plans.append(build_split_plan(p.name))
+            except OSError:
+                continue
+    if args.json:
+        print(json.dumps(plans if not args.skill else plans[0], indent=2))
+    else:
+        for plan in plans:
+            _print_split_plan(plan)
+            print()
+    return 0
+
+
 def _cmd_validate(args) -> int:
     """Validate the LATEST snapshot's findings against the live FS.
 
@@ -1090,6 +1298,13 @@ def main(argv=None) -> int:
 
     phi = sub.add_parser("history", help="print history JSONL file path")
     phi.set_defaults(func=lambda a: (print(_session_history_path()), 0)[1])
+
+    psp = sub.add_parser("split-plan",
+                          help="emit a rubric-driven split plan for one skill (or all oversized)")
+    psp.add_argument("--skill", default=None,
+                      help="single skill (default: every SKILL.md over the medium threshold)")
+    psp.add_argument("--json", action="store_true")
+    psp.set_defaults(func=_cmd_split_plan)
 
     pv = sub.add_parser("validate",
                           help="cross-check last history's findings against the live FS")

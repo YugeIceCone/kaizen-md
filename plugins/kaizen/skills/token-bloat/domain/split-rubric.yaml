@@ -1,0 +1,118 @@
+# kaizen token-bloat — section-split rubric
+#
+# Classifies SKILL.md sections by kind + verdict.
+# Consumed by `kaizen-token-bloat split-plan <skill>` to suggest
+# an extract-or-keep plan per section.
+#
+# First-match-wins: a section is matched against each rule in order;
+# the first matching rule wins. Sections that match no rule fall back
+# to `unknown` (kept inline, no action).
+#
+# Match shapes (any one):
+#   - heading_contains: substring match on the section heading (case-insensitive)
+#   - heading_regex:    Python regex match on the heading
+#   - line_count_min:   section body must have >= N lines
+#
+# Verdicts:
+#   extract     → move to references/<extract_to>
+#   keep-inline → action-oriented content; do not split
+#   trim-inline → keep but flag for size trim
+
+version: 1
+
+rules:
+  # ── EXTRACT — educational background, examples, big reference tables ──
+  - kind:        theory
+    heading_contains: "THEORY"
+    verdict:     extract
+    extract_to:  "references/theory.md"
+    reason:      "PART X — THEORY headings are educational background; load on demand"
+
+  - kind:        theory
+    heading_contains: "BACKGROUND"
+    verdict:     extract
+    extract_to:  "references/background.md"
+    reason:      "Background sections are reference material"
+
+  - kind:        examples
+    heading_contains: "EXAMPLES"
+    verdict:     extract
+    extract_to:  "references/examples.md"
+    reason:      "Worked examples — useful for justification, not turn-by-turn"
+
+  - kind:        examples
+    heading_contains: "WORKED EXAMPLE"
+    verdict:     extract
+    extract_to:  "references/examples.md"
+    reason:      "Worked examples — extract"
+
+  - kind:        reference-table
+    heading_contains: "PATTERNS"
+    line_count_min: 50
+    verdict:     extract
+    extract_to:  "references/patterns.md"
+    reason:      "Pattern reference table; deep prose; load on demand"
+
+  - kind:        reference-table
+    heading_contains: "ANTI-PATTERNS"
+    line_count_min: 50
+    verdict:     extract
+    extract_to:  "references/anti-patterns.md"
+    reason:      "Anti-pattern catalog; load on demand"
+
+  - kind:        detailed-procedure
+    heading_regex: "^(##)\\s+PART\\s+\\d+\\s+—\\s+(DETAILS|REFERENCE|APPENDIX)"
+    verdict:     extract
+    extract_to:  "references/details.md"
+    reason:      "PART X — DETAILS/REFERENCE/APPENDIX sections are reference"
+
+  # ── KEEP INLINE — action-oriented surfaces ──
+  - kind:        iron-law
+    heading_contains: "IRON LAW"
+    verdict:     keep-inline
+    extract_to:  ""
+    reason:      "Iron-law markers must stay in primary load"
+
+  - kind:        iron-law
+    heading_contains: "MANDATORY"
+    verdict:     keep-inline
+    extract_to:  ""
+    reason:      "MANDATORY markers must stay in primary load"
+
+  - kind:        navigator
+    heading_contains: "QUICK REFERENCE"
+    verdict:     keep-inline
+    extract_to:  ""
+    reason:      "Quick-reference cheat-sheets earn inline space"
+
+  - kind:        decision-rule
+    heading_contains: "DECISION"
+    verdict:     keep-inline
+    extract_to:  ""
+    reason:      "Decision rules drive routing; inline"
+
+  - kind:        decision-rule
+    heading_contains: "WHEN TO"
+    verdict:     keep-inline
+    extract_to:  ""
+    reason:      "When-to rules drive routing; inline"
+
+  - kind:        step-recipe
+    heading_contains: "WORKFLOW"
+    verdict:     keep-inline
+    extract_to:  ""
+    reason:      "End-to-end workflow recipes are action-oriented; inline"
+
+  - kind:        step-recipe
+    heading_contains: "CHECKLIST"
+    line_count_min: 0
+    verdict:     keep-inline
+    extract_to:  ""
+    reason:      "Checklists are action-oriented; inline"
+
+  # ── TRIM INLINE — keep but flag for compression ──
+  - kind:        unknown
+    line_count_min: 80
+    verdict:     trim-inline
+    extract_to:  ""
+    reason:      "Large unclassified section — review for prose trim"

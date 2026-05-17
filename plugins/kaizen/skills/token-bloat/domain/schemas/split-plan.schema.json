@@ -1,0 +1,34 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id":     "https://kaizen.md/schemas/token-bloat/split-plan.schema.json",
+  "title":   "Token-bloat split plan",
+  "description": "Plan to split an oversized SKILL.md into a slim navigator + references/. Produced by `kaizen-token-bloat split-plan <skill>`; consumed manually (split-apply is intentionally NOT automated to preserve human review).",
+  "type":    "object",
+  "required": ["skill", "current_lines", "current_tokens", "candidates", "estimated_tokens_saved"],
+  "additionalProperties": false,
+  "properties": {
+    "skill":                  {"type": "string", "description": "Skill name (the dir under skills/)"},
+    "path":                   {"type": "string", "description": "Relative path from plugin root to SKILL.md"},
+    "current_lines":          {"type": "integer", "minimum": 0},
+    "current_tokens":         {"type": "integer", "minimum": 0},
+    "estimated_tokens_saved": {"type": "integer", "minimum": 0},
+    "candidates": {
+      "type":  "array",
+      "items": {
+        "type": "object",
+        "required": ["section", "start", "end", "kind", "extract_to", "tokens", "verdict"],
+        "additionalProperties": false,
+        "properties": {
+          "section":    {"type": "string", "description": "Heading text (e.g. '## The Four Layers')"},
+          "start":      {"type": "integer", "minimum": 1},
+          "end":        {"type": "integer", "minimum": 1},
+          "kind":       {"enum": ["theory", "examples", "reference-table", "detailed-procedure", "iron-law", "navigator", "decision-rule", "step-recipe", "unknown"]},
+          "extract_to": {"type": "string", "description": "Suggested references/ path; empty when kind==keep-inline"},
+          "tokens":     {"type": "integer", "minimum": 0},
+          "verdict":    {"enum": ["extract", "keep-inline", "trim-inline"]},
+          "reason":     {"type": "string"}
+        }
+      }
+    }
+  }
+}
