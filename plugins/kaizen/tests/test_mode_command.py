@@ -7,12 +7,27 @@ import unittest
 from pathlib import Path
 
 _KZ_DIR = Path(__file__).resolve().parent.parent
-_CMD = _KZ_DIR / "commands/mode.md"
+# /kaizen:mode was renamed to /kaizen:session-mode (slash/bin alignment).
+# The old `mode.md` stays as a deprecation alias; the canonical content
+# (frontmatter / body / bundle docs / threshold options) lives at
+# `session-mode.md`. Tests validate the canonical file.
+_CMD = _KZ_DIR / "commands/session-mode.md"
+_ALIAS = _KZ_DIR / "commands/mode.md"
 
 
 class TestCommandFile(unittest.TestCase):
     def test_command_file_exists(self):
         self.assertTrue(_CMD.is_file(), f"missing: {_CMD}")
+
+    def test_deprecated_alias_exists_and_marks_itself(self):
+        """commands/mode.md must stay as a back-compat alias and its
+        description MUST start with the DEPRECATED ALIAS marker so
+        help.md surfaces the deprecation prominently."""
+        self.assertTrue(_ALIAS.is_file(), f"missing alias: {_ALIAS}")
+        text = _ALIAS.read_text(encoding="utf-8")
+        self.assertIn("DEPRECATED ALIAS", text)
+        self.assertIn("session-mode", text,
+                       "alias must redirect to session-mode")
 
 
 class TestFrontmatter(unittest.TestCase):
@@ -24,8 +39,8 @@ class TestFrontmatter(unittest.TestCase):
         self.fm = m.group(1)
         self.body = m.group(2)
 
-    def test_name_is_mode(self):
-        self.assertIn("name: mode", self.fm)
+    def test_name_is_session_mode(self):
+        self.assertIn("name: session-mode", self.fm)
 
     def test_argument_hint_lists_three_modes(self):
         self.assertIn("argument-hint:", self.fm)

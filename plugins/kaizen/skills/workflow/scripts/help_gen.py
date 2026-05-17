@@ -62,7 +62,7 @@ CLUSTERS: list[tuple[str, list[str]]] = [
         "brain", "self-improving", "gold",
     ]),
     ("workflow", [
-        "backlog", "handoff", "loop", "flow", "mode",
+        "backlog", "handoff", "loop", "flow", "mode", "session-mode",
         "migrate", "migrate-paths",
     ]),
     ("plugin-meta", [
