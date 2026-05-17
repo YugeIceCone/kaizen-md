@@ -54,6 +54,16 @@ _emit = _envelope.emitter("kaizen-handoff", tool_version="1.0.0")
 _MANIFEST_PATH = _core.DOMAIN_DIR / "handoff.yaml"
 _MANIFEST = lens.Manifest.load(_MANIFEST_PATH)
 _VERIFY_RULES_PATH = _core.DOMAIN_DIR / "verify-rules.yaml"
+_OUTCOME_RUBRIC_PATH = _core.DOMAIN_DIR / "outcome-rubric.yaml"
+_OUTCOME_RUBRIC = lens.BucketWalker.from_yaml(_OUTCOME_RUBRIC_PATH)
+
+# Regex matching keywords that flag a `next:` item as blocking work
+# (the kind that should KEEP a session from being SUCCEEDED). Case-
+# insensitive.
+_NEXT_BLOCKING_RE = re.compile(
+    r"\b(must|critical|blocking|todo|fixme|fix.?before)\b",
+    re.IGNORECASE,
+)
 
 
 def _cmd_save(args) -> int:
@@ -218,12 +228,46 @@ def _parse_handoff_yaml(text: str) -> dict:
     return {
         "date": fm_date or str(body.get("date", "")),
         "done_files": list(dict.fromkeys(done_files)),  # dedupe, preserve order
+        "done_items": body.get("done_this_session") or [],  # raw list-of-dicts
         "worked":    _string_list("worked"),
         "failed":    _string_list("failed"),
         "next":      _string_list("next"),
         "questions": _string_list("questions"),
+        "blockers":  _string_list("blockers"),
         "decisions": body.get("decisions") or [],
         "findings":  body.get("findings")  or [],
+    }
+
+
+def _compute_assessment_signals(parsed: dict) -> dict:
+    """Compute the 5 signals the outcome rubric walks.
+
+    The handoff YAML doesn't carry an explicit completion field per
+    task — anything in done_this_session is by-convention "done".
+    completed_ratio measures "what got done" against "what's still
+    open" (blockers + next items). Test delta is supplied externally
+    (agent / CI passes --test-delta); default 0 means "no test
+    movement, neither regress nor improve"."""
+    done = parsed.get("done_items") or []
+    done_count = len(done)
+    blockers = parsed.get("blockers") or []
+    blocker_count = len(blockers)
+    next_items = parsed.get("next") or []
+
+    next_blocking_count = sum(
+        1 for item in next_items
+        if isinstance(item, str) and _NEXT_BLOCKING_RE.search(item)
+    )
+
+    denom = done_count + blocker_count + len(next_items)
+    completed_ratio = (done_count / denom) if denom > 0 else 0.0
+
+    return {
+        "done_count":          done_count,
+        "blocker_count":       blocker_count,
+        "next_blocking_count": next_blocking_count,
+        "completed_ratio":     round(completed_ratio, 4),
+        "test_delta":          int(parsed.get("test_delta", 0)),
     }
 
 
@@ -425,6 +469,57 @@ def _cmd_verify(args) -> int:
     return 0
 
 
+def _cmd_assess(args) -> int:
+    """Deterministic rubric walk — compute signals, return recommended bucket.
+
+    Read-only — does NOT mutate the YAML or DB. The agent uses the
+    recommendation as input to auto-finalize --outcome (or overrides
+    it). When the rubric falls through (no rule matches), bucket is
+    NEEDS_AGENT and the agent must decide qualitatively."""
+    fp = Path(args.file).expanduser()
+    if not fp.is_file():
+        msg = f"file not found: {fp}"
+        print(f"[kaizen-handoff assess] {msg}", file=sys.stderr)
+        return 1
+
+    parsed = _parse_handoff_yaml(fp.read_text(encoding="utf-8"))
+    parsed["test_delta"] = int(getattr(args, "test_delta", 0) or 0)
+    signals = _compute_assessment_signals(parsed)
+
+    result = _OUTCOME_RUBRIC.evaluate(signals)
+    data = {
+        "bucket":      result.bucket,
+        "method":      result.method,
+        "confidence":  float(result.confidence),
+        "handoff_file": str(fp.resolve()),
+        "signals":     signals,
+        "rationale":   result.rationale,
+    }
+
+    if args.json:
+        try:
+            verdict = (
+                "green" if result.bucket == "SUCCEEDED" else
+                "red"   if result.bucket == "FAILED" else
+                "yellow"
+            )
+            lens.lens_emit(
+                "kaizen-handoff", _MANIFEST, "assess",
+                data=data, verdict=verdict,
+                tool_version="1.0.0",
+            )
+        except lens.SchemaValidationError as exc:
+            print(f"[kaizen-handoff assess] internal: {exc}", file=sys.stderr)
+            return 2
+    else:
+        print(f"[kaizen-handoff assess] {fp.resolve()}")
+        print(f"  bucket:    {result.bucket}")
+        print(f"  method:    {result.method}  (confidence {result.confidence:.2f})")
+        print(f"  rationale: {result.rationale}")
+        print(f"  signals:   {signals}")
+    return 0
+
+
 def _cmd_auto_finalize(args) -> int:
     """Agent-assigned Step 4 of the handoff create flow — no AskUserQuestion.
 
@@ -566,6 +661,19 @@ def main(argv: Optional[list[str]] = None) -> int:
 
     s_path = sub.add_parser("path", help="print store + yaml-dir paths")
     s_path.set_defaults(func=_cmd_path)
+
+    s_assess = sub.add_parser(
+        "assess",
+        help="deterministic rubric walk — recommend outcome bucket from "
+             "mechanical signals (read-only; no YAML mutation)",
+    )
+    s_assess.add_argument("--file", required=True, help="path to the handoff YAML")
+    s_assess.add_argument(
+        "--test-delta", type=int, default=0,
+        help="tests-after minus tests-before (default 0 — assume no test change)",
+    )
+    s_assess.add_argument("--json", action="store_true")
+    s_assess.set_defaults(func=_cmd_assess)
 
     s_verify = sub.add_parser(
         "verify",

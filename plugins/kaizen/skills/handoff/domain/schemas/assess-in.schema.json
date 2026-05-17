@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/YugeIceCone/kaizen-md/skills/handoff/assess-in.schema.json",
+  "title": "Handoff assess input",
+  "type": "object",
+  "required": ["file"],
+  "additionalProperties": false,
+  "properties": {
+    "file":       { "type": "string", "description": "Path to handoff YAML to assess." },
+    "test_delta": {
+      "type": "integer",
+      "description": "Tests-after minus tests-before. Agent supplies; default 0 (assume no test change)."
+    }
+  }
+}

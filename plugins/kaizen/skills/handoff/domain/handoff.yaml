@@ -53,6 +53,16 @@ subcommands:
     input_schema:  schemas/verify-in.schema.json
     output_schema: schemas/verify-report.schema.json
 
+  assess:
+    description: >-
+      Compute mechanical signals from a handoff YAML
+      (completed_ratio, test_delta, blocker_count, next_blocking_count)
+      and walk outcome-rubric.yaml to recommend an outcome bucket.
+      Returns NEEDS_AGENT when the rubric falls through — agent picks
+      qualitatively, then passes to auto-finalize --outcome.
+    input_schema:  schemas/assess-in.schema.json
+    output_schema: schemas/assess-out.schema.json
+
   # Pre-existing subcommands — declared for discovery; schemas land
   # in their own migration commits per the lens skill's "incremental"
   # guidance.

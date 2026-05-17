@@ -1,0 +1,46 @@
+# Handoff outcome rubric — data-driven classifier walked by
+# lens.BucketWalker. The `assess` subcommand reads this to recommend
+# an outcome bucket from mechanical signals computed off the handoff
+# YAML. The agent (or `--llm-assess` Haiku in a future commit) takes
+# over only when no rule matches (fallback → NEEDS_AGENT).
+#
+# Signals computed by handoff._compute_assessment_signals:
+#   - completed_ratio    float, done / (done + blockers + next)
+#   - test_delta         int,   tests_after - tests_before
+#                               (default 0; agent supplies via --test-delta)
+#   - blocker_count      int,   len(blockers[])
+#   - next_blocking_count int,  count of next[] items matching
+#                               /must|critical|blocking|TODO|FIXME|fix-before/i
+#
+# First match wins. Order rules strictest → most permissive.
+
+rules:
+  - bucket: SUCCEEDED
+    require_all:
+      - {signal: completed_ratio,      op: ">=", value: 1.0}
+      - {signal: test_delta,           op: ">=", value: 0}
+      - {signal: blocker_count,        op: "==", value: 0}
+      - {signal: next_blocking_count,  op: "==", value: 0}
+
+  - bucket: FAILED
+    # Test regression OR very-low completion → fail
+    require_any:
+      - {signal: test_delta,      op: "<",  value: 0}
+      - {signal: completed_ratio, op: "<",  value: 0.2}
+
+  - bucket: PARTIAL_PLUS
+    # Mostly done; tests still green; no blockers; minor next-blocking
+    # OK as long as completion is strong
+    require_all:
+      - {signal: completed_ratio,      op: ">=", value: 0.7}
+      - {signal: test_delta,           op: ">=", value: 0}
+      - {signal: blocker_count,        op: "==", value: 0}
+
+  - bucket: PARTIAL_MINUS
+    # Anything with a blocker, OR low-but-not-failing completion
+    require_any:
+      - {signal: blocker_count,        op: ">",  value: 0}
+      - {signal: completed_ratio,      op: ">=", value: 0.2}
+
+confidence_threshold: 0.85
+fallback: NEEDS_AGENT

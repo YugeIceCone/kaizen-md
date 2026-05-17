@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/YugeIceCone/kaizen-md/skills/handoff/assess-out.schema.json",
+  "title": "Handoff assess recommendation",
+  "description": "Output of the deterministic rubric walker. `method=deterministic` when a rule matched; `method=fallback` when no rule fired (bucket=NEEDS_AGENT — agent must decide qualitatively).",
+  "type": "object",
+  "required": ["bucket", "method", "confidence", "signals", "rationale", "handoff_file"],
+  "additionalProperties": false,
+  "properties": {
+    "bucket": {
+      "enum": ["SUCCEEDED", "PARTIAL_PLUS", "PARTIAL_MINUS", "FAILED", "NEEDS_AGENT"]
+    },
+    "method":  { "enum": ["deterministic", "fallback"] },
+    "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+    "handoff_file": { "type": "string" },
+    "signals": {
+      "type": "object",
+      "required": ["done_count", "blocker_count", "next_blocking_count", "completed_ratio", "test_delta"],
+      "additionalProperties": false,
+      "properties": {
+        "done_count":          { "type": "integer", "minimum": 0 },
+        "blocker_count":       { "type": "integer", "minimum": 0 },
+        "next_blocking_count": { "type": "integer", "minimum": 0 },
+        "completed_ratio":     { "type": "number",  "minimum": 0, "maximum": 1 },
+        "test_delta":          { "type": "integer" }
+      }
+    },
+    "rationale": { "type": "string" }
+  }
+}
