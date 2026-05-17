@@ -16,10 +16,10 @@ tiers:
   - name: brain
     description: |
       Cross-project durable beliefs / world-facts / observations /
-      experiences. Lives at ~/.claude/brain/ (or
-      $REMEMBER_BRAIN_PATH if set).
-    path_env: REMEMBER_BRAIN_PATH
-    path_default: "~/.claude/brain"
+      experiences. Lives at ~/.claude/.kaizen/brain/ (or
+      $KAIZEN_BRAIN_DIR if set).
+    path_env: KAIZEN_BRAIN_DIR
+    path_default: "~/.claude/.kaizen/brain"
     types:
       # Which entity types live in this tier. observation +
       # experience are always brain (project memory doesn't have
