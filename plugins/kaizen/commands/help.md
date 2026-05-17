@@ -15,7 +15,7 @@ generated from `commands/*.md` frontmatter via `kaizen-help-gen`.
 | Command | Does |
 |---|---|
 | `audit` | Periodic comprehensive audit (per the article's "code audit" definition). Whole-re |
-| `audit:axis` | Per-axis audit dispatcher. Consolidates the 5 audit-axis slash commands under the  |
+| `audit:axis` | Per-axis audit dispatcher. Consolidates the 5 axis-specific commands under the aud |
 | `gatekeeper` | Run the unified kaizen gate — aggregates iron-laws + efficient-tool-use anti-patte |
 | `gate` | Dry-run the kaizen pre-commit gate against currently staged changes — without comm |
 | `review` | Fast diff-time code review (per the article's "code review" definition). Runs agai |
