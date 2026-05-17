@@ -113,6 +113,9 @@ import _search as _kz_search  # noqa: E402
 import _embed as _kz_embed  # noqa: E402
 import _chunk as _kz_chunk  # noqa: E402
 import onboard_index as _oi  # noqa: E402
+import _envelope  # noqa: E402
+
+_emit = _envelope.emitter("kaizen-search", tool_version="1.0.0")
 
 
 # ─── Nodes ───────────────────────────────────────────────────────────
@@ -466,7 +469,7 @@ def main():
     asyncio.run(f.run_async(store))
     results = store.get("results", [])
     if args.json:
-        print(json.dumps(results, indent=2))
+        _emit(results, counts={"results": len(results) if hasattr(results, "__len__") else 0})
     else:
         if not results:
             print("(no results — run `kaizen onboard reindex` first)", file=sys.stderr)

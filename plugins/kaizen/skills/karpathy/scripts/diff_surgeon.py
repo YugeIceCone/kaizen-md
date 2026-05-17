@@ -32,6 +32,11 @@ import subprocess
 import sys
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "workflow" / "scripts"))
+import _envelope  # noqa: E402
+
+_emit = _envelope.emitter("kaizen-karpathy-surgical", tool_version="1.0.0")
+
 # --- Noise detectors ---
 
 COMMENT_ONLY = re.compile(r"^[+-]\s*(?:#|//|/\*|\*|<!--)")
@@ -150,9 +155,9 @@ def main():
 
     diff_text = get_diff(args)
     if not diff_text.strip():
-        result = {"status": "ok", "message": "No diff to analyze", "files": 0, "noise_lines": 0, "verdict": "CLEAN"}
+        result = {"message": "No diff to analyze", "files": 0, "noise_lines": 0, "verdict": "CLEAN"}
         if args.json:
-            print(json.dumps(result, indent=2))
+            _emit(result, verdict="green", counts={"files": 0, "noise_lines": 0})
         else:
             print("No diff to analyze. Stage changes first (git add) or specify --diff range.")
         return
@@ -186,7 +191,10 @@ def main():
     }
 
     if args.json:
-        print(json.dumps(result, indent=2))
+        verdict_map = {"CLEAN": "green", "NOISY": "yellow", "VERY_NOISY": "red"}
+        _emit(result, verdict=verdict_map.get(verdict),
+              counts={"files_in_diff": result["files_in_diff"],
+                      "noise_lines": result["noise_lines"]})
         return
 
     print(f"Diff Surgeon — {len(file_diffs)} files, {total_changes} changed lines")

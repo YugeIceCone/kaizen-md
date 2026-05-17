@@ -26,10 +26,15 @@ Thresholds:
 from __future__ import annotations
 import argparse
 import json
-import os
 import re
 import sys
 from pathlib import Path
+
+# Cross-skill import — _envelope lives in workflow/scripts/
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "workflow" / "scripts"))
+import _envelope  # noqa: E402
+
+_emit = _envelope.emitter("kaizen-karpathy-complexity", tool_version="1.0.0")
 
 # --- Thresholds ---
 
@@ -269,7 +274,8 @@ def main():
     if not files:
         msg = f"No files found matching extensions: {extensions}"
         if args.json:
-            print(json.dumps({"status": "error", "message": msg}))
+            _emit({"message": msg}, verdict="fail",
+                  errors=[msg])
         else:
             print(f"[error] {msg}", file=sys.stderr)
         sys.exit(1)
@@ -294,7 +300,11 @@ def main():
     }
 
     if args.json:
-        print(json.dumps(summary, indent=2))
+        verdict_map = {"PASS": "green", "WARN": "yellow", "FAIL": "red"}
+        _emit(summary,
+              verdict=verdict_map.get(summary["verdict"]),
+              counts={"files_analyzed": summary["files_analyzed"],
+                      "total_findings": summary["total_findings"]})
         return
 
     print(f"Karpathy Simplicity Check — {len(results)} files, threshold: {args.threshold}")

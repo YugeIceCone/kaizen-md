@@ -30,6 +30,11 @@ import re
 import sys
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "workflow" / "scripts"))
+import _envelope  # noqa: E402
+
+_emit = _envelope.emitter("kaizen-karpathy-goal", tool_version="1.0.0")
+
 CONCRETE_VERIFY = re.compile(
     r"\b(?:test\s+pass|assert|assertEqual|expect\(|\.toBe|\.toEqual|"
     r"exit\s+code\s*[=:]\s*0|status\s*[=:]\s*200|curl\s|"
@@ -186,7 +191,9 @@ def main():
     result = analyze_plan(text, source)
 
     if args.json:
-        print(json.dumps(result, indent=2))
+        _emit(result,
+              counts={"steps_found": result.get("steps_found", 0),
+                      "score": result.get("score", 0)})
         return
 
     print(f"Goal Verifier — {source}")

@@ -48,6 +48,9 @@ sys.path.insert(0, str(_SCRIPT_DIR))
 
 import _brain  # noqa: E402
 import flow as _flow  # noqa: E402
+import _envelope  # noqa: E402
+
+_emit = _envelope.emitter("kaizen-brain-evolve", tool_version="1.0.0")
 
 
 # ─── Flow nodes ──────────────────────────────────────────────────────
@@ -293,7 +296,7 @@ async def _evolve_async(**kwargs) -> dict:
 def _cmd_run(args) -> int:
     report = evolve(stale_days=args.stale_days)
     if args.json:
-        print(json.dumps(report, indent=2, default=str))
+        _emit(report)
         return 0
     print(f"[kaizen-brain-evolve] {report['total_notes']} note(s) scanned")
     print()

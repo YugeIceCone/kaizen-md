@@ -28,6 +28,11 @@ import re
 import sys
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "workflow" / "scripts"))
+import _envelope  # noqa: E402
+
+_emit = _envelope.emitter("kaizen-karpathy-assumption", tool_version="1.0.0")
+
 # --- Pattern library ---
 
 ASSUMPTION_SIGNALS = [
@@ -144,7 +149,9 @@ def main():
     }
 
     if args.json:
-        print(json.dumps(result, indent=2))
+        verdict_map = {"CLEAN": "green", "REVIEW": "yellow", "CLARIFY": "red"}
+        _emit(result, verdict=verdict_map.get(result["verdict"]),
+              counts={"findings": len(findings)})
         return
 
     print(f"Assumption Linter — {source}")

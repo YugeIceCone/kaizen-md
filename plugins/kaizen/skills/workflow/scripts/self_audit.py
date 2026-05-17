@@ -39,7 +39,6 @@ import argparse
 import asyncio
 import datetime as dt
 import json
-import os
 import re
 import subprocess
 import sys
@@ -52,6 +51,9 @@ sys.path.insert(0, str(SCRIPT_DIR))
 import _self_audit as _core  # noqa: E402
 import flow as _flow  # noqa: E402
 from _self_audit import Finding  # noqa: E402
+import _envelope  # noqa: E402
+
+_emit = _envelope.emitter("kaizen-self-audit", tool_version="1.0.0")
 
 
 # ─── Mechanical runners ──────────────────────────────────────────────
@@ -647,8 +649,7 @@ async def _run_audit_async(*, no_write: bool = False) -> dict:
 def _cmd_run(args) -> int:
     result = run_audit(no_write=args.no_write)
     if args.json:
-        print(json.dumps({k: v for k, v in result.items() if k != "markdown"},
-                         indent=2))
+        _emit({k: v for k, v in result.items() if k != "markdown"})
         return 0
     print(result.get("markdown") or "")
     if result.get("report_path"):
@@ -658,15 +659,16 @@ def _cmd_run(args) -> int:
 
 def _cmd_list_stages(args) -> int:
     pipeline = _core.load_pipeline()
-    print(json.dumps(pipeline.get("stages", []), indent=2))
+    stages = pipeline.get("stages", [])
+    _emit(stages, counts={"stages": len(stages)})
     return 0
 
 
 def _cmd_path(args) -> int:
-    print(json.dumps({
+    _emit({
         "report_dir": str(_core.REPO_ROOT / ".kaizen" / "audits"),
         "pipeline": str(_core.DOMAIN_DIR / "audit-pipeline.yaml"),
-    }, indent=2))
+    })
     return 0
 
 

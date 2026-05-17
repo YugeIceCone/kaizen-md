@@ -5,6 +5,41 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [S
 
 ## [Unreleased]
 
+### Added — envelope phases A-C: search + brain/audit + karpathy retrofitted (11 more tools)
+
+Continues mechanical envelope retrofit per the roadmap in `skills/efficient-tool-use/references/envelope-retrofit.md`.
+
+**Phase A — search hot-path (3 tools)**: `search_flow.py`, `onboard_index.py` (3 sites), `claude_docs_index.py` (3 sites). (`trace_index` skipped — false positive in earlier inventory; no JSON sites.)
+
+**Phase B — brain + audit (5 tools)**: `brain_audit.py`, `brain_evolve.py`, `brain_promote.py`, `self_audit.py` (3 sites), `hygiene.py` (3 sites). (`validate.py` in plugin-development/scripts deferred — cross-skill import + larger surface; do separately.)
+
+**Phase C — karpathy bundle (4 scanners)**: `complexity_checker.py`, `diff_surgeon.py`, `assumption_linter.py`, `goal_verifier.py`. All 4 use cross-skill import (`Path(__file__).resolve().parents[2] / "workflow" / "scripts"`) since `_envelope.py` lives in the workflow skill.
+
+Each karpathy scanner maps its tool-specific verdict label to the canonical envelope verdict (PASS/CLEAN → green, WARN/REVIEW/NOISY → yellow, FAIL/CLARIFY/VERY_NOISY → red).
+
+**Aggregate progress**:
+
+| Metric | Before this commit | After this commit |
+|---|---|---|
+| Tool surfaces emitting envelope | 7 | **18** |
+| Envelope coverage of has-json tools | 7/31 = 23% | **18/31 = 58%** |
+| Phase A target tools | 1 of 4 | **4 of 4** ✅ |
+| Phase B target tools | 0 of 6 | **5 of 6** |
+| Phase C target tools | 0 of 4 | **4 of 4** ✅ |
+
+Per-retrofit pattern is now byte-stable:
+```python
+import _envelope  # cross-skill scripts: sys.path.insert(0, parents[2]/"workflow"/"scripts") first
+_emit = _envelope.emitter("kaizen-X", tool_version="1.0.0")
+if args.json:
+    _emit(data, verdict=v, counts=c)
+```
+
+Validation:
+- 11/11 envelope tests pass
+- All 4 karpathy scripts parse cleanly
+- plugin-development validator: 52/52 features clean
+
 ### Added — envelope DRY pass 2: `emitter()` factory + 2 more retrofits + inventory doc
 
 Continues the envelope effort. Three additions:

@@ -1549,7 +1549,7 @@ def cmd_search(args):
         alpha=args.alpha, legacy=args.legacy,
     )
     if args.json:
-        print(json.dumps(results, indent=2))
+        _emit(results, counts={"results": len(results)})
         return
     if not results:
         print("(no results — run `index` first)", file=sys.stderr)
@@ -1587,7 +1587,7 @@ def cmd_get(args):
     r = do_get(root, args.id)
     if r is None:
         sys.exit(f"id {args.id} not found")
-    print(json.dumps(r, indent=2))
+    _emit(r)
 
 
 def cmd_path(args):
@@ -1656,7 +1656,7 @@ def cmd_raw(args):
         # Truncate `text` in stdout for readability; full content via --full.
         if d.get("text") and not args.full:
             d["text"] = d["text"][:500] + ("…" if len(d["text"]) > 500 else "")
-        print(json.dumps(d, indent=2, default=str))
+        _emit(d)
         return
     # Default: list paths + status (ok | error).
     rows = conn.execute(
@@ -1673,6 +1673,9 @@ def cmd_raw(args):
 
 
 from _indexer_cli import IndexerCLI  # noqa: E402
+import _envelope  # noqa: E402
+
+_emit = _envelope.emitter("kaizen-onboard", tool_version="1.0.0")
 
 
 class OnboardCLI(IndexerCLI):

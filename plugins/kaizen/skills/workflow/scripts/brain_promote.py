@@ -32,7 +32,6 @@ import asyncio
 import datetime as dt
 import fnmatch
 import json
-import shutil
 import sys
 from pathlib import Path
 from typing import Optional
@@ -42,6 +41,9 @@ sys.path.insert(0, str(_SCRIPT_DIR))
 
 import _brain  # noqa: E402
 import flow as _flow  # noqa: E402
+import _envelope  # noqa: E402
+
+_emit = _envelope.emitter("kaizen-brain-promote", tool_version="1.0.0")
 
 
 # ─── Helpers ──────────────────────────────────────────────────────────
@@ -327,7 +329,7 @@ def _cmd_run(args) -> int:
         apply=args.apply,
     )
     if args.json:
-        print(json.dumps(report, indent=2, default=str))
+        _emit(report)
         return 0
     if not report.get("candidates"):
         print("[kaizen-brain-promote] no candidates — nothing meets the threshold")
@@ -344,7 +346,7 @@ def _cmd_run(args) -> int:
         print(f"    reason: {c['reason']}")
         print()
     if not args.apply:
-        print(f"dry-run — re-run with --apply to promote.")
+        print("dry-run — re-run with --apply to promote.")
     else:
         print(f"applied {report['total_applied']} promotion(s).")
     return 0

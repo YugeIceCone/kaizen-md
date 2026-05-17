@@ -70,6 +70,9 @@ INBOX_TTL_DAYS = lambda: _env_int("KAIZEN_INBOX_TTL_DAYS", 7)
 
 
 from _time import utc_now  # M5 dedup
+import _envelope  # noqa: E402
+
+_emit = _envelope.emitter("kaizen-hygiene", tool_version="1.0.0")
 
 
 def now() -> dt.datetime:
@@ -374,8 +377,10 @@ def main() -> None:
 
     if cmd == "json":
         results = run_all_checks()
-        print(json.dumps(results, indent=2, default=str))
         any_bad = any(not r.get("ok") for r in results.values())
+        _emit(results, verdict="red" if any_bad else "green",
+              counts={"checks": len(results),
+                      "failed": sum(1 for r in results.values() if not r.get("ok"))})
         sys.exit(1 if any_bad else 0)
 
     if cmd == "check":
@@ -383,7 +388,7 @@ def main() -> None:
         print(summary(results, "check"))
         if args.verbose:
             print("")
-            print(json.dumps(results, indent=2, default=str))
+            _emit(results)
         sys.exit(1 if any(not r.get("ok") for r in results.values()) else 0)
 
     if cmd == "fix":
@@ -391,7 +396,7 @@ def main() -> None:
         print(summary(results, "fix"))
         if args.verbose:
             print("")
-            print(json.dumps(results, indent=2, default=str))
+            _emit(results)
         sys.exit(0)
 
     if cmd.startswith("check-") and cmd[6:] in CHECKS:

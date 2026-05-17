@@ -63,8 +63,6 @@ the SQLite + sentence-transformers search surface the upstream lacks.
 """
 from __future__ import annotations
 
-import argparse
-import datetime as dt
 import hashlib
 import json
 import os
@@ -73,7 +71,6 @@ import sqlite3
 import subprocess
 import sys
 from pathlib import Path
-from typing import Optional
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR))
@@ -423,7 +420,8 @@ def cmd_search(args) -> dict:
         sys.exit(1)
     results = do_search(args.query, top_k=args.top_k)
     if getattr(args, "json", False):
-        print(json.dumps({"query": args.query, "results": results}, indent=2))
+        _emit({"query": args.query, "results": results},
+              counts={"results": len(results)})
     else:
         for r in results:
             print(f"{r['score']:.3f}  {r['path']}#chunk{r['chunk_idx']}  [{r['section'] or '-'}]")
@@ -436,7 +434,7 @@ def cmd_search(args) -> dict:
 
 def cmd_stats(args) -> dict:
     out = do_stats()
-    print(json.dumps(out, indent=2))
+    _emit(out)
     return out
 
 
@@ -444,7 +442,7 @@ def cmd_get(args) -> dict:
     out = do_get(args.id)
     if out is None:
         sys.stderr.write(f"no chunk id={args.id}\n"); sys.exit(1)
-    print(json.dumps(out, indent=2))
+    _emit(out)
     return out
 
 
@@ -479,6 +477,9 @@ def _now() -> str:
 
 
 from _indexer_cli import IndexerCLI  # noqa: E402
+import _envelope  # noqa: E402
+
+_emit = _envelope.emitter("kaizen-claude-docs", tool_version="1.0.0")
 
 
 class ClaudeDocsCLI(IndexerCLI):
