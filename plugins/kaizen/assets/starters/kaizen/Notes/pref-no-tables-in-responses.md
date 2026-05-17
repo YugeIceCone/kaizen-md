@@ -16,6 +16,7 @@ evidence:
     date: 2026-05-12
     context: "Self-audit at session end confirmed I created the rule + then violated it ~30 times in the same session. Rule needs ACTIVE recall on each response, not just passive availability in the brain."
 
+name: No tables in responses
 ---
 
 # No markdown tables in responses

@@ -400,6 +400,238 @@ def check_every_hook_script_traces_its_firing(ctx: CheckContext) -> list[Finding
 
 # ─── dispatch ────────────────────────────────────────────────────────────
 
+# ─── Brain-specific iron-laws (v1.40+) ───────────────────────────────
+# All scope to in-repo starter brain content
+# (assets/starters/<name>/...). Live brains under ~/.claude/.kaizen/brain/
+# are out of scope — the gate only sees repo files.
+
+_BRAIN_TYPE_ENUM = frozenset({
+    "world-fact", "belief", "observation", "experience",
+    "behaviour", "persona",
+})
+_BRAIN_RULE_TYPE_ENUM = frozenset({
+    "deletion-allow", "check-severity", "custom-pattern",
+    "dependency-allowlist",
+})
+_FRONTMATTER_RE = re.compile(r"^---\s*\n(.*?)\n---\s*\n", re.DOTALL)
+_FLAT_KEY = re.compile(r"^([a-z_]+):\s*(.+?)\s*$", re.MULTILINE)
+_KAIZEN_BLOCK = re.compile(
+    r"^kaizen:\s*\n((?:  [^\n]+\n?)+)", re.MULTILINE
+)
+_SANCTIONED_TOPLEVEL_NAMES = frozenset({
+    "Persona.md", "REMEMBER.md", "SessionNotes.md", "README.md",
+    "brain.db",
+    # PARA dirs
+    "Notes", "Inbox", "Journal", "Projects", "People", "Areas",
+    "Resources", "Tasks", "Templates", "Archive",
+})
+# Patterns of personal data that must not leak into starter content.
+_PERSONAL_PATTERNS = [
+    (re.compile(r"\bcherry86\b"), "cherry86"),
+    (re.compile(r"@gmail\.com|@anthropic\.com|@hotmail\.com|@outlook\.com|@yahoo\.com"),
+     "email address"),
+    # Specific project / workspace names that aren't generic placeholders.
+    # Whitelist `<placeholder>` patterns so they survive.
+    (re.compile(r"\bshodan workspace\b(?!.*placeholder)", re.I),
+     "shodan workspace"),
+]
+
+
+def _parse_frontmatter(text: str) -> dict:
+    """Flat-scalar YAML frontmatter parser. Returns empty dict if no FM.
+    Doesn't handle nested mappings (those use _parse_kaizen_block)."""
+    m = _FRONTMATTER_RE.match(text)
+    if not m:
+        return {}
+    fm = {}
+    body = m.group(1)
+    # Strip the kaizen: nested block so flat parsing doesn't grab its keys
+    no_kaizen = _KAIZEN_BLOCK.sub("", body)
+    for line_m in _FLAT_KEY.finditer(no_kaizen):
+        k, v = line_m.group(1), line_m.group(2).strip()
+        if v.startswith('"') and v.endswith('"'):
+            v = v[1:-1]
+        elif v.startswith("'") and v.endswith("'"):
+            v = v[1:-1]
+        fm[k] = v
+    return fm
+
+
+def _parse_kaizen_block(text: str) -> dict | None:
+    m = _FRONTMATTER_RE.match(text)
+    if not m:
+        return None
+    block_m = _KAIZEN_BLOCK.search(m.group(1))
+    if not block_m:
+        return None
+    block = {}
+    for line in block_m.group(1).split("\n"):
+        kv = re.match(r"^  ([a-z_]+):\s*(.+?)\s*$", line)
+        if kv:
+            v = kv.group(2).strip()
+            if v.startswith('"') and v.endswith('"'):
+                v = v[1:-1]
+            elif v.startswith("'") and v.endswith("'"):
+                v = v[1:-1]
+            block[kv.group(1)] = v
+    return block
+
+
+def _iter_starter_notes(ctx: CheckContext):
+    """Yield (note_path, text) for every `assets/starters/*/Notes/*.md`
+    in scope."""
+    base = ctx.plugin_root / "assets" / "starters"
+    if not base.is_dir():
+        return
+    for starter_dir in sorted(base.iterdir()):
+        if not starter_dir.is_dir():
+            continue
+        notes_dir = starter_dir / "Notes"
+        if not notes_dir.is_dir():
+            continue
+        for note in sorted(notes_dir.glob("*.md")):
+            if not ctx.in_scope(ctx.rel(note)):
+                continue
+            try:
+                text = note.read_text(encoding="utf-8")
+            except OSError:
+                continue
+            yield note, text
+
+
+def check_brain_note_schema(ctx: CheckContext) -> list[Finding]:
+    """BRAIN-LAW-1: every starter Note has frontmatter with `name` +
+    `type` (in enum); `type: belief` requires `confidence`."""
+    out = []
+    for note, text in _iter_starter_notes(ctx):
+        fm = _parse_frontmatter(text)
+        if not fm:
+            out.append(Finding(
+                "brain-note-schema", "hard",
+                f"{note.name}: missing or unparseable YAML frontmatter",
+                ctx.rel(note)))
+            continue
+        if "name" not in fm:
+            out.append(Finding(
+                "brain-note-schema", "hard",
+                f"{note.name}: frontmatter missing `name:` field",
+                ctx.rel(note)))
+        if "type" not in fm:
+            out.append(Finding(
+                "brain-note-schema", "hard",
+                f"{note.name}: frontmatter missing `type:` field",
+                ctx.rel(note)))
+        elif fm["type"] not in _BRAIN_TYPE_ENUM:
+            out.append(Finding(
+                "brain-note-schema", "hard",
+                f"{note.name}: invalid type '{fm['type']}' "
+                f"(must be one of {sorted(_BRAIN_TYPE_ENUM)})",
+                ctx.rel(note)))
+        if fm.get("type") == "belief" and "confidence" not in fm:
+            out.append(Finding(
+                "brain-note-schema", "hard",
+                f"{note.name}: type=belief requires `confidence:` field "
+                "(beliefs without confidence can't graduate to Persona "
+                "Top Beliefs)",
+                ctx.rel(note)))
+    return out
+
+
+def check_brain_rule_schema(ctx: CheckContext) -> list[Finding]:
+    """BRAIN-LAW-2: starter Notes with a `kaizen:` block must have
+    a valid `rule_type` + type-specific required fields."""
+    out = []
+    for note, text in _iter_starter_notes(ctx):
+        block = _parse_kaizen_block(text)
+        if block is None:
+            continue   # not a rule note — out of scope for this law
+        rt = block.get("rule_type")
+        if rt not in _BRAIN_RULE_TYPE_ENUM:
+            out.append(Finding(
+                "brain-rule-schema", "hard",
+                f"{note.name}: invalid `rule_type` '{rt}' "
+                f"(must be one of {sorted(_BRAIN_RULE_TYPE_ENUM)})",
+                ctx.rel(note)))
+            continue
+        # Type-specific required fields
+        if rt == "deletion-allow" and "path_glob" not in block:
+            out.append(Finding(
+                "brain-rule-schema", "hard",
+                f"{note.name}: rule_type=deletion-allow requires `path_glob:`",
+                ctx.rel(note)))
+        elif rt == "check-severity":
+            for k in ("check_id", "severity"):
+                if k not in block:
+                    out.append(Finding(
+                        "brain-rule-schema", "hard",
+                        f"{note.name}: rule_type=check-severity requires `{k}:`",
+                        ctx.rel(note)))
+        elif rt == "custom-pattern":
+            for k in ("pattern_regex", "pattern_action"):
+                if k not in block:
+                    out.append(Finding(
+                        "brain-rule-schema", "hard",
+                        f"{note.name}: rule_type=custom-pattern requires `{k}:`",
+                        ctx.rel(note)))
+        elif rt == "dependency-allowlist" and "allowlist" not in block:
+            out.append(Finding(
+                "brain-rule-schema", "hard",
+                f"{note.name}: rule_type=dependency-allowlist requires `allowlist:`",
+                ctx.rel(note)))
+    return out
+
+
+def check_starter_no_personal_data(ctx: CheckContext) -> list[Finding]:
+    """BRAIN-LAW-3: `assets/starters/**/*.md` content must not contain
+    personal identifiers (real usernames, emails, specific project names).
+    Generic `<placeholder>` patterns are allowed."""
+    out = []
+    base = ctx.plugin_root / "assets" / "starters"
+    if not base.is_dir():
+        return out
+    for md in sorted(base.rglob("*.md")):
+        if not ctx.in_scope(ctx.rel(md)):
+            continue
+        try:
+            text = md.read_text(encoding="utf-8")
+        except OSError:
+            continue
+        for pat, label in _PERSONAL_PATTERNS:
+            if pat.search(text):
+                out.append(Finding(
+                    "starter-no-personal-data", "hard",
+                    f"{md.name}: contains personal data ({label}) — "
+                    "sanitize before shipping",
+                    ctx.rel(md)))
+                break   # one finding per file is enough
+    return out
+
+
+def check_brain_no_orphan_toplevel(ctx: CheckContext) -> list[Finding]:
+    """BRAIN-LAW-4: starter root dir contains only sanctioned files +
+    PARA-pattern subdirs. Stray files signal accumulation drift."""
+    out = []
+    base = ctx.plugin_root / "assets" / "starters"
+    if not base.is_dir():
+        return out
+    for starter_dir in sorted(base.iterdir()):
+        if not starter_dir.is_dir():
+            continue
+        for entry in sorted(starter_dir.iterdir()):
+            if entry.name in _SANCTIONED_TOPLEVEL_NAMES:
+                continue
+            # Only flag if in scope
+            if not ctx.in_scope(ctx.rel(entry)):
+                continue
+            out.append(Finding(
+                "brain-no-orphan-toplevel", "hard",
+                f"{starter_dir.name}/{entry.name}: not in the sanctioned "
+                f"starter top-level set "
+                f"({sorted(_SANCTIONED_TOPLEVEL_NAMES)})",
+                ctx.rel(entry)))
+    return out
+
+
 CHECKS = {
     "no_modify_vendored": check_no_modify_vendored,
     "node_flow_for_multi_step": check_node_flow_for_multi_step,
@@ -416,6 +648,10 @@ CHECKS = {
     "skill_md_no_exec_markers": check_skill_md_no_exec_markers,
     "skill_md_no_external_script_paths": check_skill_md_no_external_script_paths,
     "every_hook_script_traces_its_firing": check_every_hook_script_traces_its_firing,
+    "brain_note_schema": check_brain_note_schema,
+    "brain_rule_schema": check_brain_rule_schema,
+    "starter_no_personal_data": check_starter_no_personal_data,
+    "brain_no_orphan_toplevel": check_brain_no_orphan_toplevel,
 }
 
 

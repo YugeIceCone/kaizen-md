@@ -73,5 +73,5 @@ patterns you keep re-explaining to teammates.
 Distilled from `~/.claude/.kaizen/brain/Notes/` over multiple
 project sessions (the maintainer's working brain). Specific paths,
 project names, and personal references have been generalized
-(`shodan workspace` → `<your project>`, `~/cherry86/` → `~/<user>/`,
+(`<your project>` → `<your project>`, `~/<user>/` → `~/<user>/`,
 etc.). The principle content is unchanged.

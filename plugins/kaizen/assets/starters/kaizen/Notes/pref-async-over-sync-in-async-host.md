@@ -12,6 +12,7 @@ evidence:
     date: 2026-05-12
     context: "kaizen v1.7.0 browser_mcp.py shipped with sync_playwright; first open_browser() invocation failed: 'It looks like you are using Playwright Sync API inside the asyncio loop. Please use the Async API instead.' v1.7.1 patched by switching to playwright.async_api throughout."
 
+name: Async over sync in async host
 ---
 
 # Async over sync when the host runtime is async

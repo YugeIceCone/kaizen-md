@@ -11,6 +11,7 @@ evidence:
     quote: "use coding-skills to efficiently execute work or find solutions, simplicity > over-engineering"
     date: 2026-05-11
 
+name: Strict enforcement of the 8 coding-skills principles
 ---
 
 # Strict enforcement: 8 coding-skills principles

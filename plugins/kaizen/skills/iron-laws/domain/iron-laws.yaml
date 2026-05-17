@@ -180,3 +180,40 @@ laws:
     check: every_hook_script_traces_its_firing
     detect: "hooks/claude/<f>.sh (excluding _trace.sh itself) with no `_trace.sh` / `trace.py event` reference"
     why: "Self-audit's hook-trace-coverage stage flags these. Pre-fix, brain-session-end / brain-user-prompt / karpathy-gate / metrics-session-end / stop-ralph fired invisibly — no signal that the hook ran. Fixed 2026-05-14 (commit 691944f)."
+
+  # ─── Brain-specific iron-laws (v1.40+) ────────────────────────────
+  # Scoped to in-repo starter content (assets/starters/<name>/...).
+  # Live brains under ~/.claude/.kaizen/brain/ are out-of-scope —
+  # the gate sees only repo files.
+
+  - id: brain-note-schema
+    statement: "Every starter Note (`assets/starters/*/Notes/*.md`) has YAML frontmatter with at least `name:` + `type:` (type in the canonical enum). `type: belief` requires `confidence:` so beliefs can graduate to Persona Top Beliefs."
+    severity: hard
+    enforcement: auto
+    check: brain_note_schema
+    detect: "Notes/*.md frontmatter missing required keys, OR `type` value not in {world-fact, belief, observation, experience, behaviour, persona}, OR `type: belief` without a `confidence:` field"
+    why: "The promote / evolve / index flows depend on these fields. Notes shipped in starters set the example; an unset `type` ripples to every user who seeds from that starter. The note.schema.json says it; this law enforces it on the canonical starters."
+
+  - id: brain-rule-schema
+    statement: "Starter Notes with a `kaizen:` frontmatter block (rule notes) declare a valid `rule_type` and supply the type-specific required fields (path_glob for deletion-allow, check_id+severity for check-severity, etc)."
+    severity: hard
+    enforcement: auto
+    check: brain_rule_schema
+    detect: "Note with `kaizen:` block whose `rule_type` isn't in {deletion-allow, check-severity, custom-pattern, dependency-allowlist}, OR is missing the rule-type's required fields per brain-rule.schema.json"
+    why: "Malformed kaizen-rule notes silently skip at runtime — the gate never blocks `git rm` on a path the rule MEANT to allow. Catch at commit time, not at the user's frustrating moment."
+
+  - id: starter-no-personal-data
+    statement: "Files under `assets/starters/**/*.md` must not contain personal identifiers (usernames like cherry86, email addresses, specific workspace names like 'shodan workspace'). Generic placeholders (`<your project>`, `~/<user>/`) are allowed."
+    severity: hard
+    enforcement: auto
+    check: starter_no_personal_data
+    detect: "Regex sweep for /cherry86/, /@(gmail|anthropic|hotmail|outlook|yahoo)\\.com/, /\\bshodan workspace\\b/ across assets/starters/**/*.md"
+    why: "Starters get distributed to every new user. A leaked maintainer username in the seeded brain is both privacy-leakage and a discoverability bug ('why is cherry86 in my brain?'). Caught manually during the 2026-05-17 yugecone→kaizen sanitization pass; lifted to law to prevent regression."
+
+  - id: brain-no-orphan-toplevel
+    statement: "Starter root dir contains only the PARA dirs (Inbox / Journal / Projects / People / Areas / Notes / Resources / Tasks / Templates / Archive) and sanctioned top-level files (Persona.md / REMEMBER.md / SessionNotes.md / README.md / brain.db). Stray files signal accumulation drift."
+    severity: hard
+    enforcement: auto
+    check: brain_no_orphan_toplevel
+    detect: "Entry in assets/starters/<name>/ that isn't in the sanctioned set"
+    why: "When a starter accumulates `scratch.md` / `oldidea.md` / `temp/` cruft, new users seed those too. The PARA convention is THE brain UX — drift here erodes the value of every downstream brain."

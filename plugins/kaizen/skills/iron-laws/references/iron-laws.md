@@ -14,7 +14,7 @@ The non-negotiable rules for kaizen-plugin-original development. This file is a 
 
 ## Summary
 
-21 laws — 15 auto, 6 manual.
+25 laws — 19 auto, 6 manual.
 
 | id | severity | enforcement | check |
 |---|---|---|---|
@@ -39,6 +39,10 @@ The non-negotiable rules for kaizen-plugin-original development. This file is a 
 | `skill-md-no-exec-markers` | soft | auto | `skill_md_no_exec_markers` |
 | `skill-md-no-external-script-paths` | soft | auto | `skill_md_no_external_script_paths` |
 | `every-hook-script-traces-its-firing` | soft | auto | `every_hook_script_traces_its_firing` |
+| `brain-note-schema` | hard | auto | `brain_note_schema` |
+| `brain-rule-schema` | hard | auto | `brain_rule_schema` |
+| `starter-no-personal-data` | hard | auto | `starter_no_personal_data` |
+| `brain-no-orphan-toplevel` | hard | auto | `brain_no_orphan_toplevel` |
 
 ## Laws
 
@@ -239,4 +243,44 @@ Every hook script in hooks/claude/ MUST fire `_trace.sh` (or `trace.py event`) s
 **Detect:** hooks/claude/<f>.sh (excluding _trace.sh itself) with no `_trace.sh` / `trace.py event` reference
 
 **Why:** Self-audit's hook-trace-coverage stage flags these. Pre-fix, brain-session-end / brain-user-prompt / karpathy-gate / metrics-session-end / stop-ralph fired invisibly — no signal that the hook ran. Fixed 2026-05-14 (commit 691944f).
+
+### `brain-note-schema` (hard · auto)
+
+Every starter Note (`assets/starters/*/Notes/*.md`) has YAML frontmatter with at least `name:` + `type:` (type in the canonical enum). `type: belief` requires `confidence:` so beliefs can graduate to Persona Top Beliefs.
+
+**Check:** `brain_note_schema` (in `_iron_laws.py`)
+
+**Detect:** Notes/*.md frontmatter missing required keys, OR `type` value not in {world-fact, belief, observation, experience, behaviour, persona}, OR `type: belief` without a `confidence:` field
+
+**Why:** The promote / evolve / index flows depend on these fields. Notes shipped in starters set the example; an unset `type` ripples to every user who seeds from that starter. The note.schema.json says it; this law enforces it on the canonical starters.
+
+### `brain-rule-schema` (hard · auto)
+
+Starter Notes with a `kaizen:` frontmatter block (rule notes) declare a valid `rule_type` and supply the type-specific required fields (path_glob for deletion-allow, check_id+severity for check-severity, etc).
+
+**Check:** `brain_rule_schema` (in `_iron_laws.py`)
+
+**Detect:** Note with `kaizen:` block whose `rule_type` isn't in {deletion-allow, check-severity, custom-pattern, dependency-allowlist}, OR is missing the rule-type's required fields per brain-rule.schema.json
+
+**Why:** Malformed kaizen-rule notes silently skip at runtime — the gate never blocks `git rm` on a path the rule MEANT to allow. Catch at commit time, not at the user's frustrating moment.
+
+### `starter-no-personal-data` (hard · auto)
+
+Files under `assets/starters/**/*.md` must not contain personal identifiers (usernames like cherry86, email addresses, specific workspace names like 'shodan workspace'). Generic placeholders (`<your project>`, `~/<user>/`) are allowed.
+
+**Check:** `starter_no_personal_data` (in `_iron_laws.py`)
+
+**Detect:** Regex sweep for /cherry86/, /@(gmail|anthropic|hotmail|outlook|yahoo)\.com/, /\bshodan workspace\b/ across assets/starters/**/*.md
+
+**Why:** Starters get distributed to every new user. A leaked maintainer username in the seeded brain is both privacy-leakage and a discoverability bug ('why is cherry86 in my brain?'). Caught manually during the 2026-05-17 yugecone→kaizen sanitization pass; lifted to law to prevent regression.
+
+### `brain-no-orphan-toplevel` (hard · auto)
+
+Starter root dir contains only the PARA dirs (Inbox / Journal / Projects / People / Areas / Notes / Resources / Tasks / Templates / Archive) and sanctioned top-level files (Persona.md / REMEMBER.md / SessionNotes.md / README.md / brain.db). Stray files signal accumulation drift.
+
+**Check:** `brain_no_orphan_toplevel` (in `_iron_laws.py`)
+
+**Detect:** Entry in assets/starters/<name>/ that isn't in the sanctioned set
+
+**Why:** When a starter accumulates `scratch.md` / `oldidea.md` / `temp/` cruft, new users seed those too. The PARA convention is THE brain UX — drift here erodes the value of every downstream brain.
 

@@ -4,6 +4,7 @@ updated: 2026-05-10
 type: observation
 tags: [workflow, onboarding, orientation]
 sources_count: 2
+name: Read named orientation files first
 ---
 
 # User's standard orientation pattern: read named files first, then act

@@ -6,6 +6,7 @@ confidence: 0.95
 tags: [preference, workflow, refactor, deletions]
 sources_count: 1
 freshness: fresh
+name: No deletions without explicit user authorization
 ---
 
 # No deletions without explicit user authorization

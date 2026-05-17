@@ -6,8 +6,6 @@ confidence: 0.95
 tags: [preference, discipline, onion, tdd, schema-driven, reproducibility]
 sources_count: 1
 freshness: stable
-kaizen:
-  rule_type: discipline
   trigger_match:
     - "implement"
     - "refactor"
@@ -16,6 +14,7 @@ kaizen:
     - "code task"
   schema: onion-tdd-strict
   schema_path: ~/.claude/.kaizen/schemas/onion-tdd-strict/schema.yaml
+name: TDD discipline inside Onion layers
 ---
 
 # Deterministic code-task discipline: onion-tdd-strict

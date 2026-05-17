@@ -6,6 +6,7 @@ confidence: 0.97
 tags: [preference, architecture, onion, ddd, hexagonal, strict-enforcement]
 sources_count: 5
 freshness: stable
+name: Onion-DDD architecture strict enforcement
 ---
 
 # Strict enforcement: Onion Architecture / DDD layering
