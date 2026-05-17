@@ -85,9 +85,14 @@ fi
 # Skips itself when KAIZEN_DXM_DISABLE=1 or no events for cwd's session.
 DXM_PART=$(python3 "$SCRIPT_DIR/statusline_dxm.py" --back 300 2>/dev/null || echo "")
 
+# ─── intent live segment ─────────────────────────────────────────────
+# Emits "intent: <id>" when an event_pattern intent matches the last
+# 120s of dxm events. Empty when no match / no session / disabled.
+INTENT_PART=$(python3 "$SCRIPT_DIR/statusline_intent.py" --back 120 2>/dev/null || echo "")
+
 # ─── Compose ─────────────────────────────────────────────────────────
 OUT=""
-for part in "$CTX_PART" "$BACKLOG_PART" "$GATE_PART" "$DXM_PART"; do
+for part in "$CTX_PART" "$BACKLOG_PART" "$GATE_PART" "$DXM_PART" "$INTENT_PART"; do
     if [ -n "$part" ]; then
         if [ -z "$OUT" ]; then
             OUT="$part"
