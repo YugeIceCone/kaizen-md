@@ -218,6 +218,11 @@
             "type": "command",
             "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/claude/dxm-event.sh PreCompact",
             "timeout": 2
+          },
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/claude/gold-precompact.sh",
+            "timeout": 3
           }
         ]
       }
