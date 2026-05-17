@@ -1,5 +1,12 @@
+# consolidated-cli-parent: agent-self-audit
 """kaizen self_audit_agent — the agent-driven follow-up to the
 mechanical self-audit.
+
+CLI lives at bin/kaizen-agent-self-audit (slash↔CLI parity rename
+landed 2026-05-18); the older bin/kaizen-self-audit-agent alias was
+retired in the same pass. The `consolidated-cli-parent` header above
+satisfies the `bin-wrapper-per-cli` iron-law (script_name →
+bin_name no longer aligns 1:1; the parent bin owns the wrapper).
 
 The mechanical audit (self_audit.py) emits skill-checkpoint Findings:
 "load Skill X, apply it to targets Y". A script can't apply a skill —

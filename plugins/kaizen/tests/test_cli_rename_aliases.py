@@ -4,11 +4,10 @@ with their slash-command counterparts:
   kaizen self-audit-agent  →  kaizen agent-self-audit   (slash: /kaizen:agent-self-audit)
   kaizen karpathy          →  kaizen karpathy-check     (slash: /kaizen:karpathy-check)
 
-The old verbs stay as deprecation aliases (per no-deletions discipline)
-that forward to the canonical bin and emit a one-line warning to stderr.
-The iron-law `bin-wrapper-per-cli` requires kaizen-self-audit-agent to
-exist (mapped from self_audit_agent.py); keeping it as an alias
-satisfies the rule.
+Initial pass kept the old verbs as deprecation aliases; user retired
+them later that day to keep the CLI surface tight. self_audit_agent.py
+now carries a `# consolidated-cli-parent: agent-self-audit` header so
+the iron-law `bin-wrapper-per-cli` is satisfied without the alias.
 """
 from __future__ import annotations
 
@@ -66,34 +65,35 @@ class TestCanonicalBinsWork(unittest.TestCase):
             self.assertIn(kw, r.stdout, f"karpathy-check help missing '{kw}' subcmd")
 
 
-class TestDeprecationAliases(unittest.TestCase):
-    """Old verbs still work but emit a deprecation note to stderr."""
+class TestRetiredAliasesAreGone(unittest.TestCase):
+    """Old verbs were retired in the follow-up commit; assert they're
+    really gone so future drift doesn't silently re-introduce them."""
 
-    def test_self_audit_agent_alias_still_works(self):
-        r = _run("kaizen-self-audit-agent", "--help")
-        self.assertEqual(0, r.returncode, r.stderr)
-        self.assertIn("dispatch-plan", r.stdout + r.stderr,
-                      "deprecation alias must still pass-through to the canonical bin")
+    def test_kaizen_self_audit_agent_bin_does_not_exist(self):
+        self.assertFalse(
+            (BIN_DIR / "kaizen-self-audit-agent").exists(),
+            "kaizen-self-audit-agent was retired — use kaizen-agent-self-audit",
+        )
 
-    def test_self_audit_agent_emits_deprecation(self):
-        r = _run("kaizen-self-audit-agent", "--help")
-        self.assertIn("deprecated", r.stderr.lower(),
-                      "alias must emit a deprecation note on stderr")
-        self.assertIn("kaizen-agent-self-audit", r.stderr,
-                      "deprecation note should name the canonical bin")
+    def test_kaizen_karpathy_bin_does_not_exist(self):
+        self.assertFalse(
+            (BIN_DIR / "kaizen-karpathy").exists(),
+            "kaizen-karpathy was retired — use kaizen-karpathy-check",
+        )
 
-    def test_karpathy_alias_still_works(self):
-        r = _run("kaizen-karpathy", "help")
-        self.assertEqual(0, r.returncode, r.stderr)
-        self.assertIn("complexity", r.stdout,
-                      "deprecation alias must still pass-through")
-
-    def test_karpathy_emits_deprecation(self):
-        r = _run("kaizen-karpathy", "help")
-        self.assertIn("deprecated", r.stderr.lower(),
-                      "alias must emit a deprecation note on stderr")
-        self.assertIn("kaizen-karpathy-check", r.stderr,
-                      "deprecation note should name the canonical bin")
+    def test_self_audit_agent_script_carries_consolidated_parent_header(self):
+        """Without this header, `bin-wrapper-per-cli` fails — the script
+        no longer maps 1:1 to a bin of the same name (only the parent bin
+        kaizen-agent-self-audit exists)."""
+        script = (
+            PLUGIN_ROOT / "skills" / "workflow" / "scripts" / "self_audit_agent.py"
+        )
+        content = script.read_text(encoding="utf-8")
+        self.assertIn(
+            "# consolidated-cli-parent: agent-self-audit",
+            content,
+            "self_audit_agent.py must declare its parent bin to satisfy iron-law",
+        )
 
 
 if __name__ == "__main__":

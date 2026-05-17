@@ -53,6 +53,6 @@ start fixing — remediation is a separate, user-approved step.
   just that one checkpoint's brief and re-run `aggregate` if needed.
 - `aggregate` with no `--run-id` defaults to the most recent run.
 - The three phases also run standalone via the bin wrapper:
-  `kaizen-self-audit-agent dispatch-plan` / `aggregate` / `path`.
+  `kaizen-agent-self-audit dispatch-plan` / `aggregate` / `path`.
 - This closes the loop the mechanical `/kaizen:self-audit` opens —
   see `skills/plugin-self-audit/SKILL.md` for how the two relate.

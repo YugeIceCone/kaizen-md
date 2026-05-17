@@ -171,9 +171,9 @@ Agent tool is agent-runtime-only, so the fan-out cannot be scripted.
 
 ```
 /kaizen:agent-self-audit                          # full A→B→C playbook
-kaizen-self-audit-agent dispatch-plan [--json]    # phase A standalone
-kaizen-self-audit-agent aggregate [--run-id ID]   # phase C standalone
-kaizen-self-audit-agent path                      # dirs + config paths
+kaizen-agent-self-audit dispatch-plan [--json]    # phase A standalone
+kaizen-agent-self-audit aggregate [--run-id ID]   # phase C standalone
+kaizen-agent-self-audit path                      # dirs + config paths
 ```
 
 Runs land in `.kaizen/audits/agent/<run-id>/` — `dispatch.json`, one

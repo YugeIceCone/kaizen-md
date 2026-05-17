@@ -54,7 +54,7 @@ class TestSelfImprovingCommand(unittest.TestCase):
 
 class TestKarpathyParentBin(unittest.TestCase):
     def setUp(self):
-        self.bin = _BIN / "kaizen-karpathy"
+        self.bin = _BIN / "kaizen-karpathy-check"
 
     def test_bin_exists_and_executable(self):
         self.assertTrue(self.bin.is_file())
@@ -87,8 +87,8 @@ class TestPluginManifestPerms(unittest.TestCase):
             (_KZ_DIR / ".claude-plugin/plugin.json").read_text(encoding="utf-8"))
         allow = manifest["permissions"]["allow"]
         # Parent bin
-        self.assertTrue(any("kaizen-karpathy:" in a for a in allow),
-                        "kaizen-karpathy bin perm missing")
+        self.assertTrue(any("kaizen-karpathy-check:" in a for a in allow),
+                        "kaizen-karpathy-check bin perm missing")
         # Wildcard for skill-private karpathy scripts
         self.assertTrue(
             any("skills/karpathy/scripts/" in a for a in allow),

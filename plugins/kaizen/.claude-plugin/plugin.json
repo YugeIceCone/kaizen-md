@@ -113,7 +113,7 @@
       "Bash(bash ${CLAUDE_PLUGIN_ROOT}/bin/kaizen-context-notifier:*)",
       "Bash(bash ${CLAUDE_PLUGIN_ROOT}/bin/kaizen-statusline-dxm:*)",
       "Bash(bash ${CLAUDE_PLUGIN_ROOT}/bin/kaizen-statusline-intent:*)",
-      "Bash(bash ${CLAUDE_PLUGIN_ROOT}/bin/kaizen-karpathy:*)",
+      "Bash(bash ${CLAUDE_PLUGIN_ROOT}/bin/kaizen-karpathy-check:*)",
       "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/karpathy/scripts/*.py:*)",
       "Bash(bash ${CLAUDE_PLUGIN_ROOT}/hooks/claude/stop-karpathy-check.sh:*)",
       "Bash(bash ${CLAUDE_PLUGIN_ROOT}/hooks/claude/stop-self-improving-review.sh:*)",
