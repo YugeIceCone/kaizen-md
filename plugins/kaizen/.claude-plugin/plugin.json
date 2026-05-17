@@ -45,6 +45,8 @@
       "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/migrate.py:*)",
       "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/flow_cli.py:*)",
       "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/code_lift.py:*)",
+      "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/rubric.py:*)",
+      "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/schema_cli.py:*)",
       "Bash(bash ${CLAUDE_PLUGIN_ROOT}/hooks/claude/brain-session-end.sh:*)",
       "Bash(bash ${CLAUDE_PLUGIN_ROOT}/hooks/claude/brain-user-prompt.sh:*)",
       "Bash(bash ${CLAUDE_PLUGIN_ROOT}/hooks/claude/pretooluse-trace.sh:*)",

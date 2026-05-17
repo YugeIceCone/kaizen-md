@@ -1,0 +1,20 @@
+# Decision-rubric skill — meta-manifest for the rubric prototyping
+# surface. Pairs with schema-driven-cli (the lens runtime is what walks
+# the rubric YAMLs this skill teaches you to write).
+
+version: 2
+feature: decision-rubric
+description: >-
+  Reusable rubric / classifier pattern for kaizen features — first-
+  match-wins YAML rules walked by schema_cli.BucketWalker. Includes
+  the standalone `kaizen-rubric` CLI for prototyping rubrics before
+  wiring them into a feature.
+
+subcommands:
+  # kaizen-rubric eval and lint are exposed via rubric.py — the CLI
+  # surfaces them under one bin wrapper. Both opt out of input/output
+  # schema validation for now (the input is rubric YAML + signals JSON;
+  # the output is canonical envelope already). Add schemas when a
+  # downstream consumer needs the contract enforced.
+  eval: {}
+  lint: {}
