@@ -1,0 +1,83 @@
+#!/usr/bin/env bash
+# kaizen-setup — CLI shortcut for /kaizen:setup.
+#
+# Default: delegates to skills/workflow/scripts/setup.sh (install/uninstall
+# /cache surface). The `env` subcommand is folded in here so the env surface
+# lives under setup instead of as a separate top-level verb.
+#
+# Strict-name wrapper required by iron-law `bin-wrapper-per-cli`.
+#
+# Usage:
+#   kaizen setup                            — install (default)
+#   kaizen setup uninstall [--execute]      — reverse per-repo activation
+#   kaizen setup cache [stats|key|...]      — per-repo hash cache CRUD
+#   kaizen setup env [print|install|        — shell env install
+#                     install-zsh|path|
+#                     uninstall]
+#   kaizen setup --enable-all [--with-...]  — install + global stack
+#   kaizen setup --dry-run                  — preview without applying
+
+set -euo pipefail
+
+_SCRIPT_REAL="$(readlink -f "${BASH_SOURCE[0]}" 2>/dev/null \
+  || python3 -c 'import os,sys; print(os.path.realpath(sys.argv[1]))' "${BASH_SOURCE[0]}")"
+_BIN_DIR="$(cd "$(dirname "$_SCRIPT_REAL")" && pwd)"
+PLUGIN_ROOT="$(cd "$_BIN_DIR/.." && pwd)"
+SCRIPTS="$PLUGIN_ROOT/skills/workflow/scripts"
+
+# ─── env subcommand (folded from /kaizen:env) ──────────────────────────
+if [ "${1:-}" = "env" ]; then
+    shift
+    SRC="$SCRIPTS/kaizen-env.sh"
+    SUB="${1:-print}"
+    case "$SUB" in
+        print)
+            cat "$SRC"
+            ;;
+        path)
+            echo "$SRC"
+            ;;
+        install|install-bash)
+            RC="$HOME/.bashrc"
+            if grep -qF "kaizen-env.sh" "$RC" 2>/dev/null; then
+                echo "  ∘ $RC already sources kaizen-env.sh — nothing to do"
+            else
+                printf '\n# kaizen — shell env + aliases\nsource "%s"\n' "$SRC" >> "$RC"
+                echo "  ✓ appended to $RC"
+                echo ""
+                echo "Reload your shell to pick it up:"
+                echo "  source $RC"
+            fi
+            ;;
+        install-zsh)
+            RC="$HOME/.zshrc"
+            if grep -qF "kaizen-env.sh" "$RC" 2>/dev/null; then
+                echo "  ∘ $RC already sources kaizen-env.sh — nothing to do"
+            else
+                printf '\n# kaizen — shell env + aliases\nsource "%s"\n' "$SRC" >> "$RC"
+                echo "  ✓ appended to $RC"
+                echo ""
+                echo "Reload your shell to pick it up:"
+                echo "  source $RC"
+            fi
+            ;;
+        uninstall)
+            for RC in "$HOME/.bashrc" "$HOME/.zshrc"; do
+                if grep -qF "kaizen-env.sh" "$RC" 2>/dev/null; then
+                    cp "$RC" "$RC.bak-kaizen-env-$(date +%Y%m%dT%H%M%SZ)"
+                    grep -v -E "(# kaizen — shell env|kaizen-env\.sh)" "$RC" \
+                      > "$RC.tmp" && mv "$RC.tmp" "$RC"
+                    echo "  ✓ removed from $RC (backup at $RC.bak-*)"
+                fi
+            done
+            ;;
+        *)
+            echo "usage: kaizen setup env [print|install|install-zsh|path|uninstall]" >&2
+            exit 2
+            ;;
+    esac
+    exit 0
+fi
+
+# ─── default: delegate to setup.sh (install / uninstall / cache) ───────
+exec bash "$SCRIPTS/setup.sh" "$@"

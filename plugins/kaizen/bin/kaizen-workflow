@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# kaizen-workflow — CLI shortcut for /kaizen:workflow (workflow-shape config).
+# Thin alias over the canonical kaizen-workflow-config bin.
+# Strict-name wrapper required by iron-law `bin-wrapper-per-cli`.
+
+set -euo pipefail
+
+_SCRIPT_REAL="$(readlink -f "${BASH_SOURCE[0]}" 2>/dev/null \
+  || python3 -c 'import os,sys; print(os.path.realpath(sys.argv[1]))' "${BASH_SOURCE[0]}")"
+_BIN_DIR="$(cd "$(dirname "$_SCRIPT_REAL")" && pwd)"
+
+exec "$_BIN_DIR/kaizen-workflow-config" "$@"

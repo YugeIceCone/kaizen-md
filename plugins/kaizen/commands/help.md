@@ -93,7 +93,7 @@ dispatch the same way.
 | `hygiene` | Run kaizen hygiene checks + safe auto-cleanups. Five checks: prune old cache versi |
 | `backup` | Snapshot workflow state (.kaizen/, legacy .workflow/, .kaizen.toml, optionally bra |
 | `publish` | Publish this plugin/marketplace to GitHub. Subcommands cover the full lifecycle —  |
-| `env` | Print or install the kaizen shell environment (KAIZEN_ROOT + KAIZEN_SCRIPTS + alia |
+| `env` | (Alias for /kaizen:setup env.) Print or install the kaizen shell environment (KAIZ |
 | `health` | Diagnostic health check for the kaizen plugin's install in this repo. Reports brok |
 | `status` | Show the kaizen setup for this repo at a glance — config, gate state, backlog summ |
 | `surface` | Unified MCP+hooks registry / validator. `list` enumerates all 22 MCP sub-servers a |
