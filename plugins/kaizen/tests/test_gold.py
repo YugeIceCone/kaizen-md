@@ -195,5 +195,54 @@ class TestPath(GoldBase):
         self.assertEqual(r.stdout.strip(), str(self.store))
 
 
+class TestTraceEmission(GoldBase):
+    """capture + promote write trace events so `kaizen trace search`
+    can surface them. Best-effort: trace failures never break the CLI."""
+
+    def setUp(self):
+        super().setUp()
+        self.trace_dir = self.tmp / "trace"
+        self.trace_dir.mkdir()
+        self.env["KAIZEN_TRACE_DIR"] = str(self.trace_dir)
+
+    def _trace_lines(self) -> list[dict]:
+        p = self.trace_dir / "events.jsonl"
+        if not p.is_file():
+            return []
+        return [json.loads(l) for l in p.read_text().strip().splitlines() if l]
+
+    def test_capture_emits_gold_captured_event(self):
+        r = self._run("capture", "trace-me", "--tag", "T")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        events = [e for e in self._trace_lines() if e.get("evt") == "gold.captured"]
+        self.assertEqual(len(events), 1)
+        e = events[0]
+        self.assertEqual(e["data"]["id"], 1)
+        self.assertEqual(e["data"]["tag"], "T")
+        self.assertEqual(e["data"]["pattern"], "trace-me")
+
+    def test_promote_emits_gold_promoted_event(self):
+        self._run("capture", "p")
+        target = self.tmp / "out.md"
+        r = self._run("promote", "1", "--to", str(target))
+        self.assertEqual(r.returncode, 0)
+        events = [e for e in self._trace_lines() if e.get("evt") == "gold.promoted"]
+        self.assertEqual(len(events), 1)
+        self.assertEqual(events[0]["data"]["id"], 1)
+        self.assertEqual(events[0]["data"]["to"], str(target))
+
+    def test_disabled_env_suppresses_emission(self):
+        env = dict(self.env)
+        env["KAIZEN_GOLD_DISABLE"] = "1"
+        r = subprocess.run(
+            [sys.executable, str(_SCRIPT), "capture", "silent"],
+            capture_output=True, text=True, timeout=5,
+            env={**os.environ, **env},
+        )
+        self.assertEqual(r.returncode, 0)
+        self.assertEqual([e for e in self._trace_lines()
+                           if e.get("evt") == "gold.captured"], [])
+
+
 if __name__ == "__main__":
     unittest.main()

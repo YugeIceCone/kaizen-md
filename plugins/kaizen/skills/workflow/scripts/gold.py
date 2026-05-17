@@ -127,6 +127,34 @@ def _atomic_append(path: Path, line: str) -> None:
             f.write(line + ("" if line.endswith("\n") else "\n"))
 
 
+def _emit_event(evt: str, data: dict) -> None:
+    """Fire trace + dxm events for `evt` with `data`. Best-effort.
+
+    DRY: capture + promote both want trace (durable, searchable) + dxm
+    (live mirror). Both subsystems own their own writer; this function
+    is the single fan-out. Honors KAIZEN_GOLD_DISABLE to suppress.
+    """
+    if os.environ.get("KAIZEN_GOLD_DISABLE") == "1":
+        return
+    sys.path.insert(0, str(_SCRIPT_DIR))
+    try:
+        import trace as _trace
+        _trace.append_event({
+            "ts":   _iso_now(),
+            "src":  "tool",
+            "evt":  evt,
+            "tool": "kaizen-gold",
+            "data": data,
+        })
+    except Exception:
+        pass
+    try:
+        import _dxm_emit
+        _dxm_emit.emit_event(evt, tool_name="kaizen-gold", payload=data)
+    except Exception:
+        pass
+
+
 def _cmd_capture(args) -> int:
     p = _patterns_path()
     rec = {
@@ -140,6 +168,11 @@ def _cmd_capture(args) -> int:
         "promoted_to":  "",
     }
     _atomic_append(p, json.dumps(rec))
+    _emit_event("gold.captured", {
+        "id":      rec["id"],
+        "tag":     rec["tag"],
+        "pattern": rec["pattern"],
+    })
     if args.json:
         print(json.dumps(rec))
     else:
@@ -275,6 +308,11 @@ def _cmd_promote(args) -> int:
         p.write_text("\n".join(json.dumps(r) for r in new_recs) + "\n",
                       encoding="utf-8")
 
+    _emit_event("gold.promoted", {
+        "id":    args.id,
+        "to":    str(dest),
+        "brain": bool(args.brain),
+    })
     if args.json:
         print(json.dumps({"promoted_id": args.id, "to": str(dest)}))
     else:
