@@ -239,9 +239,9 @@ Query the handoff store for the most recent entry:
 python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/handoff.py latest --json
 ```
 
-- A `handoff` object → read its `file_path` in full (Step 2). That
-  file is the system of record.
-- `"handoff": null` → the store is empty. Fall back to the filesystem:
+- The envelope wraps a `handoff` object → read `data.handoff.file_path`
+  in full (Step 2). That file is the system of record.
+- `data.handoff == null` → the store is empty. Fall back to the filesystem:
   `ls -t ~/.claude/thoughts/handoffs/*/*.yaml 2>/dev/null | head -5` —
   present the list, or tell the user there's nothing to resume.
 

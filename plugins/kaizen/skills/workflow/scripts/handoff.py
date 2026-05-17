@@ -42,6 +42,9 @@ _SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(_SCRIPT_DIR))
 
 import _handoff as _core  # noqa: E402
+import _envelope  # noqa: E402
+
+_emit = _envelope.emitter("kaizen-handoff", tool_version="1.0.0")
 
 
 def _cmd_save(args) -> int:
@@ -60,7 +63,7 @@ def _cmd_save(args) -> int:
         "status": args.status,
     }
     if args.json:
-        print(json.dumps(result, indent=2))
+        _emit(result, verdict="green")
     else:
         print(f"[kaizen-handoff] indexed #{rid} — {args.session} "
               f"({args.status})\n  {fp.resolve()}")
@@ -70,7 +73,7 @@ def _cmd_save(args) -> int:
 def _cmd_latest(args) -> int:
     rows = _core.latest_handoffs(1)
     if args.json:
-        print(json.dumps({"handoff": rows[0] if rows else None}, indent=2))
+        _emit({"handoff": rows[0] if rows else None})
         return 0
     if not rows:
         print("[kaizen-handoff] no handoffs in the store yet.")
@@ -85,7 +88,7 @@ def _cmd_latest(args) -> int:
 def _cmd_list(args) -> int:
     rows = _core.list_handoffs(limit=args.limit, session_id=args.session)
     if args.json:
-        print(json.dumps({"handoffs": rows}, indent=2))
+        _emit({"handoffs": rows}, counts={"handoffs": len(rows)})
         return 0
     if not rows:
         print("[kaizen-handoff] no handoffs in the store yet.")
@@ -127,7 +130,7 @@ def _cmd_bridge(args) -> int:
         result = {"candidates": candidates, "count": len(candidates)}
 
     if args.json:
-        print(json.dumps(result, indent=2))
+        _emit(result, counts={"candidates": result.get("count", 0)})
         return 0
     if not candidates:
         print("[kaizen-handoff bridge] no durable learnings — "
@@ -148,11 +151,11 @@ def _cmd_bridge(args) -> int:
 
 
 def _cmd_path(args) -> int:
-    print(json.dumps({
+    _emit({
         "db": str(_core.handoff_db_path()),
         "yaml_dir": str(_core.handoffs_dir()),
         "domain": str(_core.DOMAIN_DIR / "handoff.yaml"),
-    }, indent=2))
+    })
     return 0
 
 

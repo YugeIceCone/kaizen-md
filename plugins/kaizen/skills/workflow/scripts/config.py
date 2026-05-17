@@ -42,6 +42,14 @@ try:
 except ImportError:  # pragma: no cover
     tomllib = None  # type: ignore[assignment]
 
+# Late import — _envelope lives alongside config.py; deferred to avoid
+# a circular at module-load time (consumers of config.py would also
+# trigger _envelope's plugin.json lookup before sys.path has been set).
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _envelope  # noqa: E402
+
+_emit = _envelope.emitter("kaizen-config", tool_version="1.0.0")
+
 
 # ═══════════════════════════════════════════════════════════════════════
 # PLUGIN ▸ DEFAULTS — edit this one block to retune the plugin.
@@ -308,12 +316,15 @@ def main():
     args = p.parse_args()
 
     if args.defaults:
-        print(json.dumps(plugin_defaults_dict(), indent=2))
+        _emit(plugin_defaults_dict())
         return
 
     if args.validate:
         v = validate()
-        print(json.dumps(v, indent=2, default=str))
+        _emit(v,
+              verdict="green" if not v["errors"] else "red",
+              counts={"errors": len(v.get("errors", [])),
+                      "warnings": len(v.get("warnings", []))})
         if v["errors"]:
             sys.exit(1)
         return
@@ -324,7 +335,7 @@ def main():
         return
 
     if args.json:
-        print(json.dumps(load_config(), indent=2, default=str))
+        _emit(load_config())
         return
 
     if args.key is None:

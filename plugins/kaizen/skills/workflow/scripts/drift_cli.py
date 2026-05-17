@@ -31,6 +31,9 @@ _SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(_SCRIPT_DIR))
 
 import _drift as kz_drift  # noqa: E402
+import _envelope  # noqa: E402
+
+_emit = _envelope.emitter("kaizen-drift", tool_version="1.0.0")
 
 
 def _root(args) -> Path:
@@ -69,7 +72,20 @@ def cmd_check(args) -> int:
         only=args.only,
     )
     if args.json:
-        print(kz_drift.format_report(report, json_mode=True))
+        import dataclasses
+        payload = {
+            "baseline_dir": report.baseline_dir,
+            "current_dir": report.current_dir,
+            "changed": [dataclasses.asdict(u) for u in report.changed],
+            "added_units": report.added_units,
+            "removed_units": report.removed_units,
+            "total": report.total,
+        }
+        _emit(payload,
+              verdict="green" if report.total == 0 else "yellow",
+              counts={"drifted": report.total,
+                      "added": len(report.added_units),
+                      "removed": len(report.removed_units)})
     else:
         print(kz_drift.format_report(report))
     if args.fail_on_drift and report.total > 0:

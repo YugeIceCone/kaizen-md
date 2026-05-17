@@ -55,6 +55,9 @@ sys.path.insert(0, str(_SCRIPT_DIR))
 
 import flow as _flow  # noqa: E402
 import docs_gen as _dg  # noqa: E402
+import _envelope  # noqa: E402
+
+_emit = _envelope.emitter("kaizen-docs-flow", tool_version="1.0.0")
 
 
 class DetectPackagesNode(_flow.AsyncNode):
@@ -281,7 +284,9 @@ def main():
     asyncio.run(f.run_async(store))
     report = store["report"]
     if args.json:
-        print(json.dumps(report, indent=2, default=str))
+        _emit(report,
+              counts={"files_written": report.get("files_written", 0),
+                      "packages": report.get("package_count", 0)})
     else:
         print(
             f"wrote {report['files_written']} files to {out_dir}/"

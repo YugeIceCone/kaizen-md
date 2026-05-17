@@ -131,6 +131,9 @@ def _load_scraper_cls():
 
 import _sqlite as _kz_sqlite  # noqa: E402
 import _crawl as _kz_crawl  # noqa: E402  — S1+S2+S3 crawler
+import _envelope  # noqa: E402
+
+_emit = _envelope.emitter("kaizen-scrape", tool_version="1.0.0")
 
 _SCHEMA_SQL = """
     CREATE TABLE IF NOT EXISTS scrape_items (
@@ -773,7 +776,7 @@ def cmd_scrape(args):
     prompt = args.prompt or _cfg.SCRAPE_DEFAULT_PROMPT
     result = asyncio.run(do_scrape(urls, prompt, no_embed=args.no_embed))
     if args.json:
-        print(json.dumps(result, indent=2, default=str))
+        _emit(result, verdict="green" if result.get("ok") else "red")
     else:
         if not result["ok"]:
             print(f"kaizen-scrape: {result['error']}", file=sys.stderr)
@@ -798,7 +801,7 @@ def cmd_batch(args):
     prompt = args.prompt or _cfg.SCRAPE_DEFAULT_PROMPT
     result = asyncio.run(do_scrape(urls, prompt, no_embed=args.no_embed))
     if args.json:
-        print(json.dumps(result, indent=2, default=str))
+        _emit(result, verdict="green" if result.get("ok") else "red")
     else:
         print(f"kaizen-scrape: batch — {result['persisted']}/{result['urls']} persisted")
 
@@ -806,7 +809,7 @@ def cmd_batch(args):
 def cmd_search(args):
     results = do_search(args.query, top_k=args.top_k)
     if args.json:
-        print(json.dumps(results, indent=2))
+        _emit({"results": results}, counts={"hits": len(results)})
         return
     for r in results:
         print(f"  {r['score']:.3f}  [{r['id']}] {r['title'] or '(untitled)'}")
@@ -888,14 +891,14 @@ def cmd_crawl(args):
         conn.close()
 
     if args.json:
-        print(json.dumps({
+        _emit({
             "crawled": result.crawled,
             "skipped_robots": result.skipped_robots,
             "skipped_origin": result.skipped_origin,
             "skipped_pattern": result.skipped_pattern,
             "skipped_recent": result.skipped_recent,
             "fetch_errors": result.fetch_errors,
-        }, indent=2))
+        }, counts={"crawled": len(result.crawled), "fetch_errors": result.fetch_errors})
         return
 
     print(f"kaizen-scrape: crawled {len(result.crawled)} page(s) from {args.url}")
@@ -921,7 +924,7 @@ def cmd_recommend(args):
     JSON-extraction workload. Read-only — does not pull anything. To
     install, copy the `ollama pull` line OR run /kaizen:models pull <name>."""
     if args.json:
-        print(json.dumps(OLLAMA_SCRAPE_RECOMMENDATIONS, indent=2))
+        _emit({"recommendations": OLLAMA_SCRAPE_RECOMMENDATIONS})
         return
 
     # Detect what's already installed so we can mark them ✓.
@@ -961,7 +964,7 @@ def cmd_detect_llm(args):
         print("  ollama serve                                 (ollama)", file=sys.stderr)
         sys.exit(1)
     if args.json:
-        print(json.dumps(det, indent=2))
+        _emit(det)
     else:
         print(f"detected:  {det['provider']}/{det['model']}")
         print(f"base_url:  {det['base_url']}")

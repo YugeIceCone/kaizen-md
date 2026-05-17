@@ -18,6 +18,9 @@ _SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(_SCRIPT_DIR))
 
 import _manifests as kz_m  # noqa: E402
+import _envelope  # noqa: E402
+
+_emit = _envelope.emitter("kaizen-manifests", tool_version="1.0.0")
 
 
 def _root(args) -> Path:
@@ -40,7 +43,8 @@ def _audit_json(result: dict) -> dict:
 def cmd_audit(args) -> int:
     result = kz_m.audit(_root(args))
     if args.json:
-        print(json.dumps(_audit_json(result), indent=2))
+        payload = _audit_json(result)
+        _emit(payload, counts={"manifests": len(payload.get("manifests", []))})
     else:
         print(kz_m.format_audit(result))
     return 0
@@ -49,7 +53,9 @@ def cmd_audit(args) -> int:
 def cmd_unused(args) -> int:
     result = kz_m.unused(_root(args))
     if args.json:
-        print(json.dumps(result, indent=2))
+        _emit(result,
+              verdict="green" if result["count"] == 0 else "yellow",
+              counts={"unused": result["count"]})
     else:
         print(kz_m.format_unused(result))
     return 1 if result["count"] > 0 and args.fail_on_unused else 0

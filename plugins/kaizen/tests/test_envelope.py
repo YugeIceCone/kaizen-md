@@ -49,6 +49,19 @@ _RETROFIT_TOOLS = [
     ("metrics path",    [str(_SCRIPTS / "metrics.py"), "path"]),
     ("trace stats",     [str(_SCRIPTS / "trace.py"), "stats"]),
     ("loc-index report", [str(_SCRIPTS / "loc_index.py"), "report", "--json"]),
+    # Phase D — observe / scrape / manifests / handoff / drift / config / docs_flow
+    ("observe layers",   [str(_SCRIPTS / "observe.py"), "layers"]),
+    ("observe stats",    [str(_SCRIPTS / "observe.py"), "stats"]),
+    ("manifests audit",  [str(_SCRIPTS / "manifests_cli.py"), "audit", "--json"]),
+    ("manifests unused", [str(_SCRIPTS / "manifests_cli.py"), "unused", "--json"]),
+    ("handoff latest",   [str(_SCRIPTS / "handoff.py"), "latest", "--json"]),
+    ("handoff path",     [str(_SCRIPTS / "handoff.py"), "path"]),
+    ("config defaults",  [str(_SCRIPTS / "config.py"), "--defaults"]),
+    ("config validate",  [str(_SCRIPTS / "config.py"), "--validate"]),
+    ("config json",      [str(_SCRIPTS / "config.py"), "--json"]),
+    # scrape_index search needs numpy (skipped via _has_numpy)
+    # drift_cli check needs baseline + current dirs (skipped — needs fixture)
+    # docs_flow needs a workspace with manifests (skipped — needs fixture)
     # roadmap_status excluded — needs handoff fixture in plans/
 ]
 

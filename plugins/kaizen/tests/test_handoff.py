@@ -274,7 +274,7 @@ class TestCli(SandboxBase):
     def test_path_subcommand(self):
         r = self._run("path")
         self.assertEqual(r.returncode, 0)
-        out = json.loads(r.stdout)
+        out = json.loads(r.stdout)["data"]
         self.assertEqual(out["db"], str(self.db))
         self.assertEqual(out["yaml_dir"], str(self.ydir))
 
@@ -283,11 +283,11 @@ class TestCli(SandboxBase):
         r = self._run("save", "--session", "cli-sess", "--file", str(f),
                       "--status", "complete", "--json")
         self.assertEqual(r.returncode, 0)
-        saved = json.loads(r.stdout)
+        saved = json.loads(r.stdout)["data"]
         self.assertEqual(saved["session_id"], "cli-sess")
         r2 = self._run("latest", "--json")
         self.assertEqual(r2.returncode, 0)
-        h = json.loads(r2.stdout)["handoff"]
+        h = json.loads(r2.stdout)["data"]["handoff"]
         self.assertEqual(h["session_id"], "cli-sess")
         self.assertEqual(h["status"], "complete")
         self.assertIn("cli test", h["content"])
@@ -300,7 +300,7 @@ class TestCli(SandboxBase):
     def test_latest_empty_exits_0(self):
         r = self._run("latest", "--json")
         self.assertEqual(r.returncode, 0)
-        self.assertIsNone(json.loads(r.stdout)["handoff"])
+        self.assertIsNone(json.loads(r.stdout)["data"]["handoff"])
 
     def test_bare_invocation_is_latest(self):
         r = self._run()
@@ -311,7 +311,7 @@ class TestCli(SandboxBase):
         f = self._write_yaml("bridge.yaml", _SAMPLE_HANDOFF)
         r = self._run("bridge", "--file", str(f), "--json")
         self.assertEqual(r.returncode, 0)
-        out = json.loads(r.stdout)
+        out = json.loads(r.stdout)["data"]
         self.assertEqual(out["count"], 5)
         self.assertEqual(len(out["candidates"]), 5)
         self.assertIn("section", out["candidates"][0])
@@ -325,7 +325,7 @@ class TestCli(SandboxBase):
         f = self._write_yaml("bare.yaml", "---\nsession: x\n---\n\ngoal: g\nnow: n\n")
         r = self._run("bridge", "--file", str(f), "--json")
         self.assertEqual(r.returncode, 0)
-        self.assertEqual(json.loads(r.stdout)["count"], 0)
+        self.assertEqual(json.loads(r.stdout)["data"]["count"], 0)
 
 
 if __name__ == "__main__":

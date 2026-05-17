@@ -63,6 +63,10 @@ try:
 except ImportError:
     schemas = None  # graceful — observe works without typed validation
 
+import _envelope
+
+_emit = _envelope.emitter("kaizen-observe", tool_version="1.0.0")
+
 
 HOME = Path(os.path.expanduser("~"))
 
@@ -678,14 +682,13 @@ def main():
     args = p.parse_args()
 
     if not args.cmd or args.cmd == "layers":
-        print(json.dumps(cmd_layers(), indent=2, default=str))
+        _emit(cmd_layers())
 
     elif args.cmd == "query":
         since = parse_since(args.since) if args.since else None
         results = l3_query(sid=args.sid, src=args.src, evt=args.evt, since=since)
         if args.json:
-            for r in results:
-                print(json.dumps(r, separators=(",", ":"), default=str))
+            _emit({"results": results}, counts={"events": len(results)})
         else:
             for r in results:
                 ts = r.get("ts", "?")[:23]
@@ -697,11 +700,11 @@ def main():
                 if r.get("ms") is not None:
                     bits.append(f"ms={r['ms']}")
                 print("  ".join(bits))
-        print(f"\n--- {len(results)} events", file=sys.stderr)
+            print(f"\n--- {len(results)} events", file=sys.stderr)
 
     elif args.cmd == "stats":
         since = parse_since(args.since) if args.since else None
-        print(json.dumps(l3_stats(since=since, sid=args.sid), indent=2, default=str))
+        _emit(l3_stats(since=since, sid=args.sid))
 
     elif args.cmd == "drill":
         report = cmd_drill(args.sid)
@@ -712,8 +715,7 @@ def main():
             print(report)
 
     elif args.cmd == "snapshot":
-        result = cmd_snapshot(args.name)
-        print(json.dumps(result, indent=2))
+        _emit(cmd_snapshot(args.name))
 
     elif args.cmd == "compare":
         a = Path(args.a)
@@ -722,7 +724,7 @@ def main():
             a = SNAPSHOT_DIR / a
         if not b.is_absolute():
             b = SNAPSHOT_DIR / b
-        print(json.dumps(cmd_compare(a, b), indent=2, default=str))
+        _emit(cmd_compare(a, b))
 
     elif args.cmd == "snapshots":
         if not SNAPSHOT_DIR.exists():
