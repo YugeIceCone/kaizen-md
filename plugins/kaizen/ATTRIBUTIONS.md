@@ -77,7 +77,24 @@ Plus: `scripts/*.js` (build-index, extract, schema, promote, append-evidence, ev
 - **Original author:** Gabi Fratica — gabriel@codez.ro
 - **Original source:** [github.com/remember-md/remember](https://github.com/remember-md/remember)
 - **Original license:** MIT (© 2026 Gabi Fratica)
-- **Notes:** Extended Second Brain — knowledge capture, session processing, belief evolution, brain stats, initialization. The kaizen integration wires these skills to the unified brain canonical schema (`skills/brain/domain/schemas/note.schema.json`) shared with `self-improving`.
+- **Notes:** Extended Second Brain — knowledge capture, session processing, belief evolution, brain stats, initialization.
+
+  **Consolidation status (2026-05-17+):** the live implementation is
+  now [`skills/brain/`](skills/brain/SKILL.md) — a Python rewrite with
+  schema-driven domain yamls (`skills/brain/domain/schemas/note.schema.json`),
+  Node+Flow async engine (PocketFlow `AsyncNode`), MCP-exposed tools,
+  and SessionStart/UserPromptSubmit/SessionEnd hooks. The 5 originally-
+  upstream skills (`remember/`, `process/`, `evolve/`, `status/`, `init/`)
+  remain as thin back-compat wrappers; their bodies still describe the
+  user-facing capture/process/evolve verbs but route through the
+  `brain/` engine. `brain/SKILL.md` is the canonical reference.
+
+  The original Node.js scripts (`build-index`, `extract`, `schema`,
+  `promote`, `append-evidence`, `evolution-log`, `build-context`,
+  `session_start`, `user_prompt`) are no longer present — the Python
+  rewrite replaced them. Gabi's design (PARA dirs, note schema with
+  `type/confidence/freshness/sources_count`, top-beliefs promotion
+  cycle) is fully preserved.
 
 ## Plugin-original (always)
 

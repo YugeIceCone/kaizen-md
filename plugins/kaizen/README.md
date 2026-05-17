@@ -144,4 +144,21 @@ rm -rf .kaizen/                            # per-repo (preserves workflow/ artif
 /plugin uninstall kaizen@kaizen-md
 ```
 
+## Credits
+
+`kaizen` is © 2026 YugeIceCone, MIT-licensed. Several skills started
+as adaptations of prior open-source work — extensive kaizen-local
+alterations now make them plugin-original derivatives, but the
+foundational designs are theirs and the credit stays.
+
+| Origin | Author | Skills derived from it |
+|---|---|---|
+| [`coding-skills`](https://github.com/JordanCoin/codingskills) | **Jordan Coin Jackson** | `kiss / yagni / dry / solid / separation-of-concerns / law-of-demeter / boy-scout-rule / convention-over-configuration / detect-stack` |
+| [`superpowers`](https://github.com/obra/superpowers) v5.1.0 | **Jesse Vincent (obra)** | `using-superpowers / brainstorming / writing-plans / executing-plans / subagent-driven-development / dispatching-parallel-agents / test-driven-development / systematic-debugging / verification-before-completion / requesting-code-review / receiving-code-review / finishing-a-development-branch / using-git-worktrees / writing-skills` |
+| [`claude-code-skills`](https://github.com/alirezarezvani/claude-code-skills) | **alirezarezvani** | `code-tour / karpathy / self-improving` |
+| [`remember`](https://github.com/remember-md/remember) | **Gabi Fratica** | consolidated into [`brain/`](skills/brain/SKILL.md) (Python rewrite, MCP-exposed); `remember / process / evolve / status / init` remain as back-compat wrappers |
+
+See [`ATTRIBUTIONS.md`](ATTRIBUTIONS.md) for the full per-skill
+notes including divergence highlights + license info.
+
 `.kaizen/workflow/backlog.json` is preserved on uninstall — it's project data.

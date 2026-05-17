@@ -361,12 +361,34 @@ def check_hooks_json_additive_event_multi_command(ctx: CheckContext) -> list[Fin
 
 
 _EXEC_MARKER = re.compile(r"![`]")
+# Real exec marker: line-start (after optional whitespace) followed by
+# !` — distinguishes "!`bash …`" (real directive) from inline prose
+# like `` `!` `` (documentation about the syntax).
+_LINE_START_EXEC_MARKER = re.compile(r"^[ \t]*![`]")
+
+
+def _exec_marker_outside_fence(text: str) -> bool:
+    """True iff a real `!`-backtick exec marker appears at the start
+    of a line at top level of the markdown (NOT inside a ```fenced```
+    code block, NOT inline prose). Fenced examples are documentation;
+    inline `` `!` `` mentions describe the syntax verbatim."""
+    in_fence = False
+    for line in text.splitlines():
+        if line.lstrip().startswith("```"):
+            in_fence = not in_fence
+            continue
+        if in_fence:
+            continue
+        if _LINE_START_EXEC_MARKER.match(line):
+            return True
+    return False
 
 
 def check_skill_md_no_exec_markers(ctx: CheckContext) -> list[Finding]:
     out = []
     for p in ctx.plugin_files("skills/*/SKILL.md"):
-        if _EXEC_MARKER.search(p.read_text(encoding="utf-8", errors="ignore")):
+        text = p.read_text(encoding="utf-8", errors="ignore")
+        if _exec_marker_outside_fence(text):
             out.append(Finding(
                 "skill-md-no-exec-markers", "soft",
                 f"{ctx.rel(p)} contains a !-backtick exec marker", ctx.rel(p),

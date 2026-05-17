@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+# kaizen-karpathy — dispatch over the 4 karpathy diff-level scanners.
+#
+# Subcommands:
+#   complexity  → complexity_checker.py
+#   surgeon     → diff_surgeon.py
+#   assumption  → assumption_linter.py
+#   goal        → goal_verifier.py
+#
+# All extra args are forwarded to the underlying script. With no
+# subcommand, prints usage.
+
+set -euo pipefail
+_SCRIPT_REAL="$(readlink -f "${BASH_SOURCE[0]}" 2>/dev/null \
+  || python3 -c 'import os,sys; print(os.path.realpath(sys.argv[1]))' "${BASH_SOURCE[0]}")"
+_BIN_DIR="$(cd "$(dirname "$_SCRIPT_REAL")" && pwd)"
+source "$_BIN_DIR/../skills/workflow/scripts/_plugin_root.sh"
+PLUGIN_ROOT="$(kaizen_plugin_root)" || { echo "kaizen-karpathy: plugin root unresolved" >&2; exit 1; }
+
+_SCRIPTS="$PLUGIN_ROOT/skills/karpathy/scripts"
+
+case "${1:-help}" in
+    complexity) shift; exec python3 "$_SCRIPTS/complexity_checker.py" "$@" ;;
+    surgeon)    shift; exec python3 "$_SCRIPTS/diff_surgeon.py" "$@" ;;
+    assumption) shift; exec python3 "$_SCRIPTS/assumption_linter.py" "$@" ;;
+    goal)       shift; exec python3 "$_SCRIPTS/goal_verifier.py" "$@" ;;
+    help|-h|--help|*)
+        cat <<EOF
+kaizen-karpathy — Karpathy's 4-principle diff-level scanners.
+
+Usage: kaizen-karpathy <subcommand> [args...]
+
+Subcommands:
+  complexity  Run complexity_checker on file(s) — over-engineering / deep nesting / long functions
+  surgeon     Run diff_surgeon on staged diff — comment-only / whitespace noise / drive-by refactors
+  assumption  Run assumption_linter on file(s) — implicit assumptions, hidden coupling
+  goal        Run goal_verifier on file(s) — verifiable goals / observable outcomes
+
+Examples:
+  kaizen-karpathy complexity src/foo.py --threshold medium
+  kaizen-karpathy surgeon                # uses current staged diff
+  kaizen-karpathy assumption tests/test_x.py
+  kaizen-karpathy goal --help
+
+See skills/karpathy/SKILL.md for the full discipline.
+EOF
+        ;;
+esac
