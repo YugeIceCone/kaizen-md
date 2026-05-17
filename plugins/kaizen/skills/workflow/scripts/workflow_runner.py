@@ -416,6 +416,156 @@ def list_schemas() -> list[tuple[str, Path]]:
 # ─── CLI ───────────────────────────────────────────────────────────────
 
 
+# ─── State machine (Phase 3 of /kaizen:workflow automation) ──────────
+
+
+def _state_path() -> Path:
+    """Resolve <repo>/.kaizen/workflow/state.json (env override honored)."""
+    override = os.environ.get("KAIZEN_PROJECT_ROOT_OVERRIDE")
+    if override:
+        return Path(override) / ".kaizen" / "workflow" / "state.json"
+    cur = Path.cwd().resolve()
+    while cur != cur.parent:
+        if (cur / ".git").exists():
+            return cur / ".kaizen" / "workflow" / "state.json"
+        cur = cur.parent
+    return Path.cwd() / ".kaizen" / "workflow" / "state.json"
+
+
+def _load_state() -> dict | None:
+    p = _state_path()
+    if not p.exists():
+        return None
+    return json.loads(p.read_text(encoding="utf-8"))
+
+
+def _save_state(state: dict) -> None:
+    p = _state_path()
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text(json.dumps(state, indent=2) + "\n", encoding="utf-8")
+
+
+def _now_iso() -> str:
+    import datetime as _dt
+    return _dt.datetime.now(_dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def cmd_start(name: str, force: bool = False) -> int:
+    """Initialize state.json for a schema. Refuses to clobber unless --force."""
+    sp = _state_path()
+    if sp.exists() and not force:
+        print(
+            f"workflow_runner: state already exists at {sp} — "
+            f"pass --force to overwrite",
+            file=sys.stderr,
+        )
+        return 1
+    schema_path = resolve_schema(name)
+    if schema_path is None:
+        print(f"workflow_runner: schema {name!r} not found", file=sys.stderr)
+        return 1
+    schema = load_schema(name)
+    errs = validate_schema(schema)
+    if errs:
+        for e in errs:
+            print(f"  ✗ {e}", file=sys.stderr)
+        return 1
+    order = topo_order(schema["artifacts"])
+    now = _now_iso()
+    state = {
+        "schema":        name,
+        "schema_path":   str(schema_path),
+        "current_stage": order[0] if order else None,
+        "completed":     [],
+        "remaining":     order[1:] if order else [],
+        "started_at":    now,
+        "advanced_at":   now,
+        "done":          False,
+    }
+    _save_state(state)
+    print(f"workflow_runner: started {name!r} @ stage {state['current_stage']!r}")
+    return 0
+
+
+def cmd_current(emit_json: bool = False) -> int:
+    state = _load_state()
+    if state is None:
+        print("workflow_runner: no state (run `start <schema>` first)",
+              file=sys.stderr)
+        return 1
+    if state.get("done"):
+        print("workflow_runner: schema done — no current stage", file=sys.stderr)
+        return 1
+    schema = load_schema(state["schema"])
+    cur_id = state["current_stage"]
+    for a in schema["artifacts"]:
+        if a.get("id") == cur_id:
+            if emit_json:
+                print(json.dumps(a, indent=2))
+            else:
+                print(f"current stage: {cur_id}")
+                print(f"  description: {a.get('description', '').strip()}")
+                print(f"  gate:        {a.get('gate', '').strip()}")
+            return 0
+    print(f"workflow_runner: current stage {cur_id!r} missing from schema",
+          file=sys.stderr)
+    return 1
+
+
+def cmd_advance() -> int:
+    state = _load_state()
+    if state is None:
+        print("workflow_runner: no state (run `start <schema>` first)",
+              file=sys.stderr)
+        return 1
+    if state.get("done"):
+        print("workflow_runner: schema already done — nothing to advance",
+              file=sys.stderr)
+        return 1
+    cur = state["current_stage"]
+    state["completed"].append(cur)
+    if state["remaining"]:
+        state["current_stage"] = state["remaining"].pop(0)
+        state["advanced_at"] = _now_iso()
+        print(f"workflow_runner: {cur!r} done → advanced to {state['current_stage']!r}")
+    else:
+        state["current_stage"] = None
+        state["done"] = True
+        state["advanced_at"] = _now_iso()
+        print(f"workflow_runner: {cur!r} done → schema complete")
+    _save_state(state)
+    return 0
+
+
+def cmd_state(emit_json: bool = False) -> int:
+    state = _load_state()
+    if state is None:
+        print("workflow_runner: no state", file=sys.stderr)
+        return 1
+    if emit_json:
+        print(json.dumps(state, indent=2))
+    else:
+        print(f"schema:        {state['schema']}")
+        print(f"current_stage: {state.get('current_stage') or '(done)'}")
+        print(f"completed:     {state.get('completed', [])}")
+        print(f"remaining:     {state.get('remaining', [])}")
+        print(f"done:          {state.get('done', False)}")
+    return 0
+
+
+def cmd_state_reset(yes: bool = False) -> int:
+    sp = _state_path()
+    if not sp.exists():
+        print("workflow_runner: no state to reset")
+        return 0
+    if not yes:
+        print(f"workflow_runner: would delete {sp} — pass --yes to apply")
+        return 0
+    sp.unlink()
+    print(f"workflow_runner: deleted {sp}")
+    return 0
+
+
 def _need(arg_idx: int, what: str) -> str:
     if len(sys.argv) <= arg_idx:
         sys.exit(f"usage: {sys.argv[0]} {sys.argv[1] if len(sys.argv) > 1 else '<cmd>'} <{what}>")
@@ -486,13 +636,36 @@ def main():
             return
         sys.exit(f"artifact {aid!r} not found in schema {name!r}")
 
+    elif cmd == "start":
+        name = _need(2, "schema-name")
+        force = "--force" in sys.argv[3:]
+        sys.exit(cmd_start(name, force=force))
+
+    elif cmd == "current":
+        emit_json = "--json" in sys.argv[2:]
+        sys.exit(cmd_current(emit_json=emit_json))
+
+    elif cmd == "advance":
+        sys.exit(cmd_advance())
+
+    elif cmd == "state":
+        emit_json = "--json" in sys.argv[2:]
+        sys.exit(cmd_state(emit_json=emit_json))
+
+    elif cmd == "state-reset":
+        yes = "--yes" in sys.argv[2:]
+        sys.exit(cmd_state_reset(yes=yes))
+
     elif cmd in ("-h", "--help"):
         print(__doc__)
 
     else:
         sys.exit(
             f"unknown subcommand: {cmd}\n"
-            "try: list | show <name> | validate <name> | stages <name> | artifact <name> <id> | branches <name> <id>"
+            "try: list | show <name> | validate <name> | stages <name> | "
+            "artifact <name> <id> | branches <name> <id> | "
+            "start <name> [--force] | current [--json] | advance | "
+            "state [--json] | state-reset [--yes]"
         )
 
 
