@@ -641,6 +641,9 @@ def do_get(item_id: int) -> dict | None:
 
 
 from _indexer_cli import IndexerCLI  # noqa: E402
+import _envelope  # noqa: E402
+
+_emit = _envelope.emitter("kaizen-knowledge", tool_version="1.0.0")
 
 
 class KnowledgeCLI(IndexerCLI):
@@ -716,6 +719,15 @@ class KnowledgeCLI(IndexerCLI):
         if r is None:
             sys.exit(f"id {args.id} not found")
         print(json.dumps(r, indent=2))
+
+    def cmd_search(self, args):
+        """Override base to wrap --json output in canonical envelope."""
+        results = self.do_search(args)
+        if getattr(args, "json", False):
+            _emit({"query": args.query, "results": results},
+                  counts={"results": len(results)})
+            return
+        self.print_search(results, args)
 
     def print_search(self, results, args):
         for r in results:

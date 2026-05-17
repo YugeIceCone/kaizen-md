@@ -85,7 +85,11 @@ class TestValidatorAll(unittest.TestCase):
 class TestValidatorJson(unittest.TestCase):
     def test_json_output_parses(self):
         rc, out = _run("--feature", "brain", "--json")
-        data = json.loads(out)
+        # Phase D2: wrapped in canonical envelope
+        envelope = json.loads(out)
+        self.assertIn("kaizen", envelope)
+        self.assertIn("data", envelope)
+        data = envelope["data"]
         self.assertIsInstance(data, list)
         self.assertEqual(len(data), 1)
         entry = data[0]

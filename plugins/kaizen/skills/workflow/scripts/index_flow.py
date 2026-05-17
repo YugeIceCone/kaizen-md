@@ -68,6 +68,9 @@ sys.path.insert(0, str(_SCRIPT_DIR))
 
 import flow as _flow  # noqa: E402
 import onboard_index as _oi  # noqa: E402
+import _envelope  # noqa: E402
+
+_emit = _envelope.emitter("kaizen-index-flow", tool_version="1.0.0")
 
 
 class DiscoverNode(_flow.AsyncNode):
@@ -262,7 +265,10 @@ def main():
     asyncio.run(f.run_async(store))
     report = store["report"]
     if args.json:
-        print(json.dumps(report, indent=2, default=str))
+        _emit(report,
+              counts={"new": report.get("new", 0),
+                      "errors": report.get("errors", 0),
+                      "chunks": report.get("total_chunks", 0)})
     else:
         print(
             f"indexed {report['new']} new, errors {report['errors']}, "

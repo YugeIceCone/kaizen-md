@@ -38,6 +38,16 @@ import json
 import subprocess
 import sys
 from dataclasses import dataclass, field
+from pathlib import Path as _Path
+
+# Envelope: pull from workflow scripts dir (siblings of the main script bus).
+_WORKFLOW_SCRIPTS = (
+    _Path(__file__).resolve().parents[2] / "workflow" / "scripts"
+)
+sys.path.insert(0, str(_WORKFLOW_SCRIPTS))
+import _envelope  # noqa: E402
+
+_emit = _envelope.emitter("kaizen-validate", tool_version="1.0.0")
 from pathlib import Path
 from typing import Any, Optional
 
@@ -505,7 +515,12 @@ def main(argv: Optional[list[str]] = None) -> int:
                 ],
             } for r in reports
         ]
-        print(json.dumps(out, indent=2))
+        hard_total = sum(r.hard_count for r in reports)
+        soft_total = sum(r.soft_count for r in reports)
+        verdict = "red" if hard_total else ("yellow" if soft_total else "green")
+        _emit(out, verdict=verdict,
+              counts={"hard": hard_total, "soft": soft_total,
+                      "features": len(reports)})
     else:
         _print_human(reports)
 

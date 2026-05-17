@@ -50,6 +50,11 @@ import sys
 from pathlib import Path
 from typing import Iterable, Optional
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _envelope  # noqa: E402
+
+_emit = _envelope.emitter("kaizen-models", tool_version="1.0.0")
+
 # ─── Connect ──────────────────────────────────────────────────────────
 
 
@@ -139,7 +144,7 @@ def cmd_list(args) -> int:
     client = _client()
     models = _normalize_list(client.list())
     if args.json:
-        print(json.dumps(models, indent=2))
+        _emit(models, counts={"models": len(models)})
         return 0
     if not models:
         print("(no local models — pull one with: /kaizen:models pull <name>)")
@@ -223,7 +228,7 @@ def cmd_show(args) -> int:
             payload = info.model_dump() if hasattr(info, "model_dump") else dict(info)
         except Exception:
             payload = {"raw": str(info)}
-        print(json.dumps(payload, indent=2, default=str))
+        _emit(payload)
         return 0
     # Human-readable
     print(f"  model:        {args.name}")
@@ -286,7 +291,8 @@ def cmd_embed(args) -> int:
         return 1
     vec = embeddings[0]
     if args.json:
-        print(json.dumps({"model": args.model, "dim": len(vec), "embedding": list(vec)}))
+        _emit({"model": args.model, "dim": len(vec), "embedding": list(vec)},
+              counts={"dim": len(vec)})
         return 0
     print(f"  model: {args.model}")
     print(f"  dim:   {len(vec)}")
@@ -400,7 +406,7 @@ def cmd_chat(args) -> int:
         out = {"model": args.model, "content": content}
         if thinking:
             out["thinking"] = thinking
-        print(json.dumps(out, indent=2))
+        _emit(out)
     else:
         print(content)
     return 0
@@ -438,7 +444,7 @@ def cmd_web_search(args) -> int:
                 "url": getattr(r, "url", None) or r.get("url", ""),
                 "snippet": getattr(r, "content", None) or r.get("content", ""),
             })
-        print(json.dumps(out_items, indent=2))
+        _emit(out_items, counts={"results": len(out_items)})
         return 0
     for r in results:
         title = getattr(r, "title", None) or r.get("title", "")

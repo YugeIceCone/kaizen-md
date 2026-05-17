@@ -360,14 +360,19 @@ class TestCli(SandboxBase):
     def test_path_subcommand(self):
         result = self._run("path")
         self.assertEqual(result.returncode, 0)
-        out = json.loads(result.stdout)
+        # Phase D2: wrapped in canonical envelope
+        envelope = json.loads(result.stdout)
+        self.assertIn("data", envelope)
+        out = envelope["data"]
         self.assertIn("agent_audit_dir", out)
         self.assertIn("dispatch_config", out)
 
     def test_aggregate_no_run_exits_1(self):
         result = self._run("aggregate", "--json")
         self.assertEqual(result.returncode, 1)
-        self.assertIn("error", json.loads(result.stdout))
+        # Phase D2: errors live under the canonical envelope's `errors` key.
+        envelope = json.loads(result.stdout)
+        self.assertIn("errors", envelope)
 
 
 if __name__ == "__main__":

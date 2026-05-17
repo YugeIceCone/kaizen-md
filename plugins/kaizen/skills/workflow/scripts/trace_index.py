@@ -444,6 +444,9 @@ def cmd_clear() -> str:
 
 
 from _indexer_cli import IndexerCLI  # noqa: E402
+import _envelope  # noqa: E402
+
+_emit = _envelope.emitter("kaizen-trace-search", tool_version="1.0.0")
 
 
 class TraceCLI(IndexerCLI):
@@ -490,6 +493,15 @@ class TraceCLI(IndexerCLI):
         p.add_argument("--sid", default="")
         p.add_argument("--evt", default="")
         p.add_argument("--since", default=None)
+
+    def cmd_search(self, args):
+        """Override base to wrap --json output in canonical envelope."""
+        results = self.do_search(args)
+        if getattr(args, "json", False):
+            _emit({"query": args.query, "results": results},
+                  counts={"results": len(results)})
+            return
+        self.print_search(results, args)
 
     def print_search(self, results, args):
         for r in results:

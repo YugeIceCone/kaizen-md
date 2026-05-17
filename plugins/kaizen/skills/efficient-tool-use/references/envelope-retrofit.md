@@ -17,23 +17,23 @@ Tracks which kaizen tools emit the canonical tool-output envelope (`assets/schem
 
 | Status | Count |
 |---|---|
-| ✅ emit | 26 |
-| 🔄 retrofit-pending | 7 |
+| ✅ emit | 33 |
+| 🔄 retrofit-pending | 0 |
 | 🟡 needs-json-flag | 19 |
 | 🔵 no-cli | 3 |
 | mcp | 22 |
 | shell | 27 |
 | **Total CLI Python** | **52** |
 
-**Envelope coverage**: 26 / (52 − 19 needs-json-flag) = **26/33 = 78.8%** of "has --json flag" tools.
+**Envelope coverage**: 33 / (52 − 19 needs-json-flag) = **33/33 = 100%** of "has --json flag" tools.
 
-After retrofitting the 7 remaining-pending: **33/33 = 100%** coverage. The remaining 19 need flag wiring before they can join.
+All `--json`-capable tools now emit canonical envelope. Remaining 19 need flag wiring before they can join (Phase E).
 
 ## Tools by category
 
-### ✅ Emit canonical envelope (26)
+### ✅ Emit canonical envelope (33)
 
-Phase A-C landed search hot-path + brain/audit + karpathy bundle (11 tools). Phase D landed observe / scrape / manifests / handoff / drift / config / docs_flow (7 tools).
+Phase A-C landed search hot-path + brain/audit + karpathy bundle (11 tools). Phase D landed observe / scrape / manifests / handoff / drift / config / docs_flow (7 tools). Phase D2 landed the remaining 7 (trace_index / knowledge_index / validate / index_flow / loop_state / models / self_audit_agent).
 
 | Tool | Path | Phase |
 |---|---|---|
@@ -63,18 +63,17 @@ Phase A-C landed search hot-path + brain/audit + karpathy bundle (11 tools). Pha
 | `drift_cli` | `skills/workflow/scripts/drift_cli.py` | D |
 | `config` | `skills/workflow/scripts/config.py` | D |
 | `docs_flow` | `skills/workflow/scripts/docs_flow.py` | D |
+| `trace_index` | `skills/workflow/scripts/trace_index.py` | D2 |
+| `knowledge_index` | `skills/workflow/scripts/knowledge_index.py` | D2 |
+| `validate` | `skills/plugin-development/scripts/validate.py` | D2 |
+| `index_flow` | `skills/workflow/scripts/index_flow.py` | D2 |
+| `loop_state` | `skills/workflow/scripts/loop_state.py` | D2 |
+| `models` | `skills/workflow/scripts/models.py` | D2 |
+| `self_audit_agent` | `skills/workflow/scripts/self_audit_agent.py` | D2 |
 
-### 🔄 Retrofit-pending (7 — has `--json`, needs envelope wrap)
+### 🔄 Retrofit-pending (0)
 
-| Tool | Path | Notes |
-|---|---|---|
-| `trace_index` | `skills/workflow/scripts/trace_index.py` | trace event SQLite indexer |
-| `knowledge_index` | `skills/workflow/scripts/knowledge_index.py` | knowledge semantic index |
-| `validate` | `skills/plugin-development/scripts/validate.py` | plugin-development feature validator |
-| `index_flow` | `skills/workflow/scripts/index_flow.py` | indexer orchestrator |
-| `loop_state` | `skills/workflow/scripts/loop_state.py` | loop state machine |
-| `models` | `skills/workflow/scripts/models.py` | model management |
-| `self_audit_agent` | `skills/workflow/scripts/self_audit_agent.py` | agent-driven self-audit |
+All `--json`-capable tools now emit canonical envelope. The 19 below need flag wiring before they can be retrofitted.
 
 ### 🟡 Needs `--json` flag wired first (19)
 
@@ -145,10 +144,10 @@ Rough effort estimate: **~1 commit per 3-5 retrofits**. DRY pattern via `_envelo
 | Phase B — brain + audit | brain_audit, brain_evolve, brain_promote, self_audit, hygiene | 2 | ✅ landed |
 | Phase C — karpathy bundle | complexity_checker, diff_surgeon, assumption_linter, goal_verifier | 1 | ✅ landed |
 | Phase D — specialists | observe, scrape_index, manifests_cli, handoff, drift_cli, config, docs_flow | 1-2 | ✅ landed |
-| Phase D2 — remaining-pending | trace_index, knowledge_index, validate, index_flow, loop_state, models, self_audit_agent | 1-2 | pending |
+| Phase D2 — remaining-pending | trace_index, knowledge_index, validate, index_flow, loop_state, models, self_audit_agent | 1-2 | ✅ landed |
 | Phase E — needs-json-flag | the 19 tools that need flag wiring first | 4-6 (heavier) | pending |
 | Phase F — MCP adapter | unified MCP+CLI envelope | 1-2 | pending |
-| **Total remaining** | | **~7-10 commits** | |
+| **Total remaining** | | **~5-8 commits** | |
 
 ## How to regenerate this inventory
 

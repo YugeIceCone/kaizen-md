@@ -68,9 +68,12 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR))
 
 import _self_audit as _core  # noqa: E402
+import _envelope  # noqa: E402
 import flow as _flow  # noqa: E402
 import self_audit as _audit  # noqa: E402
 from _self_audit import Finding  # noqa: E402
+
+_emit = _envelope.emitter("kaizen-self-audit-agent", tool_version="1.0.0")
 
 _RESULT_SCHEMA_PATH = (
     _core.DOMAIN_DIR / "schemas" / "checkpoint-result.schema.json"
@@ -596,10 +599,14 @@ def _cmd_dispatch_plan(args) -> int:
     try:
         result = run_dispatch_plan()
     except RuntimeError as e:
-        print(json.dumps({"error": str(e)}))
+        if getattr(args, "json", False):
+            _emit({}, verdict="red", errors=[str(e)])
+        else:
+            print(json.dumps({"error": str(e)}))
         return 1
     if args.json:
-        print(json.dumps(result, indent=2))
+        _emit(result,
+              counts={"checkpoints": result.get("checkpoint_count", 0)})
         return 0
     print(f"\n[agent-self-audit] dispatch-plan — run {result['run_id']}")
     print(f"  checkpoints     : {result['checkpoint_count']}")
@@ -616,11 +623,14 @@ def _cmd_dispatch_plan(args) -> int:
 def _cmd_aggregate(args) -> int:
     result = run_aggregate(run_id=args.run_id)
     if result.get("error"):
-        print(json.dumps({"error": result["error"]}))
+        if getattr(args, "json", False):
+            _emit({}, verdict="red", errors=[result["error"]])
+        else:
+            print(json.dumps({"error": result["error"]}))
         return 1
     if args.json:
-        print(json.dumps(
-            {k: v for k, v in result.items() if k != "markdown"}, indent=2))
+        out = {k: v for k, v in result.items() if k != "markdown"}
+        _emit(out, counts={"findings": result.get("finding_count", 0)})
         return 0
     print(result.get("markdown") or "")
     if result.get("report_path"):
@@ -629,12 +639,12 @@ def _cmd_aggregate(args) -> int:
 
 
 def _cmd_path(args) -> int:
-    print(json.dumps({
+    _emit({
         "agent_audit_dir": str(_core.agent_audit_dir()),
         "dispatch_config": str(_core.DOMAIN_DIR / "agent-dispatch.yaml"),
         "result_schema": str(_RESULT_SCHEMA_PATH),
         "latest_run": _latest_run_id(),
-    }, indent=2))
+    })
     return 0
 
 

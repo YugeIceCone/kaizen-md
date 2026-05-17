@@ -78,7 +78,14 @@ def run_validator(stage: dict) -> list[Finding]:
             ["python3", str(validator), "--all", "--json"],
             capture_output=True, text=True, timeout=30,
         )
-        data = json.loads(result.stdout) if result.stdout else []
+        raw = json.loads(result.stdout) if result.stdout else []
+        # Phase D2: validate.py wraps its list in canonical envelope.
+        # Tolerate both shapes (envelope-wrapped or bare list) so the
+        # audit stays compatible with older validator output too.
+        if isinstance(raw, dict) and "data" in raw:
+            data = raw["data"]
+        else:
+            data = raw
     except (subprocess.SubprocessError, json.JSONDecodeError) as e:
         return [Finding(
             id=Finding.make_id(stage["id"], "validator-failed"),

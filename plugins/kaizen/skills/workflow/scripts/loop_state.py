@@ -67,6 +67,11 @@ import os
 import sys
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _envelope  # noqa: E402
+
+_emit = _envelope.emitter("kaizen-loop-state", tool_version="1.0.0")
+
 
 def state_path(cwd: Path | None = None) -> Path:
     """Resolve the loop state file: env override → <cwd>/.kaizen/loop.state.md."""
@@ -483,7 +488,7 @@ def main(argv: list[str] | None = None) -> int:
         if args.cmd == "add":
             item = add_item(args.desc, verify=args.verify)
             if args.json:
-                print(json.dumps(item, indent=2))
+                _emit(item)
             else:
                 v = f" (verify: {item['verify']})" if item.get("verify") else ""
                 print(f"added: [{item['id']}] {item['desc']}{v}")
@@ -493,7 +498,9 @@ def main(argv: list[str] | None = None) -> int:
                 pending = list_pending()
                 completed = list_completed()
                 if args.json:
-                    print(json.dumps({"pending": pending, "completed": completed}, indent=2))
+                    _emit({"pending": pending, "completed": completed},
+                          counts={"pending": len(pending),
+                                  "completed": len(completed)})
                 else:
                     print("pending:")
                     _print_items(pending, "pending")
@@ -507,14 +514,14 @@ def main(argv: list[str] | None = None) -> int:
                 items = list_pending()
                 kind = "pending"
             if args.json:
-                print(json.dumps(items, indent=2))
+                _emit(items, counts={kind: len(items)})
             else:
                 _print_items(items, kind)
             return 0
         if args.cmd == "status":
             s = status()
             if args.json:
-                print(json.dumps(s, indent=2))
+                _emit(s, verdict=("green" if s.get("active") else "yellow"))
             else:
                 if not s["active"]:
                     print(f"no active loop ({s['state_path']})")
@@ -529,14 +536,14 @@ def main(argv: list[str] | None = None) -> int:
         if args.cmd == "complete":
             entry = complete_item(args.id_or_desc, note=args.note)
             if args.json:
-                print(json.dumps(entry, indent=2))
+                _emit(entry)
             else:
                 print(f"completed: [{entry.get('id', '?')}] {entry['desc']}")
             return 0
         if args.cmd == "next":
             item = next_pending()
             if args.json:
-                print(json.dumps(item, indent=2))
+                _emit(item)
             else:
                 if item is None:
                     print("(no pending items)")
@@ -546,7 +553,7 @@ def main(argv: list[str] | None = None) -> int:
         if args.cmd == "progress":
             pr = progress()
             if args.json:
-                print(json.dumps(pr, indent=2))
+                _emit(pr)
             else:
                 if not pr.get("active"):
                     print("(no active loop)")
@@ -568,7 +575,7 @@ def main(argv: list[str] | None = None) -> int:
         if args.cmd == "promise":
             result = emit_promise(args.phrase)
             if args.json:
-                print(json.dumps(result, indent=2))
+                _emit(result, verdict=("green" if result.get("matches") else "yellow"))
             else:
                 if result["matches"]:
                     print(f"promise emitted: {result['phrase']!r} "
@@ -581,7 +588,7 @@ def main(argv: list[str] | None = None) -> int:
         if args.cmd == "cancel":
             result = cancel()
             if args.json:
-                print(json.dumps(result, indent=2))
+                _emit(result, verdict=("green" if result.get("cancelled") else "yellow"))
             else:
                 if result["cancelled"]:
                     print(

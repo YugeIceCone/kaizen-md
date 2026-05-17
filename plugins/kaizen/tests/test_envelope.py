@@ -59,7 +59,18 @@ _RETROFIT_TOOLS = [
     ("config defaults",  [str(_SCRIPTS / "config.py"), "--defaults"]),
     ("config validate",  [str(_SCRIPTS / "config.py"), "--validate"]),
     ("config json",      [str(_SCRIPTS / "config.py"), "--json"]),
+    # Phase D2 — trace_index / knowledge_index / validate / index_flow /
+    # loop_state / models / self_audit_agent
+    ("validate feature", [
+        str(_REPO_ROOT / "plugins/kaizen/skills/plugin-development/scripts/validate.py"),
+        "--feature", "kaizen", "--json",
+    ]),
+    ("loop_state status",   [str(_SCRIPTS / "loop_state.py"), "status", "--json"]),
+    ("self_audit_agent path", [str(_SCRIPTS / "self_audit_agent.py"), "path"]),
     # scrape_index search needs numpy (skipped via _has_numpy)
+    # trace_index search / knowledge_index search — also numpy
+    # models list — needs ollama package
+    # index_flow --json — runs full embed pipeline; heavy for CI smoke
     # drift_cli check needs baseline + current dirs (skipped — needs fixture)
     # docs_flow needs a workspace with manifests (skipped — needs fixture)
     # roadmap_status excluded — needs handoff fixture in plans/
