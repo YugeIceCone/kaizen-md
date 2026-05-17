@@ -98,6 +98,59 @@ class TestInterception(unittest.TestCase):
         self.assertEqual(r.stdout.strip(), "{}")
 
 
+class TestEnforceMode(unittest.TestCase):
+    """KAIZEN_ATOMIC_WRITE_MODE=enforce restores the legacy deny-shape:
+    pre-write atomically + permissionDecision: deny so CC's Write is
+    blocked. Single-writer atomicity at the cost of CC Error-rendering."""
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.tmp = Path(self._tmp.name)
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    def test_enforce_denies_cc_write(self):
+        target = self.tmp / "out.txt"
+        evt = {
+            "tool_name":  "Write",
+            "tool_input": {"file_path": str(target), "content": "x"},
+        }
+        r = _fire_py(evt, env={"KAIZEN_ATOMIC_WRITE_MODE": "enforce"})
+        self.assertEqual(r.returncode, 0)
+        data = json.loads(r.stdout)
+        ho = data["hookSpecificOutput"]
+        self.assertEqual(ho["permissionDecision"], "deny")
+        self.assertIn("atomic-write/enforce", ho["permissionDecisionReason"])
+        # File still written
+        self.assertTrue(target.is_file())
+
+    def test_note_mode_is_default_when_unset(self):
+        target = self.tmp / "out.txt"
+        evt = {
+            "tool_name":  "Write",
+            "tool_input": {"file_path": str(target), "content": "x"},
+        }
+        r = _fire_py(evt)  # no MODE set → defaults to "note"
+        self.assertEqual(r.returncode, 0)
+        data = json.loads(r.stdout)
+        ho = data["hookSpecificOutput"]
+        self.assertNotIn("permissionDecision", ho)
+        self.assertIn("atomic-write/note", ho["additionalContext"])
+
+    def test_unknown_mode_falls_back_to_note(self):
+        target = self.tmp / "out.txt"
+        evt = {
+            "tool_name":  "Write",
+            "tool_input": {"file_path": str(target), "content": "x"},
+        }
+        r = _fire_py(evt, env={"KAIZEN_ATOMIC_WRITE_MODE": "wat"})
+        self.assertEqual(r.returncode, 0)
+        data = json.loads(r.stdout)
+        ho = data["hookSpecificOutput"]
+        self.assertNotIn("permissionDecision", ho)
+
+
 class TestOptInDefault(unittest.TestCase):
     """Hook is opt-IN — without KAIZEN_ATOMIC_WRITE_ENABLE=1 it
     returns empty {} so CC's native Write runs normally + no
