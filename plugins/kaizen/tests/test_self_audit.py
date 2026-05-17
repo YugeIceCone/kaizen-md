@@ -124,13 +124,29 @@ class TestSkillCheckpointEmit(unittest.TestCase):
 
 
 class TestEndToEndAudit(unittest.TestCase):
-    def test_full_audit_no_write(self):
+    """Share one run_audit() across the 3 read-only assertions in this
+    class (saves ~2 × ~1s of pipeline work vs setUp-per-test). The
+    one write-path test runs separately."""
+
+    _shared_result = None
+    _shared_skip_reason = None
+
+    @classmethod
+    def setUpClass(cls):
         try:
-            result = self_audit.run_audit(no_write=True)
+            cls._shared_result = self_audit.run_audit(no_write=True)
         except RuntimeError as e:
             if "PyYAML" in str(e):
-                self.skipTest("PyYAML not installed")
-            raise
+                cls._shared_skip_reason = "PyYAML not installed"
+            else:
+                raise
+
+    def setUp(self):
+        if self._shared_skip_reason:
+            self.skipTest(self._shared_skip_reason)
+
+    def test_full_audit_no_write(self):
+        result = self._shared_result
         # Result has expected keys
         self.assertIn("finding_count", result)
         self.assertIn("remediation_task_count", result)
@@ -141,6 +157,8 @@ class TestEndToEndAudit(unittest.TestCase):
         self.assertGreater(result["finding_count"], 5)
 
     def test_audit_writes_report(self):
+        # Write-path test still does its own call — it's the only one
+        # that asserts on the side-effect (file written, content shape).
         try:
             result = self_audit.run_audit(no_write=False)
         except RuntimeError as e:
@@ -155,13 +173,7 @@ class TestEndToEndAudit(unittest.TestCase):
         path.unlink()
 
     def test_markdown_has_canonical_sections(self):
-        try:
-            result = self_audit.run_audit(no_write=True)
-        except RuntimeError as e:
-            if "PyYAML" in str(e):
-                self.skipTest("PyYAML not installed")
-            raise
-        md = result["markdown"]
+        md = self._shared_result["markdown"]
         for section in (
             "Executive summary",
             "Skill checkpoints",

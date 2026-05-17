@@ -168,12 +168,14 @@ class TestRetrofittedToolsValidate(unittest.TestCase):
         with _SCHEMA.open() as f:
             self.validator = Draft202012Validator(json.load(f))
 
-    def _validate(self, name: str, cmd: list[str]):
-        r = subprocess.run([sys.executable, *cmd],
-                           cwd=_REPO_ROOT,
-                           capture_output=True, text=True, timeout=30)
-        # The tool may exit non-zero (red verdict) but should still
-        # produce valid envelope JSON.
+    def _spawn(self, name: str, cmd: list[str]) -> tuple[str, "subprocess.CompletedProcess"]:
+        """Just the subprocess.run — pure I/O bound, safe to parallelize."""
+        return name, subprocess.run(
+            [sys.executable, *cmd], cwd=_REPO_ROOT,
+            capture_output=True, text=True, timeout=30,
+        )
+
+    def _validate_result(self, name: str, r) -> None:
         out = r.stdout.strip()
         self.assertTrue(out, f"{name}: no stdout (stderr: {r.stderr[:200]})")
         try:
@@ -186,9 +188,18 @@ class TestRetrofittedToolsValidate(unittest.TestCase):
             self.fail(f"{name}: envelope-schema validation failed:\n{messages}")
 
     def test_all_retrofit_tools(self):
-        for name, cmd in _RETROFIT_TOOLS:
+        # Parallelize the subprocess spawns (I/O bound — safe).
+        # Pre-opt: ~8 sequential spawns × ~300ms cold-start = ~2.4s.
+        # Post-opt: max-worker concurrent → ~0.5s.
+        from concurrent.futures import ThreadPoolExecutor
+        with ThreadPoolExecutor(max_workers=8) as pool:
+            results = list(pool.map(
+                lambda pair: self._spawn(pair[0], pair[1]),
+                _RETROFIT_TOOLS,
+            ))
+        for name, r in results:
             with self.subTest(tool=name):
-                self._validate(name, cmd)
+                self._validate_result(name, r)
 
 
 class TestReproducibility(unittest.TestCase):
