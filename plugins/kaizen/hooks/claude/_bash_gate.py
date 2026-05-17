@@ -8,9 +8,18 @@ final hook-decision JSON.
 
 Emits to stdout exactly one of:
   - permissionDecision (ask)  — for a destructive op (git rm / push --force
-                                / reset --hard / clean -fd / rm -rf)
-  - systemMessage             — for a bash-invocation-discipline advisory
+                                / reset --hard / clean -fd / rm -rf) OR
+                                etu error finding, ONLY in strict mode
+                                (KAIZEN_GATE_STRICT=1 or sentinel
+                                ~/.claude/.kaizen/strict)
+  - systemMessage             — bash-invocation-discipline advisory, OR
+                                downgraded ask-cases under default mode
   - {}                        — clean / no opinion
+
+Default (v1.40+): prompts OFF. The gate emits systemMessage advisories
+for every case that previously asked, so unattended Claude sessions
+don't stall on Yes/No prompts. Strict mode restores the blocking ask
+for users who want hard gates on destructive ops.
 
 Stdlib-only. Reuses scan() from _bash_discipline_scan.py (DRY) — the
 discipline rules have a single source of truth.
@@ -84,36 +93,44 @@ _RM_RF_SAFE = re.compile(
 
 _NO_DELETIONS_BELIEF = Path.home() / ".claude" / "brain" / "Notes" / "pref-no-deletions.md"
 
-# AFK mode — when active, every `ask` decision in this gate is downgraded
-# to a non-blocking `allow + systemMessage` advisory so unattended Claude
-# sessions can keep working. Two activation paths:
-#   • env var KAIZEN_AFK_MODE=1
-#   • sentinel file at ~/.claude/.kaizen/afk (override path via KAIZEN_AFK_FILE)
-# Toggle via `touch ~/.claude/.kaizen/afk` / `rm` the file.
-_AFK_SENTINEL = Path.home() / ".claude" / ".kaizen" / "afk"
+# Strict mode — by DEFAULT the gate is advisory-only (no user prompts).
+# Strict mode is the explicit opt-in that re-enables the Yes/No prompt
+# for destructive ops + etu error findings. Two activation paths:
+#   • env var KAIZEN_GATE_STRICT=1
+#   • sentinel file at ~/.claude/.kaizen/strict (override via KAIZEN_GATE_STRICT_FILE)
+# Toggle via `touch ~/.claude/.kaizen/strict` / `rm` the file.
+#
+# Why prompts default OFF (v1.40+):
+#   Unattended Claude sessions stall indefinitely on Yes/No prompts the
+#   harness owns. The gate already surfaces the rationale via
+#   systemMessage advisory — Claude reads it and can self-correct. Users
+#   who want hard blocks on destructive ops opt into strict mode.
+_STRICT_SENTINEL = Path.home() / ".claude" / ".kaizen" / "strict"
 
 
-def _afk_active() -> bool:
-    """True if the user has explicitly opted into AFK / unattended mode."""
+def _strict_mode() -> bool:
+    """True if the user has explicitly opted into the blocking-prompt gate."""
     import os
-    if os.environ.get("KAIZEN_AFK_MODE") == "1":
+    if os.environ.get("KAIZEN_GATE_STRICT") == "1":
         return True
-    override = os.environ.get("KAIZEN_AFK_FILE")
-    sentinel = Path(override) if override else _AFK_SENTINEL
+    override = os.environ.get("KAIZEN_GATE_STRICT_FILE")
+    sentinel = Path(override) if override else _STRICT_SENTINEL
     return sentinel.is_file()
 
 
-def _afk_advisory(reason: str) -> dict:
-    """Wrap an `ask` reason as a non-blocking advisory under AFK mode.
+def _ask_to_advisory(reason: str) -> dict:
+    """Wrap an `ask` reason as a non-blocking advisory.
 
-    The original reason is preserved verbatim so the user still sees WHY
-    the gate would have asked — they just aren't blocked on a click.
+    The original reason is preserved verbatim so Claude still sees WHY
+    the gate would have asked — just no Yes/No prompt to stall on.
+    Opt into the blocking variant via KAIZEN_GATE_STRICT=1 or the
+    sentinel file.
     """
     return {
         "systemMessage": (
-            "kaizen AFK mode (KAIZEN_AFK_MODE=1 or sentinel "
-            f"{_AFK_SENTINEL}) — gate downgraded `ask` to advisory:\n\n"
-            f"{reason}"
+            "kaizen gate (advisory — strict mode off, no Yes/No prompt). "
+            "To restore blocking: KAIZEN_GATE_STRICT=1 or `touch "
+            f"{_STRICT_SENTINEL}`.\n\n{reason}"
         )
     }
 
@@ -273,21 +290,21 @@ def decide(command: str) -> dict:
          → systemMessage
       4. clean → {}
 
-    Under AFK mode (env KAIZEN_AFK_MODE=1 or sentinel ~/.claude/.kaizen/afk),
-    step 1 + step 2 emit `allow + systemMessage` instead of `ask`, so an
-    unattended session keeps making progress instead of stalling on a
-    user-confirmation prompt.
+    DEFAULT: steps 1 + 2 emit `allow + systemMessage` (advisory) so no
+    Yes/No prompt blocks an unattended session. Strict mode (env
+    KAIZEN_GATE_STRICT=1 or sentinel ~/.claude/.kaizen/strict) restores
+    the blocking `permissionDecision: ask` for users who want hard gates.
     """
     if not command:
         return {}
     scan_target = _strip_noncommand(command)
-    afk = _afk_active()
+    strict = _strict_mode()
 
     destructive = destructive_decision(scan_target)
     if destructive:
         verb, reason = destructive
-        if afk:
-            return _afk_advisory(reason)
+        if not strict:
+            return _ask_to_advisory(reason)
         return {
             "hookSpecificOutput": {
                 "hookEventName": "PreToolUse",
@@ -304,8 +321,8 @@ def decide(command: str) -> dict:
     etu = etu_decision(command)
     if etu:
         verb, reason = etu
-        if afk:
-            return _afk_advisory(reason)
+        if not strict:
+            return _ask_to_advisory(reason)
         return {
             "hookSpecificOutput": {
                 "hookEventName": "PreToolUse",

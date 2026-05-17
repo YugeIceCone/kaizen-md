@@ -23,6 +23,22 @@ sys.path.insert(0, str(HOOKS_DIR))
 import _bash_gate  # noqa: E402
 
 
+def setUpModule():
+    # As of v1.40 the gate defaults to advisory-only (no Yes/No prompts);
+    # strict mode is opt-in. The legacy assertions in TestDecide /
+    # TestEtuDecision / TestQuotedFalsePositives codify the STRICT
+    # behavior, so enable strict mode for the whole test file. The
+    # TestStrictModeDefault class temporarily disables strict to verify
+    # the default advisory path.
+    import os
+    os.environ["KAIZEN_GATE_STRICT"] = "1"
+
+
+def tearDownModule():
+    import os
+    os.environ.pop("KAIZEN_GATE_STRICT", None)
+
+
 class TestDestructiveDecision(unittest.TestCase):
     """destructive_decision() — the ask-gate for risky commands."""
 
@@ -296,62 +312,81 @@ class TestEtuDecision(unittest.TestCase):
         )
 
 
-class TestAfkMode(unittest.TestCase):
-    """AFK mode (env KAIZEN_AFK_MODE=1 or sentinel ~/.claude/.kaizen/afk)
-    downgrades every `ask` decision to `allow + systemMessage` so an
-    unattended Claude session keeps making progress."""
+class TestStrictModeDefault(unittest.TestCase):
+    """The v1.40+ default: NO prompts. The gate's `ask` cases (destructive
+    ops + etu errors) emit `allow + systemMessage` advisory unless the user
+    opts into strict mode via KAIZEN_GATE_STRICT=1 or the sentinel file."""
 
     def setUp(self):
         import os
-        self._orig_afk = os.environ.pop("KAIZEN_AFK_MODE", None)
-        # Point sentinel at a tmp file we control — avoids reading the
-        # real user-global sentinel during tests.
+        # Temporarily disable strict (the module setUp enabled it for
+        # legacy assertions). This class tests the OFF path.
+        self._restore_strict = os.environ.pop("KAIZEN_GATE_STRICT", None)
+        # Point sentinel at a tmp path that doesn't exist — isolates from
+        # any real ~/.claude/.kaizen/strict the user might have.
         import tempfile
         self._tmp = tempfile.NamedTemporaryFile(delete=False)
         self._tmp.close()
-        # Don't actually exist by default — tests opt in by writing.
         Path(self._tmp.name).unlink(missing_ok=True)
-        os.environ["KAIZEN_AFK_FILE"] = self._tmp.name
+        os.environ["KAIZEN_GATE_STRICT_FILE"] = self._tmp.name
 
     def tearDown(self):
         import os
         Path(self._tmp.name).unlink(missing_ok=True)
-        os.environ.pop("KAIZEN_AFK_FILE", None)
-        if self._orig_afk is not None:
-            os.environ["KAIZEN_AFK_MODE"] = self._orig_afk
+        os.environ.pop("KAIZEN_GATE_STRICT_FILE", None)
+        if self._restore_strict is not None:
+            os.environ["KAIZEN_GATE_STRICT"] = self._restore_strict
 
-    def test_afk_inactive_eval_still_asks(self):
+    def test_default_eval_emits_advisory_not_ask(self):
         r = _bash_gate.decide('eval "$x"')
-        self.assertEqual(
-            r.get("hookSpecificOutput", {}).get("permissionDecision"), "ask"
-        )
-
-    def test_afk_via_env_var_downgrades_eval_to_advisory(self):
-        import os
-        os.environ["KAIZEN_AFK_MODE"] = "1"
-        try:
-            r = _bash_gate.decide('eval "$x"')
-        finally:
-            os.environ.pop("KAIZEN_AFK_MODE", None)
-        self.assertNotIn("hookSpecificOutput", r)
+        self.assertNotIn("hookSpecificOutput", r,
+                         f"unexpected blocking output: {r}")
         self.assertIn("systemMessage", r)
-        self.assertIn("AFK", r["systemMessage"])
+        self.assertIn("advisory", r["systemMessage"])
         self.assertIn("eval", r["systemMessage"])
 
-    def test_afk_via_sentinel_downgrades_force_push_to_advisory(self):
-        Path(self._tmp.name).touch()
-        r = _bash_gate.decide('git push --force origin master')
-        self.assertNotIn("hookSpecificOutput", r)
+    def test_default_force_push_emits_advisory_not_ask(self):
+        r = _bash_gate.decide("git push --force origin main")
+        self.assertNotIn("hookSpecificOutput", r,
+                         f"unexpected blocking output: {r}")
         self.assertIn("systemMessage", r)
-        self.assertIn("AFK", r["systemMessage"])
         self.assertIn("force", r["systemMessage"])
 
-    def test_afk_does_not_swallow_advisory_only_findings(self):
-        # A discipline-warn command (no ask) under AFK is unchanged.
-        Path(self._tmp.name).touch()
-        r = _bash_gate.decide("grep X file | wc -l")
-        # Either clean or systemMessage — never ask.
+    def test_default_rm_rf_emits_advisory_not_ask(self):
+        r = _bash_gate.decide("rm -rf /some/real/dir")
         self.assertNotIn("hookSpecificOutput", r)
+        self.assertIn("systemMessage", r)
+
+    def test_strict_via_env_restores_ask(self):
+        import os
+        os.environ["KAIZEN_GATE_STRICT"] = "1"
+        try:
+            r = _bash_gate.decide("git push --force origin main")
+        finally:
+            os.environ.pop("KAIZEN_GATE_STRICT", None)
+        self.assertEqual(
+            r.get("hookSpecificOutput", {}).get("permissionDecision"), "ask",
+            f"strict-mode env should restore ask: {r}"
+        )
+
+    def test_strict_via_sentinel_restores_ask(self):
+        Path(self._tmp.name).touch()
+        r = _bash_gate.decide('eval "$x"')
+        self.assertEqual(
+            r.get("hookSpecificOutput", {}).get("permissionDecision"), "ask",
+            f"strict-mode sentinel should restore ask: {r}"
+        )
+
+    def test_advisory_preserves_original_reason(self):
+        # The advisory carries the original `permissionDecisionReason` so
+        # Claude still sees WHY the gate would have asked.
+        r = _bash_gate.decide("git reset --hard")
+        self.assertIn("systemMessage", r)
+        self.assertIn("uncommitted changes", r["systemMessage"])
+
+    def test_clean_command_still_empty(self):
+        # Strict-mode flip doesn't add noise to clean commands.
+        self.assertEqual(_bash_gate.decide("ls -la"), {})
 
 
 class TestLongFormNudge(unittest.TestCase):

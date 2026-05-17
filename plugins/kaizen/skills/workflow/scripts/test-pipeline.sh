@@ -133,20 +133,28 @@ git restore --staged test.js >/dev/null 2>&1
 # May warn (no compile cmd set in fresh repo) but should not hard-fail
 assert "gate: trivial diff exits 0 or warnings-only" $([ $EC -eq 0 ] && echo 0 || ([ $EC -eq 1 ] && grep -q "warning(s)" /tmp/gw-trivial.log && echo 0) || echo 1)
 
-# 3c. PreToolUse(Bash) for git rm → should yield 'ask'
-PT_OUT=$(echo '{"tool_input":{"command":"git rm crates/foo.rs"}}' | bash "$HOOKS_DIR/pretooluse-bash-gate.sh")
+# 3c. PreToolUse(Bash) for git rm → should yield 'ask' under strict mode
+# Strict mode is opt-in (v1.40+); the gate defaults to advisory-only so
+# unattended Claude sessions don't stall on Yes/No prompts. Enable
+# strict mode here to exercise the blocking-prompt path.
+PT_OUT=$(echo '{"tool_input":{"command":"git rm crates/foo.rs"}}' | KAIZEN_GATE_STRICT=1 bash "$HOOKS_DIR/pretooluse-bash-gate.sh")
 echo "$PT_OUT" | grep -q '"permissionDecision": "ask"'
-assert "PreToolUse(git rm) → ask" $?
+assert "PreToolUse(git rm, strict) → ask" $?
 
 # 3d. PreToolUse(Bash) for `ls -la` → no opinion (empty {})
 PT_OUT=$(echo '{"tool_input":{"command":"ls -la"}}' | bash "$HOOKS_DIR/pretooluse-bash-gate.sh")
 echo "$PT_OUT" | grep -q '^{}'
 assert "PreToolUse(ls) → allow ({})" $?
 
-# 3e. PreToolUse(Bash) for `git push --force` → ask
-PT_OUT=$(echo '{"tool_input":{"command":"git push --force origin main"}}' | bash "$HOOKS_DIR/pretooluse-bash-gate.sh")
+# 3e. PreToolUse(Bash) for `git push --force` → ask under strict mode
+PT_OUT=$(echo '{"tool_input":{"command":"git push --force origin main"}}' | KAIZEN_GATE_STRICT=1 bash "$HOOKS_DIR/pretooluse-bash-gate.sh")
 echo "$PT_OUT" | grep -q '"permissionDecision": "ask"'
-assert "PreToolUse(git push --force) → ask" $?
+assert "PreToolUse(git push --force, strict) → ask" $?
+
+# 3f. PreToolUse(Bash) for `git push --force` → advisory (no ask) by default
+PT_OUT=$(echo '{"tool_input":{"command":"git push --force origin main"}}' | bash "$HOOKS_DIR/pretooluse-bash-gate.sh")
+echo "$PT_OUT" | grep -q '"systemMessage"' && ! echo "$PT_OUT" | grep -q '"permissionDecision": "ask"'
+assert "PreToolUse(git push --force, default) → advisory" $?
 
 # ──────────────────────────────────────────────────────────────────────
 # Stage 4 — backup lifecycle
