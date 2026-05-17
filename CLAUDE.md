@@ -204,6 +204,39 @@ no parent fits.
 | **writing/io** | atomic file writers + shim | `_atomic` is the shared helper | write, shim |
 | **dev-aids** | scratch tools + rubric / rules CLI | per-tool | rubric, rules, scratch, browser, code-lift, test, docs |
 
+### Slash commands by cluster (52 total)
+
+Same 9-cluster taxonomy as the bins, applied to the `/kaizen:*`
+surface. Use this to find the right slash command without listing all
+52, and to know which cluster a new command should join.
+
+| Cluster | Count | Commands |
+|---|---|---|
+| **audit/quality** | 11 | `audit`, `gatekeeper`, `gate`, `review`, `coverage`, `iron-laws`, `karpathy-check`, `vibe-check`, `self-audit`, `agent-self-audit`, `ci-gate` |
+| **observability** | 7 | `trace`, `trace-search`, `trace-proxy`, `metrics`, `observe`, `context`, `statusline` |
+| **brain/memory** | 2 | `brain` (multi-verb parent), `self-improving` |
+| **workflow** | 7 | `backlog`, `handoff`, `loop`, `flow`, `mode`, `migrate`, `migrate-paths` |
+| **plugin-meta** | 13 | `setup`, `bootstrap`, `update`, `refresh-cache`, `daemon`, `hygiene`, `backup`, `publish`, `env`, `health`, `status`, `surface`, `disable-dupes` |
+| **discovery/search** | 8 | `onboard`, `knowledge`, `claude-docs`, `code-tour`, `scrape`, `models`, `browser`, `docs` |
+| **dev-aids** | 4 | `rule`, `schema`, `inbox`, `test` |
+
+**Known overlap / consolidation candidates** (not yet acted on —
+documented so the next consolidation sprint has the list):
+
+| Pair / family | Overlap | Resolution sketch |
+|---|---|---|
+| `/kaizen:gate` ↔ `/kaizen:gatekeeper` | Two entry points to the same green/yellow/red verdict | Make `gate` a thin alias dispatch to `gatekeeper`; document deprecation |
+| `/kaizen:audit` ↔ `/kaizen:self-audit` ↔ `/kaizen:agent-self-audit` | 3 audit flavours; user has to remember the difference | Consolidate to `/kaizen:audit <flavor>` (whole-repo / plugin-self / agent-driven) — leave the existing three as back-compat aliases |
+| `/kaizen:migrate` ↔ `/kaizen:migrate-paths` | One is the parent, one is a specific data migrator | Make `migrate` the parent dispatcher (already done at the bin level); deprecate `migrate-paths` as a sibling |
+| `/kaizen:setup` ↔ `/kaizen:bootstrap` ↔ `/kaizen:refresh-cache` ↔ `/kaizen:update` | 4 admin commands with overlapping lifecycle steps | Cluster as `/kaizen:admin <subcommand>` later; the bins are also flat today (Round 3 archeology — defer until aggregation parent is clearly needed) |
+| `/kaizen:trace` ↔ `/kaizen:trace-search` ↔ `/kaizen:trace-proxy` | Three trace surfaces with distinct runtime (CLI / semantic search / network proxy) — intentionally separate; document the distinction |
+
+**Pattern:** when uncertain whether to add a new command vs extend an
+existing one — re-read the matching cluster row above. If the new
+verb fits an existing parent (e.g. `brain` for memory ops), extend
+the parent; otherwise add as a sibling with the matching cluster
+prefix or membership.
+
 **Workflow domain — why workflow / loop / flow are intentionally three things:**
 
 | Bin | Runtime | Cadence | State file | Driver |
