@@ -80,6 +80,11 @@
             "type": "command",
             "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/claude/userprompt-skills-reminder.sh",
             "timeout": 3
+          },
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/claude/userprompt-skill-suggest.sh",
+            "timeout": 5
           }
         ]
       }
