@@ -4,7 +4,7 @@ A worked example: how `~/.claude/skills/workflow/scripts/workflow.sh` chains 4 h
 
 ## State
 
-`.workflow/state.json` holds a single workflow's progress:
+`.kaizen/workflow/state.json` holds a single workflow's progress:
 
 ```json
 {
@@ -50,7 +50,7 @@ T13 last stage done  →  Stop hook sees current >= len(stages),
 SessionStart → bash ~/.claude/scripts/inject-context.sh session
 ```
 
-Reads `.workflow/state.json`, prints a Markdown recap of routine + next stage + artifacts. On `source=compact`, reads `.workflow/snapshot.md` (richer recovery payload).
+Reads `.kaizen/workflow/state.json`, prints a Markdown recap of routine + next stage + artifacts. On `source=compact`, reads `.kaizen/workflow/snapshot.md` (richer recovery payload).
 
 ### 2. Stop — auto-continuation
 
@@ -60,7 +60,7 @@ Stop → bash ~/.claude/skills/workflow/scripts/workflow.sh stop-hook
 
 Pseudocode:
 ```python
-state = load(".workflow/state.json")
+state = load(".kaizen/workflow/state.json")
 if not state: print("{}"); exit(0)
 if state["auto_mode"] != "yes": print("{}"); exit(0)
 if state["current"] >= len(state["stages"]): print("{}"); exit(0)  # done
@@ -81,7 +81,7 @@ Pseudocode:
 ```python
 event = json.load(sys.stdin)
 agent_id = event.get("agent_id")
-state = load(".workflow/state.json")
+state = load(".kaizen/workflow/state.json")
 stage = state.get("subagents", {}).get(agent_id)
 if not stage:
     print("{}"); exit(0)  # not our subagent
@@ -103,7 +103,7 @@ else:
 PreCompact → bash ~/.claude/skills/workflow/scripts/workflow.sh pre-compact
 ```
 
-Writes `.workflow/snapshot.md` with the full state recap, completed history, last 3 artifact paths. The next SessionStart (with `source=compact`) loads this back into context.
+Writes `.kaizen/workflow/snapshot.md` with the full state recap, completed history, last 3 artifact paths. The next SessionStart (with `source=compact`) loads this back into context.
 
 ## Why this works
 

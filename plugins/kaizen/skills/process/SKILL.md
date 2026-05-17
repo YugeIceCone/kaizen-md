@@ -3,7 +3,7 @@ name: remember:process
 description: Process unprocessed Claude Code sessions into your Second Brain
 ---
 
-# /remember:process — Process Sessions into Second Brain
+# kaizen:process — Session-to-Brain Processor (backing CLI: `kaizen-brain audit`)
 
 Reads unprocessed Claude Code transcripts and routes valuable content into your Second Brain using a knowledge-aware pipeline.
 
@@ -22,7 +22,7 @@ Only use Bash for running Node.js scripts. Use Read/Write/Edit/Glob/Grep for all
 ## Step 1: Build Knowledge Index
 
 1. Read `$KAIZEN_BRAIN_DIR` env var (fallback `~/.claude/.kaizen/brain`). Call this `{brain}`.
-2. If missing → tell user to run `/remember:init` and stop.
+2. If missing → tell user to run `kaizen-brain seed` (or skip the init step entirely and let `kaizen-brain capture` greenfield on first write) and stop.
 3. Run: `node ${CLAUDE_PLUGIN_ROOT}/scripts/build-index.js`
 4. Read output — this is your map of everything that exists.
 
@@ -89,7 +89,7 @@ Apply the same heuristics as the `remember` skill (or call `scripts/schema.js de
 
 This skill MUST emit `type:` in the frontmatter of every newly created L2 file. For beliefs, `confidence` is REQUIRED. For all L2 files, include at least one `evidence` entry (source + quote + SESSION_DATE).
 
-This skill does NOT trigger consolidation, reflection, or promotion. Those are the responsibility of `/remember:evolve` (Phase 2).
+This skill does NOT trigger consolidation, reflection, or promotion. Those are the responsibility of `kaizen-brain evolve` (Phase 2).
 
 After every Write/Edit on a brain file in this skill (steps 4c/4d), run:
 

@@ -214,7 +214,7 @@ If the auto-promote step skipped writing (e.g. `auto_promote: false` in user's c
 - **`source:` MUST be a real file path inside the brain** — typically `Journal/<SESSION_DATE>.md` (the journaled capture from Step 2.4). Never invent paths like `chat/...`, `session/...`, or anything that doesn't exist on disk.
 - For `type: belief`, `confidence: 0.0–1.0` is REQUIRED.
 - `freshness: stable` is the default for new captures. The `evolve` skill (Phase 2) updates this later.
-- Never overwrite L2 files. New positive evidence → `evidence:`. New contradicting claim → `counter_evidence:`. Polarity is decided live in Step 3.6 — don't defer to `/remember:evolve`.
+- Never overwrite L2 files. New positive evidence → `evidence:`. New contradicting claim → `counter_evidence:`. Polarity is decided live in Step 3.6 — don't defer to `kaizen-brain evolve`.
 
 ## Validate after write
 

@@ -87,7 +87,7 @@ intents:
       - { kind: phrase, pattern: "(implement|build|create|add).*(feature|component|module|function)", case_insensitive: true }
       - { kind: phrase, pattern: "net.?new (code|feature|module)", case_insensitive: true }
     action:
-      suggest: "Load Skill(kaizen:tdd)  # net-new code lands test-first per Persona pref-tdd-for-new-code"
+      suggest: "Load Skill(kaizen:tdd) + consider /workflow schema=onion-tdd-strict  # net-new code lands test-first per Persona pref-tdd-for-new-code"
       subcommand: tdd
       confidence: 0.8
 
@@ -99,9 +99,18 @@ intents:
       - { kind: phrase, pattern: "refactor", case_insensitive: true }
       - { kind: phrase, pattern: "(restructure|reorganize).*code", case_insensitive: true }
     action:
-      suggest: "Load Skill(kaizen:onion-ddd-workflow) + the touched coding-skills/* per Persona Directives"
+      suggest: "Load Skill(kaizen:onion-ddd-workflow) + consider /workflow schema=onion-tdd-strict  # touched coding-skills/* per Persona Directives"
       subcommand: refactor
       confidence: 0.75
+
+  - id: code-task-strict
+    description: Any code task (implement / refactor / fix bug / add feature) — suggest the onion-tdd-strict schema (per Persona pref-onion-tdd-strict).
+    triggers:
+      - { kind: phrase, pattern: "\\b(implement|refactor|add feature|fix (a |the )?bug|code task)\\b", case_insensitive: true }
+    action:
+      suggest: "/workflow schema=onion-tdd-strict  # 10-stage gated discipline: audit → design-layers → red-test → green-impl → refactor → adapters → composition → supervisor → trace-wire → verify"
+      subcommand: workflow-onion-tdd-strict
+      confidence: 0.7
 
   # ─── Mode / intake intents ───────────────────────────────────────
   #

@@ -105,7 +105,7 @@ Load skill: superpowers:executing-plans
 → If phase didn't actually land, remove the plan mention from the commit msg
 ```
 
-## 8. `git rm` detected → memory / Remember plugin
+## 8. `git rm` detected → project memory / kaizen brain
 
 **Gate signal:**
 ```
@@ -176,7 +176,7 @@ When the gate runs:
 ## Post-commit
 
 (Future) — for landmark commits (new crate, retired module, locked
-rule), append a draft note to project memory for `/remember:process`
+rule), append a draft note to project memory for `kaizen-brain audit`
 to pick up on the next session-processing run.
 
 # Anti-patterns

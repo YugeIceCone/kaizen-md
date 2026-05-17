@@ -1,16 +1,16 @@
 ---
 name: remember:status
-description: Show Remember Second Brain statistics and status
+description: Show kaizen Second Brain statistics and status (backing CLI: kaizen-brain status)
 ---
 
-# /remember:status - Remember Status
+# kaizen:status — Brain Status
 
 Displays brain statistics: file counts, recent activity, and brain health.
 
 ## Usage
 
 ```
-/remember:status
+kaizen-brain status
 ```
 
 ## ⚠️ MANDATORY: Use Built-in Tools Only (NO Bash!)
@@ -37,7 +37,7 @@ Displays brain statistics: file counts, recent activity, and brain health.
 ### 1. Resolve Brain Path
 
 Read `$KAIZEN_BRAIN_DIR` env var, fallback `~/.claude/.kaizen/brain`. Use this as `{brain_path}`.
-If brain path doesn't exist → tell user to run `/remember:init`.
+If brain path doesn't exist → tell user to run `kaizen-brain seed` (bootstrap from bundled starter) or just begin capturing — `kaizen-brain capture` greenfields it on first write.
 
 ### 2. Show Brain Statistics
 

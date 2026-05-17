@@ -1,6 +1,6 @@
 # Init Skill — Reference
 
-Templates and merge rules for `/remember:init`.
+Templates and merge rules for `/kaizen:init` (the brain-init flow; backing CLI: `kaizen-brain seed`).
 
 ---
 
@@ -26,7 +26,7 @@ tags: [persona, system]
 
 # Persona
 
-Loaded at every session start. Updated by the Remember plugin's evolution skills.
+Loaded at every session start. Updated by `kaizen-brain evolve` (Phases 1-3) and `kaizen-brain capture`'s auto-promote step.
 
 ---
 

@@ -3,7 +3,7 @@ name: remember:evolve
 description: Evolve the brain — consolidate entities, reflect on beliefs, promote top beliefs to Persona. Run weekly or on demand.
 ---
 
-# /remember:evolve — Evolve the Brain (periodic, weekly recommended)
+# kaizen:evolve — Evolve the Brain (periodic, weekly recommended; backing CLI: `kaizen-brain evolve`)
 
 The deeper LLM-driven evolution layer. The deterministic Phase 3 (promote) runs automatically after every capture — that keeps `Persona.md ## Top Beliefs` current in real time. This skill is what does the work that promote alone *can't*: re-synthesizing entity profiles, re-scoring belief confidence semantically, marking stale beliefs that should retire.
 
@@ -18,7 +18,7 @@ Three phases:
 2. **Reflect** (LLM) — re-evaluate beliefs against evidence, update confidence and freshness, mark contradictions
 3. **Promote** (deterministic, no LLM) — also runs here, usually a no-op because auto-promote already kept Top Beliefs current
 
-Recommended cadence: `/loop 7d /remember:evolve` (weekly) or `/loop 30d /remember:evolve` (monthly). Idempotent — safe to run any time.
+Recommended cadence: `/loop 7d kaizen-brain evolve` (weekly) or `/loop 30d kaizen-brain evolve` (monthly). Idempotent — safe to run any time.
 
 After each Phase that writes (Phase 1 entity re-synthesis, Phase 2 belief frontmatter updates, Phase 3 Persona.md update via `promote.js`), call `node ${CLAUDE_PLUGIN_ROOT}/scripts/schema.js validate <filepath>` on the touched files. Surface its `warnings` (e.g. *"confidence defaulted to 0.5 — review"*) in your final report.
 
@@ -198,7 +198,7 @@ Always show the audit log path so the user can `tail` it and verify.
 
 ## Error Handling
 
-- Missing brain → tell user to `/remember:init`
+- Missing brain → tell user to run `kaizen-brain seed` (or just `kaizen-brain capture` — auto-greenfields on first write)
 - Missing Persona.md → run promote with `auto_promote: false` semantics (compute, don't write); warn user
 - Empty Notes/ → all phases no-op cleanly
 - Invalid frontmatter on a belief → skip that file with a warning, continue with the rest

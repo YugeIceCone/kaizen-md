@@ -1,6 +1,6 @@
 # Process Skill — Reference
 
-Detailed routing tables, templates, and classification rules for `/remember:process`.
+Detailed routing tables, templates, and classification rules for `kaizen-brain audit`.
 
 ---
 

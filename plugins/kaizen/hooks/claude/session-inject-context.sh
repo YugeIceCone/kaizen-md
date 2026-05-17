@@ -202,7 +202,7 @@ collect_claude_md() {
 # ---------- assemble ----------
 
 BODY=""
-append() { local s; s="$(eval "$1")"; if [ -n "$s" ]; then BODY+="$s"$'\n\n'; fi; }
+append() { local s; s="$("$1")"; if [ -n "$s" ]; then BODY+="$s"$'\n\n'; fi; }
 
 # Token-cost optimization: UserPromptSubmit fires every turn, but the
 # stable sections (workflow / handoff / plans / project-memory)

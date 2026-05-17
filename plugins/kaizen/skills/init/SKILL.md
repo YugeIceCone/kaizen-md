@@ -115,7 +115,7 @@ Settings: KAIZEN_BRAIN_DIR written to {settings_file}
 Next steps:
 - Work normally — Persona loads every session
 - Say "remember this: ..." to capture thoughts
-- Run /kaizen:process to extract value from past sessions
+- Run `kaizen-brain audit` to extract value from past sessions
 - Edit REMEMBER.md to customize capture and processing rules
 ```
 

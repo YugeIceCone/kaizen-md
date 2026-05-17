@@ -63,7 +63,7 @@ Plus a **suggestion engine** that emits skill-pointers based on diff content:
 
 ### 2. Backlog (JSON-source-of-truth)
 
-Path: `<repo>/.workflow/backlog.json` (source) + `.workflow/backlog.md` (generated). Sections: `next_up`, `in_flight`, `done`, `parked`, `decisions`.
+Path: `<repo>/.kaizen/workflow/backlog.json` (source) + `.kaizen/workflow/backlog.md` (generated). Sections: `next_up`, `in_flight`, `done`, `parked`, `decisions`.
 
 **CLI** (`backlog.py`):
 ```bash
@@ -215,10 +215,10 @@ Each is a self-locating bash shim that resolves to the real script via `python3 
 | Proxy log | `~/.claude/.kaizen-daemon/llm-proxy.log` | Raw `llm_proxy.py` stdout |
 | Cache | `<repo>/.kaizen/cache/*.json` | Compile-barrier + agent verdicts (per-repo) |
 | Compile log | `/tmp/kaizen-compile.log` | Last gate compile-barrier output |
-| Backlog | `<repo>/.workflow/backlog.{json,md}` | Active work |
-| Workflow state | `<repo>/.workflow/state.json` | Active `/workflow` routine |
-| Architecture log | `<repo>/.workflow/progress.md` | Append-only structural change log |
-| Snapshot | `<repo>/.workflow/snapshot.md` | Last session handoff |
+| Backlog | `<repo>/.kaizen/workflow/backlog.{json,md}` | Active work |
+| Workflow state | `<repo>/.kaizen/workflow/state.json` | Active `/workflow` routine |
+| Architecture log | `<repo>/.kaizen/workflow/progress.md` | Append-only structural change log |
+| Snapshot | `<repo>/.kaizen/workflow/snapshot.md` | Last session handoff |
 | Backups | `~/.claude/backups/kaizen/<repo-slug>/*.tar.gz` | Pre-risky-op snapshots |
 | Brain rules | `~/.claude/.kaizen/brain/Notes/kaizen-*.md` | deletion-allow / check-severity / custom-pattern |
 

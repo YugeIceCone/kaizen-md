@@ -1,6 +1,6 @@
 # Evolve Skill — Reference
 
-Detailed phase logic, prompts, and report templates for `/remember:evolve`.
+Detailed phase logic, prompts, and report templates for `kaizen-brain evolve`.
 
 ---
 
@@ -175,7 +175,7 @@ If `--reflect-only`, omit Phase 1 and Phase 3 sections entirely. Same for the ot
 
 ## Idempotency guarantees
 
-Running `/remember:evolve` twice in a row should produce minimal log noise the second time:
+Running `kaizen-brain evolve` twice in a row should produce minimal log noise the second time:
 
 - **Phase 1:** entities consolidated this run skip the next (same-day `last_consolidated`).
 - **Phase 2:** beliefs reflected this run skip the next (recent REFLECT in log; or `last_reflected` frontmatter).

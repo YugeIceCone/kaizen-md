@@ -1,6 +1,6 @@
 ---
 name: behaviour-config
-description: Use when configuring kaizen's gate behaviour via brain-sourced rules — deletion allowlists, check-severity overrides, custom-pattern checks. Rules live as Remember plugin Notes with a `kaizen:` frontmatter block. Triggers on "kaizen rule", "brain rule", "deletion allowlist", "kaizen severity override", "custom pattern check", "skip paired-test", "allow git rm in", "block commits containing", "configure kaizen", "behaviour rule", "/kaizen:rule".
+description: Use when configuring kaizen's gate behaviour via brain-sourced rules — deletion allowlists, check-severity overrides, custom-pattern checks. Rules live as brain Notes (under `<KAIZEN_BRAIN_DIR>/Notes/`) with a `kaizen:` frontmatter block. Triggers on "kaizen rule", "brain rule", "deletion allowlist", "kaizen severity override", "custom pattern check", "skip paired-test", "allow git rm in", "block commits containing", "configure kaizen", "behaviour rule", "/kaizen:rule".
 version: 1.0.0
 ---
 
@@ -15,9 +15,9 @@ The kaizen pre-commit gate has a fixed surface (10 checks documented in the `kai
 | `.kaizen.toml` per-project | Doesn't survive across projects; user has to repeat settings |
 | Environment variables | Doesn't survive across sessions; have to be set in every shell |
 | Plugin-local config file | Plugin-local config sprawl; updates overwrite user settings |
-| **Brain notes** ✓ | Owned by the user, owned by Remember, cross-project + cross-session, single source of truth |
+| **Brain notes** ✓ | Owned by the user (in `<KAIZEN_BRAIN_DIR>/Notes/`), cross-project + cross-session, single source of truth |
 
-This is the natural fit: kaizen rules are **personal preferences** about how strict the gate should be. The Remember plugin already exists to hold personal preferences. Eat its own dogfood.
+This is the natural fit: kaizen rules are **personal preferences** about how strict the gate should be. The kaizen Second Brain already exists to hold personal preferences. Eat its own dogfood.
 
 ## Rule schema (general shape)
 
@@ -28,7 +28,7 @@ Every kaizen rule lives in a brain note at `~/.claude/.kaizen/brain/Notes/<slug>
 name: <slug>                  # required — unique identifier
 description: <one-line>       # required — human-readable
 type: behaviour               # follows Remember's epistemic-type convention
-tags: [kaizen, <subtags>]     # tag with `kaizen` so /remember:* can find them
+tags: [kaizen, <subtags>]     # tag with `kaizen` so kaizen-brain can find them
 sources_count: 1
 freshness: stable
 created: YYYY-MM-DD
@@ -131,7 +131,7 @@ Examples:
 5. (next commit) the gate consults the rule automatically
 ```
 
-Or via the Remember plugin's `/remember:remember` capture flow if the rule is also a stated preference worth capturing as belief evidence.
+Or via `kaizen-brain capture "<text>"` if the rule is also a stated preference worth capturing as belief evidence.
 
 ## Disabling a rule
 
@@ -221,6 +221,6 @@ Refresh is automatic — the scripts re-scan brain Notes on every commit. No cac
 
 - **Rules are user preferences, not project state.** They belong in the user's brain, not the project's `.kaizen.toml`.
 - **One rule, one file.** Don't pack multiple rules into one note. Easier to disable individually, easier to git-log.
-- **Always include `tags: [kaizen, ...]`** so `/remember:process` can route them correctly.
+- **Always include `tags: [kaizen, ...]`** so `kaizen-brain audit` can route them correctly.
 - **Validate before committing brain changes** — a malformed rule silently disables itself (`validate_rule` returns errors; plugin skips invalid rules). Catch them early.
 - **The body matters.** The `# Why` section in each note is the agent-visible rationale for the rule. Future-you will appreciate it.
