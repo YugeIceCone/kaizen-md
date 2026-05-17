@@ -276,6 +276,124 @@ def _cmd_tail(args) -> int:
 # ─── link ────────────────────────────────────────────────────────────
 
 
+# ─── replay (install-day blindspot fix) ──────────────────────────────
+
+
+def _attachment_to_event(att: dict, session_id: str) -> Optional[dict]:
+    """Turn a CC attachment record (with hookEvent) into a dxm event
+    dict, or None when the attachment isn't a hook record we capture."""
+    hook_event = att.get("hookEvent")
+    if not hook_event:
+        return None
+
+    # Convert CC attachment timestamp to ts_unix (best-effort). The
+    # surrounding JSONL line carries `timestamp` as the authoritative
+    # ISO 8601; caller will pass that in via `_replay_record`.
+    rec: dict = {
+        "session_id": session_id,
+        "evt_type":   hook_event,
+    }
+    # Tool name lives in hookName as "<Event>:<Tool>" — split on colon
+    hook_name = att.get("hookName", "")
+    if ":" in hook_name:
+        tool = hook_name.split(":", 1)[1]
+        if tool:
+            rec["tool_name"] = tool
+    # Optional rich fields preserved from the attachment
+    for src, dst in (("toolUseID",  "tool_use_id"),
+                      ("durationMs", "duration_ms"),
+                      ("exitCode",   "exit_code"),
+                      ("command",    "command")):
+        if src in att and att[src] is not None:
+            rec[dst] = att[src]
+    return rec
+
+
+def _iso_to_unix(iso: str) -> Optional[float]:
+    """Best-effort ISO 8601 → unix float conversion."""
+    if not isinstance(iso, str) or not iso:
+        return None
+    try:
+        import datetime as _dt
+        # Handle trailing Z
+        if iso.endswith("Z"):
+            iso = iso[:-1] + "+00:00"
+        return _dt.datetime.fromisoformat(iso).timestamp()
+    except (ValueError, TypeError):
+        return None
+
+
+def _cmd_replay(args) -> int:
+    """Walk a Claude Code session JSONL and synthesize dxm events.
+
+    Used to backfill events when dxm is installed mid-session (CC
+    only registers hooks at session start, so install-day sessions
+    miss live capture). After replay, kaizen-dxm now / tail return
+    the full session history."""
+    if _disabled():
+        return 0
+    src = Path(args.jsonl).expanduser()
+    if not src.is_file():
+        msg = f"jsonl not found: {src}"
+        if args.json:
+            _emit({"error": msg}, verdict="red")
+        else:
+            print(f"[kaizen-dxm replay] {msg}", file=sys.stderr)
+        return 1
+
+    target = _events_path(args.session)
+    target.parent.mkdir(parents=True, exist_ok=True)
+
+    if not args.no_truncate and target.exists():
+        target.unlink()
+
+    synthesized = 0
+    with src.open("r", encoding="utf-8") as f, \
+         target.open("a", encoding="utf-8") as out:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                o = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            if o.get("type") != "attachment":
+                continue
+            att = o.get("attachment") or {}
+            if not isinstance(att, dict):
+                continue
+            evt = _attachment_to_event(att, args.session)
+            if evt is None:
+                continue
+            # Carry through the JSONL line's timestamp as ts_unix
+            ts_unix = _iso_to_unix(o.get("timestamp", ""))
+            if ts_unix is None:
+                ts_unix = time.time()
+            evt["ts_unix"] = ts_unix
+            out.write(json.dumps(evt, separators=(",", ":"),
+                                  default=str) + "\n")
+            synthesized += 1
+
+    data = {
+        "session_id":       args.session,
+        "source_jsonl":     str(src.resolve()),
+        "events_path":      str(target.resolve()),
+        "synthesized_count": synthesized,
+        "truncated":        not args.no_truncate,
+    }
+    if args.json:
+        verdict = "green" if synthesized > 0 else "yellow"
+        _emit(data, verdict=verdict, counts={"synthesized": synthesized})
+    else:
+        mode = "truncated+replayed" if not args.no_truncate else "appended"
+        print(f"[kaizen-dxm replay] {mode} {synthesized} events for "
+              f"session={args.session}")
+        print(f"  source: {src.resolve()}")
+        print(f"  target: {target.resolve()}")
+    return 0
+
+
 def _cmd_link(args) -> int:
     if _disabled():
         return 0
@@ -337,6 +455,21 @@ def main(argv=None) -> int:
     sl.add_argument("--child", required=True)
     sl.add_argument("--json", action="store_true")
     sl.set_defaults(func=_cmd_link)
+
+    sr = sub.add_parser(
+        "replay",
+        help="backfill dxm events from a CC session JSONL — fixes the "
+             "install-day blindspot where hooks aren't registered yet",
+    )
+    sr.add_argument("--session", required=True,
+                     help="session_id to populate (must match the source JSONL)")
+    sr.add_argument("--jsonl", required=True,
+                     help="path to the source CC session JSONL")
+    sr.add_argument("--no-truncate", action="store_true",
+                     help="append to existing events file instead of "
+                          "truncating (default: truncate first)")
+    sr.add_argument("--json", action="store_true")
+    sr.set_defaults(func=_cmd_replay)
 
     args = p.parse_args(argv)
     return args.func(args)

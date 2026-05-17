@@ -18,6 +18,11 @@
             "type": "command",
             "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/claude/session-inject-context.sh session",
             "timeout": 10
+          },
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/claude/dxm-event.sh SessionStart",
+            "timeout": 2
           }
         ]
       },
@@ -55,6 +60,11 @@
             "type": "command",
             "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/claude/session-inject-context.sh prompt",
             "timeout": 10
+          },
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/claude/dxm-event.sh UserPromptSubmit",
+            "timeout": 2
           }
         ]
       }
@@ -136,6 +146,11 @@
             "type": "command",
             "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/claude/karpathy-gate.sh",
             "timeout": 10
+          },
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/claude/dxm-event.sh Stop",
+            "timeout": 2
           }
         ]
       }
@@ -148,6 +163,11 @@
             "type": "command",
             "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/claude/precompact-snapshot.sh",
             "timeout": 5
+          },
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/claude/dxm-event.sh PreCompact",
+            "timeout": 2
           }
         ]
       }
@@ -160,6 +180,11 @@
             "type": "command",
             "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/claude/subagentstop-trace.sh",
             "timeout": 3
+          },
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/claude/dxm-event.sh SubagentStop",
+            "timeout": 2
           }
         ]
       }
@@ -182,6 +207,11 @@
             "type": "command",
             "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/claude/metrics-session-end.sh",
             "timeout": 10
+          },
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/claude/dxm-event.sh SessionEnd",
+            "timeout": 2
           }
         ]
       }
@@ -194,6 +224,11 @@
             "type": "command",
             "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/claude/notification-surface.sh",
             "timeout": 3
+          },
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/claude/dxm-event.sh Notification",
+            "timeout": 2
           }
         ]
       }

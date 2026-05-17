@@ -33,10 +33,26 @@ SID=$(printf '%s' "$INPUT" \
 
 if [ -z "$SID" ]; then echo '{}'; exit 0; fi
 
-TOOL=$(printf '%s' "$INPUT" \
-    | grep -oE '"tool_name"[[:space:]]*:[[:space:]]*"[^"]*"' \
-    | head -n1 \
-    | sed -E 's/.*:[[:space:]]*"([^"]*)".*/\1/')
+# Extractor helper — single regex per field. CC's event JSON uses
+# snake_case for hook inputs (camelCase shows up only in the persisted
+# attachment record, which we don't see here).
+_extract_str() {
+    printf '%s' "$INPUT" \
+        | grep -oE "\"$1\"[[:space:]]*:[[:space:]]*\"[^\"]*\"" \
+        | head -n1 \
+        | sed -E 's/.*:[[:space:]]*"([^"]*)".*/\1/'
+}
+_extract_num() {
+    printf '%s' "$INPUT" \
+        | grep -oE "\"$1\"[[:space:]]*:[[:space:]]*-?[0-9]+(\.[0-9]+)?" \
+        | head -n1 \
+        | sed -E 's/.*:[[:space:]]*(-?[0-9.]+).*/\1/'
+}
+
+TOOL=$(_extract_str tool_name)
+TUID=$(_extract_str tool_use_id)
+DURMS=$(_extract_num duration_ms)
+EXITCODE=$(_extract_num exit_code)
 
 # Sub-millisecond timestamp via date %s.%N (GNU) with python3 fallback
 # for BSD/macOS (date there doesn't support %N).
@@ -49,15 +65,16 @@ fi
 
 # Build JSON line by hand — avoids the JSON-encode/spawn cost. The
 # fields are bounded safe-strings (UUIDs, tool names) so direct
-# embedding is fine.
+# embedding is fine. Optional fields conditionally appended; the
+# resulting line is always valid JSON (verified by test).
 EVENTS_FILE="$DXM_DIR/events-${SID}.jsonl"
-if [ -n "$TOOL" ]; then
-    printf '{"ts_unix":%s,"session_id":"%s","evt_type":"%s","tool_name":"%s"}\n' \
-        "$TS" "$SID" "$EVT" "$TOOL" >> "$EVENTS_FILE"
-else
-    printf '{"ts_unix":%s,"session_id":"%s","evt_type":"%s"}\n' \
-        "$TS" "$SID" "$EVT" >> "$EVENTS_FILE"
-fi
+LINE="{\"ts_unix\":$TS,\"session_id\":\"$SID\",\"evt_type\":\"$EVT\""
+[ -n "$TOOL" ]     && LINE="$LINE,\"tool_name\":\"$TOOL\""
+[ -n "$TUID" ]     && LINE="$LINE,\"tool_use_id\":\"$TUID\""
+[ -n "$DURMS" ]    && LINE="$LINE,\"duration_ms\":$DURMS"
+[ -n "$EXITCODE" ] && LINE="$LINE,\"exit_code\":$EXITCODE"
+LINE="$LINE}"
+printf '%s\n' "$LINE" >> "$EVENTS_FILE"
 
 echo '{}'
 exit 0
