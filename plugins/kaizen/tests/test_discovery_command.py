@@ -80,16 +80,26 @@ class TestBodyContract(unittest.TestCase):
                        "/kaizen:claude-docs", "/kaizen:scrape"):
             self.assertIn(slash, self.body, f"arg-assembly missing: {slash}")
 
-    def test_q3_embed_model_picker_when_indexing(self):
-        """Q3 (only when Q2=Index) lets the user pick an embedding
-        model from the locally-available list. The body documents:
-        (a) the dynamic option-build via discovery_list_embed_models,
-        (b) the "keep current model (default)" option, and
-        (c) the 4-option cap routing for >3 local models."""
+    def test_q3_embed_model_picker_always_fires(self):
+        """Q3 fires after Q1+Q2 regardless of Q2 — the user can
+        always pick or change the embedding model. Per-action semantics
+        are documented in a body table (see test_q3_per_action_semantics)."""
         self.assertRegex(self.body, r"(?i)question\s*3\s*[—-]")
         self.assertIn("discovery_list_embed_models", self.body)
         # Default option present
         self.assertRegex(self.body, r"(?i)current model|default")
+        # Q3 must NOT be gated to one Q2 branch — body wording must
+        # signal "always" / "regardless"
+        self.assertRegex(self.body, r"(?i)always|regardless|after Q1\+Q2")
+
+    def test_q3_per_action_semantics_documented(self):
+        """Each Q2 action must have a documented Q3-pick semantics
+        (no-op for Search, re-embed for Index, pin-or-followup for Stats)."""
+        for action_term in ("search", "index", "stats"):
+            # Either appears in the per-action table, or in narrative
+            self.assertRegex(self.body, rf"(?i)\b{action_term}\b")
+        # Pin path is referenced (kaizen-models pin-embed)
+        self.assertIn("pin-embed", self.body)
 
     def test_body_lists_mcp_tools(self):
         """The body surfaces the agent-callable MCP surface so the

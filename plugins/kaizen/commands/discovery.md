@@ -55,12 +55,20 @@ options:
     description: "Print per-index stats (rows / size / last update). Dispatches <slash> stats per pick."
 ```
 
-### Question 3 — embedding model (only when Q2 = Index / refresh)
+### Question 3 — embedding model (always asked)
 
-When the user picks "Index / refresh" in Q2, the agent first calls
-the `discovery_list_embed_models()` MCP tool to fetch every locally-
-available embedding-capable Ollama model, then builds Q3 dynamically
-from that list:
+After Q1+Q2 resolve, the agent calls `discovery_list_embed_models()`
+to fetch every locally-available embedding-capable Ollama model, then
+builds Q3 dynamically from that list. Q3 fires regardless of Q2 — the
+user can always pick or change the embedding model.
+
+Per-action semantics for the Q3 pick:
+
+| Q2 action | Non-default Q3 pick semantics |
+|---|---|
+| **Search** | No-op for THIS search (search uses each surface's build-time model — cosine isn't comparable across models). Pin the pick as the future default via `kaizen-models pin-embed <name>` if you want it persisted. |
+| **Index / refresh** | Pass the model through to the underlying indexer (per-surface env or `--model` flag) so re-embed uses the new model. |
+| **Stats** | Inform the user that stats are read-only — to actually switch, follow up with `/kaizen:discovery <surface> index` (or pick "Index / refresh" next time). Optionally pin the choice via `kaizen-models pin-embed <name>`. |
 
 ```
 question:    "Which embedding model for the re-index?"
