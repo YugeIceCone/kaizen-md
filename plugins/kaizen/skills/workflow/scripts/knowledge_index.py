@@ -24,14 +24,14 @@ defaults (signature embedded by default; body opt-in via --embed-body).
 
 ## Sources
 
-- **brain-note**:  `<KAIZEN_BRAIN>/Notes/*.md` (Remember Second Brain notes,
+- **brain-note**:  `<KAIZEN_BRAIN_DIR>/Notes/*.md` (Remember Second Brain notes,
                    YAML-frontmatter with `type:` and `tags:`)
 - **plan**:        `<repo>/plans/**/*.md` AND `<repo>/plans/archive/**/*.md`
 - **backlog**:     `<repo>/.workflow/backlog.json` items (BK-N entries)
 - **schema**:      built-in (`<plugin>/schemas/*/schema.yaml`),
                    user (`~/.claude/kaizen-schemas/*/schema.yaml`),
                    project (`<repo>/.workflow/schemas/*/schema.yaml`)
-- **persona**:     `<KAIZEN_BRAIN>/Persona.md` Top Beliefs (one item per belief)
+- **persona**:     `<KAIZEN_BRAIN_DIR>/Persona.md` Top Beliefs (one item per belief)
 - **arch-log**:    `<repo>/.kaizen/workflow/progress.md` AND
                    `<repo>/.kaizen/workflow/archive/*.md` — one item per row
                    in the architecture-log markdown table. Lets agents query
@@ -75,7 +75,7 @@ By default, ONLY a signature is embedded: title + tags + source_path
 
 ## Env
 
-    KAIZEN_BRAIN                  override brain path (default ~/.claude/brain)
+    KAIZEN_BRAIN_DIR              override brain path (default ~/.claude/.kaizen/brain)
     KAIZEN_KNOWLEDGE_DB           override db path (default ~/.claude/.kaizen-knowledge/index.db)
     KAIZEN_KNOWLEDGE_EMBED_MODEL  override model (default all-MiniLM-L6-v2)
 """
@@ -100,7 +100,7 @@ sys.path.insert(0, str(_SCRIPT_DIR))
 import _paths as _p  # noqa: E402
 import config as _cfg  # noqa: E402
 
-BRAIN_PATH = Path(os.environ.get("KAIZEN_BRAIN", HOME / ".claude" / "brain"))
+BRAIN_PATH = _p.BRAIN_DIR
 DB_PATH = _p.KNOWLEDGE_DB
 DEFAULT_MODEL = os.environ.get("KAIZEN_KNOWLEDGE_EMBED_MODEL", _cfg.EMBED_MODEL)
 DEFAULT_DIM = _cfg.EMBED_DIM

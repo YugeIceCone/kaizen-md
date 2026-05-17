@@ -47,7 +47,7 @@ Subcommands:
     template <rule_type>       Print a brain-note template to stdout
 
 Env:
-    KAIZEN_BRAIN              Override brain path (default ~/.claude/brain)
+    KAIZEN_BRAIN_DIR          Override brain path (default ~/.claude/.kaizen/brain)
 """
 
 from __future__ import annotations
@@ -59,8 +59,12 @@ import re
 import sys
 from pathlib import Path
 
-BRAIN = Path(os.environ.get("KAIZEN_BRAIN", os.path.expanduser("~/.claude/brain")))
-NOTES_DIR = BRAIN / "Notes"
+_SCRIPT_DIR = Path(__file__).resolve().parent
+sys.path.insert(0, str(_SCRIPT_DIR))
+import _paths  # noqa: E402
+
+BRAIN = _paths.BRAIN_DIR
+NOTES_DIR = _paths.BRAIN_NOTES
 
 VALID_RULE_TYPES = {"deletion-allow", "check-severity", "custom-pattern", "dependency-allowlist"}
 VALID_SEVERITY = {"skip", "warn", "block"}

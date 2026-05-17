@@ -35,48 +35,52 @@ class TestPathResolution(unittest.TestCase):
             os.environ[name] = val
 
     def test_default_brain_root(self):
-        orig1 = os.environ.pop("REMEMBER_BRAIN_PATH", None)
-        orig2 = os.environ.pop("KAIZEN_BRAIN_PATH", None)
+        # Default: ~/.claude/.kaizen/brain (post-v1.38.0 single-user clean cut)
+        orig = os.environ.pop("KAIZEN_BRAIN_DIR", None)
+        orig_kd = os.environ.pop("KAIZEN_DIR", None)
         try:
             root = _brain.brain_root()
-            self.assertEqual(str(root), str(Path("~/.claude/brain").expanduser().resolve()))
+            self.assertEqual(
+                str(root),
+                str((Path("~/.claude/.kaizen").expanduser() / "brain").resolve()),
+            )
         finally:
-            self._restore("REMEMBER_BRAIN_PATH", orig1)
-            self._restore("KAIZEN_BRAIN_PATH", orig2)
+            self._restore("KAIZEN_BRAIN_DIR", orig)
+            self._restore("KAIZEN_DIR", orig_kd)
 
-    def test_remember_brain_path_env_used_when_no_kaizen(self):
-        # When only REMEMBER_BRAIN_PATH is set, it's used.
+    def test_legacy_remember_env_ignored(self):
+        # REMEMBER_BRAIN_PATH is no longer consulted — v1.38.0 clean cut.
         orig_r = os.environ.get("REMEMBER_BRAIN_PATH")
-        orig_k = os.environ.pop("KAIZEN_BRAIN_PATH", None)
+        orig_k = os.environ.pop("KAIZEN_BRAIN_DIR", None)
+        orig_kd = os.environ.pop("KAIZEN_DIR", None)
         os.environ["REMEMBER_BRAIN_PATH"] = "/tmp/legacy-brain"
         try:
-            self.assertEqual(str(_brain.brain_root()), "/tmp/legacy-brain")
+            # Should resolve to default, NOT /tmp/legacy-brain
+            self.assertNotEqual(str(_brain.brain_root()), "/tmp/legacy-brain")
         finally:
             self._restore("REMEMBER_BRAIN_PATH", orig_r)
-            self._restore("KAIZEN_BRAIN_PATH", orig_k)
+            self._restore("KAIZEN_BRAIN_DIR", orig_k)
+            self._restore("KAIZEN_DIR", orig_kd)
 
-    def test_kaizen_brain_path_wins_over_remember(self):
-        # KAIZEN_BRAIN_PATH is kaizen-specific and should shadow legacy
-        orig_r = os.environ.get("REMEMBER_BRAIN_PATH")
-        orig_k = os.environ.get("KAIZEN_BRAIN_PATH")
-        os.environ["REMEMBER_BRAIN_PATH"] = "/tmp/legacy-brain"
-        os.environ["KAIZEN_BRAIN_PATH"] = "/tmp/kaizen-brain"
+    def test_kaizen_brain_dir_override(self):
+        # KAIZEN_BRAIN_DIR is the ONLY env that resolves the brain path.
+        orig_k = os.environ.get("KAIZEN_BRAIN_DIR")
+        os.environ["KAIZEN_BRAIN_DIR"] = "/tmp/custom-brain"
         try:
-            self.assertEqual(str(_brain.brain_root()), "/tmp/kaizen-brain")
+            self.assertEqual(str(_brain.brain_root()), "/tmp/custom-brain")
         finally:
-            self._restore("REMEMBER_BRAIN_PATH", orig_r)
-            self._restore("KAIZEN_BRAIN_PATH", orig_k)
+            self._restore("KAIZEN_BRAIN_DIR", orig_k)
 
     def test_envvar_substitution_in_path(self):
         # Literal $HOME in env value gets expanded
-        orig = os.environ.get("KAIZEN_BRAIN_PATH")
-        os.environ["KAIZEN_BRAIN_PATH"] = "$HOME/.claude/some-brain"
+        orig = os.environ.get("KAIZEN_BRAIN_DIR")
+        os.environ["KAIZEN_BRAIN_DIR"] = "$HOME/.claude/some-brain"
         try:
             root = str(_brain.brain_root())
             self.assertNotIn("$HOME", root)
             self.assertTrue(root.endswith(".claude/some-brain"))
         finally:
-            self._restore("KAIZEN_BRAIN_PATH", orig)
+            self._restore("KAIZEN_BRAIN_DIR", orig)
 
     def test_project_slug_for(self):
         slug = _brain.project_slug_for(Path("/home/x/workspace/shodan"))

@@ -68,16 +68,16 @@ class BrainIndexBase(unittest.TestCase):
         self.brain.mkdir()
         _seed_brain(self.brain)
         self._orig_db = os.environ.get("KAIZEN_BRAIN_DB")
-        self._orig_brain = os.environ.get("KAIZEN_BRAIN_PATH")
+        self._orig_brain = os.environ.get("KAIZEN_BRAIN_DIR")
         os.environ["KAIZEN_BRAIN_DB"] = str(Path(self._tmp.name) / "brain.db")
-        os.environ["KAIZEN_BRAIN_PATH"] = str(self.brain)
+        os.environ["KAIZEN_BRAIN_DIR"] = str(self.brain)
         os.environ["KAIZEN_BRAIN_INDEX_SKIP_EMBED"] = "1"
 
     def tearDown(self):
         self._tmp.cleanup()
         for k, v in (
             ("KAIZEN_BRAIN_DB", self._orig_db),
-            ("KAIZEN_BRAIN_PATH", self._orig_brain),
+            ("KAIZEN_BRAIN_DIR", self._orig_brain),
             ("KAIZEN_BRAIN_INDEX_SKIP_EMBED", None),
         ):
             if v is None:

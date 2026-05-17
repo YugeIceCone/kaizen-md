@@ -15,11 +15,11 @@ The capture / promote / audit / evolve flows in brain.py /
 brain_promote.py / brain_audit.py / brain_evolve.py compose these
 primitives into PocketFlow AsyncNode graphs.
 
-## Brain path resolution
+## Brain path resolution (v1.38.0+)
 
-  1. ``$REMEMBER_BRAIN_PATH`` env (legacy compat)
-  2. ``$KAIZEN_BRAIN_PATH`` env
-  3. ``~/.claude/brain``  (default)
+Resolved via ``_paths.BRAIN_DIR`` — the SSOT. Only ``$KAIZEN_BRAIN_DIR``
+overrides; default ``~/.claude/.kaizen/brain``. Legacy ``REMEMBER_BRAIN_PATH``
+/ ``KAIZEN_BRAIN_PATH`` / ``KAIZEN_BRAIN`` are no longer consulted.
 
 ## Project-memory path resolution
 
@@ -175,17 +175,22 @@ def _parse_yaml_scalar(s: str) -> Any:
 
 
 def brain_root() -> Path:
-    """Resolve the brain root path.
+    """Resolve the brain root path. v1.38.0 single-user clean cut:
+    only ``KAIZEN_BRAIN_DIR`` resolves; default is the canonical
+    location under the kaizen user dir (mirrors _paths.BRAIN_DIR but
+    re-reads env at call time so tests that mutate KAIZEN_BRAIN_DIR
+    mid-process are honored).
 
-    Priority: KAIZEN_BRAIN_PATH > REMEMBER_BRAIN_PATH > default.
-    KAIZEN_BRAIN_PATH wins so plugin-scoped overrides can shadow a
-    user's global REMEMBER_BRAIN_PATH (legacy compat). Handles both
-    literal ``$HOME``-style envvar references AND ``~`` expansion."""
-    for env in ("KAIZEN_BRAIN_PATH", "REMEMBER_BRAIN_PATH"):
-        if env in os.environ and os.environ[env]:
-            raw = os.path.expandvars(os.environ[env])
-            return Path(raw).expanduser().resolve()
-    return Path("~/.claude/brain").expanduser().resolve()
+    Legacy envs (REMEMBER_BRAIN_PATH / KAIZEN_BRAIN_PATH /
+    KAIZEN_BRAIN) are no longer consulted."""
+    override = os.environ.get("KAIZEN_BRAIN_DIR")
+    if override:
+        return Path(os.path.expandvars(override)).expanduser().resolve()
+    # Mirror _paths.py default: $KAIZEN_DIR/brain or ~/.claude/.kaizen/brain
+    kaizen_dir = os.environ.get(
+        "KAIZEN_DIR", str(Path.home() / ".claude" / ".kaizen")
+    )
+    return (Path(os.path.expandvars(kaizen_dir)).expanduser() / "brain").resolve()
 
 
 def project_slug_for(cwd: Optional[Path] = None) -> str:

@@ -216,7 +216,7 @@ class TestCli(unittest.TestCase):
         # Even when brain root doesn't exist in this env, status exits 0
         with tempfile.TemporaryDirectory() as tmp:
             result = self._run_cli(
-                "status", env_extras={"KAIZEN_BRAIN_PATH": tmp + "/no-such-brain"},
+                "status", env_extras={"KAIZEN_BRAIN_DIR": tmp + "/no-such-brain"},
             )
             self.assertEqual(result.returncode, 0)
             out = json.loads(result.stdout)
@@ -228,7 +228,7 @@ class TestCli(unittest.TestCase):
             brain.mkdir()
             result = self._run_cli(
                 "capture", "we decided to ship it",
-                env_extras={"KAIZEN_BRAIN_PATH": str(brain)},
+                env_extras={"KAIZEN_BRAIN_DIR": str(brain)},
             )
             self.assertEqual(result.returncode, 0)
             out = json.loads(result.stdout)

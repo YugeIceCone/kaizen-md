@@ -62,7 +62,7 @@ class TestMcpToolBehaviour(unittest.TestCase):
         self.brain.mkdir()
         self._orig = {}
         for k, v in (
-            ("KAIZEN_BRAIN_PATH", str(self.brain)),
+            ("KAIZEN_BRAIN_DIR", str(self.brain)),
             ("KAIZEN_BRAIN_DB", str(Path(self._tmp.name) / "brain.db")),
             ("KAIZEN_BRAIN_INDEX_SKIP_EMBED", "1"),
         ):
