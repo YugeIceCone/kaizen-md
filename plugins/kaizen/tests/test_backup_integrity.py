@@ -233,5 +233,42 @@ class PathRollbackVerify(_PathBase):
                             "path-migrate rollback must refuse when sidecar missing")
 
 
+class SettingsBackupSidecar(_BrainBase):
+    """CRYPTO-2: brain_migrate._edit_settings writes a `<bak>.sha256`
+    sidecar so future rollbacks (manual or automated) can detect
+    tampering between backup-write and restore."""
+
+    def test_edit_settings_writes_sha256_sidecar(self):
+        # Seed a settings.json with a legacy env var so _edit_settings
+        # has something to mutate (otherwise it's a no-op skip)
+        self.settings.write_text(
+            '{"env": {"REMEMBER_BRAIN_PATH": "/legacy/brain"}}\n'
+        )
+        result = self.bm._edit_settings(self.settings, self.dst, self._args())
+        self.assertTrue(result["edited"])
+        bak = Path(result["backup"])
+        self.assertTrue(bak.is_file())
+        sidecar = Path(str(bak) + ".sha256")
+        self.assertTrue(sidecar.is_file(),
+                        f"missing integrity sidecar: {sidecar}")
+        expected = hashlib.sha256(bak.read_bytes()).hexdigest()
+        self.assertEqual(sidecar.read_text().strip(), expected)
+
+    def test_edit_settings_sidecar_matches_original_pre_mutation_bytes(self):
+        """The sidecar must hash the BACKUP (original pre-mutation
+        bytes), not the post-mutation settings.json — otherwise a
+        rollback would refuse against its own re-mutated content."""
+        original = '{"env": {"REMEMBER_BRAIN_PATH": "/legacy"}}\n'
+        self.settings.write_text(original)
+        original_bytes = self.settings.read_bytes()
+        result = self.bm._edit_settings(self.settings, self.dst, self._args())
+        bak = Path(result["backup"])
+        # Sidecar should validate against the backup's ORIGINAL bytes
+        self.assertEqual(bak.read_bytes(), original_bytes)
+        sidecar = Path(str(bak) + ".sha256")
+        self.assertEqual(sidecar.read_text().strip(),
+                         hashlib.sha256(original_bytes).hexdigest())
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -580,11 +580,14 @@ def _edit_settings(settings_file: Path, dst: Path, args) -> dict:
     if not settings_file.is_file():
         return {"edited": False, "skipped": True,
                 "reason": f"settings.json does not exist at {settings_file}"}
-    # 1. Backup-first (before any read of original)
+    # 1. Backup-first (before any read of original). Sidecar
+    # `<backup>.sha256` provides integrity verification for future
+    # rollback (CRYPTO-2 — same pattern as tarball backups).
     backup = settings_file.parent / (
         settings_file.name + ".bak-" + _utc_stamp()
     )
     shutil.copy2(settings_file, backup)
+    _write_sha256_sidecar(backup)
     # 2. Read + parse
     old_text = settings_file.read_text(encoding="utf-8")
     try:
@@ -597,8 +600,10 @@ def _edit_settings(settings_file: Path, dst: Path, args) -> dict:
     # 4. Check if anything actually changed — skip write if not
     new_text = json.dumps(new_data, indent=2, ensure_ascii=False) + "\n"
     if new_text == old_text:
-        # Roll back the unnecessary backup so we don't accumulate cruft
+        # Roll back the unnecessary backup so we don't accumulate cruft.
+        # Also remove the sidecar (it's now an orphan reference).
         backup.unlink(missing_ok=True)
+        Path(str(backup) + ".sha256").unlink(missing_ok=True)
         return {"edited": False, "skipped": True,
                 "reason": "no change needed"}
     # 5. Diff preview (always, even when --json)

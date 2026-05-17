@@ -245,7 +245,9 @@ class SettingsMutation(_BaseCase):
     def test_backup_created_before_write(self):
         self._write_settings({"env": {"REMEMBER_BRAIN_PATH": "/x"}})
         bm._edit_settings(self.settings, self.dst, self._args())
-        bks = list(self.settings.parent.glob(self.settings.name + ".bak-*"))
+        # Count only .json backups (not the .sha256 sidecars added by CRYPTO-2)
+        bks = [p for p in self.settings.parent.glob(self.settings.name + ".bak-*")
+               if not p.name.endswith(".sha256")]
         self.assertEqual(len(bks), 1)
 
     def test_no_change_skips_write_and_backup(self):
@@ -254,6 +256,7 @@ class SettingsMutation(_BaseCase):
         result = bm._edit_settings(self.settings, self.dst, self._args())
         self.assertFalse(result["edited"])
         self.assertTrue(result["skipped"])
+        # Neither the .json backup nor its .sha256 sidecar should remain
         bks = list(self.settings.parent.glob(self.settings.name + ".bak-*"))
         self.assertEqual(len(bks), 0)
 
@@ -394,8 +397,9 @@ class Phase4EdgeCases(_BaseCase):
         self.assertIn("error", result)
         self.assertEqual(self.settings.read_text(), original,
                          "file must be untouched on parse failure")
-        # Backup was made before parse attempted
-        bks = list(self.settings.parent.glob(self.settings.name + ".bak-*"))
+        # Backup was made before parse attempted (one .json + sidecar)
+        bks = [p for p in self.settings.parent.glob(self.settings.name + ".bak-*")
+               if not p.name.endswith(".sha256")]
         self.assertEqual(len(bks), 1)
 
     def test_settings_with_no_env_block_adds_one_when_dst_non_default(self):
