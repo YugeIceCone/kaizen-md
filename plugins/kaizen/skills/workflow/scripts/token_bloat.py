@@ -178,6 +178,103 @@ def _plugin_root() -> Path:
     return _SCRIPT_DIR.parents[2]
 
 
+# ── DXM fire-frequency integration ───────────────────────────────────
+
+def _dxm_dir() -> Path:
+    env = os.environ.get("KAIZEN_DXM_DIR")
+    if env:
+        return Path(os.path.expandvars(env)).expanduser()
+    return Path.home() / ".claude" / ".kaizen" / "dxm"
+
+
+def count_dxm_fires(evt_type: str) -> int:
+    """Total occurrences of evt_type across ALL dxm event files (lifetime).
+    Returns 0 when dxm dir missing. Fast — single grep over jsonl."""
+    d = _dxm_dir()
+    if not d.is_dir():
+        return 0
+    needle = f'"evt_type":"{evt_type}"'
+    total = 0
+    for p in d.glob("events-*.jsonl"):
+        try:
+            with p.open("r", encoding="utf-8", errors="ignore") as f:
+                for line in f:
+                    if needle in line:
+                        total += 1
+        except OSError:
+            continue
+    return total
+
+
+# Maps a finding's path/kind to the lifecycle evt_type whose count
+# approximates how often that template gets injected into agent context.
+# Heuristic: hook scripts fire on their named lifecycle event; yaml
+# templates fire when their owning hook fires; SKILL.md / agents /
+# command bodies fire when explicitly loaded (PreToolUse: Skill / Task).
+_LIFECYCLE_BY_PREFIX = (
+    ("hooks/claude/session-start-",   "SessionStart"),
+    ("hooks/claude/sessionend-",      "SessionEnd"),
+    ("hooks/claude/session-intake",   "SessionStart"),
+    ("hooks/claude/pretooluse-",      "PreToolUse"),
+    ("hooks/claude/posttooluse-",     "PostToolUse"),
+    ("hooks/claude/userprompt-",      "UserPromptSubmit"),
+    ("hooks/claude/stop-",            "Stop"),
+    ("hooks/claude/subagentstop-",    "SubagentStop"),
+    ("hooks/claude/precompact",       "PreCompact"),
+)
+
+# Cache fire counts per-process — single dxm walk per scan.
+_FIRE_CACHE: dict[str, int] = {}
+
+
+def _fires_for(evt_type: str) -> int:
+    if evt_type not in _FIRE_CACHE:
+        _FIRE_CACHE[evt_type] = count_dxm_fires(evt_type)
+    return _FIRE_CACHE[evt_type]
+
+
+def estimate_fire_count(finding: dict) -> int:
+    """Approximate lifetime fire count for a finding. Returns 0 when
+    no lifecycle mapping fits (e.g. SKILL.md fires on Skill-load, hard
+    to count without parsing PreToolUse tool_name + tool_input)."""
+    path = finding.get("path", "")
+    # Hook + intake yaml share lifecycle event with the hook
+    for prefix, evt in _LIFECYCLE_BY_PREFIX:
+        if path.startswith(prefix):
+            return _fires_for(evt)
+    # YAML auto-handoff templates fire on Stop
+    if "auto-handoff" in path and finding.get("kind") == "yaml-template":
+        return _fires_for("Stop")
+    # SKILL.md / agents / commands — count handled separately
+    # (would need PreToolUse Skill / Task payload inspection)
+    return 0
+
+
+# ── Sensitivity tier (LLMLingua-inspired) ────────────────────────────
+#
+# LLMLingua splits prompt into instruction/question/context with
+# decreasing compression sensitivity. Maps to our findings:
+#   instruction → hook templates / agent definitions (drive behavior;
+#                                                       compress with care)
+#   context     → SKILL.md bodies / references (background knowledge;
+#                                                  compress aggressively)
+#   system      → frontmatter descriptions (routing surface;
+#                                              tiny, compress only if noisy)
+
+def sensitivity_tier(finding: dict) -> str:
+    kind = finding.get("kind", "")
+    path = finding.get("path", "")
+    if kind in ("yaml-template", "hook-heredoc"):
+        return "instruction"
+    if kind == "agent-md":
+        return "instruction"
+    if kind == "frontmatter-desc":
+        return "system"
+    if kind == "command-md":
+        return "instruction"  # appended to user prompt
+    return "context"           # SKILL.md, references, default
+
+
 # ── Scanners ─────────────────────────────────────────────────────────
 
 # Match `key: |\n  ...indented block...` blocks in YAML.
@@ -259,6 +356,80 @@ _HOOK_HEREDOC_RE = re.compile(
 )
 
 
+_AGENT_MD_LINES_HIGH    = _envint("KAIZEN_BLOAT_AGENT_LINES_HIGH",   400)
+_AGENT_MD_LINES_MED     = _envint("KAIZEN_BLOAT_AGENT_LINES_MED",    200)
+_FRONTMATTER_DESC_HIGH  = _envint("KAIZEN_BLOAT_DESC_CHARS_HIGH",     800)
+_FRONTMATTER_DESC_MED   = _envint("KAIZEN_BLOAT_DESC_CHARS_MED",      400)
+
+
+def _scan_agent_md(path: Path, root: Path) -> list[dict]:
+    """Subagent definitions — loaded in full when the agent is dispatched.
+    Larger ones = more context per Agent() call."""
+    try:
+        text = path.read_text(encoding="utf-8")
+    except OSError:
+        return []
+    line_count = text.count("\n") + 1
+    if line_count < _AGENT_MD_LINES_MED:
+        return []
+    sev = "high" if line_count >= _AGENT_MD_LINES_HIGH else "medium"
+    q, q_hint = quality_score(text)
+    return [{
+        "severity":     sev,
+        "kind":         "agent-md",
+        "path":         str(path.relative_to(root)),
+        "field":        "(body)",
+        "lines":        line_count,
+        "tokens":       estimate_tokens(text),
+        "quality":      q,
+        "quality_hint": q_hint,
+        "hint":         "agent body loads in full per Agent() dispatch — trim or split into helper agents",
+    }]
+
+
+# Frontmatter `description:` extractor. Single-line OR YAML block scalar.
+_FRONTMATTER_RE = re.compile(
+    r"^---\n(.*?)\n---", re.DOTALL,
+)
+_DESC_RE = re.compile(
+    r"^description:\s*(.+?)$", re.MULTILINE,
+)
+
+
+def _scan_frontmatter_desc(path: Path, root: Path) -> list[dict]:
+    """SKILL.md `description:` fields — loaded into the skills catalog
+    at EVERY SessionStart. Even small bloat here is amortised heavily."""
+    findings: list[dict] = []
+    try:
+        text = path.read_text(encoding="utf-8")
+    except OSError:
+        return findings
+    fm = _FRONTMATTER_RE.match(text)
+    if not fm:
+        return findings
+    m = _DESC_RE.search(fm.group(1))
+    if not m:
+        return findings
+    desc = m.group(1).strip().strip('"\'')
+    char_count = len(desc)
+    if char_count < _FRONTMATTER_DESC_MED:
+        return findings
+    sev = "high" if char_count >= _FRONTMATTER_DESC_HIGH else "medium"
+    q, q_hint = quality_score(desc)
+    findings.append({
+        "severity":     sev,
+        "kind":         "frontmatter-desc",
+        "path":         str(path.relative_to(root)),
+        "field":        "description",
+        "lines":        desc.count("\n") + 1,
+        "tokens":       estimate_tokens(desc),
+        "quality":      q,
+        "quality_hint": q_hint,
+        "hint":         "description loads at EVERY SessionStart — keep <400 chars; only quoted trigger phrases earn space",
+    })
+    return findings
+
+
 def _scan_hook_heredoc(path: Path, root: Path) -> list[dict]:
     """Find multi-line additionalContext / systemMessage embedded in hook scripts."""
     findings: list[dict] = []
@@ -320,13 +491,39 @@ def scan_all(root: Path | None = None) -> list[dict]:
         for p in sorted(hooks.glob("*.sh")):
             findings.extend(_scan_hook_heredoc(p, root))
 
-    # Sort: severity desc, then "waste score" desc (tokens × (100-quality))
-    # so high-volume low-quality bloat surfaces first.
+    # Agent definitions (loaded per Agent() dispatch)
+    agents = root / "agents"
+    if agents.is_dir():
+        for p in sorted(agents.glob("*.md")):
+            findings.extend(_scan_agent_md(p, root))
+
+    # SKILL.md frontmatter descriptions (loaded every SessionStart)
+    for p in (root / "skills").rglob("SKILL.md"):
+        findings.extend(_scan_frontmatter_desc(p, root))
+
+    # Augment each finding with fire-frequency + sensitivity tier +
+    # cumulative cost (tokens × fires). Reset DXM cache per scan.
+    _FIRE_CACHE.clear()
+    for f in findings:
+        fires = estimate_fire_count(f)
+        f["fire_count"]         = fires
+        # Cumulative = base tokens × (1 + observed fires). The +1 is
+        # the per-scan baseline; fires multiply the impact for hooks
+        # that fire many times per session.
+        f["cumulative_tokens"]  = f["tokens"] * max(1, fires)
+        f["sensitivity"]        = sensitivity_tier(f)
+
+    # Sort: severity desc, then cumulative tokens desc (real-world cost),
+    # then per-finding waste (tokens × (100-quality)) as tiebreaker.
     sev_rank = {"high": 0, "medium": 1, "low": 2}
     def _waste(f: dict) -> int:
         q = f.get("quality", 50)
         return f["tokens"] * (100 - q)
-    findings.sort(key=lambda f: (sev_rank.get(f["severity"], 9), -_waste(f)))
+    findings.sort(key=lambda f: (
+        sev_rank.get(f["severity"], 9),
+        -f.get("cumulative_tokens", f["tokens"]),
+        -_waste(f),
+    ))
     return findings
 
 
@@ -389,10 +586,14 @@ def _print_text(findings: list[dict]) -> None:
         mark = "▲" if f["severity"] == "high" else "△"
         q = f.get("quality")
         q_str = f"q={q:>3d}" if isinstance(q, int) else "q=  ?"
-        print(f"  {mark} [{f['severity']:6s}] {f['kind']:14s} "
+        fires = f.get("fire_count", 0)
+        cumul = f.get("cumulative_tokens", f["tokens"])
+        sens = (f.get("sensitivity", "context") or "context")[:4]
+        fire_str = f"×{fires}" if fires else "×?"
+        print(f"  {mark} [{f['severity']:6s}] {f['kind']:16s} "
               f"{f['path']}::{f['field']}  "
               f"{f['lines']:>4d} ln (~{f['tokens']:>5d} tok)  "
-              f"{q_str}  {f.get('quality_hint', '')}")
+              f"{q_str} {sens:4s} {fire_str:>5s}→~{cumul:>7d} cumul")
 
 
 def _total_waste(findings: list[dict]) -> int:
@@ -418,7 +619,11 @@ def _surface_line(cache: dict | None) -> str:
 
     Notice-trigger: only surfaces when estimated total waste exceeds
     KAIZEN_BLOAT_NOTICE_THRESHOLD (default 1000 tokens). Below that, the
-    findings are background noise; we don't burn agent context on them."""
+    findings are background noise; we don't burn agent context on them.
+
+    Surfaces CUMULATIVE cost (tokens × dxm fire-count) as the primary
+    metric — a 200-token template fired 50× costs more than a one-off
+    10k-token doc."""
     if not cache or cache.get("total", 0) == 0:
         return ""
     findings = cache.get("findings", [])
@@ -428,13 +633,21 @@ def _surface_line(cache: dict | None) -> str:
         return ""
     h = cache.get("high", 0)
     m = cache.get("medium", 0)
-    worst = _worst_quality(findings)
-    parts = [f"kaizen-token-bloat: ~{waste} wasted tok across "
-             f"{h} high + {m} medium findings"]
-    if worst:
+    # Top by cumulative cost (real impact)
+    top = max(findings,
+               key=lambda f: f.get("cumulative_tokens", f.get("tokens", 0))) \
+          if findings else None
+    parts = [f"kaizen-token-bloat: ~{waste} wasted tok "
+             f"({h} high + {m} medium)"]
+    if top:
+        fires = top.get("fire_count", 0)
+        cumul = top.get("cumulative_tokens", top["tokens"])
+        sens = top.get("sensitivity", "context")
+        fire_note = f"×{fires} fires" if fires else "1-shot"
         parts.append(
-            f"worst: {worst['path']}::{worst['field']} "
-            f"(q={worst.get('quality', '?')}, ~{worst['tokens']} tok)"
+            f"top-cost: {top['path']}::{top['field']} "
+            f"({sens}, ~{top['tokens']} tok {fire_note} "
+            f"= ~{cumul} cumul, q={top.get('quality', '?')})"
         )
     parts.append("run `kaizen-token-bloat report` for the full list")
     return " — ".join(parts)
@@ -442,10 +655,36 @@ def _surface_line(cache: dict | None) -> str:
 
 # ── CLI ──────────────────────────────────────────────────────────────
 
+def _emit_trace(findings: list[dict]) -> None:
+    """Emit one trace event summarising the scan. Best-effort — trace
+    must never break the scanner."""
+    try:
+        sys.path.insert(0, str(_SCRIPT_DIR))
+        import trace as _trace
+        waste = _total_waste(findings)
+        cumul = sum(f.get("cumulative_tokens", f.get("tokens", 0))
+                     for f in findings)
+        _trace.append_event({
+            "ts":         _dt.datetime.now(_dt.timezone.utc).isoformat(),
+            "evt_type":   "token_bloat.scanned",
+            "tool_name":  "kaizen-token-bloat",
+            "payload":    {
+                "total":             len(findings),
+                "high":              sum(1 for f in findings if f["severity"] == "high"),
+                "medium":            sum(1 for f in findings if f["severity"] == "medium"),
+                "waste_tokens":      waste,
+                "cumulative_tokens": cumul,
+            },
+        })
+    except Exception:
+        pass
+
+
 def _cmd_scan(args) -> int:
     findings = scan_all()
     if args.cache:
         _write_cache(findings)
+        _emit_trace(findings)
     if args.json:
         print(json.dumps({"findings": findings,
                             "high":     sum(1 for f in findings if f["severity"] == "high"),

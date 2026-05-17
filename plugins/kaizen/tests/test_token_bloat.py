@@ -161,7 +161,7 @@ class TestCacheSurfacing(unittest.TestCase):
         r = _run("surface", env=env)
         self.assertEqual(r.returncode, 0)
         self.assertIn("wasted tok", r.stdout)
-        self.assertIn("worst:", r.stdout)
+        self.assertIn("top-cost:", r.stdout)  # cumulative-aware
         self.assertIn("q=", r.stdout)
 
 
@@ -281,6 +281,157 @@ class TestFindingsHaveQualityFields(unittest.TestCase):
             self.assertIn("quality_hint", f)
             self.assertIsInstance(f["quality"], int)
             self.assertTrue(0 <= f["quality"] <= 100)
+
+
+class TestExpandedScanners(unittest.TestCase):
+    """Phase-2 horizontal scanners: agents/*.md + frontmatter description."""
+
+    def setUp(self):
+        sys.path.insert(0, str(_KZ_DIR / "skills/workflow/scripts"))
+        if "token_bloat" in sys.modules:
+            del sys.modules["token_bloat"]
+        import token_bloat as tb
+        self.tb = tb
+        self._tmp = tempfile.TemporaryDirectory()
+        self.root = Path(self._tmp.name)
+        (self.root / "skills").mkdir()
+        (self.root / "agents").mkdir()
+        (self.root / "commands").mkdir()
+        (self.root / "hooks/claude").mkdir(parents=True)
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    def test_agent_md_flagged_when_oversized(self):
+        body = "\n".join(f"line {i}" for i in range(300))
+        (self.root / "agents/big.md").write_text(body)
+        f = self.tb.scan_all(root=self.root)
+        agent = [x for x in f if x["kind"] == "agent-md"]
+        self.assertEqual(len(agent), 1)
+        self.assertEqual(agent[0]["severity"], "medium")
+        self.assertEqual(agent[0]["sensitivity"], "instruction")
+
+    def test_frontmatter_desc_oversize_flagged(self):
+        desc = "A " * 400  # ~800 chars
+        (self.root / "skills/x").mkdir()
+        (self.root / "skills/x/SKILL.md").write_text(
+            f"---\nname: x\ndescription: {desc}\n---\nbody\n")
+        f = self.tb.scan_all(root=self.root)
+        fm = [x for x in f if x["kind"] == "frontmatter-desc"]
+        self.assertEqual(len(fm), 1)
+        self.assertEqual(fm[0]["field"], "description")
+        self.assertEqual(fm[0]["sensitivity"], "system")
+
+    def test_short_frontmatter_desc_not_flagged(self):
+        (self.root / "skills/x").mkdir()
+        (self.root / "skills/x/SKILL.md").write_text(
+            "---\nname: x\ndescription: short and tight\n---\nbody\n")
+        f = self.tb.scan_all(root=self.root)
+        self.assertEqual([x for x in f if x["kind"] == "frontmatter-desc"], [])
+
+
+class TestSensitivityTier(unittest.TestCase):
+    """LLMLingua-inspired classification per finding."""
+
+    def setUp(self):
+        sys.path.insert(0, str(_KZ_DIR / "skills/workflow/scripts"))
+        if "token_bloat" in sys.modules:
+            del sys.modules["token_bloat"]
+        import token_bloat as tb
+        self.tier = tb.sensitivity_tier
+
+    def test_yaml_template_is_instruction(self):
+        self.assertEqual(self.tier({"kind": "yaml-template", "path": "x"}),
+                          "instruction")
+
+    def test_hook_heredoc_is_instruction(self):
+        self.assertEqual(self.tier({"kind": "hook-heredoc", "path": "x"}),
+                          "instruction")
+
+    def test_agent_md_is_instruction(self):
+        self.assertEqual(self.tier({"kind": "agent-md", "path": "x"}),
+                          "instruction")
+
+    def test_frontmatter_is_system(self):
+        self.assertEqual(self.tier({"kind": "frontmatter-desc", "path": "x"}),
+                          "system")
+
+    def test_skill_md_is_context(self):
+        self.assertEqual(self.tier({"kind": "skill-md", "path": "x"}),
+                          "context")
+
+
+class TestDxmFireWeighting(unittest.TestCase):
+    """Fire-count weighting: cumulative_tokens = tokens × max(1, fires)."""
+
+    def setUp(self):
+        sys.path.insert(0, str(_KZ_DIR / "skills/workflow/scripts"))
+        if "token_bloat" in sys.modules:
+            del sys.modules["token_bloat"]
+        import token_bloat as tb
+        self.tb = tb
+        self._tmp = tempfile.TemporaryDirectory()
+        self.dxm = Path(self._tmp.name)
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    def test_count_dxm_fires_empty_dir(self):
+        env_path = self.dxm
+        os.environ["KAIZEN_DXM_DIR"] = str(env_path)
+        try:
+            self.tb._FIRE_CACHE.clear()
+            self.assertEqual(self.tb.count_dxm_fires("SessionStart"), 0)
+        finally:
+            os.environ.pop("KAIZEN_DXM_DIR", None)
+
+    def test_count_dxm_fires_counts_lines(self):
+        (self.dxm / "events-abc.jsonl").write_text(
+            '{"evt_type":"SessionStart"}\n'
+            '{"evt_type":"PreToolUse"}\n'
+            '{"evt_type":"SessionStart"}\n'
+        )
+        os.environ["KAIZEN_DXM_DIR"] = str(self.dxm)
+        try:
+            self.tb._FIRE_CACHE.clear()
+            self.assertEqual(self.tb.count_dxm_fires("SessionStart"), 2)
+            self.assertEqual(self.tb.count_dxm_fires("PreToolUse"), 1)
+        finally:
+            os.environ.pop("KAIZEN_DXM_DIR", None)
+
+    def test_estimate_fire_count_maps_hook_prefix_to_evt(self):
+        (self.dxm / "events-abc.jsonl").write_text(
+            '{"evt_type":"SessionStart"}\n' * 5
+        )
+        os.environ["KAIZEN_DXM_DIR"] = str(self.dxm)
+        try:
+            self.tb._FIRE_CACHE.clear()
+            f = {"path": "hooks/claude/session-start-token-bloat.sh",
+                 "kind": "hook-heredoc"}
+            self.assertEqual(self.tb.estimate_fire_count(f), 5)
+        finally:
+            os.environ.pop("KAIZEN_DXM_DIR", None)
+
+    def test_cumulative_tokens_scales_with_fires(self):
+        """A 200-tok template fired 50× should report cumulative=10000."""
+        (self.dxm / "events-abc.jsonl").write_text(
+            '{"evt_type":"SessionStart"}\n' * 50
+        )
+        os.environ["KAIZEN_DXM_DIR"] = str(self.dxm)
+        try:
+            self.tb._FIRE_CACHE.clear()
+            root = Path(self._tmp.name) / "plugin"
+            (root / "skills").mkdir(parents=True)
+            (root / "hooks/claude").mkdir(parents=True)
+            body = "body=\"\"\"" + "\n".join(f"line {i}" for i in range(25)) + "\"\"\""
+            (root / "hooks/claude/session-start-x.sh").write_text(body)
+            findings = self.tb.scan_all(root=root)
+            self.assertEqual(len(findings), 1)
+            f = findings[0]
+            self.assertEqual(f["fire_count"], 50)
+            self.assertEqual(f["cumulative_tokens"], f["tokens"] * 50)
+        finally:
+            os.environ.pop("KAIZEN_DXM_DIR", None)
 
 
 class TestSkillBody(unittest.TestCase):
