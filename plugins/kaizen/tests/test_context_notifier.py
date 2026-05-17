@@ -235,5 +235,111 @@ class TestNotifier(CtxBase):
         self.assertFalse(env["data"]["emitted"])
 
 
+# ─── Peak-aware enrichment (BK-015 wire-up) ──────────────────────────
+
+
+def _make_turn(total: int, ts: str = "2026-05-17T07:00:00Z") -> dict:
+    return {
+        "type": "assistant", "timestamp": ts,
+        "message": {"usage": {
+            "input_tokens": total // 4,
+            "cache_creation_input_tokens": total // 4,
+            "cache_read_input_tokens": total // 4,
+            "output_tokens": total - 3 * (total // 4),
+        }},
+    }
+
+
+def _compact_marker() -> dict:
+    return {"type": "user", "timestamp": "2026-05-17T07:01:00Z",
+            "isCompactSummary": True, "isVisibleInTranscriptOnly": True,
+            "message": {"role": "user", "content": "summary"}}
+
+
+class TestNotifierPeakEnrichment(CtxBase):
+    def _run_notifier(self, *args, cwd=None):
+        return subprocess.run(
+            [sys.executable, str(_NOTIFIER_PY), *args],
+            capture_output=True, text=True, timeout=10,
+            cwd=str(cwd) if cwd else None, env=os.environ.copy(),
+        )
+
+    def _seed_multi(self, cwd: Path, sid: str, records: list[dict]):
+        slug = str(cwd.resolve()).replace("/", "-")
+        proj = self.fake_home / ".claude" / "projects" / slug
+        proj.mkdir(parents=True, exist_ok=True)
+        jsonl = proj / f"{sid}.jsonl"
+        with jsonl.open("w") as f:
+            for r in records:
+                f.write(json.dumps(r) + "\n")
+
+    def _events(self, sid):
+        p = self.dxm_dir / f"events-{sid}.jsonl"
+        if not p.is_file(): return []
+        return [json.loads(l) for l in p.read_text().splitlines() if l.strip()]
+
+    def test_payload_includes_peak_tokens(self):
+        cwd = self.tmp / "p1"
+        cwd.mkdir()
+        os.environ["KAIZEN_CONTEXT_LIMIT"] = "100000"
+        # Rising usage, current = peak = 90k (single-rise, red zone)
+        self._seed_multi(cwd, "sess-peak", [
+            _make_turn(20_000),
+            _make_turn(60_000),
+            _make_turn(90_000),
+        ])
+        self._run_notifier("check", cwd=cwd)
+        events = self._events("sess-peak")
+        warn = [e for e in events if e["evt_type"].startswith("context.warn")]
+        self.assertEqual(len(warn), 1, "expected one red warn event")
+        payload = warn[0]["payload"]
+        self.assertEqual(payload["peak_tokens"], 90_000)
+        self.assertFalse(payload["peak_pre_compact"])
+        self.assertEqual(payload["compact_count"], 0)
+
+    def test_post_compact_payload_exposes_peak(self):
+        """After compact: current dropped to green, but peak was red.
+        Notifier zone follows current — green = no warn emit — but if
+        any warn DID emit (e.g. yellow), the payload must surface the
+        true peak so consumers can react."""
+        cwd = self.tmp / "p2"
+        cwd.mkdir()
+        os.environ["KAIZEN_CONTEXT_LIMIT"] = "100000"
+        # 95k pre-compact (red), then compact, then 70k post (yellow)
+        self._seed_multi(cwd, "sess-postcompact", [
+            _make_turn(95_000),
+            _compact_marker(),
+            _make_turn(70_000),
+        ])
+        self._run_notifier("check", cwd=cwd)
+        events = self._events("sess-postcompact")
+        warn = [e for e in events if e["evt_type"].startswith("context.warn")]
+        # Current zone = yellow (70k) → one warn fires
+        self.assertEqual(len(warn), 1)
+        self.assertEqual(warn[0]["payload"]["zone"], "yellow")
+        self.assertEqual(warn[0]["payload"]["peak_tokens"], 95_000)
+        self.assertTrue(warn[0]["payload"]["peak_pre_compact"])
+        self.assertEqual(warn[0]["payload"]["compact_count"], 1)
+
+    def test_envelope_data_includes_peak_fields(self):
+        cwd = self.tmp / "p3"
+        cwd.mkdir()
+        os.environ["KAIZEN_CONTEXT_LIMIT"] = "100000"
+        self._seed_multi(cwd, "sess-env", [
+            _make_turn(40_000),
+            _make_turn(85_000),
+        ])
+        r = self._run_notifier("check", "--json", cwd=cwd)
+        env = json.loads(r.stdout)
+        d = env["data"]
+        # Backward-compat fields
+        self.assertEqual(d["tokens"], 85_000)
+        self.assertEqual(d["zone"], "red")
+        # New peak-aware fields
+        self.assertEqual(d["peak_tokens"], 85_000)
+        self.assertEqual(d["compact_count"], 0)
+        self.assertFalse(d["peak_pre_compact"])
+
+
 if __name__ == "__main__":
     unittest.main()

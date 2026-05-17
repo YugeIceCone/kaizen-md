@@ -77,9 +77,18 @@ def _cmd_check(args) -> int:
             _emit(data, verdict="yellow")
         return 0
 
-    tokens = _ctx.get_tokens_from_jsonl()
+    # BK-015: prefer peak-aware reader so payload always exposes the
+    # true session peak — critical post-compact where `current` drops
+    # to the new envelope size but the pre-compact red zone matters
+    # for handoff signals + intent rules.
+    summary = _ctx.get_usage_summary()
+    tokens = summary["current_tokens"]
+    peak_tokens = summary["peak_tokens"]
+    peak_pre_compact = summary["peak_pre_compact"]
+    compact_count = summary["compact_count"]
     limit = _ctx.get_limit()
     pct = (tokens * 100 // limit) if tokens is not None else None
+    peak_pct = (peak_tokens * 100 // limit) if peak_tokens is not None else None
     zone = _ctx.zone_of(pct)
 
     last_warn = _latest_warn_zone(sid)
@@ -89,20 +98,29 @@ def _cmd_check(args) -> int:
         ok = _dxm_emit.emit_event(
             f"context.warn.{zone}",
             tool_name="kaizen-context-notifier",
-            payload={"zone": zone, "pct": pct, "tokens": tokens,
-                      "limit": limit, "prev_warn_zone": last_warn},
+            payload={
+                "zone": zone, "pct": pct, "tokens": tokens,
+                "peak_tokens": peak_tokens, "peak_pct": peak_pct,
+                "peak_pre_compact": peak_pre_compact,
+                "compact_count": compact_count,
+                "limit": limit, "prev_warn_zone": last_warn,
+            },
             session_id=sid,
         )
         emitted = bool(ok)
 
     data = {
-        "session_id":     sid,
-        "zone":           zone,
-        "pct":            pct,
-        "tokens":         tokens,
-        "limit":          limit,
-        "last_warn_zone": last_warn,
-        "emitted":        emitted,
+        "session_id":       sid,
+        "zone":             zone,
+        "pct":              pct,
+        "tokens":           tokens,
+        "peak_tokens":      peak_tokens,
+        "peak_pct":         peak_pct,
+        "peak_pre_compact": peak_pre_compact,
+        "compact_count":    compact_count,
+        "limit":            limit,
+        "last_warn_zone":   last_warn,
+        "emitted":          emitted,
     }
     if args.json:
         verdict = ("green" if zone == "green" else
