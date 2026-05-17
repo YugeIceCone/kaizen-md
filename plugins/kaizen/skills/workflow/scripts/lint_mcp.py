@@ -41,9 +41,7 @@ from __future__ import annotations
 
 import asyncio
 import json
-import os
 import re
-import subprocess
 import sys
 from pathlib import Path
 
@@ -437,6 +435,119 @@ async def lint_changed_files(
             "by_severity": all_sev,
         },
     }
+
+
+# ─── auto_fix_lint — dispatch fixable findings via subagent / local LLM
+
+@mcp.tool()
+async def auto_fix_lint(
+    path: str = ".",
+    strategy: str = "auto",
+    skip_ruff_fixable: bool = True,
+    apply: bool = False,
+    model: str = "",
+    base_ref: str = "",
+    remember_choice: bool = False,
+) -> dict:
+    """Run ruff_check + ty_check, then dispatch remaining findings to a
+    fix path via `lint_fix_dispatch.dispatch(...)`.
+
+    strategy:
+      'auto'      — DEFAULT. Read the saved per-repo preference (set
+                    by a prior call with remember_choice=True). Falls
+                    back to 'subagent' when no preference is saved OR
+                    the saved 'local_llm' has no reachable server.
+      'subagent'  — return structured task specs (one per file). Caller
+                    consumes via the Agent tool. No fix is applied.
+      'local_llm' — POST each task to LLM_BASE_URL + LLM_MODEL
+                    (OpenAI-compatible). If apply=True, the returned
+                    unified diff is git-applied. If apply=False, the
+                    patch is returned for inspection. When no local
+                    server is reachable, returns a 'setup_needed'
+                    result with the install script + setup_command —
+                    call `lint_fix_setup_local_llm` to run setup.
+
+    skip_ruff_fixable: when True (default), ignore findings ruff --fix
+      already handles — those should run via `ruff_check(fix=True)`
+      instead of burning LLM tokens.
+    base_ref: when set, restrict to files changed vs <base_ref>
+      (uses `lint_changed_files`). Empty = lint <path> (default).
+    remember_choice: when True, persist the resolved strategy to
+      `.kaizen/lint_dispatch_prefs.json` so the next 'auto' call uses
+      the same path. The next user doesn't get re-asked.
+    """
+    # Collect findings using the existing tools
+    if base_ref:
+        changed = await lint_changed_files(base_ref=base_ref, verbose=True)
+        ruff_findings: list[dict] = []
+        ty_findings: list[dict] = []
+        for file, blob in changed["findings"].items():
+            for f in blob.get("ruff", {}).get("findings", []):
+                ruff_findings.append({**f, "file": f.get("file") or file})
+            for f in blob.get("ty", {}).get("findings", []):
+                ty_findings.append({**f, "file": f.get("file") or file})
+    else:
+        ruff_r = await ruff_check(path=path, verbose=True)
+        ty_r   = await ty_check(path=path, verbose=True)
+        ruff_findings = ruff_r.get("findings", []) or []
+        ty_findings   = ty_r.get("findings", []) or []
+
+    findings = ruff_findings + ty_findings
+    if not findings:
+        return {
+            "strategy": strategy,
+            "dispatched_count": 0,
+            "skipped_count": 0,
+            "tasks": [],
+            "note": "no findings",
+        }
+
+    # Defer import so kaizen-md plugins without the dispatcher can still
+    # import lint_mcp.py (T3 regression).
+    sys.path.insert(0, str(Path(__file__).parent))
+    import lint_fix_dispatch as _lfd
+
+    root = _repo_root()
+    result = _lfd.dispatch(
+        findings,
+        strategy=strategy,
+        repo_root=root,
+        skip_ruff_fixable=skip_ruff_fixable,
+        model=model or None,
+        apply=apply,
+    )
+    # Persist the resolved strategy when the caller opted in. We never
+    # remember "auto" itself — only the concrete subagent | local_llm
+    # the auto-resolver picked.
+    if remember_choice and result.get("strategy") in ("subagent", "local_llm"):
+        try:
+            import lint_fix_prefs as _prefs
+            _prefs.set_strategy(root, result["strategy"])
+            result["remembered"] = True
+        except Exception:                                   # noqa: BLE001
+            result["remembered"] = False
+    return result
+
+
+# ─── lint_fix_setup_local_llm — surface the setup spec to Claude ─────
+
+
+@mcp.tool()
+async def lint_fix_setup_local_llm() -> dict:
+    """Detect whether a local OpenAI-compatible LLM server is reachable
+    and, if not, return the install script + one-line setup command.
+
+    Returns the same shape as `lint_fix_setup.setup_summary()`:
+      - status='ready' + recommended_url + recommended_model + servers[]
+      - status='setup_needed' + install_script + setup_command +
+        default_model + default_url
+
+    Side-effect-free — never installs anything itself. The caller
+    decides whether to run the install script after user permission.
+    """
+    sys.path.insert(0, str(Path(__file__).parent))
+    import lint_fix_setup as _setup
+    return _setup.setup_summary()
 
 
 # ─── Entry point ──────────────────────────────────────────────────────
