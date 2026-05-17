@@ -811,16 +811,10 @@ def _cmd_scaffold(args) -> int:
         # BK-016: peak-aware context signal so the next session knows
         # the prior session compacted / hit red. Without this, post-
         # compact handoffs hide the context-pressure history.
-        try:
-            import context as _ctx
-            usage = _ctx.get_usage_summary(cwd_path=repo)
-            limit = _ctx.get_limit()
-            peak_tokens = usage.get("peak_tokens")
-            peak_pct = (peak_tokens * 100 // limit) if peak_tokens else None
-        except Exception:
-            usage = {"peak_tokens": None, "peak_pre_compact": False,
-                      "compact_count": 0}
-            peak_pct = None
+        import context as _ctx
+        usage = _ctx.get_usage_summary(cwd_path=repo)
+        peak_tokens = usage["peak_tokens"]
+        peak_pct = (peak_tokens * 100 // _ctx.get_limit()) if peak_tokens is not None else None
         data["mined_from_session"] = bool(mined)
         data["session_jsonl"] = str(jsonl_path)
         data["mined_summary"] = {
@@ -832,10 +826,10 @@ def _cmd_scaffold(args) -> int:
             "session_started_at": mined.get("session_started_at"),
             "jsonl_lag_seconds":  jsonl_lag,
             "dxm_event_count":    dxm_event_count,
-            "peak_tokens":        usage.get("peak_tokens"),
+            "peak_tokens":        peak_tokens,
             "peak_context_pct":   peak_pct,
-            "peak_pre_compact":   usage.get("peak_pre_compact", False),
-            "compact_count":      usage.get("compact_count", 0),
+            "peak_pre_compact":   usage["peak_pre_compact"],
+            "compact_count":      usage["compact_count"],
         }
     _dxm_emit.emit_event(
         "handoff.scaffold.complete", tool_name="kaizen-handoff",
