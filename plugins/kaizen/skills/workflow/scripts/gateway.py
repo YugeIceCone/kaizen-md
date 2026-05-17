@@ -72,6 +72,9 @@ SUBSERVERS: list[tuple[str, str]] = [
     ("ollama", "ollama_mcp"),
     # Phase 5 — agent-context query
     ("context", "context_mcp"),
+    # Phase 6 — quality axes (frontmatter / coverage / name-quality /
+    #           schema-coverage / slash-collision)
+    ("quality", "quality_mcp"),
 ]
 
 gw = FastMCP("kaizen")
