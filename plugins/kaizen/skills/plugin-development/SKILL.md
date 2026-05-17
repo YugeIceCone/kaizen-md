@@ -307,6 +307,125 @@ description: Frontmatter `promote: true` forces promotion
 description: "Frontmatter `promote: true` forces promotion"
 ```
 
+### Catalog — established schema / yaml / json shapes
+
+The plugin uses **4 distinct schema-driven shapes**. New features
+should reuse one of these rather than invent a 5th. Empirical count
+(2026-05-17): 40 JSON Schemas across 16 skills + 26 domain YAMLs +
+~8 JSON state files.
+
+| Shape | YAML file(s) | Schema file(s) | Example skill | Runtime |
+|---|---|---|---|---|
+| **Lens manifest (v2)** | `<feature>.yaml` with `version: 2` + `feature:` + subcommand `input_schema` / `output_schema` paths | `<sub>-in.schema.json` + `<sub>-out.schema.json` pair per subcommand | handoff, intent | `schema_cli.Manifest.load()` → `lens_emit` / `validate_output` |
+| **Decision rubric** | `rubric.yaml` (or `<x>-rubric.yaml`) with `rules` + `require_all` / `require_any` + `fallback` | `rubric.schema.json` (optional but recommended) | auto-handoff, handoff (outcome-rubric) | `schema_cli.BucketWalker.from_yaml()` → `.evaluate(signals)` |
+| **Plain config** | `config.yaml` (single-feature settings + on_fire / on_bucket policy) | `config.schema.json` + per-artifact event/decision schemas | auto-handoff, plugin-development (feature-shape) | hand-rolled loader in `<feature>.py` |
+| **Rule catalog** | `<things>.yaml` (intents, routines, iron-laws) — list of rule dicts | one schema per rule (routine.schema, iron-law.schema) | intent (intents.yaml), workflow (routines.yaml), iron-laws | hand-rolled loader |
+
+#### Per-shape conventions
+
+**Lens manifest (v2)** — what handoff / intent / schema-driven-cli use:
+
+```yaml
+version: 2
+feature: handoff
+description: "..."
+subcommands:
+  verify:
+    input_schema:  domain/schemas/verify-in.schema.json
+    output_schema: domain/schemas/verify-report.schema.json
+    bucket_walker: { rule_set: domain/verify-rules.yaml }  # optional
+```
+
+- Pair every subcommand with both `input_schema` and `output_schema`
+- Files live at `skills/<feature>/domain/schemas/<sub>-{in,out}.schema.json`
+- Validate at runtime via `m.get(sub).validate_output(data)`
+- Public envelope wraps via `schema_cli.lens_emit(tool, manifest, sub, data, verdict)`
+
+**Decision rubric (BucketWalker)** — what auto-handoff + handoff outcome use:
+
+```yaml
+version: 1
+rules:
+  - bucket: critical-block
+    require_all:
+      - {signal: pct, op: ">=", value: 90}
+  - bucket: threshold-block
+    require_all:
+      - {signal: above_threshold, op: "==", value: 1}
+fallback: noop
+confidence_threshold: 0.85
+```
+
+- First match wins (rule order matters)
+- Signals are precomputed pure-functions in the caller
+- Bucket → action mapping lives in **separate** `config.yaml::on_bucket`
+  (keeps classification pure, policy editable)
+- Operators: `>= > <= < == !=` (no string ops yet)
+- Add per-skill `rubric.schema.json` to validate the YAML
+
+**Plain config** — auto-handoff's `config.yaml` is the reference:
+
+```yaml
+version: 1
+valid_thresholds: [25, 50, 75, 85]      # source-of-truth lists
+dedupe_event_type: "auto_handoff.requested"
+on_fire:                                   # fallback policy
+  decision: "block"
+  reason_template: "..."
+on_bucket:                                 # per-bucket policy (paired with rubric)
+  critical-block:
+    decision: block
+    reason_template: "..."
+```
+
+- `version: <int>` always present
+- Override via env: `KAIZEN_<FEATURE>_CONFIG=<path>`
+- Default at `skills/<feature>/domain/config.yaml`
+- Hand-roll the loader with PyYAML; fall back to a `_BUILTIN_DEFAULT`
+  dict on parse error (never break the host)
+
+**Rule catalog** — intents.yaml / routines.yaml / iron-laws.yaml shape:
+
+```yaml
+version: 1
+intents:                          # or `routines`, `rules`, ...
+  - id: wrap-up
+    description: "..."
+    triggers:
+      - { kind: phrase, pattern: "..." }
+    action: { ... }
+```
+
+- `id:` is kebab-case, unique
+- `version:` on the top-level for forward-compat
+- Each entry has its own schema in `domain/schemas/<entry-kind>.schema.json`
+
+#### JSON state files (separate concern)
+
+These are **runtime state**, not schemas:
+
+| File | Purpose | Owner |
+|---|---|---|
+| `.kaizen.toml` | per-project gate config | gate |
+| `.kaizen/workflow/state.json` | active routine + completed stages | workflow |
+| `.kaizen/workflow/backlog.json` | backlog source (md is generated) | backlog |
+| `.kaizen/session-mode.json` | session intake choice | session-mode |
+| `.kaizen/loop.state.md` | active loop ledger (frontmatter + JSON body) | loop |
+| `.claude-plugin/plugin.json` | plugin manifest (permissions + commands) | CC contract |
+| `hooks/hooks.json` | hook wiring | CC contract |
+| `.mcp.json` | MCP server registration | CC contract |
+
+State files belong **in the repo's `.kaizen/`**, not under `skills/`.
+Schemas + configs belong **under `skills/<feature>/domain/`**.
+
+#### When to pick which shape
+
+- **Need per-subcommand contracts?** → Lens manifest (v2)
+- **Classifying inputs into buckets?** → Decision rubric
+- **Single-feature settings tuned by user?** → Plain config
+- **List of rules with triggers?** → Rule catalog
+- **Persistent runtime state across hook fires?** → JSON state file under `.kaizen/`
+
 ---
 
 ## Part 4 — Node+Flow design rules
