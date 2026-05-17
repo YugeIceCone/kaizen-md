@@ -544,6 +544,85 @@ def _cmd_status(args) -> int:
     return 0
 
 
+# ─── Starter seeding (onboarding) ────────────────────────────────────
+
+
+# PARA subdirs every starter is expected to populate (created as empty
+# dirs even when the starter doesn't ship files for them — gives the
+# brain hooks a place to write into on day 1).
+_PARA_SUBDIRS = (
+    "Inbox", "Journal", "Projects", "People", "Areas",
+    "Resources", "Tasks", "Templates", "Archive",
+)
+
+
+def _starters_dir():
+    """Path to the bundled `assets/starters/` directory."""
+    from pathlib import Path as _P
+    here = _P(__file__).resolve()
+    # plugins/kaizen/skills/workflow/scripts/brain.py  →  plugins/kaizen/
+    plugin_root = here.parents[3]
+    return plugin_root / "assets" / "starters"
+
+
+def list_starters() -> list[str]:
+    """Names of every shipped starter (alphabetical)."""
+    d = _starters_dir()
+    if not d.is_dir():
+        return []
+    return sorted(p.name for p in d.iterdir() if p.is_dir())
+
+
+def _seed_starter(name: str, dst: Path, *, force: bool = False) -> int:
+    """Copy `assets/starters/<name>/` into `dst`. Returns exit code."""
+    import shutil
+    import datetime as _dt
+    src = _starters_dir() / name
+    if not src.is_dir():
+        avail = ", ".join(list_starters()) or "(none)"
+        sys.stderr.write(
+            f"[kaizen-brain seed] starter '{name}' not found.\n"
+            f"  available: {avail}\n"
+        )
+        return 1
+    if dst.exists() and any(dst.iterdir()) and not force:
+        sys.stderr.write(
+            f"[kaizen-brain seed] {dst} is not empty.\n"
+            "  refuse to overwrite without --force\n"
+        )
+        return 2
+    today = _dt.date.today().isoformat()
+    # Copy every file, substituting {{today}} placeholder in text files.
+    # `Notes/`, `Persona.md`, etc. are textual; binary safety isn't a
+    # concern (starters are markdown only).
+    for src_path in src.rglob("*"):
+        if not src_path.is_file():
+            continue
+        rel = src_path.relative_to(src)
+        target = dst / rel
+        target.parent.mkdir(parents=True, exist_ok=True)
+        text = src_path.read_text(encoding="utf-8")
+        text = text.replace("{{today}}", today)
+        target.write_text(text, encoding="utf-8")
+    # Always create the PARA subdirs (some starters don't ship files for
+    # all of them; the brain capture/hook flow needs them to exist).
+    for sub in _PARA_SUBDIRS:
+        (dst / sub).mkdir(parents=True, exist_ok=True)
+    print(f"[kaizen-brain seed] ✓ seeded '{name}' → {dst}", file=sys.stderr)
+    return 0
+
+
+def cmd_seed(args) -> int:
+    """Seed the brain at KAIZEN_BRAIN_DIR from a bundled starter."""
+    # Special: `seed list` is implemented as a sentinel `starter=list`.
+    if args.starter == "list":
+        for s in list_starters():
+            print(s)
+        return 0
+    import _paths as _p
+    return _seed_starter(args.starter, _p.BRAIN_DIR, force=args.force)
+
+
 def main(argv: Optional[list[str]] = None) -> int:
     p = argparse.ArgumentParser(
         prog="kaizen-brain",
@@ -569,6 +648,19 @@ def main(argv: Optional[list[str]] = None) -> int:
 
     ss = sub.add_parser("status", help="brain stats")
     ss.set_defaults(func=_cmd_status)
+
+    # Onboarding: seed the brain from a curated starter.
+    ssd = sub.add_parser("seed",
+                          help="bootstrap a working brain from a bundled "
+                          "starter (assets/starters/<name>/)")
+    ssd.add_argument("starter", default="default", nargs="?",
+                      help="starter name (default: 'default'). Use 'list' "
+                           "to list available starters.")
+    ssd.add_argument("--force", action="store_true",
+                      help="overwrite an existing non-empty brain")
+    ssd.add_argument("--json", action="store_true",
+                      help="(reserved for future envelope output)")
+    ssd.set_defaults(func=cmd_seed)
 
     args = p.parse_args(argv)
     return args.func(args)

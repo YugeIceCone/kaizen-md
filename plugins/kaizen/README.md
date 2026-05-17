@@ -2,9 +2,42 @@
 
 [![test](https://github.com/YugeIceCone/kaizen-md/actions/workflows/test.yml/badge.svg)](https://github.com/YugeIceCone/kaizen-md/actions/workflows/test.yml)
 [![license: MIT](https://img.shields.io/badge/license-MIT-blue)](./LICENSE)
-[![version](https://img.shields.io/badge/version-1.26.0-green)](./CHANGELOG.md)
+[![version](https://img.shields.io/badge/version-1.39.0-green)](./CHANGELOG.md)
 
-**Consistent git commit discipline as a Claude Code plugin.** Pre-commit + commit-msg gate + JSON-sourced micro-work backlog + 39 bundled skills + 6 lifecycle hooks + 5 MCP servers + Ollama-backed model management. Self-contained: no external plugin dependencies.
+**A Claude Code plugin that gives you a working Second Brain on Day 1.**
+
+```bash
+# 1. Install the plugin (one-time)
+/plugin marketplace add ~/.claude/local-marketplaces/kaizen-md
+/plugin install kaizen@kaizen-md
+
+# 2. Seed a starter brain
+kaizen-brain seed default
+
+# 3. Capture your first thought
+kaizen-brain capture "we use SQLite over Postgres for local indexes"
+```
+
+That's it. You now have:
+- A `~/.claude/.kaizen/brain/` populated with Persona + 3 starter Notes + the PARA folder structure (Inbox / Journal / Projects / People / Areas / Resources / Tasks / Templates / Archive)
+- A pre-commit gate that scans your brain for deletion-prevention beliefs
+- Hooks that auto-capture "remember this" prompts into your brain
+- An evolve flow that promotes high-confidence Notes into Persona's Top Beliefs
+
+Read [`assets/starters/default/README.md`](./assets/starters/default/README.md) for what the starter contains + how to customize.
+
+---
+
+## What kaizen actually is
+
+A self-contained plugin that bundles:
+
+1. **A Second Brain** (Persona / PARA / Notes) — owned end-to-end since v1.38.0 (Remember plugin retired, brain migrated under `.kaizen/brain/`).
+2. **Git commit discipline** — pre-commit + commit-msg gate enforces compile-clean, structural-change → architecture-log row, `git rm` → memory-belief scan, paired-test for new code, Conventional Commits, plan-file checkbox tick.
+3. **A JSON-sourced micro-work backlog** — `.kaizen/workflow/backlog.json` is single source; `.md` view auto-renders.
+4. **49 bundled skills** + **22 MCP servers** + **18 lifecycle hooks** + **6 sub-agents** — covering TDD, coding-skills (DRY/KISS/SoC/SOLID/LoD/YAGNI/Boy-Scout/Convention/Karpathy), onion-DDD, workflow routing, audit, brain capture/promote/evolve, and observability across 6 data-stream layers.
+
+It works in any project, any Claude Code session, with no other plugin prerequisites. Cross-platform (Linux GNU + macOS BSD, `python3` only hard runtime dep).
 
 **Stop guessing if a change is "ready to commit".** The pre-commit gate enforces compile-clean, structural-change → architecture-log row, `git rm` → memory-belief scan, no-secrets-in-diff, paired-test for new code, backlog `.md` drift, and per-skill suggestions. The commit-msg gate enforces Conventional Commits prefix + plan-file → checkbox tick (split out from pre-commit in v1.25.1 because git doesn't pre-populate `.git/COMMIT_EDITMSG` for `git commit -m`). Sizing work uses trace + sem + grep, never hours.
 
