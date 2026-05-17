@@ -1,20 +1,20 @@
 #!/usr/bin/env bash
-# kaizen-self-audit-agent — agent-driven follow-up to the mechanical
-# self-audit. Renders subagent briefs (dispatch-plan) and merges their
-# results (aggregate).
+# kaizen-self-audit-agent — DEPRECATED ALIAS for kaizen-agent-self-audit.
 #
-# Subcommands: dispatch-plan [--json] | aggregate [--run-id ID] [--json] | path
-# See skills/plugin-self-audit/SKILL.md for the full three-phase flow.
+# Renamed 2026-05-18 for slash↔CLI parity (matches /kaizen:agent-self-audit).
+# Kept here so existing scripts / muscle memory keep working AND so the
+# iron-law `bin-wrapper-per-cli` (self_audit_agent.py → kaizen-self-audit-agent)
+# stays satisfied.
+#
+# Forwards every arg to the canonical bin and emits one deprecation
+# warning to stderr. Will be removed in a future release.
 
 set -euo pipefail
 
 _SCRIPT_REAL="$(readlink -f "${BASH_SOURCE[0]}" 2>/dev/null \
   || python3 -c 'import os,sys; print(os.path.realpath(sys.argv[1]))' "${BASH_SOURCE[0]}")"
 _BIN_DIR="$(cd "$(dirname "$_SCRIPT_REAL")" && pwd)"
-source "$_BIN_DIR/../skills/workflow/scripts/_plugin_root.sh"
-PLUGIN_ROOT="$(kaizen_plugin_root)" || {
-    echo "kaizen-self-audit-agent: plugin root unresolved" >&2
-    exit 1
-}
 
-exec python3 "$PLUGIN_ROOT/skills/workflow/scripts/self_audit_agent.py" "$@"
+echo "kaizen-self-audit-agent: deprecated — use kaizen-agent-self-audit (or /kaizen:agent-self-audit) instead." >&2
+
+exec "$_BIN_DIR/kaizen-agent-self-audit" "$@"
