@@ -278,12 +278,36 @@ plans/<date>-<slug>.md         ← prose synthesis + cross-thread narrative
 plans/<date>-<slug>.jsonl      ← indexed entries, one per line
 ```
 
-**Entry shape (typical fields):**
+**Entry shape (typical fields — all optional except `id` + `idea`):**
 ```json
 {"id": <int>, "round": <int>, "bucket": "<group>", "theme": "<sub>",
  "idea": "<one-line>", "tier": 1-4|null, "tools": ["..."],
- "status": "shipped|top-pick|deferred|research|long-arc|radical"}
+ "status": "shipped|top-pick|deferred|research|long-arc|radical",
+ "prose": "<anchor-slug>"|null}
 ```
+
+**The `prose` slug — pick-or-skip pattern:**
+
+Entries with `prose: "<slug>"` have detailed exposition in the paired
+`.md` file at that anchor. Entries WITHOUT `prose` (typical for
+top-picks + shipped — leaf action items) are self-contained.
+Consumers pick whichever fits their need:
+
+```bash
+# Lean: only one-liners that need no further prose
+jq 'select(.prose==null)' plans/*.jsonl
+
+# Deep: only entries with backing prose to read
+jq -r 'select(.prose) | "#\(.id) → prose anchor: \(.prose)"' plans/*.jsonl
+
+# Both: leaf items first, then prose-backed by anchor
+jq 'select(.prose==null), select(.prose)' plans/*.jsonl
+```
+
+The slug resolves to a heading anchor in the paired `.md` file — the
+consumer can navigate directly (e.g., grep `## .*<slug>` in the prose
+file, or open the file at the matching section without reading prior
+sections).
 
 **Query examples (all zero-Read):**
 ```bash
