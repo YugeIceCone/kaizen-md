@@ -1,0 +1,148 @@
+"""Tests for kaizen-gold — incidental-discovery + learnings tracker."""
+
+from __future__ import annotations
+
+import json
+import os
+import subprocess
+import sys
+import tempfile
+import unittest
+from pathlib import Path
+
+_KZ_DIR = Path(__file__).resolve().parent.parent
+_SCRIPT = _KZ_DIR / "skills/workflow/scripts/gold.py"
+
+
+class GoldBase(unittest.TestCase):
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.tmp = Path(self._tmp.name)
+        self.store = self.tmp / "gold.jsonl"
+        self.env = {"KAIZEN_GOLD_FILE": str(self.store)}
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    def _run(self, *args) -> subprocess.CompletedProcess:
+        return subprocess.run(
+            [sys.executable, str(_SCRIPT), *args],
+            capture_output=True, text=True, timeout=5,
+            env={**os.environ, **self.env},
+        )
+
+
+class TestCapture(GoldBase):
+    def test_capture_creates_entry_with_id_1(self):
+        r = self._run("capture", "first pattern", "--tag", "test", "--json")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        rec = json.loads(r.stdout)
+        self.assertEqual(rec["id"], 1)
+        self.assertEqual(rec["tag"], "test")
+        self.assertEqual(rec["pattern"], "first pattern")
+        self.assertFalse(rec["promoted"])
+
+    def test_subsequent_ids_increment(self):
+        self._run("capture", "first")
+        self._run("capture", "second")
+        self._run("capture", "third", "--json")
+        recs = [json.loads(l) for l in self.store.read_text().strip().splitlines()]
+        self.assertEqual([r["id"] for r in recs], [1, 2, 3])
+
+    def test_capture_persists_to_jsonl(self):
+        self._run("capture", "persisted",
+                   "--source", "skills/x.py:42", "--learned", "from bug")
+        self.assertTrue(self.store.is_file())
+        rec = json.loads(self.store.read_text().strip())
+        self.assertEqual(rec["source"], "skills/x.py:42")
+        self.assertEqual(rec["learned"], "from bug")
+
+
+class TestList(GoldBase):
+    def test_list_empty_returns_no_entries(self):
+        r = self._run("list")
+        self.assertIn("no entries", r.stdout)
+
+    def test_list_after_capture(self):
+        self._run("capture", "alpha", "--tag", "X")
+        self._run("capture", "beta", "--tag", "Y")
+        r = self._run("list")
+        self.assertIn("alpha", r.stdout)
+        self.assertIn("beta", r.stdout)
+
+    def test_list_tag_filter(self):
+        self._run("capture", "alpha", "--tag", "keep")
+        self._run("capture", "beta", "--tag", "drop")
+        r = self._run("list", "--tag", "keep")
+        self.assertIn("alpha", r.stdout)
+        self.assertNotIn("beta", r.stdout)
+
+    def test_list_unpromoted_filter(self):
+        self._run("capture", "alpha")
+        self._run("capture", "beta")
+        # promote one
+        target = self.tmp / "target.md"
+        self._run("promote", "1", "--to", str(target))
+        # unpromoted should only show beta
+        r = self._run("list", "--unpromoted", "--json")
+        recs = json.loads(r.stdout)
+        ids = [r["id"] for r in recs]
+        self.assertEqual(ids, [2])
+
+
+class TestShow(GoldBase):
+    def test_show_existing(self):
+        self._run("capture", "specific pattern")
+        r = self._run("show", "1", "--json")
+        rec = json.loads(r.stdout)
+        self.assertEqual(rec["pattern"], "specific pattern")
+
+    def test_show_missing_exits_1(self):
+        r = self._run("show", "999")
+        self.assertEqual(r.returncode, 1)
+
+
+class TestPromote(GoldBase):
+    def test_promote_appends_and_marks(self):
+        self._run("capture", "important pattern", "--tag", "T")
+        target = self.tmp / "rules.md"
+        r = self._run("promote", "1", "--to", str(target))
+        self.assertEqual(r.returncode, 0, r.stderr)
+        # Target file got the gold line
+        self.assertTrue(target.is_file())
+        body = target.read_text()
+        self.assertIn("[gold #1]", body)
+        self.assertIn("important pattern", body)
+        # Source record marked promoted
+        rec = json.loads(self.store.read_text().strip().splitlines()[0])
+        self.assertTrue(rec["promoted"])
+        self.assertEqual(rec["promoted_to"], str(target))
+        self.assertIn("promoted_at", rec)
+
+    def test_promote_with_note_appended(self):
+        self._run("capture", "p")
+        target = self.tmp / "out.md"
+        self._run("promote", "1", "--to", str(target), "--note", "context here")
+        self.assertIn("(context here)", target.read_text())
+
+    def test_promote_already_promoted_exits_1(self):
+        self._run("capture", "p")
+        target = self.tmp / "out.md"
+        self._run("promote", "1", "--to", str(target))
+        r = self._run("promote", "1", "--to", str(target))
+        self.assertEqual(r.returncode, 1)
+
+    def test_promote_missing_id_exits_1(self):
+        r = self._run("promote", "999", "--to", "/tmp/x.md")
+        self.assertEqual(r.returncode, 1)
+
+
+class TestPath(GoldBase):
+    def test_path_prints_storage_location(self):
+        r = self._run("path")
+        self.assertEqual(r.returncode, 0)
+        self.assertEqual(r.stdout.strip(), str(self.store))
+
+
+if __name__ == "__main__":
+    unittest.main()
