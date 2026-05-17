@@ -5,6 +5,23 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [S
 
 ## [Unreleased]
 
+### Added — `DEVOPS-CHEAT-SHEET.md` — maintainer single-page reference
+
+New top-level doc at `plugins/kaizen/DEVOPS-CHEAT-SHEET.md` covering:
+
+- **File layout** (2-minute orientation)
+- **Extension points** — "I want to add a slash command / CLI tool / MCP tool / hook / skill / iron law / anti-pattern / routine / schema → where + how + side-effects"
+- **Editing existing things** — version bumps, hot-path additions, gates, envelope retrofits
+- **Current limitations** — strict iron-law filename match, wildcard recognition gaps, cross-skill `_envelope` imports, hooks in non-interactive shells, 17 tools still needing `--json`, MCP envelope future, the `_-prefix exemption hack`, etc.
+- **Common gotchas** — 10 numbered "wait, why didn't that work?" entries (noqa scope, name-collision in module loading, gateway reload, etc.)
+- **Testing quick-reference** — every common command for unit / integration / drift checks
+- **Releases** — manual version-bump + tag flow
+- **"Where to look for X"** index → file mapping
+
+Single source of truth for plugin maintainers — replaces tribal knowledge spread across CONTRIBUTING.md, individual skill docs, and the CHANGELOG. Refreshed alongside CHANGELOG entries that change extension points.
+
+Closes the user's "devops context cheat-sheet" ask after phases A-C envelope work.
+
 ### Added — envelope phases A-C: search + brain/audit + karpathy retrofitted (11 more tools)
 
 Continues mechanical envelope retrofit per the roadmap in `skills/efficient-tool-use/references/envelope-retrofit.md`.
