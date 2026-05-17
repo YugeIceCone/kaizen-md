@@ -58,15 +58,11 @@ from _metrics import *  # noqa: F401,F403
 
 # Canonical tool-output envelope — every --json path emits through this
 # (programmable + reproducible + consistent JSON across kaizen tools).
+# `emitter()` returns a tool-bound closure; per-subcommand calls become
+# one-liners.
 import _envelope  # noqa: E402
 
-
-def _emit(data, *, verdict=None, counts=None):
-    """One-liner per subcommand. Always tool="kaizen-metrics"."""
-    _envelope.emit(
-        tool="kaizen-metrics", tool_version="1.0.0",
-        data=data, verdict=verdict, counts=counts, argv=sys.argv,
-    )
+_emit = _envelope.emitter("kaizen-metrics", tool_version="1.0.0")
 
 
 # ─── CLI ─────────────────────────────────────────────────────────────

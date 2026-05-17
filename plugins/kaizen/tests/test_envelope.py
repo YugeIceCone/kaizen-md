@@ -47,10 +47,48 @@ _RETROFIT_TOOLS = [
     ("metrics session", [str(_SCRIPTS / "metrics.py"), "session", "--json"]),
     ("metrics top",     [str(_SCRIPTS / "metrics.py"), "top", "--json"]),
     ("metrics path",    [str(_SCRIPTS / "metrics.py"), "path"]),
-    # roadmap_status needs a handoff file in the repo — skip from default
-    # validation since not all repos have plans/. Manual smoke covered
-    # the shape; re-enable here once a fixture is in place.
+    ("trace stats",     [str(_SCRIPTS / "trace.py"), "stats"]),
+    ("loc-index report", [str(_SCRIPTS / "loc_index.py"), "report", "--json"]),
+    # roadmap_status excluded — needs handoff fixture in plans/
 ]
+
+
+class TestEmitterFactory(unittest.TestCase):
+    """`_envelope.emitter(tool)` returns a tool-bound closure — DRY for
+    multiple --json call sites in the same script."""
+
+    def setUp(self):
+        self.env = _load("kaizen_env_emitter_test", _ENVELOPE)
+
+    def test_emitter_returns_callable(self):
+        bound = self.env.emitter("kaizen-test", tool_version="0.1.0")
+        self.assertTrue(callable(bound))
+
+    def test_emitter_captures_tool_and_version(self):
+        # Call the bound emitter and inspect what it would write.
+        import io
+        bound = self.env.emitter("kaizen-test-bound", tool_version="9.9.9")
+        buf = io.StringIO()
+        bound({"items": []}, verdict="green", file=buf)
+        result = json.loads(buf.getvalue())
+        self.assertEqual(result["kaizen"]["tool"], "kaizen-test-bound")
+        self.assertEqual(result["kaizen"]["tool_version"], "9.9.9")
+        self.assertEqual(result["verdict"], "green")
+
+    def test_emitter_pulls_argv_at_call_time(self):
+        """argv is grabbed from sys.argv at call time, not at emitter
+        construction — so late argv mutations are respected."""
+        import io
+        bound = self.env.emitter("kaizen-late-argv")
+        original = sys.argv
+        try:
+            sys.argv = ["fake-script", "--late-flag"]
+            buf = io.StringIO()
+            bound({}, file=buf)
+            result = json.loads(buf.getvalue())
+            self.assertEqual(result["kaizen"]["command"], "fake-script --late-flag")
+        finally:
+            sys.argv = original
 
 
 class TestEnvelopeHelper(unittest.TestCase):

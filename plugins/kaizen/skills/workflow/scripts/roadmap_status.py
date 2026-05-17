@@ -41,13 +41,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import _envelope  # noqa: E402
 
-
-def _emit_roadmap(data, *, verdict=None, counts=None) -> None:
-    """One-liner: tool="kaizen-roadmap", argv=sys.argv."""
-    _envelope.emit(
-        tool="kaizen-roadmap", tool_version="1.0.0",
-        data=data, verdict=verdict, counts=counts, argv=sys.argv,
-    )
+_emit_roadmap = _envelope.emitter("kaizen-roadmap", tool_version="1.0.0")
 
 
 # ─── Constants ────────────────────────────────────────────────────────

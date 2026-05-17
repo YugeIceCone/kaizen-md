@@ -134,6 +134,59 @@ def opt_in_json(argv: list[str]) -> bool:
     return "--json" in argv
 
 
+def emitter(tool: str, tool_version: str | None = None):
+    """Return a tool-bound emit() — closure pattern.
+
+    Each retrofit was duplicating an inline `_emit(data, verdict, counts)`
+    helper that hardcoded the tool name + version + sys.argv. Hoist that
+    pattern here so retrofits become:
+
+        import _envelope
+        _emit = _envelope.emitter("kaizen-mytool", tool_version="1.0.0")
+
+        # in main():
+        if args.json:
+            _emit(data, verdict="green", counts={"items": N})
+
+    The returned callable signature mirrors `emit()` minus tool/version
+    (already captured) and argv (auto-pulled from sys.argv at call time
+    so late-mutation of argv is respected).
+
+    Args:
+      tool:         identifier ("kaizen-mytool")
+      tool_version: optional per-tool semver
+
+    Returns:
+      _bound(data, *, verdict=None, counts=None, duration_ms=None,
+             errors=None, include_time=False, indent=2, file=None) -> None
+    """
+    def _bound(
+        data,
+        *,
+        verdict: str | None = None,
+        counts: dict[str, int] | None = None,
+        duration_ms: int | None = None,
+        errors: list[str] | None = None,
+        include_time: bool = False,
+        indent: int = 2,
+        file=None,
+    ) -> None:
+        emit(
+            tool=tool,
+            data=data,
+            tool_version=tool_version,
+            verdict=verdict,
+            counts=counts,
+            duration_ms=duration_ms,
+            argv=sys.argv,
+            errors=errors,
+            include_time=include_time,
+            indent=indent,
+            file=file,
+        )
+    return _bound
+
+
 def emit(
     tool: str,
     data,

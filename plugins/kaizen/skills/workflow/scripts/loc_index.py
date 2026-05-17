@@ -85,7 +85,6 @@ from __future__ import annotations
 import argparse
 import ast
 import datetime as dt
-import fnmatch
 import hashlib
 import json
 import os
@@ -93,7 +92,7 @@ import re
 import sqlite3
 import subprocess
 import sys
-from dataclasses import asdict, dataclass, field
+from dataclasses import dataclass, field
 from pathlib import Path
 
 _SCRIPT_DIR = Path(__file__).resolve().parent
@@ -101,6 +100,9 @@ sys.path.insert(0, str(_SCRIPT_DIR))
 
 import _sqlite as _kz_sqlite  # noqa: E402
 from _indexer_cli import IndexerCLI  # noqa: E402
+import _envelope  # noqa: E402
+
+_emit = _envelope.emitter("kaizen-loc", tool_version="1.0.0")
 
 
 # ─── Language detection ──────────────────────────────────────────────
@@ -1340,7 +1342,7 @@ class LocCLI(IndexerCLI):
             limit=args.limit,
         )
         if args.json:
-            print(json.dumps(results, indent=2, default=str))
+            _emit(results, counts={"results": len(results)})
             return
         for r in results:
             tag = f"[{r['god_tier'].upper()}] " if r["god_tier"] else ""
@@ -1354,7 +1356,7 @@ class LocCLI(IndexerCLI):
         if not result:
             sys.exit(f"id {args.id} not found")
         if args.json:
-            print(json.dumps(result, indent=2, default=str))
+            _emit(result)
             return
         print(f"# {result['qualified_name']} ({result['path']}:"
               f"{result['line_start']}-{result['line_end']})")
@@ -1366,12 +1368,12 @@ class LocCLI(IndexerCLI):
     def cmd_report(self, args):
         result = do_report(_resolve_root(args))
         if args.json:
-            print(json.dumps(result, indent=2, default=str))
+            _emit(result, counts={"indexed": int(bool(result.get("indexed")))})
             return
         if not result.get("indexed"):
             print("kaizen-loc: no index yet — run `index` first")
             return
-        print(f"--- Codebase Report ---")
+        print("--- Codebase Report ---")
         print(f"total files: {result['total_files']}")
         print(f"total lines: {result['total_lines']}")
         print(f"comment density: {result['comment_density_pct']}%")

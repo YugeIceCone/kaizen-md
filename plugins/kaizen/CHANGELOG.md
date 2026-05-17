@@ -5,6 +5,62 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [S
 
 ## [Unreleased]
 
+### Added — envelope DRY pass 2: `emitter()` factory + 2 more retrofits + inventory doc
+
+Continues the envelope effort. Three additions:
+
+**1. `_envelope.emitter(tool, tool_version)` factory** — closure pattern that captures the tool identity once, returns a tool-bound `_emit(data, verdict, counts, ...)` callable. Replaces the inline `_emit` helper each retrofit was shipping. Now retrofits become:
+
+```python
+import _envelope
+_emit = _envelope.emitter("kaizen-mytool", tool_version="1.0.0")
+
+# in main():
+if args.json:
+    _emit(data, verdict="green", counts={"items": N})
+```
+
+`argv` is pulled from `sys.argv` at CALL time, not factory time — so late argv mutations are respected. Regression test pins this behavior.
+
+**2. Two more retrofits**:
+- **`trace.py::cmd_stats`** — was bare `json.dumps(out)`, now envelope. `tool="kaizen-trace"`. `counts={"total": N}`. (cmd_search left as NDJSON streaming — one envelope per line doesn't fit; envelope is one document.)
+- **`loc_index.py`** — 3 sites: `search`, `get`, `report`. Each emits envelope with appropriate counts (search → `{results: N}`, report → `{indexed: 0|1}`).
+
+Refactored `metrics.py` + `roadmap_status.py` to use `emitter()` instead of inline `_emit` helpers (pure DRY — no behavior change).
+
+**3. Envelope-retrofit inventory doc** at `plugins/kaizen/skills/efficient-tool-use/references/envelope-retrofit.md`. Records all 55 CLI Python scripts by status:
+
+- ✅ **emit** (7): gatekeeper, surface, iron_laws, metrics, roadmap_status, trace, loc_index
+- 🔄 **retrofit-pending** (24): has `--json` flag; mechanical wrap remaining
+- 🟡 **needs-json-flag** (17): need flag wiring before envelope wrap
+- 🔵 **no-cli** (35): helpers and non-CLI scripts
+- **mcp** (22): separate protocol — covered by a future MCP+envelope adapter
+
+Includes the regen script (one-line walk that rebuilds the table). Roadmap section partitions remaining work into 6 phases by priority + estimates ~12-17 commits to complete.
+
+**Aggregate envelope progress**:
+
+| Metric | Before | After |
+|---|---|---|
+| Tool surfaces emitting envelope | 5 (commit `71a5ac3`+`2f6a531`) | **7** (`trace`, `loc_index` added) |
+| Schema-validated test fixtures | 8 | **10** (+ `trace stats`, `loc-index report`) |
+| Envelope coverage of has-json tools | 5/31 = 16% | **7/31 = 23%** |
+| DRY ratio per retrofit | inline `_emit` helper (~7 LOC) | `emitter()` factory (1 LOC) |
+
+**Files**:
+- `skills/workflow/scripts/_envelope.py` — added `emitter()` factory (+55 LOC)
+- `skills/workflow/scripts/metrics.py` — inline `_emit` → `emitter()` (DRY)
+- `skills/workflow/scripts/roadmap_status.py` — same DRY
+- `skills/workflow/scripts/trace.py` — retrofitted `cmd_stats`
+- `skills/workflow/scripts/loc_index.py` — retrofitted 3 sites
+- `tests/test_envelope.py` — `_RETROFIT_TOOLS` extended 8 → 10 + new `TestEmitterFactory` (3 tests)
+- `skills/efficient-tool-use/references/envelope-retrofit.md` — NEW inventory doc
+
+**Validation**:
+- 11/11 envelope tests pass (was 8, + 3 emitter factory tests)
+- All 10 retrofitted tool surfaces validate against canonical schema in one parameterized test
+- plugin-development validator: 52/52 features clean
+
 ### Added — envelope expansion (+ DRY): `_envelope.emit()` + 2 more retrofitted tools (metrics, roadmap_status)
 
 Continues the canonical-envelope effort from the prior commit. Adds a one-liner `emit()` helper so callers replace 8-line `try/except + json.dumps fallback` blocks with a single function call. Refactors the 3 existing retrofits to use it (pure DRY win) + retrofits 2 more tools (metrics.py, roadmap_status.py).

@@ -89,6 +89,9 @@ def _disabled() -> bool:
 
 
 from _time import iso  # M5 dedup
+import _envelope  # noqa: E402
+
+_emit = _envelope.emitter("kaizen-trace", tool_version="1.0.0")
 
 
 def _now_iso() -> str:
@@ -335,7 +338,7 @@ def cmd_stats(args) -> None:
             "p95": int(statistics.quantiles(durations, n=20)[-1]) if len(durations) >= 20 else max(durations),
             "max": max(durations),
         }
-    print(json.dumps(out, indent=2))
+    _emit(out, counts={"total": total})
 
 
 def cmd_clear(args) -> None:
