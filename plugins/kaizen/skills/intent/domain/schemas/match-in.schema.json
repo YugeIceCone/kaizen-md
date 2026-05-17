@@ -1,0 +1,11 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/YugeIceCone/kaizen-md/skills/intent/match-in.schema.json",
+  "title": "kaizen-intent match/suggest input",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "text":        { "type": "string", "description": "Text to match phrase triggers against" },
+    "events_json": { "type": "string", "description": "JSON-encoded array of dxm events for event_pattern triggers" }
+  }
+}

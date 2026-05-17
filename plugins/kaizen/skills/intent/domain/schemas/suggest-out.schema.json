@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/YugeIceCone/kaizen-md/skills/intent/suggest-out.schema.json",
+  "title": "kaizen-intent suggest output",
+  "description": "Single highest-confidence matching intent, or null when no match. Used by statusline + agents for one-line hints.",
+  "type": "object",
+  "required": ["intent"],
+  "additionalProperties": false,
+  "properties": {
+    "intent": {
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "required": ["id", "confidence", "action"],
+          "additionalProperties": false,
+          "properties": {
+            "id":          { "type": "string" },
+            "description": { "type": "string" },
+            "confidence":  { "type": "number", "minimum": 0, "maximum": 1 },
+            "action":      { "type": "object", "additionalProperties": true }
+          }
+        }
+      ]
+    }
+  }
+}

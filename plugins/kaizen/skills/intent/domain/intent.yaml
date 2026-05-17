@@ -26,3 +26,9 @@ subcommands:
       statusline + agent for one-line hints.
     input_schema:  schemas/match-in.schema.json
     output_schema: schemas/suggest-out.schema.json
+
+  scan:
+    description: >-
+      Pull last N seconds of events from dxm for a session, run
+      event_pattern triggers against them. Convenience composition of
+      kaizen-dxm tail --back N + match.

@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/YugeIceCone/kaizen-md/skills/intent/match-out.schema.json",
+  "title": "kaizen-intent match output",
+  "type": "object",
+  "required": ["matched", "count"],
+  "additionalProperties": false,
+  "properties": {
+    "matched": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/IntentMatch" },
+      "description": "Matching intents sorted by confidence DESC"
+    },
+    "count":   { "type": "integer", "minimum": 0 }
+  },
+  "$defs": {
+    "IntentMatch": {
+      "type": "object",
+      "required": ["id", "confidence", "action"],
+      "additionalProperties": false,
+      "properties": {
+        "id":          { "type": "string" },
+        "description": { "type": "string" },
+        "confidence":  { "type": "number", "minimum": 0, "maximum": 1 },
+        "action":      { "type": "object", "additionalProperties": true }
+      }
+    }
+  }
+}

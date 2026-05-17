@@ -293,6 +293,79 @@ def _cmd_suggest(args) -> int:
     return 0
 
 
+def _cmd_scan(args) -> int:
+    """Pull last N seconds of events from dxm, run match against them.
+
+    Convenience composition: kaizen-dxm tail --back N + kaizen-intent
+    match --events-json — without the agent having to pipe between
+    two tools.
+    """
+    if _disabled():
+        if args.json:
+            _emit({"disabled": True, "matched": []}, verdict="yellow")
+        return 0
+    # Read events directly from dxm's per-session file (no subprocess
+    # for the hot read).
+    dxm_root_env = os.environ.get("KAIZEN_DXM_DIR")
+    if dxm_root_env:
+        dxm_root = Path(os.path.expandvars(dxm_root_env)).expanduser()
+    else:
+        dxm_root = Path.home() / ".claude" / ".kaizen" / "dxm"
+    events_path = dxm_root / f"events-{args.session}.jsonl"
+
+    events: list[dict] = []
+    if events_path.is_file():
+        import time as _t
+        cutoff = _t.time() - args.back
+        try:
+            with events_path.open("r", encoding="utf-8") as f:
+                for line in f:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        e = json.loads(line)
+                    except json.JSONDecodeError:
+                        continue
+                    ts = e.get("ts_unix")
+                    if isinstance(ts, (int, float)) and ts >= cutoff:
+                        events.append(e)
+        except OSError:
+            pass
+
+    try:
+        intents = _load_intents()
+    except (FileNotFoundError, RuntimeError) as exc:
+        print(f"[kaizen-intent scan] {exc}", file=sys.stderr)
+        return 1
+    matched: list[dict] = []
+    for i in intents:
+        if _intent_matches(i, "", events):
+            matched.append({
+                "id":          i.get("id"),
+                "description": i.get("description", ""),
+                "confidence":  _intent_confidence(i),
+                "action":      i.get("action") or {},
+            })
+    matched.sort(key=lambda m: -m["confidence"])
+    data = {
+        "session_id": args.session,
+        "back_seconds": args.back,
+        "event_count": len(events),
+        "matched": matched,
+        "count": len(matched),
+    }
+    if args.json:
+        verdict = "green" if matched else "yellow"
+        _emit(data, verdict=verdict, counts={"matched": len(matched)})
+    else:
+        print(f"[kaizen-intent scan] session={args.session} "
+              f"events={len(events)} matched={len(matched)}")
+        for m in matched:
+            print(f"  {m['id']:30s}  conf={m['confidence']:.2f}")
+    return 0
+
+
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(
         prog="kaizen-intent",
@@ -320,6 +393,16 @@ def main(argv=None) -> int:
     ss.add_argument("--events-json", default=None)
     ss.add_argument("--json", action="store_true")
     ss.set_defaults(func=_cmd_suggest)
+
+    sc = sub.add_parser(
+        "scan",
+        help="pull last N seconds of dxm events for a session and run match",
+    )
+    sc.add_argument("--session", required=True)
+    sc.add_argument("--back", type=float, default=60.0,
+                     help="rolling window in seconds (default 60)")
+    sc.add_argument("--json", action="store_true")
+    sc.set_defaults(func=_cmd_scan)
 
     args = p.parse_args(argv)
     return args.func(args)
