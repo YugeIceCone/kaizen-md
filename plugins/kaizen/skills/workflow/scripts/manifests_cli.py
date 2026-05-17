@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# consolidated-cli-parent: manifests
 """kaizen-manifests CLI — multi-language manifest hygiene.
 
 Subcommands:

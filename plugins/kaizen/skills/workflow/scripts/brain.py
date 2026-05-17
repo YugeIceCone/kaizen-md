@@ -662,7 +662,38 @@ def main(argv: Optional[list[str]] = None) -> int:
                       help="(reserved for future envelope output)")
     ssd.set_defaults(func=cmd_seed)
 
+    # ─── Consolidated sub-CLIs (CONSOL-3, v1.40+) ────────────────────
+    # `kaizen-brain audit | evolve | index | promote | migrate` delegate
+    # to the existing brain_<verb>.py modules' main(). Each module
+    # declares `# consolidated-cli-parent: brain` so the iron-law's
+    # bin-wrapper-per-cli check is satisfied by kaizen-brain alone.
+    # This folds 5 separate bin wrappers into one user-facing command
+    # while keeping the module + test boundaries intact.
+    for verb, module_name, help_text in (
+        ("audit",   "brain_audit",
+         "session-end discovery — drafts → Inbox/"),
+        ("evolve",  "brain_evolve",
+         "consolidation + freshness + Persona promotion"),
+        ("index",   "brain_index",
+         "SQLite + sentence-transformers index over Notes"),
+        ("promote", "brain_promote",
+         "project-memory → brain promotion flow"),
+        ("migrate", "brain_migrate",
+         "relocate brain dir (v1.38 migration tool)"),
+    ):
+        _sp = sub.add_parser(verb, help=help_text, add_help=False)
+        # All-args passthrough — the underlying module's argparse owns
+        # the flag surface. `add_help=False` prevents argparse from
+        # eating `-h`/`--help` here so the child sees it.
+        _sp.add_argument("rest", nargs=argparse.REMAINDER)
+        _sp.set_defaults(_consol_module=module_name)
+
     args = p.parse_args(argv)
+    if getattr(args, "_consol_module", None):
+        # Dispatch to the consolidated sub-CLI's main(argv).
+        import importlib
+        mod = importlib.import_module(args._consol_module)
+        return mod.main(args.rest)
     return args.func(args)
 
 

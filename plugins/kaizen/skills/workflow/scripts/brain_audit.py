@@ -1,3 +1,5 @@
+# consolidated-cli-parent: brain
+
 """kaizen brain audit — end-of-session discovery audit flow.
 
 Implements the ``pref-session-discovery-log`` directive: at end-of-

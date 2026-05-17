@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# consolidated-cli-parent: brain
 """kaizen-brain-migrate — relocate the Second Brain.
 
 Migrates the user-global brain directory from the legacy

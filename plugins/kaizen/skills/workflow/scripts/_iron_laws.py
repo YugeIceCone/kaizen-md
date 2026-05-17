@@ -151,12 +151,43 @@ def _wrapper_name(stem: str) -> str:
     return "kaizen-" + stem.lstrip("_").replace("_", "-")
 
 
+_CONSOLIDATED_PARENT = re.compile(
+    r"^#\s*consolidated-cli-parent:\s*(\S+)\s*$", re.MULTILINE
+)
+
+
 def check_bin_wrapper_per_cli(ctx: CheckContext) -> list[Finding]:
+    """Each `scripts/<name>.py` argparse-main script needs a matching
+    `bin/kaizen-<name>` wrapper — UNLESS it declares itself a member
+    of a consolidated multi-verb CLI via a header directive::
+
+        # consolidated-cli-parent: brain
+
+    Then the bin wrapper requirement transfers to the parent
+    (`bin/kaizen-brain`), and the sub-script doesn't need its own.
+    Lets brain_audit/evolve/index/promote/migrate live under
+    `kaizen-brain <verb>` without 5 separate bin wrappers.
+    """
     out = []
     for p in ctx.plugin_files("skills/workflow/scripts/*.py"):
         if p.name.startswith("_"):
             continue
-        if not _has_argparse_main(p.read_text(encoding="utf-8", errors="ignore")):
+        text = p.read_text(encoding="utf-8", errors="ignore")
+        if not _has_argparse_main(text):
+            continue
+        # Consolidated-CLI exemption: header directive transfers the
+        # wrapper requirement to a parent script's bin.
+        m = _CONSOLIDATED_PARENT.search(text)
+        if m:
+            parent_wrapper = ctx.plugin_root / "bin" / _wrapper_name(m.group(1))
+            if parent_wrapper.exists():
+                continue   # parent's wrapper covers this sub-CLI
+            out.append(Finding(
+                "bin-wrapper-per-cli", "hard",
+                f"CLI script {p.name} declares "
+                f"`consolidated-cli-parent: {m.group(1)}` but "
+                f"bin/{parent_wrapper.name} doesn't exist",
+                ctx.rel(p)))
             continue
         wrapper = ctx.plugin_root / "bin" / _wrapper_name(p.stem)
         if not wrapper.exists():

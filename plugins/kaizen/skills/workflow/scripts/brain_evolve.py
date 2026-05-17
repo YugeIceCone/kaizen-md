@@ -1,3 +1,5 @@
+# consolidated-cli-parent: brain
+
 """kaizen brain evolve — periodic consolidation + freshness review.
 
 Scans all brain Notes for:

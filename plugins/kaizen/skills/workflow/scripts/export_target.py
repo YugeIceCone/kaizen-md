@@ -1,3 +1,4 @@
+# consolidated-cli-parent: export
 """kaizen-export — port the plugin's skills / commands / agents / MCPs
 to a sibling AI-CLI's expected layout.
 

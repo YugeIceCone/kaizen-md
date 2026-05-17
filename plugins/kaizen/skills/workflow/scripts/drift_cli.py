@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# consolidated-cli-parent: drift
 """kaizen-drift CLI — record / check / explain.
 
 Wraps `_drift.py`. Same paths as the MCP server: baseline at

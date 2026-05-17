@@ -100,13 +100,13 @@ Tests sandbox via env vars (KAIZEN_<X>_PATH=<tmp>). Never touch real ~/.claude/.
 
 ### `bin-wrapper-per-cli` (hard · auto)
 
-Each CLI script gets its own bin/kaizen-* wrapper. /kaizen:setup symlinks bin/ into ~/.local/bin/.
+Each CLI script gets its own bin/kaizen-* wrapper. /kaizen:setup symlinks bin/ into ~/.local/bin/. EXCEPTION: a script that declares `# consolidated-cli-parent: <name>` in its header transfers the wrapper requirement to the named parent's bin (lets brain_audit/evolve/index/promote/migrate live under `kaizen-brain <verb>` without 5 separate wrappers).
 
 **Check:** `bin_wrapper_per_cli` (in `_iron_laws.py`)
 
-**Detect:** skills/workflow/scripts/<feature>_<op>.py with argparse main but no bin/kaizen-<feature>-<op>
+**Detect:** skills/workflow/scripts/<feature>_<op>.py with argparse main but no bin/kaizen-<feature>-<op> AND no `# consolidated-cli-parent: <X>` header pointing at an existing bin/kaizen-<X>
 
-**Why:** Without a wrapper, kaizen-<feature>-<op> is 'command not found' from shell. See brain commit 2cfd234 + bin-wrapper hotfix.
+**Why:** Without a wrapper, kaizen-<feature>-<op> is 'command not found' from shell. See brain commit 2cfd234 + bin-wrapper hotfix. The consolidated-CLI exemption (v1.40+) lets multi-verb tools collapse to one wrapper without losing iron-law coverage.
 
 ### `plugin-manifest-permissions` (hard · auto)
 

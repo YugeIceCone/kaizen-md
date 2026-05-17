@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# consolidated-cli-parent: roadmap
 """kaizen roadmap-status — parse phase-progress tables out of a handoff
 markdown file and render a progress dashboard.
 

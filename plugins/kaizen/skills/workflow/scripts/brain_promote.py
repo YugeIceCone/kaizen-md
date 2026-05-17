@@ -1,3 +1,5 @@
+# consolidated-cli-parent: brain
+
 """kaizen brain promote — project-memory → brain promotion flow.
 
 Walks ~/.claude/projects/<slug>/memory/ for entries that meet the

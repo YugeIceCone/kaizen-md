@@ -1,3 +1,5 @@
+# consolidated-cli-parent: brain
+
 """kaizen brain index — SQLite + sentence-transformers over the
 Second Brain.
 

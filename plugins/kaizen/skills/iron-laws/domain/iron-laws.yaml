@@ -66,12 +66,12 @@ laws:
     why: "Test isolation; CI runs without polluting the user's brain or auto-memory."
 
   - id: bin-wrapper-per-cli
-    statement: "Each CLI script gets its own bin/kaizen-* wrapper. /kaizen:setup symlinks bin/ into ~/.local/bin/."
+    statement: "Each CLI script gets its own bin/kaizen-* wrapper. /kaizen:setup symlinks bin/ into ~/.local/bin/. EXCEPTION: a script that declares `# consolidated-cli-parent: <name>` in its header transfers the wrapper requirement to the named parent's bin (lets brain_audit/evolve/index/promote/migrate live under `kaizen-brain <verb>` without 5 separate wrappers)."
     severity: hard
     enforcement: auto
     check: bin_wrapper_per_cli
-    detect: "skills/workflow/scripts/<feature>_<op>.py with argparse main but no bin/kaizen-<feature>-<op>"
-    why: "Without a wrapper, kaizen-<feature>-<op> is 'command not found' from shell. See brain commit 2cfd234 + bin-wrapper hotfix."
+    detect: "skills/workflow/scripts/<feature>_<op>.py with argparse main but no bin/kaizen-<feature>-<op> AND no `# consolidated-cli-parent: <X>` header pointing at an existing bin/kaizen-<X>"
+    why: "Without a wrapper, kaizen-<feature>-<op> is 'command not found' from shell. See brain commit 2cfd234 + bin-wrapper hotfix. The consolidated-CLI exemption (v1.40+) lets multi-verb tools collapse to one wrapper without losing iron-law coverage."
 
   - id: plugin-manifest-permissions
     statement: "New script + hook entries land with matching plugin.json permission lines in the same commit."

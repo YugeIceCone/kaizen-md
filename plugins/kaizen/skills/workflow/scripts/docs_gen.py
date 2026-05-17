@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# consolidated-cli-parent: docs
 """kaizen docs_gen — comprehensive per-package documentation generator.
 
 Stdlib-only. Ports shodan's `cargo xtask docs` Rust pipeline
