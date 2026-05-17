@@ -272,6 +272,29 @@ class TestEtuDecision(unittest.TestCase):
         finally:
             del os.environ["KAIZEN_ETU_GATE_DISABLE"]
 
+    def test_grep_for_eval_string_is_not_blocked(self):
+        # Literal "eval " inside a quoted grep argument is data, not a shell
+        # builtin invocation — the etu gate must not flag it.
+        r = _bash_gate.decide('grep -rn "eval " plugins/')
+        self.assertNotEqual(
+            r.get("hookSpecificOutput", {}).get("permissionDecision"), "ask",
+            f"unexpected ask: {r}"
+        )
+
+    def test_grep_for_eval_inside_single_quotes_is_not_blocked(self):
+        r = _bash_gate.decide("grep -n 'eval \\\"$x\\\"' plugins/")
+        self.assertNotEqual(
+            r.get("hookSpecificOutput", {}).get("permissionDecision"), "ask",
+            f"unexpected ask: {r}"
+        )
+
+    def test_eval_after_separator_still_blocks(self):
+        # Real eval after a command separator must still be caught.
+        r = _bash_gate.decide('ls; eval "$x"')
+        self.assertEqual(
+            r.get("hookSpecificOutput", {}).get("permissionDecision"), "ask"
+        )
+
 
 class TestLongFormNudge(unittest.TestCase):
     """long_form_nudge advises (systemMessage) when kaizen scripts are

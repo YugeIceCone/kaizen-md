@@ -142,7 +142,15 @@ anti_patterns:
     why_bad: "Direct code injection. Any path that touches eval + user-influenced data is a vulnerability."
     replacement: "Restructure to not need eval. If you genuinely need indirection, use a case statement or a function dispatch table."
     severity: error
-    detect: "eval [\\$\"]"
+    # Match `eval ` followed by `$` or `"` (the danger shape) BUT not when
+    # `eval` is itself a substring of an identifier or already inside a
+    # quoted string. The negative lookbehind `(?<![a-zA-Z_/"'])` rejects:
+    #   • alphanumeric/_  → `geval`, `re_eval` are not eval
+    #   • `/`             → `/path/eval ...` is a path, not the builtin
+    #   • `"` or `'`      → `grep "eval " file` is a literal-text search
+    # Real `eval "$x"` matches: line-start (no preceding char) + `eval `
+    # + `"`. `; eval $cmd` matches: space before `eval` + `eval ` + `$`.
+    detect: "(?<![a-zA-Z_/\"'])eval [\\$\"]"
 
   - id: while-read-loop-shell
     tool: bash

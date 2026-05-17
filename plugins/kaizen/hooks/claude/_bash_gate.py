@@ -255,9 +255,11 @@ def decide(command: str) -> dict:
             }
         }
 
-    # etu sees the RAW command — `eval "$user_input"` is the pattern
-    # we want to catch, but _strip_noncommand would erase its argument.
-    # `eval` itself is the danger, so we scan unstripped.
+    # etu sees the RAW command — the eval-on-user-input detect regex
+    # uses a negative lookbehind to ignore `eval` preceded by a quote
+    # character (e.g. inside a `grep "eval " file` argument), so we don't
+    # need to strip quotes here. Stripping would also erase the
+    # `"$user_input"` argument of a real eval, hiding the danger signal.
     etu = etu_decision(command)
     if etu:
         verb, reason = etu
