@@ -70,6 +70,8 @@ SUBSERVERS: list[tuple[str, str]] = [
     ("intent", "intent_mcp"),
     # Phase 4 — local LLM bridge
     ("ollama", "ollama_mcp"),
+    # Phase 5 — agent-context query
+    ("context", "context_mcp"),
 ]
 
 gw = FastMCP("kaizen")
