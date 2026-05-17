@@ -98,8 +98,16 @@ STATE_SESSION=${STATE_SESSION%\"}
 STATE_LAST_TURN=${STATE_LAST_TURN#\"}
 STATE_LAST_TURN=${STATE_LAST_TURN%\"}
 
-# Session pinning — if the state file was written by a different session, no-op.
-if [[ -n "$STATE_SESSION" ]] && [[ "$STATE_SESSION" != "$HOOK_SESSION" ]]; then
+# Session pinning — when the state file is pinned to a different session,
+# treat it as an orphan: archive (so the prior session's work is recoverable)
+# and remove (so the new session starts clean). Pre-fix: silent exit 0,
+# which left the orphan in place to wedge future Stop fires until manual rm.
+if [[ -n "$STATE_SESSION" ]] && [[ -n "$HOOK_SESSION" ]] && [[ "$STATE_SESSION" != "$HOOK_SESSION" ]]; then
+  ARCHIVE_DIR="$(dirname "$RALPH_STATE_FILE")/loops/archive"
+  mkdir -p "$ARCHIVE_DIR"
+  TS=$(date -u +%Y%m%dT%H%M%SZ)
+  cp "$RALPH_STATE_FILE" "$ARCHIVE_DIR/${TS}-orphan-${STATE_SESSION}.md" 2>/dev/null || true
+  rm -f "$RALPH_STATE_FILE"
   exit 0
 fi
 

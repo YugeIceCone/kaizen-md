@@ -1,0 +1,34 @@
+version: 1
+feature: loop-automation
+description: |
+  Full-automation knobs for Ralph loops — TTL, stuck-detection, session-boundary
+  policy. Read by loop_ledger.py (decide flow) + hooks/claude/stop-ralph.sh
+  (session-pinning policy).
+
+  Resolution order (low → high precedence):
+    1. defaults declared here in automation.yaml
+    2. KAIZEN_LOOP_* env vars (override per-invocation)
+    3. (future) per-loop overrides in .kaizen/loop.state.md frontmatter
+ttl:
+  # Hour-resolution TTL (preferred for full-automation runs). Null =
+  # disabled (day-resolution only). Opt-in via the env knob below or
+  # by editing this value. Recommended for unattended runs: 12.
+  max_age_hours: null
+  # Day-resolution TTL (long-running loops). Used when max_age_hours is null.
+  max_age_days: 30
+  env_overrides:
+    hours: KAIZEN_LOOP_MAX_AGE_HOURS
+    days:  KAIZEN_LOOP_MAX_AGE_DAYS
+stuck:
+  # Body sha unchanged for N consecutive iterations → auto-cancel.
+  # 5 = reasonable balance between false-positive (work between iters
+  # but no state change) and false-negative (genuine deadlock).
+  iterations: 5
+  env_override: KAIZEN_LOOP_STUCK_ITERATIONS
+session_boundary:
+  # When state.session_id ≠ hook.session_id, orphan policy:
+  #   archive — move to <state-dir>/loops/archive/<UTC>-orphan-<sid>.md
+  #   delete  — remove without archiving (audit trail lost)
+  #   silent  — pre-2026-05-17 behavior (broken, state wedges)
+  on_mismatch: archive
+  archive_subdir: loops/archive

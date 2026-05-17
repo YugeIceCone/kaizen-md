@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/YugeIceCone/kaizen-md/main/plugins/kaizen/skills/loop/domain/schemas/automation.schema.json",
+  "title": "kaizen loop-automation",
+  "description": "Schema for skills/loop/domain/automation.yaml — Ralph loop full-automation knobs (TTL / stuck-detection / session-boundary policy).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "ttl", "stuck", "session_boundary"],
+  "properties": {
+    "version": { "type": "integer", "const": 1 },
+    "feature": { "type": "string" },
+    "description": { "type": "string" },
+    "ttl": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["max_age_days"],
+      "properties": {
+        "max_age_hours": {
+          "anyOf": [
+            {"type": "integer", "minimum": 1},
+            {"type": "null"}
+          ],
+          "description": "Hour-resolution TTL (preferred). Null = disabled, falls through to days."
+        },
+        "max_age_days": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Day-resolution TTL. Default 30 for long-running loops."
+        },
+        "env_overrides": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "hours": { "type": "string" },
+            "days":  { "type": "string" }
+          }
+        }
+      }
+    },
+    "stuck": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["iterations"],
+      "properties": {
+        "iterations": {
+          "type": "integer",
+          "minimum": 2,
+          "description": "Body-sha unchanged for N consecutive iterations → auto-cancel."
+        },
+        "env_override": { "type": "string" }
+      }
+    },
+    "session_boundary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["on_mismatch"],
+      "properties": {
+        "on_mismatch": {
+          "type": "string",
+          "enum": ["archive", "delete", "silent"],
+          "description": "Policy when state.session_id ≠ hook.session_id."
+        },
+        "archive_subdir": {
+          "type": "string",
+          "description": "Subdir under the state file's directory for archived orphans."
+        }
+      }
+    }
+  }
+}

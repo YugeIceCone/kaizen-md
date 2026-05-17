@@ -58,8 +58,80 @@ VERIFY_TIMEOUT_SECONDS = 30
 # Defaults chosen to be generous — these are last-resort safety rails,
 # not normal-flow exits.
 
-DEFAULT_MAX_AGE_DAYS = 30     # state file older than this → auto-cancel
-DEFAULT_STUCK_ITERATIONS = 5   # same body sha for N iters → auto-end
+DEFAULT_MAX_AGE_DAYS = 30     # fallback when automation.yaml unreadable
+DEFAULT_STUCK_ITERATIONS = 5   # fallback when automation.yaml unreadable
+DEFAULT_MAX_AGE_HOURS = None  # disabled by default; yaml sets 12
+
+
+def _load_automation_yaml() -> dict:
+    """Schema+yaml+json driven: read defaults from
+    skills/loop/domain/automation.yaml. Stdlib-only minimal parser
+    sufficient for our flat schema. Returns {} on any failure (env
+    vars + hardcoded defaults still apply).
+    """
+    here = Path(__file__).resolve()
+    yaml_path = here.parents[2] / "loop" / "domain" / "automation.yaml"
+    if not yaml_path.is_file():
+        return {}
+    try:
+        text = yaml_path.read_text(encoding="utf-8")
+    except OSError:
+        return {}
+    # Try PyYAML first (most accurate), fall back to minimal parser.
+    try:
+        import yaml as _yaml  # type: ignore
+        data = _yaml.safe_load(text) or {}
+        return data if isinstance(data, dict) else {}
+    except ImportError:
+        pass
+    # Minimal stdlib parse — flat scalar leaves only.
+    out: dict = {}
+    stack: list = [out]
+    indents: list[int] = [-1]
+    for raw in text.splitlines():
+        if not raw.strip() or raw.lstrip().startswith("#"):
+            continue
+        indent = len(raw) - len(raw.lstrip())
+        # pop deeper scopes
+        while indent <= indents[-1]:
+            stack.pop(); indents.pop()
+        line = raw.strip()
+        if ":" not in line:
+            continue
+        k, _, v = line.partition(":")
+        v = v.strip().split("#", 1)[0].strip()
+        if not v:
+            new_dict: dict = {}
+            stack[-1][k.strip()] = new_dict
+            stack.append(new_dict); indents.append(indent)
+        else:
+            # strip quotes
+            if (len(v) >= 2) and v[0] == v[-1] and v[0] in ('"', "'"):
+                v = v[1:-1]
+            if v.lower() in ("null", "none", "~"):
+                v = None
+            elif v.lower() in ("true", "false"):
+                v = (v.lower() == "true")
+            else:
+                try: v = int(v)
+                except ValueError:
+                    try: v = float(v)
+                    except ValueError: pass
+            stack[-1][k.strip()] = v
+    return out
+
+
+_AUTOMATION = _load_automation_yaml()
+
+
+def _yaml_default(*keys, fallback=None):
+    """Walk _AUTOMATION dict for nested keys; return fallback if missing."""
+    cur = _AUTOMATION
+    for k in keys:
+        if not isinstance(cur, dict) or k not in cur:
+            return fallback
+        cur = cur[k]
+    return cur
 
 
 def split_frontmatter(text: str) -> tuple[str, str]:
@@ -224,19 +296,25 @@ def render_prompt(pending: list[dict]) -> str:
 
 
 def _max_age_days() -> int:
-    raw = os.environ.get("KAIZEN_LOOP_MAX_AGE_DAYS", str(DEFAULT_MAX_AGE_DAYS))
-    try:
-        return max(1, int(raw))
-    except ValueError:
-        return DEFAULT_MAX_AGE_DAYS
+    """Resolution: env > yaml > hardcoded default."""
+    env = os.environ.get("KAIZEN_LOOP_MAX_AGE_DAYS")
+    if env is not None:
+        try: return max(1, int(env))
+        except ValueError: pass
+    y = _yaml_default("ttl", "max_age_days", fallback=DEFAULT_MAX_AGE_DAYS)
+    try: return max(1, int(y))
+    except (ValueError, TypeError): return DEFAULT_MAX_AGE_DAYS
 
 
 def _stuck_iterations() -> int:
-    raw = os.environ.get("KAIZEN_LOOP_STUCK_ITERATIONS", str(DEFAULT_STUCK_ITERATIONS))
-    try:
-        return max(2, int(raw))
-    except ValueError:
-        return DEFAULT_STUCK_ITERATIONS
+    """Resolution: env > yaml > hardcoded default."""
+    env = os.environ.get("KAIZEN_LOOP_STUCK_ITERATIONS")
+    if env is not None:
+        try: return max(2, int(env))
+        except ValueError: pass
+    y = _yaml_default("stuck", "iterations", fallback=DEFAULT_STUCK_ITERATIONS)
+    try: return max(2, int(y))
+    except (ValueError, TypeError): return DEFAULT_STUCK_ITERATIONS
 
 
 def _frontmatter_value(fm: str, key: str) -> str:
@@ -253,10 +331,30 @@ def _frontmatter_value(fm: str, key: str) -> str:
     return ""
 
 
+def _max_age_hours() -> int | None:
+    """Hour-resolution TTL. Resolution: env > yaml > None (disabled).
+    When set, takes precedence over the day-resolution check in
+    _is_stale (see docstring)."""
+    env = os.environ.get("KAIZEN_LOOP_MAX_AGE_HOURS")
+    if env is not None:
+        try: return max(1, int(env))
+        except ValueError: return None
+    y = _yaml_default("ttl", "max_age_hours", fallback=DEFAULT_MAX_AGE_HOURS)
+    if y is None: return None
+    try: return max(1, int(y))
+    except (ValueError, TypeError): return None
+
+
 def _is_stale(fm: str) -> tuple[bool, int]:
     """Return (is_stale, age_days). True iff started_at is older than
-    KAIZEN_LOOP_MAX_AGE_DAYS. Loop state files left behind by crashed
-    sessions get auto-cleaned by this check on the next Stop event."""
+    the TTL threshold. Two granularities:
+
+      - KAIZEN_LOOP_MAX_AGE_HOURS (preferred when set, finer resolution)
+      - KAIZEN_LOOP_MAX_AGE_DAYS  (default 30d; for long-running loops)
+
+    Loop state files left behind by crashed sessions auto-clean on the
+    next Stop event.
+    """
     started_iso = _frontmatter_value(fm, "started_at")
     if not started_iso:
         return False, 0
@@ -266,8 +364,13 @@ def _is_stale(fm: str) -> tuple[bool, int]:
         return False, 0
     if started.tzinfo is None:
         started = started.replace(tzinfo=dt.timezone.utc)
-    age = (dt.datetime.now(dt.timezone.utc) - started).days
-    return age > _max_age_days(), age
+    delta = dt.datetime.now(dt.timezone.utc) - started
+    age_days = delta.days
+    hours_limit = _max_age_hours()
+    if hours_limit is not None:
+        age_hours = delta.total_seconds() / 3600
+        return age_hours > hours_limit, age_days
+    return age_days > _max_age_days(), age_days
 
 
 def _body_sha(body: str) -> str:
@@ -332,14 +435,42 @@ def decide(state_path: Path, iteration: int) -> dict:
     text = state_path.read_text()
     fm, body = split_frontmatter(text)
 
+    # ─── Empty-body short-circuit (work done, age irrelevant) ──────────
+    # A loop with no remaining work is "complete", not "stale" — emit the
+    # ledger-empty reason regardless of started_at age. Otherwise a
+    # genuinely-finished long-running loop would surface as auto-cancelled
+    # which is misleading.
+    body_stripped = body.strip()
+    if not body_stripped:
+        ledger_probe, _ = parse_body(body)
+        # plain empty (no JSON, no prose) → freeform empty → ledger empty
+        if ledger_probe is None:
+            return {
+                "action": "complete-empty",
+                "reason": "Ralph loop completed: ledger empty.",
+            }
+        # empty JSON ledger {"pending": [], "completed": [...]}
+        pend = ledger_probe.get("pending") if isinstance(ledger_probe, dict) else None
+        if pend == [] or pend is None:
+            return {
+                "action": "complete-empty",
+                "reason": "Ralph loop completed: ledger empty.",
+            }
+
     # ─── Safety rail 1: stale state file (crashed session, abandoned loop) ──
     stale, age = _is_stale(fm)
     if stale:
+        hrs = _max_age_hours()
+        threshold_msg = (
+            f"KAIZEN_LOOP_MAX_AGE_HOURS={hrs}"
+            if hrs is not None
+            else f"KAIZEN_LOOP_MAX_AGE_DAYS={_max_age_days()}"
+        )
         return {
             "action": "complete-empty",
             "reason": (
                 f"Ralph loop auto-cancelled: state file is {age}d old "
-                f"(> KAIZEN_LOOP_MAX_AGE_DAYS={_max_age_days()})."
+                f"(> {threshold_msg})."
             ),
             "mode": "stale",
         }
