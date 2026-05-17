@@ -71,7 +71,15 @@ USER_OBSERVE_NAME       = "observe"              # v1.30.0+ — observe snapshot
 USER_CLAUDE_DOCS_NAME   = "claude-docs"          # v1.30.0+ — Claude API/Code docs sem-index dir
 USER_BRAIN_NAME         = "brain"                # v1.38.0+ — Second Brain (PARA + Persona + Notes)
 INSTALL_LOG_NAME        = "install.log"          # v1.30.0+ — kaizen install/setup log
-LEGACY_ARCHIVE_NAME     = "_legacy"              # v1.30.0+ — archive slot for stale legacy dirs
+# v1.39.0+ umbrella dirs — flatten 4 search dirs under indexes/, 5
+# operational singletons under data/, 1 observability dir hoisted to
+# snapshots/, rename _legacy → archive.
+USER_INDEXES_NAME       = "indexes"              # v1.39.0+ — umbrella for trace/knowledge/scrape/claude-docs
+USER_DATA_NAME          = "data"                 # v1.39.0+ — umbrella for daemon/handoff/manifest/profile
+USER_SNAPSHOTS_NAME     = "snapshots"            # v1.39.0+ — hoisted from observe/snapshots/
+ARCHIVE_NAME            = "archive"              # v1.39.0+ — was _legacy (drop misleading underscore)
+# Legacy (pre-v1.39.0) name kept for migrator detection only.
+LEGACY_ARCHIVE_NAME     = "_legacy"              # v1.30.0–1.38.x — superseded by ARCHIVE_NAME
 
 # v1.30.0+ — upstream source for Claude docs (cloned by `claude_docs_index bootstrap`).
 CLAUDE_DOCS_REPO_URL    = "https://github.com/ericbuess/claude-code-docs.git"
@@ -288,6 +296,10 @@ def plugin_defaults_dict() -> dict:
         "USER_SCRAPE_NAME": USER_SCRAPE_NAME,
         "USER_OBSERVE_NAME": USER_OBSERVE_NAME,
         "USER_BRAIN_NAME": USER_BRAIN_NAME,
+        "USER_INDEXES_NAME": USER_INDEXES_NAME,
+        "USER_DATA_NAME": USER_DATA_NAME,
+        "USER_SNAPSHOTS_NAME": USER_SNAPSHOTS_NAME,
+        "ARCHIVE_NAME": ARCHIVE_NAME,
         "USER_CLAUDE_DOCS_NAME": USER_CLAUDE_DOCS_NAME,
         "CLAUDE_DOCS_REPO_URL": CLAUDE_DOCS_REPO_URL,
         "INSTALL_LOG_NAME": INSTALL_LOG_NAME,

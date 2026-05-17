@@ -15,35 +15,51 @@
 
 KAIZEN_USER_DIR="${KAIZEN_DIR:-$HOME/.claude/.kaizen}"
 
-# ─── User-global subdirs ─────────────────────────────────────────────
+# ─── v1.39.0 umbrella dirs ───────────────────────────────────────────
 
-KAIZEN_TRACE_DIR="${KAIZEN_TRACE_DIR:-$KAIZEN_USER_DIR/trace}"
+KAIZEN_INDEXES_DIR="${KAIZEN_INDEXES_DIR:-$KAIZEN_USER_DIR/indexes}"
+KAIZEN_DATA_DIR="${KAIZEN_DATA_DIR:-$KAIZEN_USER_DIR/data}"
+KAIZEN_SNAPSHOTS_DIR="${KAIZEN_SNAPSHOTS_DIR:-$KAIZEN_USER_DIR/snapshots}"
+KAIZEN_ARCHIVE_DIR="${KAIZEN_ARCHIVE_DIR:-$KAIZEN_USER_DIR/archive}"
+
+# ─── Indexes (search-style state) ────────────────────────────────────
+
+KAIZEN_TRACE_DIR="${KAIZEN_TRACE_DIR:-$KAIZEN_INDEXES_DIR/trace}"
 KAIZEN_TRACE_FILE="$KAIZEN_TRACE_DIR/events.jsonl"
 KAIZEN_TRACE_DB="$KAIZEN_TRACE_DIR/index.db"
 
-KAIZEN_KNOWLEDGE_DIR="${KAIZEN_KNOWLEDGE_DIR:-$KAIZEN_USER_DIR/knowledge}"
+KAIZEN_KNOWLEDGE_DIR="${KAIZEN_KNOWLEDGE_DIR:-$KAIZEN_INDEXES_DIR/knowledge}"
 KAIZEN_KNOWLEDGE_DB="$KAIZEN_KNOWLEDGE_DIR/index.db"
 
-KAIZEN_DAEMON_DIR="${KAIZEN_DAEMON_DIR:-$KAIZEN_USER_DIR/daemon}"
-KAIZEN_DAEMON_STATE="$KAIZEN_DAEMON_DIR/state.json"
-
-KAIZEN_INBOX_DIR="${KAIZEN_INBOX_DIR:-$KAIZEN_USER_DIR/inbox}"
-
-KAIZEN_BACKUP_DIR="${KAIZEN_BACKUP_DIR:-$KAIZEN_USER_DIR/backups}"
-
-KAIZEN_USER_SCHEMAS="${KAIZEN_USER_SCHEMAS:-$KAIZEN_USER_DIR/schemas}"
-
-KAIZEN_SCRAPE_DIR="${KAIZEN_SCRAPE_DIR:-$KAIZEN_USER_DIR/scrape}"
+KAIZEN_SCRAPE_DIR="${KAIZEN_SCRAPE_DIR:-$KAIZEN_INDEXES_DIR/scrape}"
 KAIZEN_SCRAPE_DB="$KAIZEN_SCRAPE_DIR/index.db"
 
-# v1.30.0+ — observe snapshots dir (deterministic captures).
-KAIZEN_OBSERVE_DIR="${KAIZEN_OBSERVE_DIR:-$KAIZEN_USER_DIR/observe}"
-KAIZEN_OBSERVE_SNAPSHOTS="$KAIZEN_OBSERVE_DIR/snapshots"
-
-# v1.30.0+ — Claude docs semantic index (ericbuess/claude-code-docs mirror).
-KAIZEN_CLAUDE_DOCS_DIR="${KAIZEN_CLAUDE_DOCS_DIR:-$KAIZEN_USER_DIR/claude-docs}"
+KAIZEN_CLAUDE_DOCS_DIR="${KAIZEN_CLAUDE_DOCS_DIR:-$KAIZEN_INDEXES_DIR/claude-docs}"
 KAIZEN_CLAUDE_DOCS_DB="$KAIZEN_CLAUDE_DOCS_DIR/index.db"
 KAIZEN_CLAUDE_DOCS_SRC="${KAIZEN_CLAUDE_DOCS_SRC:-$KAIZEN_CLAUDE_DOCS_DIR/src}"
+
+# ─── Data (operational state — singletons + daemon) ──────────────────
+
+KAIZEN_DAEMON_DIR="${KAIZEN_DAEMON_DIR:-$KAIZEN_DATA_DIR/daemon}"
+KAIZEN_DAEMON_STATE="$KAIZEN_DAEMON_DIR/state.json"
+
+KAIZEN_HANDOFF_DB="${KAIZEN_HANDOFF_DB:-$KAIZEN_DATA_DIR/handoff.db}"
+KAIZEN_MANIFEST_JSON="${KAIZEN_MANIFEST_JSON:-$KAIZEN_DATA_DIR/manifest.json}"
+KAIZEN_MANIFEST_LOCK="${KAIZEN_MANIFEST_LOCK:-$KAIZEN_DATA_DIR/manifest.lock}"
+KAIZEN_PROFILE_ENV="${KAIZEN_PROFILE_ENV:-$KAIZEN_DATA_DIR/profile.env}"
+
+# ─── Snapshots (hoisted from observe/snapshots/) ─────────────────────
+
+# v1.39.0+ — snapshots are now top-level. Legacy alias KAIZEN_OBSERVE_DIR
+# kept for shell scripts that haven't been updated yet.
+KAIZEN_OBSERVE_SNAPSHOTS="$KAIZEN_SNAPSHOTS_DIR"
+KAIZEN_OBSERVE_DIR="$KAIZEN_SNAPSHOTS_DIR"
+
+# ─── Singletons at user-global root ──────────────────────────────────
+
+KAIZEN_INBOX_DIR="${KAIZEN_INBOX_DIR:-$KAIZEN_USER_DIR/inbox}"
+KAIZEN_BACKUP_DIR="${KAIZEN_BACKUP_DIR:-$KAIZEN_USER_DIR/backups}"
+KAIZEN_USER_SCHEMAS="${KAIZEN_USER_SCHEMAS:-$KAIZEN_USER_DIR/schemas}"
 
 # v1.30.0+ — install log (kaizen install/setup events).
 KAIZEN_INSTALL_LOG="${KAIZEN_INSTALL_LOG:-$KAIZEN_USER_DIR/install.log}"
@@ -56,8 +72,8 @@ KAIZEN_BRAIN_DB="$KAIZEN_BRAIN_DIR/brain.db"
 KAIZEN_BRAIN_NOTES="$KAIZEN_BRAIN_DIR/Notes"
 KAIZEN_BRAIN_PERSONA="$KAIZEN_BRAIN_DIR/Persona.md"
 
-# v1.30.0+ — archive slot for legacy dirs migrated when canonical already exists.
-KAIZEN_LEGACY_ARCHIVE_DIR="$KAIZEN_USER_DIR/_legacy"
+# v1.39.0+ — archive (was _legacy in v1.30–1.38).
+KAIZEN_LEGACY_ARCHIVE_DIR="$KAIZEN_ARCHIVE_DIR"
 
 # ─── Project-side (relative to the project root passed in or $PWD) ───
 

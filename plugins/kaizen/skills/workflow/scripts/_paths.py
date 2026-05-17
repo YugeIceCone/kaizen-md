@@ -9,15 +9,28 @@ This module is the SSOT for those paths. Every kaizen Python script that
 touches state SHOULD import from here (instead of inlining constants).
 The mirroring shell module is `_paths.sh` (source-compatible export shape).
 
-## User-global layout (after v1.22.0)
+## User-global layout (after v1.39.0)
 
     ~/.claude/.kaizen/
-        trace/        events.jsonl, index.db
-        knowledge/    index.db
-        daemon/       state.json
-        inbox/        <ts>-<n>.json
-        backups/      <repo-slug>/<UTC>.tar.gz
-        schemas/      <user-defined-name>/schema.yaml
+        indexes/
+            trace/        events.jsonl, index.db
+            knowledge/    index.db
+            scrape/       index.db
+            claude-docs/  index.db + src/
+        data/
+            daemon/       state.json, log, watcher.pid, llm-proxy.log
+            handoff.db
+            manifest.json
+            manifest.lock
+            profile.env
+        snapshots/        <name>.json (was observe/snapshots/)
+        brain/            PARA + Persona + Notes + brain.db
+        inbox/            <ts>-<n>.json
+        backups/          <repo-slug>/<UTC>.tar.gz
+        schemas/          <user-defined-name>/schema.yaml
+        blobs/            <sha256-hex>
+        archive/          stale legacy dirs (was _legacy/)
+        install.log
 
 ## Project-side layout (after v1.22.0)
 
@@ -48,6 +61,10 @@ Each path is individually overridable so users can pin a custom location:
     KAIZEN_BACKUP_DIR       override the backup subdir
     KAIZEN_USER_SCHEMAS     override the user schemas subdir
     KAIZEN_BRAIN_DIR        override the Second Brain subdir (v1.38.0+)
+    KAIZEN_INDEXES_DIR      override the indexes/ umbrella (v1.39.0+)
+    KAIZEN_DATA_DIR         override the data/ umbrella (v1.39.0+)
+    KAIZEN_SNAPSHOTS_DIR    override the snapshots/ dir (v1.39.0+)
+    KAIZEN_ARCHIVE_DIR      override the archive/ dir (v1.39.0+)
     WORKFLOW_STATE_DIR      override the per-project workflow dir
 
 ## Brain ownership (v1.38.0+)
@@ -99,23 +116,88 @@ KAIZEN_USER_DIR = Path(
 )
 
 
-# ─── User-global subdirs ─────────────────────────────────────────────
+# ─── v1.39.0 umbrella dirs ───────────────────────────────────────────
+#
+# Flatten + categorize: 4 search-style dirs go under `indexes/`,
+# 5 operational singletons go under `data/`, observe snapshots
+# hoist to `snapshots/`, `_legacy` → `archive`. Each umbrella has
+# its own KAIZEN_*_DIR env override; the per-feature env overrides
+# (KAIZEN_TRACE_DIR etc.) still work and shadow the umbrella.
+
+INDEXES_DIR = Path(
+    os.environ.get("KAIZEN_INDEXES_DIR", KAIZEN_USER_DIR / _cfg.USER_INDEXES_NAME)
+)
+DATA_DIR = Path(
+    os.environ.get("KAIZEN_DATA_DIR", KAIZEN_USER_DIR / _cfg.USER_DATA_NAME)
+)
+SNAPSHOTS_DIR = Path(
+    os.environ.get("KAIZEN_SNAPSHOTS_DIR", KAIZEN_USER_DIR / _cfg.USER_SNAPSHOTS_NAME)
+)
+ARCHIVE_DIR = Path(
+    os.environ.get("KAIZEN_ARCHIVE_DIR", KAIZEN_USER_DIR / _cfg.ARCHIVE_NAME)
+)
+
+
+# ─── Indexes (search-style state — under indexes/) ───────────────────
 
 TRACE_DIR = Path(
-    os.environ.get("KAIZEN_TRACE_DIR", KAIZEN_USER_DIR / _cfg.USER_TRACE_NAME)
+    os.environ.get("KAIZEN_TRACE_DIR", INDEXES_DIR / _cfg.USER_TRACE_NAME)
 )
 TRACE_FILE = TRACE_DIR / "events.jsonl"
 TRACE_DB = TRACE_DIR / "index.db"
 
 KNOWLEDGE_DIR = Path(
-    os.environ.get("KAIZEN_KNOWLEDGE_DIR", KAIZEN_USER_DIR / _cfg.USER_KNOWLEDGE_NAME)
+    os.environ.get("KAIZEN_KNOWLEDGE_DIR", INDEXES_DIR / _cfg.USER_KNOWLEDGE_NAME)
 )
 KNOWLEDGE_DB = KNOWLEDGE_DIR / "index.db"
 
+# v1.24.0+ — scrape index (SmartScraperGraph extractions + embeddings).
+SCRAPE_DIR = Path(
+    os.environ.get("KAIZEN_SCRAPE_DIR", INDEXES_DIR / _cfg.USER_SCRAPE_NAME)
+)
+SCRAPE_DB = SCRAPE_DIR / "index.db"
+
+# v1.30.0+ — Claude docs semantic index (ericbuess/claude-code-docs mirror + sem search).
+CLAUDE_DOCS_DIR = Path(
+    os.environ.get("KAIZEN_CLAUDE_DOCS_DIR", INDEXES_DIR / _cfg.USER_CLAUDE_DOCS_NAME)
+)
+CLAUDE_DOCS_DB = CLAUDE_DOCS_DIR / "index.db"
+CLAUDE_DOCS_SRC = Path(
+    os.environ.get("KAIZEN_CLAUDE_DOCS_SRC", CLAUDE_DOCS_DIR / "src")
+)
+
+
+# ─── Data (operational singletons — under data/) ─────────────────────
+
 DAEMON_DIR = Path(
-    os.environ.get("KAIZEN_DAEMON_DIR", KAIZEN_USER_DIR / _cfg.USER_DAEMON_NAME)
+    os.environ.get("KAIZEN_DAEMON_DIR", DATA_DIR / _cfg.USER_DAEMON_NAME)
 )
 DAEMON_STATE = DAEMON_DIR / "state.json"
+
+HANDOFF_DB = Path(
+    os.environ.get("KAIZEN_HANDOFF_DB", DATA_DIR / "handoff.db")
+)
+MANIFEST_JSON = Path(
+    os.environ.get("KAIZEN_MANIFEST_JSON", DATA_DIR / "manifest.json")
+)
+MANIFEST_LOCK = Path(
+    os.environ.get("KAIZEN_MANIFEST_LOCK", DATA_DIR / "manifest.lock")
+)
+PROFILE_ENV = Path(
+    os.environ.get("KAIZEN_PROFILE_ENV", DATA_DIR / "profile.env")
+)
+
+
+# ─── Snapshots (observe captures, hoisted from observe/snapshots/) ───
+
+OBSERVE_SNAPSHOTS = SNAPSHOTS_DIR
+# v1.39.0+ legacy alias — OBSERVE_DIR previously held observe/snapshots/;
+# now snapshots are top-level. Code that imported OBSERVE_DIR for the
+# parent dir of snapshots/ still gets a working path.
+OBSERVE_DIR = SNAPSHOTS_DIR
+
+
+# ─── Singletons at the user-global root ──────────────────────────────
 
 INBOX_DIR = Path(
     os.environ.get("KAIZEN_INBOX_DIR", KAIZEN_USER_DIR / _cfg.USER_INBOX_NAME)
@@ -129,28 +211,8 @@ USER_SCHEMAS = Path(
     os.environ.get("KAIZEN_USER_SCHEMAS", KAIZEN_USER_DIR / _cfg.USER_SCHEMAS_NAME)
 )
 
-# v1.24.0+ — scrape index (SmartScraperGraph extractions + embeddings).
-SCRAPE_DIR = Path(
-    os.environ.get("KAIZEN_SCRAPE_DIR", KAIZEN_USER_DIR / _cfg.USER_SCRAPE_NAME)
-)
-SCRAPE_DB = SCRAPE_DIR / "index.db"
-
-# v1.30.0+ — observe snapshots (deterministic captures + per-layer queries).
-OBSERVE_DIR = Path(
-    os.environ.get("KAIZEN_OBSERVE_DIR", KAIZEN_USER_DIR / _cfg.USER_OBSERVE_NAME)
-)
-OBSERVE_SNAPSHOTS = OBSERVE_DIR / "snapshots"
-
-# v1.30.0+ — Claude docs semantic index (ericbuess/claude-code-docs mirror + sem search).
-CLAUDE_DOCS_DIR = Path(
-    os.environ.get("KAIZEN_CLAUDE_DOCS_DIR", KAIZEN_USER_DIR / _cfg.USER_CLAUDE_DOCS_NAME)
-)
-CLAUDE_DOCS_DB = CLAUDE_DOCS_DIR / "index.db"
-CLAUDE_DOCS_SRC = Path(
-    os.environ.get("KAIZEN_CLAUDE_DOCS_SRC", CLAUDE_DOCS_DIR / "src")
-)
-
 # v1.30.0+ — install log (per-machine kaizen install/setup events).
+# Stays at the user-global root (single user-visible log).
 INSTALL_LOG = Path(
     os.environ.get("KAIZEN_INSTALL_LOG", KAIZEN_USER_DIR / _cfg.INSTALL_LOG_NAME)
 )
@@ -165,10 +227,9 @@ BRAIN_DB = BRAIN_DIR / "brain.db"
 BRAIN_NOTES = BRAIN_DIR / "Notes"
 BRAIN_PERSONA = BRAIN_DIR / "Persona.md"
 
-# v1.30.0+ — archive slot for stale legacy dirs migrated by `migrate_paths.sh`
-# when the canonical location already has live data. Lets every kaizen state
-# stay under the unified tree while preserving the legacy bits for inspection.
-LEGACY_ARCHIVE_DIR = KAIZEN_USER_DIR / _cfg.LEGACY_ARCHIVE_NAME
+# v1.39.0+ — archive slot for stale legacy dirs migrated by `path_migrate.py`.
+# Replaces the v1.30 `_legacy` dir (kept reachable in LEGACY_PATHS).
+LEGACY_ARCHIVE_DIR = ARCHIVE_DIR
 
 
 # ─── Project-side (resolved at call time, per cwd) ───────────────────
@@ -200,6 +261,7 @@ def project_kaizen_dir(project_root: Path | None = None) -> Path:
 # ─── Legacy paths (consulted by the migrator only) ───────────────────
 
 LEGACY_PATHS: dict[str, Path] = {
+    # pre-v1.22 sibling-dir legacy locations
     "trace": HOME / ".claude" / ".kaizen-trace",
     "knowledge": HOME / ".claude" / ".kaizen-knowledge",
     "daemon": HOME / ".claude" / ".kaizen-daemon",
@@ -208,7 +270,20 @@ LEGACY_PATHS: dict[str, Path] = {
     "schemas": HOME / ".claude" / "kaizen-schemas",
     "observe": HOME / ".claude" / ".kaizen-observe",
     "install_log": HOME / ".claude" / "kaizen-install.log",
+    # v1.38.0 brain migration source
     "brain": HOME / ".claude" / "brain",
+    # v1.39.0 restructure sources (formerly siblings under .kaizen/)
+    "trace_v138":         KAIZEN_USER_DIR / _cfg.USER_TRACE_NAME,
+    "knowledge_v138":     KAIZEN_USER_DIR / _cfg.USER_KNOWLEDGE_NAME,
+    "scrape_v138":        KAIZEN_USER_DIR / _cfg.USER_SCRAPE_NAME,
+    "claude_docs_v138":   KAIZEN_USER_DIR / _cfg.USER_CLAUDE_DOCS_NAME,
+    "daemon_v138":        KAIZEN_USER_DIR / _cfg.USER_DAEMON_NAME,
+    "observe_v138":       KAIZEN_USER_DIR / _cfg.USER_OBSERVE_NAME,
+    "handoff_db_v138":    KAIZEN_USER_DIR / "handoff.db",
+    "manifest_json_v138": KAIZEN_USER_DIR / "manifest.json",
+    "manifest_lock_v138": KAIZEN_USER_DIR / "manifest.lock",
+    "profile_env_v138":   KAIZEN_USER_DIR / "profile.env",
+    "archive_v138":       KAIZEN_USER_DIR / _cfg.LEGACY_ARCHIVE_NAME,  # _legacy → archive
 }
 
 LEGACY_TO_NEW: dict[Path, Path] = {
@@ -221,6 +296,18 @@ LEGACY_TO_NEW: dict[Path, Path] = {
     LEGACY_PATHS["observe"]: OBSERVE_DIR,
     LEGACY_PATHS["install_log"]: INSTALL_LOG,
     LEGACY_PATHS["brain"]: BRAIN_DIR,
+    # v1.39.0 restructure
+    LEGACY_PATHS["trace_v138"]: TRACE_DIR,
+    LEGACY_PATHS["knowledge_v138"]: KNOWLEDGE_DIR,
+    LEGACY_PATHS["scrape_v138"]: SCRAPE_DIR,
+    LEGACY_PATHS["claude_docs_v138"]: CLAUDE_DOCS_DIR,
+    LEGACY_PATHS["daemon_v138"]: DAEMON_DIR,
+    LEGACY_PATHS["observe_v138"]: SNAPSHOTS_DIR,
+    LEGACY_PATHS["handoff_db_v138"]: HANDOFF_DB,
+    LEGACY_PATHS["manifest_json_v138"]: MANIFEST_JSON,
+    LEGACY_PATHS["manifest_lock_v138"]: MANIFEST_LOCK,
+    LEGACY_PATHS["profile_env_v138"]: PROFILE_ENV,
+    LEGACY_PATHS["archive_v138"]: ARCHIVE_DIR,
 }
 
 
@@ -228,25 +315,44 @@ LEGACY_TO_NEW: dict[Path, Path] = {
 
 
 def _self_test() -> None:
-    assert TRACE_DIR.parent == KAIZEN_USER_DIR
+    # v1.39.0 layout — TRACE / KNOWLEDGE / SCRAPE / CLAUDE_DOCS under indexes/
+    assert TRACE_DIR.parent == INDEXES_DIR, TRACE_DIR
+    assert KNOWLEDGE_DIR.parent == INDEXES_DIR
+    assert SCRAPE_DIR.parent == INDEXES_DIR
+    assert CLAUDE_DOCS_DIR.parent == INDEXES_DIR
     assert TRACE_FILE == TRACE_DIR / "events.jsonl"
     assert KNOWLEDGE_DB.parent == KNOWLEDGE_DIR
+    # DAEMON + HANDOFF_DB + MANIFEST_{JSON,LOCK} + PROFILE_ENV under data/
+    assert DAEMON_DIR.parent == DATA_DIR
+    assert HANDOFF_DB.parent == DATA_DIR
+    assert MANIFEST_JSON.parent == DATA_DIR
+    assert PROFILE_ENV.parent == DATA_DIR
     assert DAEMON_STATE == DAEMON_DIR / "state.json"
+    # SNAPSHOTS hoisted to top-level
+    assert SNAPSHOTS_DIR.parent == KAIZEN_USER_DIR
+    assert OBSERVE_SNAPSHOTS == SNAPSHOTS_DIR  # legacy alias still works
+    # Singletons at user-global root (unchanged by v1.39.0)
     assert BACKUP_DIR.parent == KAIZEN_USER_DIR
     assert BRAIN_DIR.parent == KAIZEN_USER_DIR
+    assert INBOX_DIR.parent == KAIZEN_USER_DIR
     assert BRAIN_DB == BRAIN_DIR / "brain.db"
     assert BRAIN_NOTES == BRAIN_DIR / "Notes"
     assert BRAIN_PERSONA == BRAIN_DIR / "Persona.md"
+    # archive (was _legacy)
+    assert ARCHIVE_DIR == KAIZEN_USER_DIR / "archive"
     pwd_root = project_workflow_dir(Path("/tmp/x"))
     assert pwd_root == Path("/tmp/x/.kaizen/workflow"), pwd_root
     sch = project_schemas_dir(Path("/tmp/x"))
     assert sch == Path("/tmp/x/.kaizen/workflow/schemas"), sch
-    print("✓ _paths.py self-test pass")
+    print("✓ _paths.py self-test pass (v1.39.0 layout)")
     print(f"  KAIZEN_USER_DIR = {KAIZEN_USER_DIR}")
+    print(f"  INDEXES_DIR     = {INDEXES_DIR}")
+    print(f"  DATA_DIR        = {DATA_DIR}")
+    print(f"  SNAPSHOTS_DIR   = {SNAPSHOTS_DIR}")
     print(f"  TRACE_DIR       = {TRACE_DIR}")
-    print(f"  KNOWLEDGE_DB    = {KNOWLEDGE_DB}")
-    print(f"  INBOX_DIR       = {INBOX_DIR}")
+    print(f"  HANDOFF_DB      = {HANDOFF_DB}")
     print(f"  BRAIN_DIR       = {BRAIN_DIR}")
+    print(f"  ARCHIVE_DIR     = {ARCHIVE_DIR}")
 
 
 if __name__ == "__main__":
