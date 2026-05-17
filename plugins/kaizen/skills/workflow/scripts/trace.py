@@ -56,7 +56,7 @@ from pathlib import Path
 
 
 def _trace_dir() -> Path:
-    # v1.22.0+: default moved to ~/.claude/.kaizen/trace/. KAIZEN_TRACE_DIR still wins.
+    # v1.22.0+: default moved to ~/.claude/.kaizen/indexes/trace/. KAIZEN_TRACE_DIR still wins.
     env = os.environ.get("KAIZEN_TRACE_DIR")
     if env:
         return Path(env)

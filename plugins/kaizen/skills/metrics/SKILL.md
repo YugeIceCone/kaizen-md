@@ -122,7 +122,7 @@ on the next session start (brain audit drains the Inbox).
 
 ## Trace log location + retention
 
-Path resolution: `KAIZEN_TRACE_DIR` env > `~/.claude/.kaizen/trace/`.
+Path resolution: `KAIZEN_TRACE_DIR` env > `~/.claude/.kaizen/indexes/trace/`.
 The log auto-rotates at `KAIZEN_TRACE_MAX_MB` (default 100) into
 gzipped files; default retention 7 days
 (`KAIZEN_TRACE_RETENTION_DAYS`).

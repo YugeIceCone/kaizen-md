@@ -56,7 +56,7 @@ HOME = Path(os.path.expanduser("~"))
 # shells still resolve it via PATH).
 UV = shutil.which("uv") or "uv"
 
-# v1.22.0+: state lives at ~/.claude/.kaizen/daemon/. KAIZEN_DAEMON_STATE still wins.
+# v1.22.0+: state lives at ~/.claude/.kaizen/data/daemon/. KAIZEN_DAEMON_STATE still wins.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import _paths as _p  # noqa: E402
 

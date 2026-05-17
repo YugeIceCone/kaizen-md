@@ -27,11 +27,11 @@ the SQLite + sentence-transformers search surface the upstream lacks.
             │
             │  `claude_docs_index bootstrap`  (one-time git clone)
             ▼
-    KAIZEN_CLAUDE_DOCS_SRC  =  ~/.claude/.kaizen/claude-docs/src/
+    KAIZEN_CLAUDE_DOCS_SRC  =  ~/.claude/.kaizen/indexes/claude-docs/src/
             │
             │  `claude_docs_index index`     (chunked sha-deduped reindex)
             ▼
-    KAIZEN_CLAUDE_DOCS_DB   =  ~/.claude/.kaizen/claude-docs/index.db
+    KAIZEN_CLAUDE_DOCS_DB   =  ~/.claude/.kaizen/indexes/claude-docs/index.db
             │                  ┌───────────────────────────────────────┐
             │                  │  claude_doc_chunks (per chunk + emb)  │
             │                  │  claude_doc_files  (per file shapshot)│

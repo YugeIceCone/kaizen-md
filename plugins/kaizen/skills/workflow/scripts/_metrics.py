@@ -28,6 +28,7 @@ import collections
 import datetime as dt
 import json
 import os
+import sys
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -60,13 +61,16 @@ __all__ = [
 
 
 def trace_log_path() -> Path:
-    """Resolve the trace log path.
+    """Resolve the trace log path via the _paths SSOT (v1.39.0+:
+    ~/.claude/.kaizen/indexes/trace/events.jsonl).
 
-    Priority: KAIZEN_TRACE_DIR env > ~/.claude/.kaizen/trace/."""
+    Priority: KAIZEN_TRACE_DIR env > _paths.TRACE_FILE default."""
     env = os.environ.get("KAIZEN_TRACE_DIR", "")
     if env:
         return Path(os.path.expandvars(env)).expanduser().resolve() / "events.jsonl"
-    return Path("~/.claude/.kaizen/trace/events.jsonl").expanduser().resolve()
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    import _paths
+    return _paths.TRACE_FILE.expanduser().resolve()
 
 
 def plugin_root() -> Path:

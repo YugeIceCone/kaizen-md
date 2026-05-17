@@ -14,7 +14,7 @@ version: 1
 # are the documented defaults, not the source of truth for resolution.
 paths:
   # SQLite queryable index. Global (handoffs span sessions + projects).
-  db: "~/.claude/.kaizen/handoff.db"
+  db: "~/.claude/.kaizen/data/handoff.db"
   # Root for the canonical handoff YAML files — the system of record.
   yaml_dir: "~/.claude/thoughts/handoffs"
 

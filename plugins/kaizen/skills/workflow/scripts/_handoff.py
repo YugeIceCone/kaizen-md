@@ -63,12 +63,15 @@ _PRAGMAS = "PRAGMA journal_mode=WAL;\nPRAGMA synchronous=FULL;\n"
 
 
 def handoff_db_path() -> Path:
-    """SQLite handoff-index path. Env-overridable (KAIZEN_HANDOFF_DB)
-    for test sandboxing — mirrors KAIZEN_BRAIN_DB / KAIZEN_KNOWLEDGE_DB."""
+    """SQLite handoff-index path. v1.39.0+: lives under data/ via the
+    _paths SSOT. Env-overridable (KAIZEN_HANDOFF_DB) for test
+    sandboxing — mirrors KAIZEN_BRAIN_DB / KAIZEN_KNOWLEDGE_DB."""
     env = os.environ.get("KAIZEN_HANDOFF_DB")
     if env:
         return Path(os.path.expandvars(env)).expanduser()
-    return Path("~/.claude/.kaizen/handoff.db").expanduser()
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    import _paths
+    return _paths.HANDOFF_DB.expanduser()
 
 
 def handoffs_dir() -> Path:

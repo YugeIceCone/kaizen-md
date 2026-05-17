@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/YugeIceCone/kaizen-md/assets/schemas/daemon-state.schema.json",
   "title": "Kaizen daemon state",
-  "description": "Single file at ~/.claude/.kaizen/daemon/state.json (v1.22.0+ path; previously ~/.claude/.kaizen-daemon/state.json). Producer + consumer: daemon.py tick / status. Tracks cron-driven hash-compare + hygiene runs.",
+  "description": "Single file at ~/.claude/.kaizen/data/daemon/state.json (v1.22.0+ path; previously ~/.claude/.kaizen-daemon/state.json). Producer + consumer: daemon.py tick / status. Tracks cron-driven hash-compare + hygiene runs.",
   "type": "object",
   "properties": {
     "runs": {

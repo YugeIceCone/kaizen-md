@@ -43,7 +43,7 @@ Ollama setup (one-time):
   /kaizen:models pull granite4.1:8b       # the curated winner (2026-05-12)
   /kaizen:models pull nomic-embed-text    # for embedding (separate from scrape)
 
-## SQLite schema (~/.claude/.kaizen/scrape/index.db)
+## SQLite schema (~/.claude/.kaizen/indexes/scrape/index.db)
 
     scrape_items:
         id          INTEGER PRIMARY KEY AUTOINCREMENT
@@ -944,7 +944,7 @@ def cmd_recommend(args):
     print("Install the winner:")
     print(f"  /kaizen:models pull {winner}")
     print(f"  /kaizen:models pin-chat  {winner}")
-    print("  source ~/.claude/.kaizen/profile.env")
+    print("  source ~/.claude/.kaizen/data/profile.env")
     print()
     print("Why each pick:")
     for rec in OLLAMA_SCRAPE_RECOMMENDATIONS:

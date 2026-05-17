@@ -22,7 +22,7 @@ Claude Code. Pairs with the Ollama embedding backend in `_embed.py`.
     models cp <src> <dst>      → clone with a new name
     models embed <model> <text> → quick smoke test, prints dim + first 8 floats
     models chat  <model> <text> → quick chat smoke test, prints response
-    models pin-embed <model>   → write KAIZEN_EMBED_* to ~/.claude/.kaizen/profile.env
+    models pin-embed <model>   → write KAIZEN_EMBED_* to ~/.claude/.kaizen/data/profile.env
     models pin-chat  <model>   → write KAIZEN_SCRAPE_LLM_* to profile.env
     models host                → print the active Ollama host
     models --help              → this message

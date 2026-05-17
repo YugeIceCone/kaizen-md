@@ -13,10 +13,10 @@ Formal JSON Schema (draft 2020-12) definitions for kaizen's main data shapes. Mi
 | `brain-rule.schema.json`        | `KaizenBrainRule`             | `<KAIZEN_BRAIN_DIR>/Notes/*.md` frontmatter        |
 | `agent-formatting.schema.json`  | `AgentFormattingSchema`       | `skills/agent-formatting/SKILL.md` embedded block  |
 | `code-file.schema.json`         | `CodeFile`                    | `<repo>/.kaizen/onboard.db` rows (v1.20.0+)        |
-| `trace-event.schema.json`       | `TraceEvent`                  | `~/.claude/.kaizen/trace/events.jsonl` (v1.23.0)   |
+| `trace-event.schema.json`       | `TraceEvent`                  | `~/.claude/.kaizen/indexes/trace/events.jsonl` (v1.23.0)   |
 | `inbox-message.schema.json`     | `InboxMessage`                | `~/.claude/.kaizen/inbox/<ts>-<n>.json` (v1.23.0)  |
-| `daemon-state.schema.json`      | `DaemonState`                 | `~/.claude/.kaizen/daemon/state.json` (v1.23.0)    |
-| `scrape-item.schema.json`       | `ScrapeItem`                  | `~/.claude/.kaizen/scrape/index.db` rows (v1.24.0) |
+| `daemon-state.schema.json`      | `DaemonState`                 | `~/.claude/.kaizen/data/daemon/state.json` (v1.23.0)    |
+| `scrape-item.schema.json`       | `ScrapeItem`                  | `~/.claude/.kaizen/indexes/scrape/index.db` rows (v1.24.0) |
 
 ## Wiring into editors
 

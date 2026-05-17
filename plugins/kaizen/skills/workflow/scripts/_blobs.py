@@ -6,7 +6,7 @@ named by its sha256 hex digest and lives at:
 
     ~/.claude/.kaizen/blobs/<sha256-hex>
 
-A single global manifest at `~/.claude/.kaizen/manifest.json` maps every
+A single global manifest at `~/.claude/.kaizen/data/manifest.json` maps every
 hash to metadata: kind, original name, creation time, size, and the list of
 logical refs that point at it. Logical paths (e.g.
 `~/.claude/.kaizen/backups/<repo-slug>/<UTC>.tar.gz`) become **symlinks** into
