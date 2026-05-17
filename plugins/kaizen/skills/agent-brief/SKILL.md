@@ -183,7 +183,7 @@ Each is a self-locating bash shim that resolves to the real script via `python3 
 | Symptom | Cause | Recovery |
 |---|---|---|
 | `Unknown command: /kaizen:*` | Plugin reload missed the new slash command | `/reload-plugins` (and rerun if it doesn't take — caching) |
-| `kaizen-update` reports cache stale | `/plugin update` doesn't refresh local marketplaces | `/kaizen:refresh-cache && /reload-plugins` — or just `/kaizen:update` (v1.4.4+ auto-reloads if changes applied) |
+| `kaizen-update` reports cache stale | `/plugin update` doesn't refresh local marketplaces | `/kaizen:update` (auto-reloads if changes applied; reads version from plugin.json + rsyncs the cache slot) |
 | Gate fails on `compile-barrier` | Cargo/TS/Go check failed | Read `/tmp/kaizen-compile.log` |
 | Gate blocks on `pre-deletion` | Trying to `git rm` without `KAIZEN_ALLOW_DELETE=1` or matching `deletion-allow` brain rule | Either authorize via env OR add a `deletion-allow` rule via `kaizen-rules template deletion-allow` |
 | Inbox shows pending messages | User typed while Claude was busy | Acknowledge each entry before continuing the current task |

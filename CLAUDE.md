@@ -237,10 +237,10 @@ surface. Use this to find the right slash command without listing all
 | **audit/quality** | 11 | `audit`, `gatekeeper`, `gate`, `review`, `coverage`, `iron-laws`, `karpathy-check`, `vibe-check`, `self-audit`, `agent-self-audit`, `ci-gate` |
 | **observability** | 7 | `trace`, `trace-search`, `trace-proxy`, `metrics`, `observe`, `context`, `statusline` |
 | **brain/memory** | 3 | `brain` (multi-verb parent), `self-improving`, `gold` |
-| **workflow** | 7 | `backlog`, `handoff`, `loop`, `flow`, `mode`, `migrate`, `migrate-paths` |
-| **plugin-meta** | 13 | `setup`, `bootstrap`, `update`, `refresh-cache`, `daemon`, `hygiene`, `backup`, `publish`, `env`, `health`, `status`, `surface`, `disable-dupes` |
+| **workflow** | 6 | `backlog`, `handoff`, `loop`, `flow`, `session-mode`, `migrate` |
+| **plugin-meta** | 12 | `setup`, `bootstrap`, `update`, `daemon`, `hygiene`, `backup`, `publish`, `env`, `health`, `status`, `surface`, `disable-dupes` |
 | **discovery/search** | 8 | `onboard`, `knowledge`, `claude-docs`, `code-tour`, `scrape`, `models`, `browser`, `docs` |
-| **dev-aids** | 4 | `rule`, `schema`, `inbox`, `test` |
+| **dev-aids** | 3 | `rules`, `schema`, `inbox`, `test` |
 
 **Known overlap / consolidation candidates** (not yet acted on —
 documented so the next consolidation sprint has the list):
@@ -249,8 +249,8 @@ documented so the next consolidation sprint has the list):
 |---|---|---|
 | ~~`/kaizen:gate` ↔ `/kaizen:gatekeeper`~~ | **NOT a real overlap** — `gate` runs the actual git pre-commit hook (commit-blocking checks: msg prefix, structural-change → progress.md row, pre-deletion belief scan). `gatekeeper` aggregates AUDIT findings (iron-laws, etu, karpathy, validator, token-bloat, coverage axes) into one verdict. Different scopes, both keep their slot. | Keep both; clarify in user-facing docs. |
 | `/kaizen:audit` ↔ `/kaizen:self-audit` ↔ `/kaizen:agent-self-audit` | 3 audit flavours; user has to remember the difference | Consolidate to `/kaizen:audit <flavor>` (whole-repo / plugin-self / agent-driven) — leave the existing three as back-compat aliases |
-| `/kaizen:migrate` ↔ `/kaizen:migrate-paths` | One is the parent, one is a specific data migrator | Make `migrate` the parent dispatcher (already done at the bin level); deprecate `migrate-paths` as a sibling |
-| `/kaizen:setup` ↔ `/kaizen:bootstrap` ↔ `/kaizen:refresh-cache` ↔ `/kaizen:update` | 4 admin commands with overlapping lifecycle steps | Cluster as `/kaizen:admin <subcommand>` later; the bins are also flat today (Round 3 archeology — defer until aggregation parent is clearly needed) |
+| ~~`/kaizen:migrate` ↔ `/kaizen:migrate-paths`~~ | RESOLVED 2026-05-17 — `migrate-paths` slash retired; canonical form is `kaizen migrate paths` (bin-level subcommand). |
+| `/kaizen:setup` ↔ `/kaizen:bootstrap` ↔ `/kaizen:update` | 3 admin commands with overlapping lifecycle steps (`refresh-cache` slash retired 2026-05-17; `update` chains it). Cluster as `/kaizen:admin <subcommand>` later; the bins are also flat today (defer until aggregation parent is clearly needed). |
 | `/kaizen:trace` ↔ `/kaizen:trace-search` ↔ `/kaizen:trace-proxy` | Three trace surfaces with distinct runtime (CLI / semantic search / network proxy) — intentionally separate; document the distinction |
 
 **Pattern:** when uncertain whether to add a new command vs extend an

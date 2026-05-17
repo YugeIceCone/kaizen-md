@@ -53,7 +53,7 @@ immediately, no threshold check, no block).
 
 The threshold value comes from the **session-mode state**
 (`.kaizen/session-mode.json::auto_handoff_threshold`), set at session
-intake via `/kaizen:mode` or the SessionStart QA. Valid values are
+intake via `/kaizen:session-mode` or the SessionStart QA. Valid values are
 the four levels declared in this skill's config: 25 / 50 / 75 / 85.
 `None` (or unset) = auto-handoff disabled.
 

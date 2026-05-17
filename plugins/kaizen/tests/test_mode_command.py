@@ -8,26 +8,20 @@ from pathlib import Path
 
 _KZ_DIR = Path(__file__).resolve().parent.parent
 # /kaizen:mode was renamed to /kaizen:session-mode (slash/bin alignment).
-# The old `mode.md` stays as a deprecation alias; the canonical content
-# (frontmatter / body / bundle docs / threshold options) lives at
-# `session-mode.md`. Tests validate the canonical file.
+# The mode.md alias was retired 2026-05-17 (deprecation period expired);
+# canonical content lives at session-mode.md.
 _CMD = _KZ_DIR / "commands/session-mode.md"
-_ALIAS = _KZ_DIR / "commands/mode.md"
+_RETIRED_ALIAS = _KZ_DIR / "commands/mode.md"
 
 
 class TestCommandFile(unittest.TestCase):
     def test_command_file_exists(self):
         self.assertTrue(_CMD.is_file(), f"missing: {_CMD}")
 
-    def test_deprecated_alias_exists_and_marks_itself(self):
-        """commands/mode.md must stay as a back-compat alias and its
-        description MUST start with the DEPRECATED ALIAS marker so
-        help.md surfaces the deprecation prominently."""
-        self.assertTrue(_ALIAS.is_file(), f"missing alias: {_ALIAS}")
-        text = _ALIAS.read_text(encoding="utf-8")
-        self.assertIn("DEPRECATED ALIAS", text)
-        self.assertIn("session-mode", text,
-                       "alias must redirect to session-mode")
+    def test_retired_alias_is_gone(self):
+        """commands/mode.md was retired 2026-05-17 — alias should not exist."""
+        self.assertFalse(_RETIRED_ALIAS.is_file(),
+                          f"retired alias still present: {_RETIRED_ALIAS}")
 
 
 class TestFrontmatter(unittest.TestCase):

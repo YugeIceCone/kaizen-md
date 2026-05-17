@@ -3,7 +3,7 @@
 # pins to the agent at every user turn.
 #
 # When the user picked discipline bundles at session intake (via
-# /kaizen:mode or the SessionStart QA), those choices are stored in
+# /kaizen:session-mode or the SessionStart QA), those choices are stored in
 # .kaizen/session-mode.json. Without a reminder, the agent forgets
 # the pin over a long session. This hook injects a compact block:
 #

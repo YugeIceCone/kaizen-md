@@ -287,3 +287,124 @@ python3 -m unittest discover -s tests    # ~2700 tests (was 2643), 0 fail
 | Persisted workflow config drifts from session-mode config | P2's schema explicitly says "inherits from session-mode unless overridden"; tests pin precedence |
 | /workflow vs /kaizen:workflow collision | kaizen-side prefixes the bash exec; external /workflow stays untouched |
 | Big-bang scope creep | Phased per the 7 P# items above; each is 1 commit |
+
+---
+
+## Phase P0 (prerequisite) — retire 4 deprecation-alias slashes
+
+Lands BEFORE P1 so the menu surface the user starts from is already
+canonical. Single atomic commit, verified during 2026-05-17 PM session
+(see handoff `2026-05-17_17-39_menu-consolidation-analysis-verified-4-d.yaml`).
+
+### Scope (verified against source)
+
+**Delete (KAIZEN_ALLOW_DELETE=1, all four ship `DEPRECATED ALIAS` marker):**
+
+- `plugins/kaizen/commands/rule.md` → `/kaizen:rules`
+- `plugins/kaizen/commands/mode.md` → `/kaizen:session-mode`
+- `plugins/kaizen/commands/migrate-paths.md` → `/kaizen:migrate paths`
+- `plugins/kaizen/commands/refresh-cache.md` → `/kaizen:update` (update.sh:124 always chains refresh-cache)
+
+**Update tests (drop alias-existence assertions):**
+
+- `tests/test_mode_command.py:22-30` — drop `test_deprecated_alias_exists_and_marks_itself`
+- `tests/test_intent_mode.py:99-113` — assert `/kaizen:session-mode` not `/kaizen:mode`
+
+**Migrate live refs to canonical slash names (10 files):**
+
+- `skills/intent/domain/intents.yaml` — 6 occurrences (intent suggestions served live to users)
+- `skills/behaviour-config/SKILL.md` — 4 occurrences (`/kaizen:rule` → `/kaizen:rules`)
+- `skills/auto-handoff/SKILL.md` — 1 occurrence (`/kaizen:mode` → `/kaizen:session-mode`)
+- `skills/agent-formatting/SKILL.md` — 6 occurrences (`/kaizen:refresh-cache` → `/kaizen:update`)
+- `skills/agent-brief/SKILL.md` — 1 occurrence
+- `hooks/claude/userprompt-skills-reminder.sh` — 1 comment
+- `skills/workflow/scripts/migrate.sh:294` — 1 comment
+- `plugins/kaizen/README.md:135` — 1 line
+- `CLAUDE.md` — strike migrate-paths from known-overlap row
+- `.kaizen/workflow/progress.md` — architecture-log row (dogfood gate)
+
+**Skipped (historical accuracy — do NOT rewrite):**
+
+- `plugins/kaizen/CHANGELOG.md` — ~10 historical refs stay factual
+
+### Scrapped from earlier proposals (with reasons)
+
+| Proposal | Why scrapped |
+|---|---|
+| Rename `karpathy-check.md` → `karpathy.md` | `Skill(kaizen:karpathy)` already exists — slash/skill namespace collision. The `-check` suffix is the disambiguator. Convention exception. |
+| Rename `vibe-check.md` → `vibe.md` | Same — `Skill(kaizen:vibe-check)` exists. |
+| Fold `gatekeeper` absorbs `self-audit / agent-self-audit / ci-gate` | Frontmatter shows 4 distinct jobs with different exit-code contracts + runtimes; not flavors of one verdict. |
+| Fold `status` absorbs `health` | Different exit-code contracts — status is read-only display, health is CI-lint diagnostic that exits 1 on errors. |
+| Fold `trace` absorbs `trace-search` | trace.py CLI has explicit `query` subcommand; would need new arg-detect behavior in the bin that isn't there today. |
+
+### Execution sequence (RED→GREEN)
+
+1. Update `test_mode_command.py` + `test_intent_mode.py` asserts → run suite → expect RED on intent-yaml mismatch
+2. Update `intents.yaml` + 8 doc refs → run suite → GREEN
+3. `KAIZEN_ALLOW_DELETE=1 git rm` the 4 alias files
+4. Add `.kaizen/workflow/progress.md` architecture-log row
+5. Single commit — `refactor(commands): retire 4 deprecation-alias slashes`
+6. Verify — `kaizen-gatekeeper check --all` + `kaizen-metrics skips` + full unittest suite
+
+### Stats target
+
+- Slash commands: 58 → 54 (4 deletes, zero functionality loss)
+- plugin.json churn: 0 (no manifest refs to the deprecated names)
+- Test delta: -1 (dropped alias-existence test) + 0 net (intent-yaml asserts redirected)
+
+---
+
+## Observability findings — context-pressure surface
+
+Investigation triggered by an apparent "context 85%" message that
+didn't match the user's perception. Dug across hook → trace → DXM →
+slash-command path. **Three streams**, each with a different contract.
+Ground truth this session (from DXM):
+
+```
+context.warn.red          pct=85  tokens=170964  limit=200000  ts=1779039579.46
+auto_handoff.requested    pct=85  threshold=85   bucket=threshold-block
+```
+
+So the hook's "context 85%" message was correct (pct=85.48). The
+"unknown" output from `/kaizen:context` and the empty `Stop-auto-handoff`
+trace payload are not defects — they're consequences of how the three
+streams are partitioned. Correct framing below.
+
+### The three streams + their contracts
+
+| Stream | Purpose | Payload policy | Source-of-truth for context pct? |
+|---|---|---|---|
+| **trace** (`~/.claude/.kaizen-trace/events.jsonl`) | Lightweight observability log; hook firings + tool dispatches | Session-id-only since CHANGELOG v1.6.1 privacy fix — `_trace.sh` extracts ONLY `session_id`, never payload | NO — by design |
+| **DXM** (`~/.claude/.kaizen/dxm/events-<sid>.jsonl`) | Durable mid-work state mirror over CC's JSONL | Full structured payload per event | YES — `context.warn.*` + `auto_handoff.requested` events carry `{pct, tokens, limit, peak_*}` |
+| **`/kaizen:context` slash** | Quick "where am I" check | Reads `CLAUDE_CONTEXT_TOKENS` env OR stdin JSON | Returns "unknown" when neither present — no DXM fallback wired |
+
+### Defect candidates (filed as separate from menu consolidation)
+
+| # | Defect | Severity | Fix shape |
+|---|---|---|---|
+| **D1** | `/kaizen:context` returns "unknown" when CLAUDE_CONTEXT_TOKENS env is absent, even though DXM holds the freshest measurement | medium | Add fallback in `commands/context.md` body → query `kaizen-dxm tail --session $(kaizen-dxm session-id) --evt 'context.warn.*'` for the most recent pct/tokens. Already-trapped data; just unwire the env-only constraint. |
+| **D2** | Hook message "context 85%, threshold 85%" looks like an echo; users can't tell whether 85 is measured or hardcoded threshold | low | Re-template `auto_handoff.py` message templates (`AUTO_HANDOFF_MSGS` dict) to show both as separate signals: `"context at {pct}% (measured), threshold {threshold}% (configured)"`. |
+| **D3** | DXM has the data but the trace doesn't — cross-querying ("when did context cross 75%") requires switching tools | low | YAGNI — accept the two-store split. The intentional payload-stripping in trace is the right call (privacy + size). Pair the two with a small reader: `kaizen-context history` that joins trace timestamps with DXM `context.warn.*` payloads. **Defer**. |
+
+### What is NOT a defect (corrected from earlier claim)
+
+- ❌ "Trace shows empty `data` field on `Stop-auto-handoff`" — **not a defect.** That's the v1.6.1 privacy contract. The data IS captured, in DXM, where it belongs (`auto_handoff.requested` event with full payload). My earlier finding mis-framed the contract split as a defect.
+- ❌ "Hook message is a threshold echo" — **not entirely.** The hook DOES measure; the message template just doesn't visibly separate the two numbers when they're equal. D2 above is the cosmetic fix.
+
+### Skill discipline take-away
+
+When investigating a "the system is wrong" claim:
+
+1. **Find the data store that owns the value** — three stores (trace / DXM / state.json) each have a different contract; don't blame one for missing data the other holds.
+2. **Read the source contract before calling it a defect** — `_trace.sh` literally says "never the full payload — see CHANGELOG v1.6.1 fix" in its docstring. That was findable in 30 seconds.
+3. **Verify against raw ground truth** before adjusting beliefs — `grep '"pct"' ~/.claude/.kaizen/dxm/events-<sid>.jsonl` returned the exact measurement (pct=85, tokens=170964/200000). User and hook were both right.
+
+This take-away applies BEYOND this session — convention-over-config
+rule: "Conventions must be discoverable. A convention that exists only
+in one developer's head is not a convention — it's a trap." The v1.6.1
+trace-payload-stripping rule IS documented (in `_trace.sh`'s
+docstring) — but not surfaced at the "is this a defect?" decision
+point. Consider adding a one-line cross-reference in `commands/trace.md`
++ `commands/context.md` pointing at "where to find the actual pct"
+(DXM, not trace).

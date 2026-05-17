@@ -73,7 +73,7 @@ class TestBodyContent(unittest.TestCase):
         """Per-command row format: `command` | description.
         Spot-check a few clusters to ensure descriptions are present."""
         for cmd in ("audit", "gatekeeper", "brain", "backlog",
-                     "setup", "onboard", "rule"):
+                     "setup", "onboard", "rules"):
             # row format: `cmd` | <description>
             self.assertRegex(self.body, rf"`{cmd}`\s*\|",
                               f"missing per-command row for {cmd}")

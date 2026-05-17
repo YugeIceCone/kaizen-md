@@ -132,7 +132,7 @@ The plugin coexists with the bundled `workflow-routing` skill (the `/workflow` c
 
 No cross-write. Shared envelope (`schema_version`, `metadata.created`/`updated`) for future tooling that joins state across skills.
 
-Legacy `<repo>/.workflow/` is recognized for backward compat; `/kaizen:migrate-paths` (auto-invoked by `/kaizen:setup`) moves it to the canonical location.
+Legacy `<repo>/.workflow/` is recognized for backward compat; `kaizen migrate paths` (auto-invoked by `/kaizen:setup`) moves it to the canonical location.
 
 ## Uninstall
 

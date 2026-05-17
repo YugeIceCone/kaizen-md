@@ -90,27 +90,27 @@ class TestSetModeGenericIntent(_MatchBase):
 
 
 class TestAllSuggestionsRouteToModeCommand(_MatchBase):
-    """All three mode intents must suggest a /kaizen:mode invocation
+    """All three mode intents must suggest a /kaizen:session-mode invocation
     (the agent surfaces the command verbatim to the user)."""
 
     def test_start_loop_suggests_mode_loop(self):
         env = self._suggest("iterate on this")
         suggest = env["data"]["intent"]["action"]["suggest"]
-        self.assertIn("/kaizen:mode loop", suggest)
+        self.assertIn("/kaizen:session-mode loop", suggest)
 
     def test_start_workflow_suggests_mode_workflow(self):
         env = self._suggest("use a workflow")
         suggest = env["data"]["intent"]["action"]["suggest"]
-        self.assertIn("/kaizen:mode workflow", suggest)
+        self.assertIn("/kaizen:session-mode workflow", suggest)
 
     def test_set_mode_generic_suggests_full_qa(self):
         env = self._suggest("set mode")
         suggest = env["data"]["intent"]["action"]["suggest"]
-        # Full QA invocation = /kaizen:mode with no arg
+        # Full QA invocation = /kaizen:session-mode with no arg
         self.assertTrue(
-            suggest.startswith("/kaizen:mode  ") or
-            suggest.startswith("/kaizen:mode\n"),
-            f"expected bare /kaizen:mode (no arg); got: {suggest!r}",
+            suggest.startswith("/kaizen:session-mode  ") or
+            suggest.startswith("/kaizen:session-mode\n"),
+            f"expected bare /kaizen:session-mode (no arg); got: {suggest!r}",
         )
 
 

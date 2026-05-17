@@ -6,7 +6,7 @@ argument-hint: "(none) | <command-name>"
 
 # /kaizen:help
 
-Static taxonomy of all 59 `/kaizen:*` commands. **One screen, zero bash
+Static taxonomy of all 55 `/kaizen:*` commands. **One screen, zero bash
 execution.** For full per-command docs use `kaizen help <name>`. Auto-
 generated from `commands/*.md` frontmatter via `kaizen-help-gen`.
 
@@ -47,7 +47,7 @@ generated from `commands/*.md` frontmatter via `kaizen-help-gen`.
 | `self-improving` | Curate Claude Code's auto-memory into durable project knowledge. `review` flags pr |
 | `gold` | Incidental-discovery + learnings tracker. Capture mid-work patterns + gotchas + hi |
 
-## workflow (8)
+## workflow (6)
 
 | Command | Does |
 |---|---|
@@ -55,19 +55,16 @@ generated from `commands/*.md` frontmatter via `kaizen-help-gen`.
 | `handoff` | Create or resume a session handoff document. `/kaizen:handoff create` wraps up the |
 | `loop` | Start (or cancel) a self-correcting Ralph loop — cross-CLI |
 | `flow` | Run the async pocketflow Node+Flow reference pipeline over the current workspace.  |
-| `mode` | DEPRECATED ALIAS — use `/kaizen:session-mode` instead (plural intent + matches the |
 | `session-mode` | Set this session's mode (loop | workflow | neither) and pick discipline bundles vi |
 | `migrate` | Migrate from loose skills / separate plugins / non-canonical layouts to the kaizen |
-| `migrate-paths` | DEPRECATED ALIAS — use `/kaizen:migrate paths` instead. Migrate kaizen's pre-v1.22 |
 
-## plugin-meta (14)
+## plugin-meta (13)
 
 | Command | Does |
 |---|---|
 | `setup` | Unified kaizen setup. No-args → interactive QA menu (4 AskUserQuestion steps). Wit |
 | `bootstrap` | Provision the kaizen plugin's uv-managed Python surface — verifies uv is installed |
 | `update` | Single-command kaizen maintenance — `git pull` the marketplace, refresh Claude Cod |
-| `refresh-cache` | Force Claude Code's plugin cache to match the kaizen source. Solves the "/plugin u |
 | `daemon` | Manage the kaizen auto-daemon — cron-driven worker that hash-compares source↔cache |
 | `hygiene` | Run kaizen hygiene checks + safe auto-cleanups. Five checks: prune old cache versi |
 | `backup` | Snapshot workflow state (.kaizen/, legacy .workflow/, .kaizen.toml, optionally bra |
@@ -92,11 +89,10 @@ generated from `commands/*.md` frontmatter via `kaizen-help-gen`.
 | `browser` | Manage the Playwright-backed MCP browser server that gives Claude real browser-dri |
 | `docs` | Generate per-package documentation for any workspace — Rust (Cargo.toml), JS/TS (p |
 
-## dev-aids (6)
+## dev-aids (5)
 
 | Command | Does |
 |---|---|
-| `rule` | DEPRECATED ALIAS — use `/kaizen:rules` (plural matches the bin `kaizen-rules`). In |
 | `rules` | Inspect, validate, or generate templates for brain-sourced kaizen rules. Rules liv |
 | `schema` | Inspect declarative workflow schemas (v1.14.0+). Schemas live as yaml in `.kaizen/ |
 | `inbox` | Manage the kaizen message inbox — captures every user message via UserPromptSubmit |
