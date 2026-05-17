@@ -90,7 +90,7 @@ def handoffs_dir() -> Path:
     env = os.environ.get("KAIZEN_HANDOFF_DIR")
     if env:
         return Path(os.path.expandvars(env)).expanduser()
-    return Path("~/.claude/thoughts/handoffs").expanduser()
+    return Path("~/.claude/handoff").expanduser()
 
 
 def now_iso() -> str:

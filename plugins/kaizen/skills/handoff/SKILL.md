@@ -252,7 +252,7 @@ file in full immediately.
 **Mode B — Ticket number provided** (e.g. `ENG-2124`):
 
 ```bash
-ls -t ~/.claude/thoughts/handoffs/{TICKET}/ 2>/dev/null
+ls -t ~/.claude/handoff/{TICKET}/ 2>/dev/null
 ```
 
 - Zero files / dir doesn't exist → *"I can't find a handoff for
@@ -270,7 +270,7 @@ python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/handoff.py latest --json
 
 - `data.handoff.file_path` → read in Step 2.
 - `data.handoff == null` → store is empty. Fall back to
-  `ls -t ~/.claude/thoughts/handoffs/*/*.yaml | head -5`.
+  `ls -t ~/.claude/handoff/*/*.yaml | head -5`.
 
 Use `handoff.py list [--limit N] [--session SID]` to browse beyond
 just the latest.
@@ -368,7 +368,7 @@ After the user confirms direction:
    `completed` immediately when done** (no batching).
 3. Apply `worked:` patterns; avoid `failed:` ones.
 4. Reference the handoff path in commits:
-   `Refs: ~/.claude/thoughts/handoffs/.../X.yaml`.
+   `Refs: ~/.claude/handoff/.../X.yaml`.
 
 ### Common scenarios
 

@@ -21,4 +21,4 @@ user which one they want.
 
 The handoff store (`handoff.py` / `~/.claude/.kaizen/handoff.db`) is
 plugin-owned — the skill's flows call it directly. The filesystem
-YAML at `~/.claude/thoughts/handoffs/` stays the system of record.
+YAML at `~/.claude/handoff/` stays the system of record.

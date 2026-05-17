@@ -20,7 +20,7 @@ description: >-
 # Documentation-only; not consumed by code.
 paths:
   db: "~/.claude/.kaizen/data/handoff.db"
-  yaml_dir: "~/.claude/thoughts/handoffs"
+  yaml_dir: "~/.claude/handoff"
 
 # Documentation-only — the authoritative tuples live in
 # _handoff.py::VALID_STATUS / VALID_OUTCOME.
