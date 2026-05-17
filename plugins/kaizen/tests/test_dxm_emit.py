@@ -28,6 +28,9 @@ sys.path.insert(0, str(_SCRIPTS))
 
 class EmitBase(unittest.TestCase):
     def setUp(self):
+        # Save cwd BEFORE creating tempdir so tearDown can restore even
+        # if a test chdir'd into the tempdir (which we then delete).
+        self._cwd0 = os.getcwd()
         self._tmp = tempfile.TemporaryDirectory()
         self.tmp = Path(self._tmp.name)
         self.fake_home = self.tmp / "home"
@@ -41,6 +44,13 @@ class EmitBase(unittest.TestCase):
             os.environ[k] = v
 
     def tearDown(self):
+        # Restore cwd FIRST — must happen before tempdir is deleted
+        # else subsequent tests see "current directory doesn't exist"
+        # from any Path(".").resolve() call.
+        try:
+            os.chdir(self._cwd0)
+        except OSError:
+            pass
         self._tmp.cleanup()
         for k, v in self._orig.items():
             if v is None: os.environ.pop(k, None)
