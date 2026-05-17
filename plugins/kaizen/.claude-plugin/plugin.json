@@ -54,6 +54,7 @@
       "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/help_gen.py:*)",
       "Bash(${CLAUDE_PLUGIN_ROOT}/bin/kaizen-menu-lint:*)",
       "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/menu_lint.py:*)",
+      "Bash(uv run --script ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/discovery_mcp.py:*)",
       "Bash(${CLAUDE_PLUGIN_ROOT}/bin/kaizen-io:*)",
       "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/io.py:*)",
       "Bash(uv run --script ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/token_bloat.py:*)",

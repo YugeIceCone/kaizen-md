@@ -55,6 +55,7 @@ SUBSERVERS: list[tuple[str, str]] = [
     ("onboard", "onboard_mcp"),
     ("claude_docs", "claude_docs_mcp"),
     ("scrape", "scrape_mcp"),
+    ("discovery", "discovery_mcp"),
     ("state", "state_mcp"),
     ("lint", "lint_mcp"),
     ("workflow", "workflow_mcp"),
