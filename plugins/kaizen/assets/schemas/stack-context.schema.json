@@ -83,6 +83,53 @@
       "type": "array",
       "items": { "type": "string" },
       "description": "Project-convention files present (CLAUDE.md / AGENTS.md / CONTRIBUTING.md / etc.)."
+    },
+    "version_pins": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Toolchain version pin files (rust-toolchain / .python-version / .nvmrc / .tool-versions / .ruby-version / etc.). Empty object when none.",
+      "properties": {
+        "rust":         { "type": ["string", "null"] },
+        "python":       { "type": ["string", "null"] },
+        "node":         { "type": ["string", "null"] },
+        "ruby":         { "type": ["string", "null"] },
+        "tool_versions_files": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Filenames detected (rust-toolchain, .python-version, .nvmrc, .tool-versions, mise.toml, etc.)"
+        }
+      }
+    },
+    "containerization": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Container + IaC signals.",
+      "properties": {
+        "dockerfile":     { "type": "boolean" },
+        "compose":        { "type": "boolean" },
+        "kubernetes":     { "type": "boolean" },
+        "terraform":      { "type": "boolean" }
+      }
+    },
+    "workspace": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Workspace / monorepo detection.",
+      "properties": {
+        "is_workspace":  { "type": "boolean" },
+        "kind":          { "type": ["string", "null"],
+                            "description": "cargo / npm / pnpm / yarn / lerna / nx / turbo / null" },
+        "member_count":  { "type": ["integer", "null"], "minimum": 0 }
+      }
+    },
+    "pre_commit": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "pre-commit framework integration signals.",
+      "properties": {
+        "config_present": { "type": "boolean" },
+        "hook_count":     { "type": ["integer", "null"], "minimum": 0 }
+      }
     }
   }
 }

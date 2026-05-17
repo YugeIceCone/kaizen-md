@@ -116,6 +116,29 @@ _CONV_FILES: list[str] = [
 ]
 
 
+# Tool-version pin files. Each entry: (filename, language-tag-or-None).
+# When language-tag is set, the file's first non-comment line becomes
+# the pinned version for that language.
+_VERSION_PIN_FILES: list[tuple[str, Optional[str]]] = [
+    ("rust-toolchain",          "rust"),
+    ("rust-toolchain.toml",     "rust"),
+    (".python-version",         "python"),
+    (".nvmrc",                  "node"),
+    (".ruby-version",           "ruby"),
+    (".tool-versions",          None),   # asdf — multi-language
+    ("mise.toml",               None),   # mise — multi-language
+]
+
+
+# Container / IaC presence markers.
+_CONTAINER_MARKERS: dict[str, list[str]] = {
+    "dockerfile":  ["Dockerfile", "dockerfile"],
+    "compose":     ["docker-compose.yml", "docker-compose.yaml", "compose.yml", "compose.yaml"],
+    "kubernetes":  ["k8s/", "kubernetes/", "kustomization.yaml", "deployment.yaml"],
+    "terraform":   ["main.tf", "terraform/"],
+}
+
+
 # ─── Project root + output paths ─────────────────────────────────────
 
 
@@ -188,6 +211,106 @@ def _detect_ci(root: Path) -> list[str]:
 
 def _convention_files_present(root: Path) -> list[str]:
     return [n for n in _CONV_FILES if (root / n).is_file()]
+
+
+def _detect_version_pins(root: Path) -> dict:
+    """Scan for toolchain-version pin files. Returns the populated
+    `version_pins` block from the schema."""
+    out: dict = {
+        "rust": None, "python": None, "node": None, "ruby": None,
+        "tool_versions_files": [],
+    }
+    for filename, lang_tag in _VERSION_PIN_FILES:
+        p = root / filename
+        if not p.is_file():
+            continue
+        out["tool_versions_files"].append(filename)
+        if lang_tag is None:
+            continue
+        # Read first non-comment, non-blank line as the pinned version.
+        try:
+            for raw in p.read_text(encoding="utf-8", errors="ignore").splitlines():
+                line = raw.strip()
+                if not line or line.startswith("#") or line.startswith("//"):
+                    continue
+                # rust-toolchain.toml has [toolchain]\nchannel="..."
+                m = re.search(r'channel\s*=\s*"([^"]+)"', line)
+                if m:
+                    out[lang_tag] = m.group(1)
+                else:
+                    out[lang_tag] = line.split()[0]
+                break
+        except OSError:
+            pass
+    return out
+
+
+def _detect_containerization(root: Path) -> dict:
+    """Boolean signals for Docker / Compose / K8s / Terraform."""
+    out: dict = {}
+    for key, markers in _CONTAINER_MARKERS.items():
+        out[key] = any((root / m).exists() for m in markers)
+    return out
+
+
+def _detect_workspace(root: Path, manifests: list) -> dict:
+    """Detect monorepo / workspace setup. Returns the schema's
+    `workspace` block."""
+    out: dict = {"is_workspace": False, "kind": None, "member_count": None}
+
+    # Cargo workspace
+    cargo = root / "Cargo.toml"
+    if cargo.is_file():
+        text = _read_safe(cargo)
+        if re.search(r'^\[workspace\]', text, re.MULTILINE):
+            members = re.findall(r'members\s*=\s*\[([^\]]+)\]', text)
+            if members:
+                count = len([m for m in re.split(r'[,\s"]+', members[0]) if m])
+                out.update({"is_workspace": True, "kind": "cargo",
+                             "member_count": count})
+                return out
+            out.update({"is_workspace": True, "kind": "cargo"})
+            return out
+
+    # JS monorepo — pnpm-workspace.yaml / workspaces in package.json
+    if (root / "pnpm-workspace.yaml").is_file():
+        out.update({"is_workspace": True, "kind": "pnpm"})
+        return out
+    if (root / "lerna.json").is_file():
+        out.update({"is_workspace": True, "kind": "lerna"})
+        return out
+    if (root / "nx.json").is_file():
+        out.update({"is_workspace": True, "kind": "nx"})
+        return out
+    if (root / "turbo.json").is_file():
+        out.update({"is_workspace": True, "kind": "turbo"})
+        return out
+
+    pkg_json = root / "package.json"
+    if pkg_json.is_file():
+        try:
+            data = json.loads(pkg_json.read_text(encoding="utf-8"))
+            ws = data.get("workspaces")
+            if ws:
+                count = len(ws) if isinstance(ws, list) else None
+                out.update({"is_workspace": True, "kind": "npm",
+                             "member_count": count})
+        except (json.JSONDecodeError, ValueError, OSError):
+            pass
+
+    return out
+
+
+def _detect_pre_commit(root: Path) -> dict:
+    """Parse .pre-commit-config.yaml for hook count."""
+    p = root / ".pre-commit-config.yaml"
+    if not p.is_file():
+        return {"config_present": False, "hook_count": None}
+
+    text = _read_safe(p)
+    # Count `- id:` entries (each is a hook). Cheap regex, no PyYAML.
+    hook_count = len(re.findall(r'^\s+-\s+id:\s+\S+', text, re.MULTILINE))
+    return {"config_present": True, "hook_count": hook_count}
 
 
 # ─── Framework + build/test/lint sniffing ────────────────────────────
@@ -281,9 +404,33 @@ _SNIFFERS = {
 # ─── Render ──────────────────────────────────────────────────────────
 
 
+def _self_validate(record: dict) -> Optional[str]:
+    """Best-effort schema validation in-script. Returns None on pass,
+    error string on failure. Skips silently when jsonschema isn't
+    installed (graceful-fallback per the iron law)."""
+    try:
+        import jsonschema
+    except ImportError:
+        return None
+    schema_path = (Path(__file__).resolve().parent.parent.parent.parent
+                    / "assets" / "schemas" / "stack-context.schema.json")
+    if not schema_path.is_file():
+        return None
+    try:
+        schema = json.loads(schema_path.read_text(encoding="utf-8"))
+        jsonschema.validate(record, schema)
+        return None
+    except Exception as e:
+        return str(e)
+
+
 def _build_record(root: Path, lang_counts: Counter, manifests: list,
                     ci: list[str], conventions: list[str],
-                    sniffed: dict) -> dict:
+                    sniffed: dict,
+                    version_pins: Optional[dict] = None,
+                    containerization: Optional[dict] = None,
+                    workspace: Optional[dict] = None,
+                    pre_commit: Optional[dict] = None) -> dict:
     """Build the schema-validated dict — the system of record. The
     markdown view is derived from this."""
     primary = lang_counts.most_common(1)[0][0] if lang_counts else "Unknown"
@@ -299,7 +446,7 @@ def _build_record(root: Path, lang_counts: Counter, manifests: list,
     if isinstance(lint_field, str):
         lint_field = [lint_field]
 
-    return {
+    rec = {
         "schema_version": 1,
         "generated":      _dt.date.today().isoformat(),
         "tool":           "kaizen-detect-stack",
@@ -322,6 +469,18 @@ def _build_record(root: Path, lang_counts: Counter, manifests: list,
         "ci_systems":       ci,
         "convention_files": conventions,
     }
+    # Optional enrichment blocks — emit only when populated to keep
+    # the artifact lean for projects without these signals.
+    if version_pins and (any(version_pins.get(k) for k in ("rust", "python", "node", "ruby"))
+                          or version_pins.get("tool_versions_files")):
+        rec["version_pins"] = version_pins
+    if containerization and any(containerization.values()):
+        rec["containerization"] = containerization
+    if workspace and workspace.get("is_workspace"):
+        rec["workspace"] = workspace
+    if pre_commit and pre_commit.get("config_present"):
+        rec["pre_commit"] = pre_commit
+    return rec
 
 
 def _render_md(rec: dict) -> str:
@@ -409,6 +568,10 @@ def cmd_scan(args) -> int:
     manifests = _find_manifests(root)
     ci = _detect_ci(root)
     conventions = _convention_files_present(root)
+    version_pins = _detect_version_pins(root)
+    containerization = _detect_containerization(root)
+    workspace = _detect_workspace(root, manifests)
+    pre_commit = _detect_pre_commit(root)
 
     sniffed: dict = {}
     for name, _, path in manifests:
@@ -416,7 +579,17 @@ def cmd_scan(args) -> int:
             sniffed.update(_SNIFFERS[name](_read_safe(path)))
             break
 
-    record = _build_record(root, lang_counts, manifests, ci, conventions, sniffed)
+    record = _build_record(root, lang_counts, manifests, ci, conventions,
+                            sniffed, version_pins=version_pins,
+                            containerization=containerization,
+                            workspace=workspace, pre_commit=pre_commit)
+
+    # Self-validate against the shipped schema — fail loud if the
+    # build_record output drifts from the contract. Best-effort:
+    # silently passes when jsonschema isn't installed.
+    err = _self_validate(record)
+    if err:
+        sys.stderr.write(f"[detect-stack] WARN: artifact failed schema validation: {err[:200]}\n")
     json_body = json.dumps(record, indent=2) + "\n"
     md_body = _render_md(record)
 

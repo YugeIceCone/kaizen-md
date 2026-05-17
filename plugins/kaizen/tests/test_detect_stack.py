@@ -229,6 +229,130 @@ class TestSchemaValidation(ProjectBase):
         self.assertIn("# Stack Context", r.stdout)
 
 
+class TestVersionPins(ProjectBase):
+    def setUp(self):
+        super().setUp()
+        (self.root / "Cargo.toml").write_text(
+            '[package]\nname = "x"\nedition = "2021"')
+        (self.root / "main.rs").write_text("fn main(){}")
+
+    def test_rust_toolchain_file_detected(self):
+        (self.root / "rust-toolchain").write_text("1.78.0\n")
+        _run("scan", "--force", cwd=str(self.root))
+        rec = json.loads((self.root / ".agents/stack-context.json").read_text())
+        self.assertIn("version_pins", rec)
+        self.assertEqual(rec["version_pins"]["rust"], "1.78.0")
+        self.assertIn("rust-toolchain", rec["version_pins"]["tool_versions_files"])
+
+    def test_python_version_file_detected(self):
+        (self.root / ".python-version").write_text("3.12.1\n")
+        _run("scan", "--force", cwd=str(self.root))
+        rec = json.loads((self.root / ".agents/stack-context.json").read_text())
+        self.assertIn("version_pins", rec)
+        self.assertEqual(rec["version_pins"]["python"], "3.12.1")
+
+    def test_tool_versions_multi_lang(self):
+        (self.root / ".tool-versions").write_text(
+            "# asdf\nnodejs 20.10.0\npython 3.12.1\n")
+        _run("scan", "--force", cwd=str(self.root))
+        rec = json.loads((self.root / ".agents/stack-context.json").read_text())
+        self.assertIn(".tool-versions",
+                       rec["version_pins"]["tool_versions_files"])
+
+
+class TestContainerization(ProjectBase):
+    def setUp(self):
+        super().setUp()
+        (self.root / "Cargo.toml").write_text(
+            '[package]\nname = "x"\nedition = "2021"')
+        (self.root / "main.rs").write_text("fn main(){}")
+
+    def test_dockerfile_detected(self):
+        (self.root / "Dockerfile").write_text("FROM rust:1.78\n")
+        _run("scan", "--force", cwd=str(self.root))
+        rec = json.loads((self.root / ".agents/stack-context.json").read_text())
+        self.assertIn("containerization", rec)
+        self.assertTrue(rec["containerization"]["dockerfile"])
+
+    def test_compose_detected(self):
+        (self.root / "docker-compose.yml").write_text("services:\n  web:\n    image: x\n")
+        _run("scan", "--force", cwd=str(self.root))
+        rec = json.loads((self.root / ".agents/stack-context.json").read_text())
+        self.assertIn("containerization", rec)
+        self.assertTrue(rec["containerization"]["compose"])
+
+    def test_no_container_signals(self):
+        _run("scan", "--force", cwd=str(self.root))
+        rec = json.loads((self.root / ".agents/stack-context.json").read_text())
+        # Block omitted when nothing detected (lean output)
+        self.assertNotIn("containerization", rec)
+
+
+class TestWorkspace(ProjectBase):
+    def test_cargo_workspace_detected(self):
+        (self.root / "Cargo.toml").write_text(
+            '[workspace]\nmembers = ["foo", "bar", "baz"]\n')
+        _run("scan", "--force", cwd=str(self.root))
+        rec = json.loads((self.root / ".agents/stack-context.json").read_text())
+        self.assertIn("workspace", rec)
+        self.assertTrue(rec["workspace"]["is_workspace"])
+        self.assertEqual(rec["workspace"]["kind"], "cargo")
+        self.assertEqual(rec["workspace"]["member_count"], 3)
+
+    def test_npm_workspace_detected(self):
+        (self.root / "package.json").write_text(json.dumps({
+            "name": "root",
+            "workspaces": ["packages/a", "packages/b"],
+        }))
+        (self.root / "x.js").write_text("// x")
+        _run("scan", "--force", cwd=str(self.root))
+        rec = json.loads((self.root / ".agents/stack-context.json").read_text())
+        self.assertIn("workspace", rec)
+        self.assertEqual(rec["workspace"]["kind"], "npm")
+        self.assertEqual(rec["workspace"]["member_count"], 2)
+
+
+class TestPreCommit(ProjectBase):
+    def setUp(self):
+        super().setUp()
+        (self.root / "Cargo.toml").write_text(
+            '[package]\nname = "x"\nedition = "2021"')
+        (self.root / "main.rs").write_text("fn main(){}")
+
+    def test_pre_commit_config_with_hooks_counted(self):
+        (self.root / ".pre-commit-config.yaml").write_text(textwrap.dedent("""
+            repos:
+              - repo: https://github.com/astral-sh/ruff-pre-commit
+                rev: v0.5.0
+                hooks:
+                  - id: ruff
+                  - id: ruff-format
+              - repo: https://github.com/pre-commit/pre-commit-hooks
+                rev: v4.4.0
+                hooks:
+                  - id: trailing-whitespace
+        """).strip())
+        _run("scan", "--force", cwd=str(self.root))
+        rec = json.loads((self.root / ".agents/stack-context.json").read_text())
+        self.assertIn("pre_commit", rec)
+        self.assertTrue(rec["pre_commit"]["config_present"])
+        self.assertEqual(rec["pre_commit"]["hook_count"], 3)
+
+
+class TestSelfValidate(ProjectBase):
+    """`scan` self-validates the emitted record against the shipped
+    schema. Catches drift if anyone changes _build_record without
+    updating the schema."""
+
+    def test_real_scan_validates_against_schema(self):
+        (self.root / "go.mod").write_text("module x\n\ngo 1.21\n")
+        (self.root / "main.go").write_text("package main")
+        r = _run("scan", "--force", cwd=str(self.root))
+        self.assertEqual(r.returncode, 0)
+        # No WARN line on stderr — _self_validate passed
+        self.assertNotIn("failed schema validation", r.stderr)
+
+
 class TestHookBehavior(ProjectBase):
     def _fire(self, cwd: str, env_extra: dict | None = None) -> subprocess.CompletedProcess:
         env = dict(os.environ)
