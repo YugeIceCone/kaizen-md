@@ -151,6 +151,53 @@ intents:
       subcommand: mode-qa
       confidence: 0.7
 
+  # ─── Forked-skill auto-suggest intents ────────────────────────────
+  #
+  # The 3 originally-vendored claude-code-skills (code-tour, karpathy,
+  # self-improving) now have slash commands AND intent triggers so the
+  # agent can surface them mid-conversation when user phrasing implies
+  # the relevant flow.
+
+  - id: code-tour-suggest
+    description: User wants a code walkthrough — suggest /kaizen:code-tour.
+    triggers:
+      - { kind: phrase, pattern: "walk (me|us) (through|over)", case_insensitive: true }
+      - { kind: phrase, pattern: "(tour|walkthrough) (this|that|the) (codebase|repo|pr|module|change)", case_insensitive: true }
+      - { kind: phrase, pattern: "(onboarding|architecture|rca|security|vibe.?check) tour", case_insensitive: true }
+      - { kind: phrase, pattern: "(write|create|build).*tour for", case_insensitive: true }
+      - { kind: phrase, pattern: "(explain|show me) how (this|that|the).*works", case_insensitive: true }
+    action:
+      suggest: "/kaizen:code-tour  # scaffold a persona-targeted .tour walkthrough"
+      subcommand: code-tour
+      confidence: 0.8
+
+  - id: karpathy-review
+    description: User wants a diff-level review — suggest /kaizen:karpathy-check.
+    triggers:
+      - { kind: phrase, pattern: "review (my|the|this) (diff|changes?|patch)", case_insensitive: true }
+      - { kind: phrase, pattern: "(is|am i) (this )?(over.?complicated|overcoded|over.?engineered)", case_insensitive: true }
+      - { kind: phrase, pattern: "check (complexity|noise|surgery) of", case_insensitive: true }
+      - { kind: phrase, pattern: "karpathy (check|review|gate)", case_insensitive: true }
+      - { kind: phrase, pattern: "(am i|are these).*assumptions", case_insensitive: true }
+    action:
+      suggest: "/kaizen:karpathy-check  # complexity + diff-noise + assumption + goal scanners"
+      subcommand: karpathy-check
+      confidence: 0.85
+
+  - id: self-improving-curate
+    description: User wants to curate auto-memory — suggest /kaizen:self-improving.
+    triggers:
+      - { kind: phrase, pattern: "(what (has|have) (claude|i|we) learned)", case_insensitive: true }
+      - { kind: phrase, pattern: "(promote|graduate) (this|that) (learning|pattern|rule)", case_insensitive: true }
+      - { kind: phrase, pattern: "(curate|review|audit) (auto.?)?memory", case_insensitive: true }
+      - { kind: phrase, pattern: "(memory|brain) health", case_insensitive: true }
+      - { kind: phrase, pattern: "(extract|distill) (a )?skill from", case_insensitive: true }
+      - { kind: phrase, pattern: "self.?improv(e|ing)", case_insensitive: true }
+    action:
+      suggest: "/kaizen:self-improving  # review | promote | extract | health"
+      subcommand: self-improving
+      confidence: 0.75
+
   # ─── Commit / publish intents ────────────────────────────────────
 
   - id: pre-commit-check

@@ -114,6 +114,54 @@ class TestAllSuggestionsRouteToModeCommand(_MatchBase):
         )
 
 
+class TestCodeTourIntent(_MatchBase):
+    """User asks for a code walkthrough → suggest /kaizen:code-tour."""
+
+    def test_walk_me_through(self):
+        env = self._suggest("walk me through this codebase")
+        self.assertEqual(self._intent_id(env), "code-tour-suggest")
+
+    def test_tour_this_pr(self):
+        env = self._suggest("can you tour this PR for me?")
+        self.assertEqual(self._intent_id(env), "code-tour-suggest")
+
+    def test_onboarding_doc(self):
+        env = self._suggest("write an onboarding tour for new contributors")
+        self.assertEqual(self._intent_id(env), "code-tour-suggest")
+
+
+class TestKarpathyReviewIntent(_MatchBase):
+    """User wants a diff-level review → suggest /kaizen:karpathy-check."""
+
+    def test_review_my_diff(self):
+        env = self._suggest("review my diff before commit")
+        self.assertEqual(self._intent_id(env), "karpathy-review")
+
+    def test_is_this_overcomplicated(self):
+        env = self._suggest("is this overcomplicated?")
+        self.assertEqual(self._intent_id(env), "karpathy-review")
+
+    def test_check_complexity(self):
+        env = self._suggest("check complexity of these files")
+        self.assertEqual(self._intent_id(env), "karpathy-review")
+
+
+class TestSelfImprovingCurateIntent(_MatchBase):
+    """User wants to curate auto-memory → suggest /kaizen:self-improving."""
+
+    def test_what_have_i_learned(self):
+        env = self._suggest("what has Claude learned this week?")
+        self.assertEqual(self._intent_id(env), "self-improving-curate")
+
+    def test_promote_this(self):
+        env = self._suggest("promote this learning to a rule")
+        self.assertEqual(self._intent_id(env), "self-improving-curate")
+
+    def test_memory_health(self):
+        env = self._suggest("check memory health")
+        self.assertEqual(self._intent_id(env), "self-improving-curate")
+
+
 class TestNonMatchingPhrasesDontMisfire(_MatchBase):
     """Sanity: random sentences shouldn't trigger a mode intent."""
 
