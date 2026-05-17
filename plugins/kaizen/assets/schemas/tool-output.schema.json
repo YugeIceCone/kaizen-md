@@ -1,0 +1,83 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/YugeIceCone/kaizen-md/assets/schemas/tool-output.schema.json",
+  "title": "kaizen tool output envelope",
+  "description": "Canonical JSON envelope for every kaizen CLI tool's `--json` output. Programmable (predictable shape), reproducible (deterministic ordering, no random ids), consistent (same envelope across every tool). Per-tool payload lives in `data`; envelope metadata in `kaizen`.\n\nIntent: an agent or downstream pipe can call ANY kaizen tool with --json and consume the result via a single shape — `verdict` for go/no-go, `counts` for severity buckets, `data` for the tool-specific payload. New tools opt in by importing `_envelope.py::wrap` and emitting `wrap(...)` instead of bare JSON.",
+  "type": "object",
+  "required": ["kaizen", "data"],
+  "additionalProperties": false,
+  "properties": {
+    "kaizen": {
+      "type": "object",
+      "description": "Envelope metadata — identifies the producing tool + run.",
+      "required": ["schema_version", "tool", "plugin_version"],
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "type": "integer",
+          "const": 1,
+          "description": "Envelope schema version. Bump only on breaking shape changes."
+        },
+        "tool": {
+          "type": "string",
+          "pattern": "^kaizen-[a-z][a-z0-9-]*$",
+          "description": "Tool identifier (e.g. 'kaizen-gatekeeper', 'kaizen-surface')."
+        },
+        "tool_version": {
+          "type": "string",
+          "description": "Per-tool semver (independent of plugin version). Omit if the tool has no version."
+        },
+        "plugin_version": {
+          "type": "string",
+          "description": "Plugin version (from .claude-plugin/plugin.json)."
+        },
+        "command": {
+          "type": "string",
+          "description": "Verbatim command line invoked. Useful for reproducibility — paste to re-run."
+        },
+        "ran_at_utc": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO-8601 timestamp the tool ran. Optional — omit if reproducibility-by-bit matters (any timestamp breaks byte-identity)."
+        },
+        "duration_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Wall-clock duration of the tool's run."
+        }
+      }
+    },
+    "verdict": {
+      "anyOf": [
+        {
+          "enum": [
+            "green",
+            "yellow",
+            "red",
+            "ok",
+            "warn",
+            "fail",
+            "violated",
+            "leaks",
+            "clean"
+          ]
+        },
+        { "type": "null" }
+      ],
+      "description": "High-level go/no-go signal for the run. Pre-defined enums cover gate-style (green/yellow/red), action-style (ok/warn/fail), and audit-style (violated/leaks/clean) verdicts. null for tools that don't produce a verdict (inventory, status)."
+    },
+    "counts": {
+      "type": "object",
+      "additionalProperties": { "type": "integer", "minimum": 0 },
+      "description": "Severity bucket counts. Common keys: error, warn, info. Tool-specific keys allowed."
+    },
+    "data": {
+      "description": "Tool-specific payload. Any JSON shape — array, object, primitive. Agents inspect `verdict` + `counts` first, then drill into `data` per the tool's per-tool schema."
+    },
+    "errors": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Tool-internal errors (NOT findings). E.g. \"validator subprocess timed out\" — communicates partial-run state."
+    }
+  }
+}

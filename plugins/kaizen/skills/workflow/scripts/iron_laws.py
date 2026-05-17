@@ -32,8 +32,19 @@ import _loader  # noqa: E402
 import codegen  # noqa: E402
 
 
-def _cmd_list(_args) -> int:
-    for law in _loader.load_laws():
+def _cmd_list(args) -> int:
+    laws = list(_loader.load_laws())
+    if getattr(args, "json", False):
+        env = _envelope_wrap(
+            data={"laws": laws},
+            verdict=None,
+            counts={"total": len(laws),
+                    "auto": sum(1 for l in laws if l.get("enforcement") == "auto"),
+                    "manual": sum(1 for l in laws if l.get("enforcement") == "manual")},
+        )
+        print(env)
+        return 0
+    for law in laws:
         check = law.get("check", "—")
         print(f"{law['id']:42} {law['severity']:5} {law['enforcement']:7} {check}")
     return 0
@@ -59,11 +70,28 @@ def _cmd_show(args) -> int:
 def _cmd_check(args) -> int:
     scope = "all" if args.all else "staged"
     findings = _iron_laws.run_checks(scope=scope, law_id=args.law)
+    hard = sum(1 for f in findings if f.severity == "hard")
+    soft = len(findings) - hard
+
+    if getattr(args, "json", False):
+        # asdict for Finding dataclass — fall back to vars() if not a dataclass
+        try:
+            from dataclasses import asdict
+            findings_data = [asdict(f) for f in findings]
+        except (TypeError, ImportError):
+            findings_data = [vars(f) for f in findings]
+        verdict = "red" if hard else ("yellow" if soft else "green")
+        env = _envelope_wrap(
+            data={"scope": scope, "findings": findings_data},
+            verdict=verdict,
+            counts={"hard": hard, "soft": soft},
+        )
+        print(env)
+        return 1 if hard else 0
+
     if not findings:
         print(f"iron-laws: 0 findings ({scope} scope)")
         return 0
-    hard = sum(1 for f in findings if f.severity == "hard")
-    soft = len(findings) - hard
     for f in findings:
         loc = f" [{f.path}]" if f.path else ""
         print(f"{f.severity:4} {f.law_id}: {f.message}{loc}")
@@ -83,7 +111,9 @@ def build_parser() -> argparse.ArgumentParser:
         description="CLI over the iron-laws single-source-of-truth registry.",
     )
     sub = p.add_subparsers(dest="cmd")
-    sub.add_parser("list", help="list every law")
+    sp_list = sub.add_parser("list", help="list every law")
+    sp_list.add_argument("--json", action="store_true",
+                         help="emit canonical tool-output envelope")
     sp_show = sub.add_parser("show", help="show one law's full record")
     sp_show.add_argument("id", help="law id")
     sp_check = sub.add_parser("check", help="run the auto-law checks")
@@ -93,8 +123,31 @@ def build_parser() -> argparse.ArgumentParser:
     scope_grp.add_argument("--all", action="store_true",
                            help="audit the whole plugin")
     sp_check.add_argument("--law", help="run only this law's check")
+    sp_check.add_argument("--json", action="store_true",
+                          help="emit canonical tool-output envelope")
     sub.add_parser("render", help="regenerate references/iron-laws.md")
     return p
+
+
+def _envelope_wrap(*, data, verdict, counts) -> str:
+    """Thin wrapper around `_envelope.wrap + render`. Inline import keeps
+    the rest of the file dep-free for the text path."""
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    try:
+        import _envelope as _env  # type: ignore
+        return _env.render(_env.wrap(
+            tool="kaizen-iron-laws",
+            tool_version="1.0.0",
+            data=data,
+            verdict=verdict,
+            counts=counts,
+            argv=sys.argv,
+        ))
+    except ImportError:
+        # Fallback: bare JSON (no envelope) if helper missing
+        import json
+        return json.dumps({"data": data, "verdict": verdict,
+                           "counts": counts}, indent=2, sort_keys=True)
 
 
 def main(argv: list[str] | None = None) -> int:

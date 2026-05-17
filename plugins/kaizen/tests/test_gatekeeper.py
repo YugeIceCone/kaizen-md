@@ -91,6 +91,9 @@ class TestGatekeeperAggregator(unittest.TestCase):
         self.assertIn("bad.sh:2", out)
 
     def test_render_json_roundtrip(self):
+        """render_json emits the canonical envelope (see
+        assets/schemas/tool-output.schema.json) — `verdict` at top
+        level, `findings` inside `data`."""
         import json
         f = self.gk.GateFinding(
             gate="iron-laws", severity="warn", rule_id="lazy-heavy-deps",
@@ -101,8 +104,13 @@ class TestGatekeeperAggregator(unittest.TestCase):
             durations_ms={"iron-laws": 10}, counts={"warn": 1},
         )
         data = json.loads(self.gk.render_json(v))
-        self.assertEqual(data["overall"], "yellow")
-        self.assertEqual(data["findings"][0]["gate"], "iron-laws")
+        # Canonical envelope keys
+        self.assertEqual(data["verdict"], "yellow")
+        self.assertEqual(data["counts"], {"warn": 1})
+        self.assertEqual(data["kaizen"]["tool"], "kaizen-gatekeeper")
+        self.assertEqual(data["kaizen"]["schema_version"], 1)
+        # Per-tool payload nested under `data`
+        self.assertEqual(data["data"]["findings"][0]["gate"], "iron-laws")
 
     def test_gate_etu_returns_list(self):
         """The etu sub-gate returns a list (possibly empty), never crashes."""

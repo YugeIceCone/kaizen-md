@@ -5,6 +5,82 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [S
 
 ## [Unreleased]
 
+### Added — canonical tool-output envelope: programmable + reproducible + consistent JSON across tools
+
+Every kaizen CLI with `--json` now emits through the same envelope shape so agents (and CI / pipes) consume them with one parser instead of N. Schema-validated, deterministically rendered, reproducible across runs.
+
+**Envelope shape** (`assets/schemas/tool-output.schema.json`):
+
+```json
+{
+  "kaizen": {
+    "schema_version": 1,
+    "tool": "kaizen-gatekeeper",
+    "tool_version": "1.0.0",
+    "plugin_version": "1.37.0",
+    "command": "gatekeeper.py check --staged --json",
+    "duration_ms": 304
+  },
+  "verdict": "green",
+  "counts": {"error": 0, "warn": 0},
+  "data": { /* tool-specific payload */ },
+  "errors": []
+}
+```
+
+- **`kaizen`** — envelope metadata (tool id + version + plugin version + invoking command + run duration). `ran_at_utc` is OMITTED by default so two identical runs are byte-identical — pass `include_time=True` to opt in.
+- **`verdict`** — go/no-go signal (`green` / `yellow` / `red` / `ok` / `warn` / `fail` / `violated` / `leaks` / `clean` / `null`). Pre-defined enums cover gate / action / audit verdict styles.
+- **`counts`** — severity bucket counts (`error` / `warn` / `info` typical; tool-specific allowed).
+- **`data`** — opaque per-tool payload. Agents inspect `verdict` + `counts` first, drill into `data` per the tool's per-tool schema.
+- **`errors`** — tool-internal errors (NOT findings), e.g. "validator subprocess timed out".
+
+**Helper** (`skills/workflow/scripts/_envelope.py`):
+
+```python
+from _envelope import wrap, render
+print(render(wrap(
+    tool="kaizen-mytool",
+    data={"items": [...]},
+    verdict="green",
+    counts={"error": 0},
+    argv=sys.argv,
+)))
+```
+
+- Stdlib-only — no PyYAML / no jsonschema imports at this layer.
+- `render()` uses `sort_keys=True` for deterministic output.
+- `argv` interpolated as `command` field with absolute-path stripped (reproducible across machines).
+
+**Retrofitted** (3 hot-path tools — every supports `--json`):
+
+| Tool | Before | After |
+|---|---|---|
+| `gatekeeper.py` | `{overall, counts, durations_ms, findings}` | Envelope with `verdict`, `counts`, `data.{durations_ms, findings}` |
+| `surface.py validate` | bare list `[...]` | Envelope with `verdict`, `counts`, `data.findings` |
+| `surface.py list` | dict-of-categories | Envelope with `counts.{mcp_servers, hooks}`, `data` |
+| `iron_laws.py check` | text only | Added `--json`; envelope with `verdict`, `counts.{hard, soft}`, `data.{scope, findings}` |
+| `iron_laws.py list` | text only | Added `--json`; envelope with `counts.{total, auto, manual}`, `data.laws` |
+
+**Tests** (`tests/test_envelope.py` — 8 new):
+
+- `_envelope.wrap()` produces required keys
+- `wrap()` with verdict/counts roundtrips
+- `render()` is byte-identical for identical input (key-sort ⇒ reproducibility)
+- `ran_at_utc` omitted by default, included on opt-in
+- `argv` command field strips absolute paths
+- **`TestRetrofittedToolsValidate`** — every retrofitted tool's `--json` output validates against the canonical schema (regression guard: add new tools to `_RETROFIT_TOOLS` to gate their shape)
+- **`TestReproducibility`** — gatekeeper's JSON is byte-identical across two runs (durations excepted — they vary by nature)
+
+Also fixed `test_gatekeeper.py::test_render_json_roundtrip` to expect the envelope shape instead of legacy bare-JSON.
+
+**Validation**:
+- 8/8 envelope tests pass
+- All cross-tool tests pass (gatekeeper, surface, bash_gate, kaizen_cli, iron_laws)
+- plugin-development validator: 52/52 features clean
+- All 3 retrofitted tools emit valid envelopes for both clean + finding-bearing runs
+
+**Adding a new tool to the envelope**: import `_envelope.wrap` + `_envelope.render`, emit the result for the `--json` path, append the test args to `_RETROFIT_TOOLS` in `test_envelope.py`.
+
 ### Added — agent bash-loop 100% optimization: PreToolUse etu gate + long-form nudge + SessionStart cheat-sheet
 
 Three coordinated additions that close the gap between "kaizen CLI is shorter and on `$PATH`" (already true) and "agents actually use it instead of long-form paths". Now: long-form bash → systemMessage nudge; `eval $user_input`/`find /` → permissionDecision ask; SessionStart emits the cheat-sheet so agents see the surface up-front.
