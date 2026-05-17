@@ -44,3 +44,4 @@
 | 2026-05-17 | perf     | +60    | userprompt_inbox.py — UserPromptSubmit inbox capture 4 spawns → 1. KAIZEN_INBOX_DISABLE bypass parity. |
 | 2026-05-17 | perf     | +80    | intent_userprompt.py — UserPromptSubmit intent matcher 3 spawns → 1. Existing test_intent_scan_hook.py passes unchanged. |
 | 2026-05-17 | perf     | +130   | posttooluse_bash_commit.py — PostToolUse(Bash) git-commit suggester 4 spawns → 1. KAIZEN_BACKLOG_COMMIT_DISABLE bypass parity. |
+| 2026-05-17 | perf     | +90    | subagentstop_trace.py — SubagentStop 5 spawns → 1. Emits both generic + detail trace events from one process. |
