@@ -51,7 +51,9 @@ or set the override env var.
 
 ## Env overrides
 
-Each path is individually overridable so users can pin a custom location:
+Each path is individually overridable so users can pin a custom location
+AND so tests can sandbox to a tempdir. The latter is the dominant
+real-world consumer — most users don't touch these.
 
     KAIZEN_DIR              root of the user-global tree (default ~/.claude/.kaizen)
     KAIZEN_TRACE_DIR        override the trace subdir
@@ -66,6 +68,18 @@ Each path is individually overridable so users can pin a custom location:
     KAIZEN_SNAPSHOTS_DIR    override the snapshots/ dir (v1.39.0+)
     KAIZEN_ARCHIVE_DIR      override the archive/ dir (v1.39.0+)
     WORKFLOW_STATE_DIR      override the per-project workflow dir
+
+## Test-surface knobs (kept intentionally despite low user-traffic)
+
+The following env vars exist primarily so tests can sandbox path
+resolution to a tempdir without monkeypatching constants:
+
+    KAIZEN_BRAIN_DB         test-only: pin brain.db location independent
+                            of KAIZEN_BRAIN_DIR (used by test_brain_index,
+                            test_brain_mcp)
+    KAIZEN_HANDOFF_DB       same shape (used by test_handoff)
+
+These are NOT user-facing knobs — set them only in test fixtures.
 
 ## Brain ownership (v1.38.0+)
 
@@ -284,6 +298,12 @@ LEGACY_PATHS: dict[str, Path] = {
     "manifest_lock_v138": KAIZEN_USER_DIR / "manifest.lock",
     "profile_env_v138":   KAIZEN_USER_DIR / "profile.env",
     "archive_v138":       KAIZEN_USER_DIR / _cfg.LEGACY_ARCHIVE_NAME,  # _legacy → archive
+    # DEBT-3: vestigial embed pipeline (pre-v1.22). Zero referrers in
+    # current code (`_adapters.py`, `embed_chunked.py`, etc. were
+    # superseded by `_embed.py` / `_chunk.py` / `_ast_chunk.py` in
+    # `scripts/`). Surfaces in `kaizen-path-migrate status` so the user
+    # can choose to archive it to ARCHIVE_DIR.
+    "vestigial_scripts":  KAIZEN_USER_DIR / "scripts",
 }
 
 LEGACY_TO_NEW: dict[Path, Path] = {
@@ -308,6 +328,8 @@ LEGACY_TO_NEW: dict[Path, Path] = {
     LEGACY_PATHS["manifest_lock_v138"]: MANIFEST_LOCK,
     LEGACY_PATHS["profile_env_v138"]: PROFILE_ENV,
     LEGACY_PATHS["archive_v138"]: ARCHIVE_DIR,
+    # DEBT-3: vestigial scripts dir → archive/ subdir (preserves history)
+    LEGACY_PATHS["vestigial_scripts"]: ARCHIVE_DIR / "scripts-pre-v1.22",
 }
 
 
