@@ -254,6 +254,48 @@ class TestSkillDescriptionsCatalog(Base):
                           f"bundled skills with no _SKILL_DESCRIPTIONS entry: {missing}")
 
 
+class TestAutoHandoffThreshold(Base):
+    def test_threshold_75_persists(self):
+        r = self._run("set", "loop", "--threshold", "75")
+        data = json.loads(r.stdout)
+        self.assertEqual(data["auto_handoff_threshold"], 75)
+
+    def test_threshold_omitted_defaults_to_none(self):
+        r = self._run("set", "loop")
+        data = json.loads(r.stdout)
+        self.assertIsNone(data["auto_handoff_threshold"])
+
+    def test_invalid_threshold_rejected(self):
+        # 50 is valid, 33 is not
+        r = self._run("set", "loop", "--threshold", "33")
+        self.assertNotEqual(r.returncode, 0)
+
+    def test_valid_thresholds_25_50_75_85(self):
+        for v in (25, 50, 75, 85):
+            r = self._run("set", "loop", "--threshold", str(v))
+            data = json.loads(r.stdout)
+            self.assertEqual(data["auto_handoff_threshold"], v)
+
+
+class TestThresholdSubcommand(Base):
+    def test_threshold_subcommand_prints_value_when_set(self):
+        self._run("set", "loop", "--threshold", "85")
+        r = self._run("threshold")
+        self.assertEqual(r.returncode, 0)
+        self.assertEqual(r.stdout.strip(), "85")
+
+    def test_threshold_subcommand_exits_1_when_unset(self):
+        self._run("set", "loop")  # no --threshold
+        r = self._run("threshold")
+        self.assertEqual(r.returncode, 1)
+        self.assertEqual(r.stdout.strip(), "")
+
+    def test_threshold_subcommand_exits_1_when_no_state(self):
+        # No prior set
+        r = self._run("threshold")
+        self.assertEqual(r.returncode, 1)
+
+
 class TestModeOverwrite(Base):
     """set replaces prior state — no implicit merge."""
     def test_second_set_overwrites_first(self):

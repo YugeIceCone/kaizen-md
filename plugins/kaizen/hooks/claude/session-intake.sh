@@ -93,16 +93,36 @@ QUESTION 2 — disciplines (multiSelect):
     - label: \"Karpathy 4\"
       description: \"Code-as-communication — readable intent over clever density.\"
 
-After the user answers, persist BOTH choices in ONE command:
+QUESTION 3 — auto-handoff context-pressure trigger (single-select):
+  question: \"Auto-trigger a handoff when context window reaches ____ %?\"
+  header:   \"Auto-handoff\"
+  multiSelect: false
+  options:
+    - label: \"25%\"
+      description: \"Paranoid — fire very early. Best for long iterative loops with lots of context churn.\"
+    - label: \"50%\"
+      description: \"Half-full — comfortable buffer. Good default for medium sessions.\"
+    - label: \"75%\"
+      description: \"Conservative — fire well before compact pressure. Recommended for most work.\"
+    - label: \"85%\"
+      description: \"Pushing it — fire only when context is genuinely tight.\"
+    - label: \"Disabled\"
+      description: \"No auto-handoff. Manually trigger via /kaizen:handoff create when ready.\"
 
-  Bash(kaizen-session-mode set <loop|workflow|neither> --bundles <csv-of-picked-lowercased-names>)
+After the user answers, persist ALL THREE choices in ONE command:
+
+  Bash(kaizen-session-mode set <loop|workflow|neither> --bundles <csv> --threshold <25|50|75|85>)
 
 Bundle name mapping (lowercase, comma-separated):
   Simplicity → simplicity   Structure → structure
   Process    → process      Karpathy 4 → karpathy
 
-Example: user picks Loop + (Simplicity, Process):
-  kaizen-session-mode set loop --bundles simplicity,process
+Threshold mapping (integer or omit for Disabled):
+  25%/50%/75%/85% → pass numeric value via --threshold
+  Disabled        → OMIT the --threshold flag entirely
+
+Example: user picks Loop + (Simplicity, Process) + 75%:
+  kaizen-session-mode set loop --bundles simplicity,process --threshold 75
 
 Only AFTER recording the choices, address the user's original request.
 

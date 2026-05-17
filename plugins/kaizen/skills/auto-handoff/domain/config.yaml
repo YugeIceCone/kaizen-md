@@ -1,0 +1,47 @@
+# kaizen auto-handoff config — schema-driven trigger + decision policy.
+# Validated against domain/schemas/config.schema.json.
+# Override via KAIZEN_AUTO_HANDOFF_CONFIG env var (absolute path).
+
+version: 1
+
+# The four user-pickable threshold levels (% of context-window limit).
+# Single source of truth — session_mode.py imports this list to
+# validate --threshold inputs.
+valid_thresholds: [25, 50, 75, 85]
+
+# dxm event type written on first fire (the dedupe marker). Subsequent
+# invocations look for this evt_type in the session's dxm log and skip
+# re-firing when found.
+dedupe_event_type: "auto_handoff.requested"
+
+on_fire:
+  # "block"          — Stop hook returns {"decision":"block","reason":…}
+  #                    Agent CANNOT exit until handoff is created.
+  # "systemMessage"  — soft suggestion (advisory). Agent may skip.
+  # Default is "block" — see SKILL.md "Contract" section.
+  decision: "block"
+
+  # Template for the reason text. Substitution:
+  #   {pct}        — current context % at fire time
+  #   {threshold}  — the user-chosen threshold (25/50/75/85)
+  #   {tokens}     — absolute current_tokens (for context)
+  reason_template: |
+    ⚠ MANDATORY pre-compact handoff (context at {pct}%, threshold {threshold}%, {tokens} tokens).
+
+    Stop is BLOCKED until you create the handoff. The block
+    auto-releases on your next Stop after the handoff lands
+    (the dedupe marker prevents re-fire this session).
+
+    Required steps before stopping:
+
+      1. Wrap up the in-flight code change (don't leave it half-done).
+      2. Create the handoff:
+           Bash(kaizen-handoff scaffold --session <project>
+                 --goal '<one line>' --now 'pre-compact at {pct}%')
+      3. Fill the qualitative fields (decisions / findings / worked / failed / next).
+      4. Run kaizen-handoff auto-finalize.
+      5. Then user runs /compact when ready, or you Stop normally.
+
+    Skip this enforcement only via KAIZEN_AUTO_HANDOFF_DISABLE=1
+    in the user's environment — never bypass without the user's
+    explicit say-so.

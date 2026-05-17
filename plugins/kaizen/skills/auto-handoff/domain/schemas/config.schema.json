@@ -1,0 +1,43 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "kaizen-auto-handoff-config",
+  "title": "kaizen auto-handoff config",
+  "description": "Declarative config for the context-pressure auto-handoff trigger. Loaded by skills/workflow/scripts/auto_handoff.py.",
+  "type": "object",
+  "required": ["version", "valid_thresholds", "dedupe_event_type", "on_fire"],
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "type": "integer",
+      "const": 1
+    },
+    "valid_thresholds": {
+      "type": "array",
+      "items": { "type": "integer", "minimum": 1, "maximum": 99 },
+      "minItems": 1,
+      "uniqueItems": true,
+      "description": "Allowed user-picked threshold %s (single source for session_mode.py --threshold validation)."
+    },
+    "dedupe_event_type": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_.-]+$",
+      "description": "dxm event type written on first fire; subsequent calls dedupe via this marker."
+    },
+    "on_fire": {
+      "type": "object",
+      "required": ["decision", "reason_template"],
+      "additionalProperties": false,
+      "properties": {
+        "decision": {
+          "enum": ["block", "systemMessage"],
+          "description": "block = Stop hook prevents exit until handoff lands. systemMessage = advisory only."
+        },
+        "reason_template": {
+          "type": "string",
+          "minLength": 20,
+          "description": "Template text emitted to the agent. Vars: {pct} {threshold} {tokens}."
+        }
+      }
+    }
+  }
+}

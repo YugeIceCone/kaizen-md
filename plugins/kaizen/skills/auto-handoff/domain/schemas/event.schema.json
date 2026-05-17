@@ -1,0 +1,31 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "kaizen-auto-handoff-event",
+  "title": "kaizen auto-handoff dxm event payload",
+  "description": "Schema for the payload of auto_handoff.requested dxm events. Written once per session at first threshold crossing.",
+  "type": "object",
+  "required": ["pct", "threshold"],
+  "additionalProperties": false,
+  "properties": {
+    "pct": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 200,
+      "description": "Current context % at fire time (may exceed 100 if limit is mis-set)."
+    },
+    "threshold": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 99,
+      "description": "User-chosen threshold % that was crossed."
+    },
+    "tokens": {
+      "type": ["integer", "null"],
+      "description": "Absolute current_tokens at fire time (None when JSONL unavailable)."
+    },
+    "peak_tokens": {
+      "type": ["integer", "null"],
+      "description": "Max tokens seen across all assistant turns this session."
+    }
+  }
+}

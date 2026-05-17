@@ -73,6 +73,16 @@ class TestEmitsIntakePromptWhenUnset(Base):
         # The example line shows mode + --bundles together
         self.assertIn("--bundles", ctx)
 
+    def test_includes_threshold_question(self):
+        """Q3 must ask about auto-handoff context-pressure threshold."""
+        r = self._fire()
+        ctx = self._additional_context(r)
+        self.assertIn("Auto-handoff", ctx)
+        for pct in ("25%", "50%", "75%", "85%"):
+            self.assertIn(pct, ctx)
+        self.assertIn("Disabled", ctx)
+        self.assertIn("--threshold", ctx)
+
 
 class TestSkipsWhenAlreadySet(Base):
     def test_existing_session_mode_skips(self):

@@ -33,6 +33,11 @@ from pathlib import Path
 
 _VALID_MODES = ("loop", "workflow", "neither")
 
+# User-pickable thresholds (% of context-window limit) at which the
+# auto-handoff handler fires. Single-select at intake. None means
+# auto-handoff is disabled for this session.
+_VALID_THRESHOLDS = (25, 50, 75, 85)
+
 
 # Discipline bundles — picked by the SessionStart QA multiSelect.
 # Logical grouping so users don't have to pick 13 individual skills.
@@ -161,12 +166,23 @@ def _cmd_set(args) -> int:
     # adds individual tags on top. De-duped, order preserved.
     from_bundles = expand_bundles(args.bundles or "")
     from_skills = [s.strip().lower() for s in (args.skills or "").split(",") if s.strip()]
+
+    # Threshold validation. None = disabled; 25/50/75/85 = fire-at.
+    threshold = args.threshold
+    if threshold is not None and threshold not in _VALID_THRESHOLDS:
+        sys.stderr.write(
+            f"[kaizen-session-mode set] invalid --threshold {threshold}; "
+            f"choose from {_VALID_THRESHOLDS} or omit for disabled\n"
+        )
+        return 2
+
     state = {
-        "mode":       args.mode,
-        "set_at":     _iso_now(),
-        "session_id": args.session_id or "",
-        "skills":     _merge_unique(from_bundles, from_skills),
-        "bundles":    [b.strip().lower() for b in (args.bundles or "").split(",") if b.strip()],
+        "mode":                    args.mode,
+        "set_at":                  _iso_now(),
+        "session_id":              args.session_id or "",
+        "skills":                  _merge_unique(from_bundles, from_skills),
+        "bundles":                 [b.strip().lower() for b in (args.bundles or "").split(",") if b.strip()],
+        "auto_handoff_threshold":  threshold,
     }
     if not write_state(state):
         sys.stderr.write("[kaizen-session-mode set] write failed\n")
@@ -209,6 +225,19 @@ def _cmd_bundles(args) -> int:
     else:
         for name, skills in _BUNDLES.items():
             print(f"{name}: {', '.join(skills)}")
+    return 0
+
+
+def _cmd_threshold(args) -> int:
+    """Print the auto-handoff threshold (int %) or empty when unset/disabled.
+    Used by context_notifier to decide whether to fire auto-handoff."""
+    state = read_state()
+    if state is None:
+        return 1
+    t = state.get("auto_handoff_threshold")
+    if t is None:
+        return 1
+    print(t)
     return 0
 
 
@@ -259,6 +288,10 @@ def main(argv=None) -> int:
                      help="comma-separated bundle names (simplicity,structure,process,karpathy)")
     ps.add_argument("--session-id", default="",
                      help="optional Claude Code session-id pin")
+    ps.add_argument("--threshold", type=int, default=None,
+                     choices=_VALID_THRESHOLDS,
+                     help="auto-handoff fires at this %% of context limit "
+                          "(omit = disabled)")
     ps.set_defaults(func=_cmd_set)
 
     pg = sub.add_parser("get", help="print the active mode")
@@ -275,6 +308,11 @@ def main(argv=None) -> int:
     pb = sub.add_parser("bundles", help="print the discipline-bundle catalog")
     pb.add_argument("--json", action="store_true")
     pb.set_defaults(func=_cmd_bundles)
+
+    pt = sub.add_parser("threshold",
+                          help="print the auto-handoff threshold (% int) "
+                               "or exit 1 when unset/disabled")
+    pt.set_defaults(func=_cmd_threshold)
 
     pr = sub.add_parser("reminder",
                           help="emit the active-skills reminder block (for hook injection)")

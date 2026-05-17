@@ -17,38 +17,54 @@ Parse the argument. Valid values: `loop`, `workflow`, `neither`.
 
 ### When `$ARGUMENTS` is one of `loop`/`workflow`/`neither`
 
-Mode is known — skip Q1, ask ONLY the discipline bundles question.
-
-Call `AskUserQuestion` exactly once with this question:
+Mode is known — skip Q1, ask the discipline-bundles question PLUS
+the auto-handoff-threshold question in a single AskUserQuestion call.
 
 ```
-question: "Which discipline bundles should be enforced this session?"
-header:   "Disciplines"
-multiSelect: true
-options:
-  - label: "Simplicity (KISS + YAGNI + DRY)"
-    description: "Anti-bloat — small code, no premature abstraction, no repetition."
-  - label: "Structure (SOLID + SoC + LoD + Onion-DDD + Hexagonal + Clean + DIP + Bounded-Contexts)"
-    description: "Architecture — layered systems, inward-only deps, ports & adapters, bounded contexts."
-  - label: "Process (TDD + Boy-Scout + Convention)"
-    description: "How-you-work — test-first, leave it cleaner, follow existing patterns."
-  - label: "Karpathy 4"
-    description: "Code-as-communication — readable intent over clever density."
+QUESTION 1 — disciplines (multiSelect):
+  question: "Which discipline bundles should be enforced this session?"
+  header:   "Disciplines"
+  multiSelect: true
+  options:
+    - label: "Simplicity (KISS + YAGNI + DRY)"
+      description: "Anti-bloat — small code, no premature abstraction, no repetition."
+    - label: "Structure (SOLID + SoC + LoD + Onion-DDD + Hexagonal + Clean + DIP + Bounded-Contexts)"
+      description: "Architecture — layered systems, inward-only deps, ports & adapters, bounded contexts."
+    - label: "Process (TDD + Boy-Scout + Convention)"
+      description: "How-you-work — test-first, leave it cleaner, follow existing patterns."
+    - label: "Karpathy 4"
+      description: "Code-as-communication — readable intent over clever density."
+
+QUESTION 2 — auto-handoff trigger (single-select):
+  question: "Auto-trigger a handoff when context window reaches ____ %?"
+  header:   "Auto-handoff"
+  multiSelect: false
+  options:
+    - label: "25%"        — paranoid, fire very early
+    - label: "50%"        — half-full, comfortable buffer
+    - label: "75%"        — conservative (recommended)
+    - label: "85%"        — pushing it
+    - label: "Disabled"   — no auto-handoff
 ```
 
-Map the user's picks to lowercase bundle names (comma-separated):
+Bundle name mapping (lowercase, comma-separated):
 - "Simplicity (…)"  → `simplicity`
 - "Structure (…)"   → `structure`
 - "Process (…)"     → `process`
 - "Karpathy 4"      → `karpathy`
 
-Then persist via:
+Threshold mapping (integer or OMIT for Disabled):
+- 25% / 50% / 75% / 85%  → numeric value via `--threshold`
+- Disabled               → OMIT the `--threshold` flag
+
+Persist all picks via ONE command:
 
 ```bash
-kaizen-session-mode set $ARGUMENTS --bundles <csv-of-picked-bundle-names>
+kaizen-session-mode set $ARGUMENTS --bundles <csv> --threshold <25|50|75|85>
 ```
 
-If the user picked zero bundles, omit `--bundles` (mode-only set).
+Omit flags whose user-pick was empty (zero bundles → no `--bundles`;
+Disabled threshold → no `--threshold`).
 
 ### When `$ARGUMENTS` is empty
 

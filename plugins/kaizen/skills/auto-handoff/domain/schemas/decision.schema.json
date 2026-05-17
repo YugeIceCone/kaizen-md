@@ -1,0 +1,33 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "kaizen-auto-handoff-decision",
+  "title": "kaizen auto-handoff hook output",
+  "description": "Schema for the JSON envelope the Stop hook returns. Either empty {} (no-op) or one of the two fire-decision shapes.",
+  "oneOf": [
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "No-op shape — threshold not crossed, dedupe hit, or disabled.",
+      "properties": {}
+    },
+    {
+      "type": "object",
+      "required": ["decision", "reason"],
+      "additionalProperties": false,
+      "description": "Block shape — Stop is prevented until handoff is created.",
+      "properties": {
+        "decision": { "const": "block" },
+        "reason":   { "type": "string", "minLength": 20 }
+      }
+    },
+    {
+      "type": "object",
+      "required": ["systemMessage"],
+      "additionalProperties": false,
+      "description": "Advisory shape (when config.on_fire.decision = systemMessage).",
+      "properties": {
+        "systemMessage": { "type": "string", "minLength": 20 }
+      }
+    }
+  ]
+}

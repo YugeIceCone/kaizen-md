@@ -61,6 +61,13 @@ class TestBodyContent(unittest.TestCase):
         self.assertIn("empty", self.body.lower())
         self.assertIn("invalid", self.body.lower())
 
+    def test_body_includes_threshold_options(self):
+        """Q2 (threshold) must list all 4 % choices + Disabled."""
+        for pct in ("25%", "50%", "75%", "85%"):
+            self.assertIn(pct, self.body)
+        self.assertIn("Disabled", self.body)
+        self.assertIn("--threshold", self.body)
+
     def test_body_references_bundle_name_lowercase_mapping(self):
         # Agent needs to know which label → which lowercased bundle id
         for lc in ("simplicity", "structure", "process", "karpathy"):
