@@ -685,6 +685,49 @@ if [ "${#SUGGESTIONS[@]}" -ge 3 ] && [ "$DIFF_IS_STRUCTURAL" = "1" ]; then
     suggest "Structural diff with multiple coding-skills triggers → review with onion-ddd-workflow checklist before committing"
 fi
 
+# ─── Check 13: Stack-context auto-regen on manifest deltas ──────────
+# When a stack manifest (Cargo.toml / package.json / go.mod / pyproject.toml
+# / rust-toolchain / .nvmrc / etc.) is staged, .agents/stack-context.{json,md}
+# is a DERIVED artifact and should track the change. Auto-regen + auto-stage
+# so the next session's SessionStart hook injects fresh stack context.
+#
+# Bypass: KAIZEN_DETECT_STACK_PRECOMMIT_DISABLE=1 (silent skip).
+# The detect_stack.py script is also auto-disabled if KAIZEN_DETECT_STACK_DISABLE=1.
+if [ -z "${KAIZEN_DETECT_STACK_PRECOMMIT_DISABLE:-}" ] \
+   && [ -z "${KAIZEN_DETECT_STACK_DISABLE:-}" ]; then
+    _MANIFEST_PATTERN='(^|/)(Cargo\.toml|package\.json|go\.mod|pyproject\.toml|requirements\.txt|Gemfile|Package\.swift|mix\.exs|build\.gradle(\.kts)?|pom\.xml|composer\.json|CMakeLists\.txt|rust-toolchain(\.toml)?|\.python-version|\.nvmrc|\.ruby-version|\.tool-versions|mise\.toml|Dockerfile|docker-compose\.ya?ml|pnpm-workspace\.yaml|lerna\.json|nx\.json|turbo\.json|\.pre-commit-config\.yaml)$'
+    MANIFEST_HITS=$(echo "$STAGED" | grep -E "$_MANIFEST_PATTERN" || true)
+    if [ -n "$MANIFEST_HITS" ]; then
+        DETECT_PY="$_SCRIPT_REAL_DIR/detect_stack.py"
+        if [ -f "$DETECT_PY" ]; then
+            if python3 "$DETECT_PY" scan --force >/tmp/kaizen-stack-ctx.log 2>&1; then
+                STACK_JSON="$REPO_ROOT/.agents/stack-context.json"
+                STACK_MD="$REPO_ROOT/.agents/stack-context.md"
+                STAGED_NEW=""
+                for f in "$STACK_JSON" "$STACK_MD"; do
+                    [ -f "$f" ] || continue
+                    rel="${f#$REPO_ROOT/}"
+                    if ! git diff --cached --quiet -- "$rel" 2>/dev/null \
+                       || ! git diff --quiet -- "$rel" 2>/dev/null; then
+                        git add -- "$rel" 2>/dev/null && STAGED_NEW="$STAGED_NEW $rel"
+                    fi
+                done
+                if [ -n "$STAGED_NEW" ]; then
+                    pass "stack-context regenerated + staged after manifest delta:$STAGED_NEW"
+                else
+                    pass "stack-context: manifest staged but artifact unchanged (no regen needed)"
+                fi
+            else
+                warn "stack-context auto-regen failed — see /tmp/kaizen-stack-ctx.log"
+            fi
+        else
+            skip "stack-context auto-regen: detect_stack.py not found"
+        fi
+    else
+        skip "stack-context: no manifest in staged diff"
+    fi
+fi
+
 # ─── Check 12: Context-window awareness (advisory) ───────────────────
 # Only fires when CLAUDE_CONTEXT_TOKENS env is set by the harness.
 # Without it, context state is unknown and the check is a no-op.
