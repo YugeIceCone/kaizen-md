@@ -178,18 +178,54 @@ class TestBundleExpansion(Base):
 
 
 class TestBundlesSubcommand(Base):
-    def test_lists_4_bundles(self):
+    def test_lists_coding_skills_bundles(self):
         r = self._run("bundles")
         self.assertEqual(r.returncode, 0)
         for name in ("simplicity", "structure", "process", "karpathy"):
             self.assertIn(name, r.stdout)
 
+    def test_lists_operational_bundles(self):
+        """New operational tier — cross-cutting disciplines beyond coding-style."""
+        r = self._run("bundles")
+        self.assertEqual(r.returncode, 0)
+        for name in ("quality", "security", "brain-hygiene", "plugin-dev"):
+            self.assertIn(name, r.stdout, f"missing operational bundle {name!r}")
+
     def test_json_emits_full_mapping(self):
         r = self._run("bundles", "--json")
         data = json.loads(r.stdout)
-        self.assertEqual(set(data.keys()),
-                          {"simplicity", "structure", "process", "karpathy"})
+        self.assertEqual(
+            set(data.keys()),
+            {
+                # coding-style tier
+                "simplicity", "structure", "process", "karpathy",
+                # operational tier
+                "quality", "security", "brain-hygiene", "plugin-dev",
+            },
+        )
         self.assertIn("kiss", data["simplicity"])
+
+    def test_plugin_dev_bundle_includes_plugin_development(self):
+        """User-requested: /kaizen:mode must be able to pin plugin-development."""
+        r = self._run("bundles", "--json")
+        data = json.loads(r.stdout)
+        self.assertIn("plugin-development", data["plugin-dev"])
+
+    def test_quality_bundle_includes_gatekeeper_and_iron_laws(self):
+        r = self._run("bundles", "--json")
+        data = json.loads(r.stdout)
+        self.assertIn("gatekeeper", data["quality"])
+        self.assertIn("iron-laws", data["quality"])
+
+    def test_brain_hygiene_bundle_includes_remember(self):
+        r = self._run("bundles", "--json")
+        data = json.loads(r.stdout)
+        self.assertIn("remember", data["brain-hygiene"])
+
+    def test_security_bundle_includes_security_review(self):
+        r = self._run("bundles", "--json")
+        data = json.loads(r.stdout)
+        self.assertIn("security-review", data["security"])
 
 
 class TestReminderSubcommand(Base):

@@ -54,16 +54,30 @@ class TestEmitsIntakePromptWhenUnset(Base):
         self.assertIn("Neither", ctx)
         self.assertIn("kaizen-session-mode set", ctx)
 
-    def test_includes_bundles_question(self):
-        """Q2 must instruct multiSelect bundles."""
+    def test_includes_coding_style_bundles_question(self):
+        """Q2 must instruct multiSelect for coding-style bundles."""
         r = self._fire()
         ctx = self._additional_context(r)
-        self.assertIn("Disciplines", ctx)
+        self.assertIn("Coding style", ctx)
         self.assertIn("Simplicity", ctx)
         self.assertIn("Structure", ctx)
         self.assertIn("Process", ctx)
         self.assertIn("Karpathy", ctx)
         self.assertIn("--bundles", ctx)
+
+    def test_includes_operational_bundles_question(self):
+        """Q3 must instruct multiSelect for operational bundles."""
+        r = self._fire()
+        ctx = self._additional_context(r)
+        self.assertIn("Operational", ctx)
+        self.assertIn("Quality", ctx)
+        self.assertIn("Security", ctx)
+        self.assertIn("Brain hygiene", ctx)
+        self.assertIn("Plugin-dev", ctx)
+        # Bundle ids referenced in the persistence mapping
+        for bundle_id in ("quality", "security", "brain-hygiene", "plugin-dev"):
+            self.assertIn(bundle_id, ctx,
+                          f"intake missing bundle id {bundle_id!r}")
 
     def test_prescribes_single_command_for_persistence(self):
         """Mode + bundles persist via ONE call, not two."""

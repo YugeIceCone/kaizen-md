@@ -40,15 +40,25 @@ _VALID_THRESHOLDS = (25, 50, 75, 85)
 
 
 # Discipline bundles — picked by the SessionStart QA multiSelect.
-# Logical grouping so users don't have to pick 13 individual skills.
+# Logical grouping so users don't have to pick 25+ individual skills.
 # Each bundle expands to a flat list of skill tags that downstream
 # hooks/agents use to filter behaviour.
 #
-#   simplicity → anti-bloat (small code, no premature abstraction)
-#   structure  → architecture (boundaries, layering, dependency direction)
-#   process    → how-you-work (test-first, leave-it-cleaner, convention-over-config)
-#   karpathy   → code-as-communication (Karpathy's 4 principles)
+# Two tiers:
+#
+#   ── Coding-style (apply to every code change) ──
+#   simplicity    → anti-bloat (small code, no premature abstraction)
+#   structure     → architecture (boundaries, layering, dependency direction)
+#   process       → how-you-work (test-first, leave-it-cleaner, convention-over-config)
+#   karpathy      → code-as-communication (Karpathy's 4 principles)
+#
+#   ── Operational (cross-cutting across the session, not per-change) ──
+#   quality       → audit / review / lint disciplines (gatekeeper, iron-laws, simplify, vibe-check)
+#   security      → secure-by-default reviews (security-review, iron-laws, verify-before-execution)
+#   brain-hygiene → Second Brain upkeep (remember, reflect, memory-state, evolve)
+#   plugin-dev    → kaizen plugin authoring (plugin-development, plugin-pitfalls, iron-laws, …)
 _BUNDLES: dict[str, list[str]] = {
+    # ── Coding-style tier ──
     "simplicity": ["kiss", "yagni", "dry"],
     # Structure = all the layered / inward-deps / boundary disciplines.
     # SOLID + SoC + LoD are the OO classics. Onion / Clean / Hexagonal /
@@ -62,6 +72,23 @@ _BUNDLES: dict[str, list[str]] = {
     ],
     "process":    ["tdd", "boy-scout", "convention"],
     "karpathy":   ["karpathy"],
+
+    # ── Operational tier ──
+    # quality = the audit/review surface. Pins gate disciplines so the
+    # agent runs lint/iron-law/karpathy/vibe checks proactively.
+    "quality":       ["gatekeeper", "iron-laws", "karpathy",
+                       "simplify", "vibe-check"],
+    # security = OWASP-style review + verify-before-execution + the
+    # iron-law spec (which encodes plugin-side security gates).
+    "security":      ["security-review", "iron-laws", "verify-before-execution"],
+    # brain-hygiene = Second Brain upkeep. Keeps the agent surfacing
+    # remember/reflect/evolve disciplines throughout long sessions.
+    "brain-hygiene": ["remember", "reflect", "memory-state", "evolve"],
+    # plugin-dev = kaizen plugin authoring. Pins the canonical
+    # plugin-development + plugin-pitfalls + writing-skills + iron-laws
+    # disciplines for sessions editing plugin-original code.
+    "plugin-dev":    ["plugin-development", "plugin-pitfalls", "iron-laws",
+                       "writing-skills", "command-development"],
 }
 
 
@@ -71,6 +98,7 @@ _BUNDLES: dict[str, list[str]] = {
 # is for skill-load routing); these are stay-on-target reminders for
 # already-active disciplines.
 _SKILL_DESCRIPTIONS: dict[str, str] = {
+    # ── Coding-style tier ──
     # Simplicity
     "kiss":             "keep it simple — fewest moving parts wins",
     "yagni":            "no speculative abstraction — only what THIS task needs",
@@ -90,6 +118,26 @@ _SKILL_DESCRIPTIONS: dict[str, str] = {
     "convention":       "convention over config — match existing patterns FIRST",
     # Karpathy
     "karpathy":         "Karpathy 4 — write code that reads like its intent",
+
+    # ── Operational tier ──
+    # Quality
+    "gatekeeper":             "run gatekeeper before commit — green/yellow/red verdict",
+    "iron-laws":              "iron-law check — non-negotiable plugin invariants stay clean",
+    "simplify":               "simplify — review changed code for reuse + quality + efficiency",
+    "vibe-check":             "vibe-check — periodic gut-feel sanity pass on the diff",
+    # Security
+    "security-review":        "security review — OWASP-style scan of changed code",
+    "verify-before-execution":"verify before execute — RED-GREEN gate for risky operations",
+    # Brain hygiene
+    "remember":               "remember — capture beliefs / preferences as you discover them",
+    "reflect":                "reflect — end-of-session memory + plan reflection",
+    "memory-state":           "memory-state — track what's in auto-memory vs brain Notes",
+    "evolve":                 "evolve — promote high-confidence Notes into Persona top beliefs",
+    # Plugin-dev
+    "plugin-development":     "plugin-development — canonical 13-slot feature shape + iron laws",
+    "plugin-pitfalls":        "plugin-pitfalls — failure modes catalog; counterpart to plugin-development",
+    "writing-skills":         "writing-skills — SKILL.md authoring conventions (frontmatter, triggers, Iron Laws)",
+    "command-development":    "command-development — slash-command frontmatter + argument patterns",
 }
 
 

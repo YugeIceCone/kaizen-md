@@ -17,13 +17,14 @@ Parse the argument. Valid values: `loop`, `workflow`, `neither`.
 
 ### When `$ARGUMENTS` is one of `loop`/`workflow`/`neither`
 
-Mode is known — skip Q1, ask the discipline-bundles question PLUS
-the auto-handoff-threshold question in a single AskUserQuestion call.
+Mode is known — skip Q1, ask THREE questions in a single
+AskUserQuestion call: coding-style disciplines, operational
+disciplines, and auto-handoff threshold.
 
 ```
-QUESTION 1 — disciplines (multiSelect):
-  question: "Which discipline bundles should be enforced this session?"
-  header:   "Disciplines"
+QUESTION 1 — coding-style disciplines (multiSelect):
+  question: "Which CODING-STYLE disciplines should be enforced this session?"
+  header:   "Coding style"
   multiSelect: true
   options:
     - label: "Simplicity (KISS + YAGNI + DRY)"
@@ -35,7 +36,21 @@ QUESTION 1 — disciplines (multiSelect):
     - label: "Karpathy 4"
       description: "Code-as-communication — readable intent over clever density."
 
-QUESTION 2 — auto-handoff trigger (single-select):
+QUESTION 2 — operational disciplines (multiSelect):
+  question: "Which OPERATIONAL disciplines should be cross-cutting this session?"
+  header:   "Operational"
+  multiSelect: true
+  options:
+    - label: "Quality (gatekeeper + iron-laws + karpathy + simplify + vibe-check)"
+      description: "Audit/review surface — auto-run gatekeeper and lint disciplines proactively."
+    - label: "Security (security-review + iron-laws + verify-before-execution)"
+      description: "OWASP-style scan + verify-before-execute gates on risky operations."
+    - label: "Brain hygiene (remember + reflect + memory-state + evolve)"
+      description: "Second Brain upkeep — capture / reflect / promote beliefs throughout session."
+    - label: "Plugin-dev (plugin-development + plugin-pitfalls + iron-laws + writing-skills + command-development)"
+      description: "kaizen plugin authoring — canonical feature shape + iron laws + skill/command conventions."
+
+QUESTION 3 — auto-handoff trigger (single-select):
   question: "Auto-trigger a handoff when context window reaches ____ %?"
   header:   "Auto-handoff"
   multiSelect: false
@@ -47,11 +62,19 @@ QUESTION 2 — auto-handoff trigger (single-select):
     - label: "Disabled"   — no auto-handoff
 ```
 
-Bundle name mapping (lowercase, comma-separated):
-- "Simplicity (…)"  → `simplicity`
-- "Structure (…)"   → `structure`
-- "Process (…)"     → `process`
-- "Karpathy 4"      → `karpathy`
+Bundle name mapping (lowercase, comma-separated). Merge picks from
+BOTH multiSelect questions into a single `--bundles` CSV:
+
+| Label                | Bundle id        |
+|----------------------|------------------|
+| Simplicity (…)       | `simplicity`     |
+| Structure (…)        | `structure`      |
+| Process (…)          | `process`        |
+| Karpathy 4           | `karpathy`       |
+| Quality (…)          | `quality`        |
+| Security (…)         | `security`       |
+| Brain hygiene (…)    | `brain-hygiene`  |
+| Plugin-dev (…)       | `plugin-dev`     |
 
 Threshold mapping (integer or OMIT for Disabled):
 - 25% / 50% / 75% / 85%  → numeric value via `--threshold`
