@@ -12,6 +12,10 @@
 
 set -uo pipefail
 
+# Bypass-knob iron-law compliance. (The shared KAIZEN_INBOX_DISABLE
+# is also honored deeper in userprompt_inbox.py.)
+[ "${KAIZEN_INBOX_DISABLE:-}" = "1" ] && exit 0
+
 _HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=../../skills/workflow/scripts/_plugin_root.sh
 source "$_HOOK_DIR/../../skills/workflow/scripts/_plugin_root.sh"

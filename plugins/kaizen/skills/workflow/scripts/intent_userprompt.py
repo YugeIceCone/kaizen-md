@@ -43,6 +43,13 @@ def main() -> int:
         return 0
 
     sys.path.insert(0, str(Path(__file__).resolve().parent))
+    # Trace the hook firing (observability — every-hook-script-traces).
+    try:
+        import _dxm_emit
+        _dxm_emit.emit_event("intent.userprompt.fired",
+                              tool_name="kaizen-intent")
+    except Exception:
+        pass
     try:
         import intent as _intent
     except ImportError:

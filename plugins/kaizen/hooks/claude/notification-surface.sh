@@ -13,7 +13,7 @@
 
 set -uo pipefail
 
-if [ "${KAIZEN_NOTIFY_QUIET:-0}" = "1" ]; then
+if [ "${KAIZEN_NOTIFY_QUIET:-0}" = "1" ] || [ "${KAIZEN_NOTIFICATION_DISABLE:-0}" = "1" ]; then
     echo '{}'
     exit 0
 fi

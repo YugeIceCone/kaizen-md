@@ -5,6 +5,9 @@
 
 set -uo pipefail
 
+# Bypass-knob iron-law compliance.
+[ "${KAIZEN_PRECOMPACT_DISABLE:-}" = "1" ] && { echo '{}'; exit 0; }
+
 # Resolve plugin root (CLAUDE_PLUGIN_ROOT → KAIZEN_PLUGIN_ROOT → derived).
 _HOOK_DIR="$(cd "$(dirname "$(python3 -c "import os,sys; print(os.path.realpath(sys.argv[1]))" "${BASH_SOURCE[0]}")")" && pwd)"
 # shellcheck source=../../skills/workflow/scripts/_plugin_root.sh

@@ -121,6 +121,32 @@ class TestChecker(unittest.TestCase):
         h.write_text('#!/bin/bash\necho hi\n')
         self.assertTrue(_iron_laws.check_every_hook_script_traces_its_firing(_ctx(self.tmp)))
 
+    def test_every_hook_script_traces_via_delegated_helper(self):
+        """Consolidated hot-path hooks (e.g. pretooluse-trace.sh) just
+        call a python helper that imports trace + calls append_event.
+        The .sh doesn't have '_trace.sh' in it. The check should
+        follow the python3 invocation and recognize trace usage inside
+        the helper."""
+        import _iron_laws
+        # Hook delegates to a helper
+        h = self.pk / "hooks/claude/delegated.sh"
+        h.write_text(
+            '#!/bin/bash\n'
+            'python3 "$PLUGIN_ROOT/skills/workflow/scripts/my_helper.py"\n'
+        )
+        # Helper imports trace and calls append_event
+        scripts = self.pk / "skills/workflow/scripts"
+        scripts.mkdir(parents=True, exist_ok=True)
+        (scripts / "my_helper.py").write_text(
+            "import trace\n"
+            "trace.append_event({'evt': 'demo'})\n"
+        )
+        findings = _iron_laws.check_every_hook_script_traces_its_firing(
+            _ctx(self.tmp))
+        self.assertEqual(
+            findings, [],
+            f"delegated helper should count as tracing; got: {findings}")
+
     def test_skill_md_no_exec_markers(self):
         import _iron_laws
         s = self.pk / "skills/demo/SKILL.md"

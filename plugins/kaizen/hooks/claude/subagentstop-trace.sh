@@ -13,6 +13,10 @@
 
 set -uo pipefail
 
+# Bypass-knob iron-law compliance (also honored by sibling trace
+# hooks via KAIZEN_TRACE_DISABLE).
+[ "${KAIZEN_SUBAGENT_TRACE_DISABLE:-}" = "1" ] && { echo '{}'; exit 0; }
+
 _HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=../../skills/workflow/scripts/_plugin_root.sh
 source "$_HOOK_DIR/../../skills/workflow/scripts/_plugin_root.sh"

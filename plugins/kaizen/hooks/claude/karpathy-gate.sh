@@ -22,6 +22,9 @@
 
 set -e
 
+# Bypass-knob iron-law compliance.
+[ "${KAIZEN_KARPATHY_GATE_DISABLE:-}" = "1" ] && exit 0
+
 # Trace this hook's own firing (best-effort, never blocks).
 _HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd 2>/dev/null || true)"
 if [ -n "$_HOOK_DIR" ] && [ -f "$_HOOK_DIR/_trace.sh" ]; then

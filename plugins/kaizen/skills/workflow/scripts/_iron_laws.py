@@ -384,17 +384,51 @@ def check_skill_md_no_external_script_paths(ctx: CheckContext) -> list[Finding]:
     return out
 
 
+_PY_INVOKE_RE = re.compile(
+    r'python3\s+(?:"[^"]*?\$[A-Z_]+[^"]*?/|[^\s"\']*/)?([a-zA-Z_][a-zA-Z0-9_]*\.py)'
+)
+_TRACE_USAGE_RE = re.compile(
+    r'(_trace\.sh|trace\.py event|trace\.append_event|import trace'
+    r'|_dxm_emit\.emit_event|import _dxm_emit)'
+)
+
+
+def _hook_traces_via_helper(text: str, ctx: CheckContext) -> bool:
+    """A hook may delegate tracing to a python helper it invokes — the
+    consolidated hot-path pattern. Follow each `python3 .../X.py`
+    invocation and check that helper for trace usage (_trace.sh,
+    trace.py event, trace.append_event, import trace).
+    """
+    for m in _PY_INVOKE_RE.finditer(text):
+        py_name = m.group(1)
+        # Helper lives under skills/workflow/scripts/ by convention
+        candidates = list(ctx.plugin_files(f"skills/workflow/scripts/{py_name}"))
+        for cand in candidates:
+            try:
+                body = cand.read_text(encoding="utf-8", errors="ignore")
+            except OSError:
+                continue
+            if _TRACE_USAGE_RE.search(body):
+                return True
+    return False
+
+
 def check_every_hook_script_traces_its_firing(ctx: CheckContext) -> list[Finding]:
     out = []
     for p in ctx.plugin_files("hooks/claude/*.sh"):
         if p.name.startswith("_"):
             continue
         text = p.read_text(encoding="utf-8", errors="ignore")
-        if "_trace.sh" not in text and "trace.py event" not in text:
-            out.append(Finding(
-                "every-hook-script-traces-its-firing", "soft",
-                f"hook {p.name} never fires _trace.sh — its firing is invisible to metrics",
-                ctx.rel(p)))
+        # Direct trace in the .sh
+        if _TRACE_USAGE_RE.search(text):
+            continue
+        # Indirect: hook delegates to a python helper that itself traces
+        if _hook_traces_via_helper(text, ctx):
+            continue
+        out.append(Finding(
+            "every-hook-script-traces-its-firing", "soft",
+            f"hook {p.name} never fires _trace.sh — its firing is invisible to metrics",
+            ctx.rel(p)))
     return out
 
 

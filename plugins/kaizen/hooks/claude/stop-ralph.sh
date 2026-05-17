@@ -15,6 +15,9 @@
 
 set -euo pipefail
 
+# Bypass-knob iron-law compliance.
+[ "${KAIZEN_RALPH_LOOP_DISABLE:-}" = "1" ] && { echo '{}'; exit 0; }
+
 PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-${KAIZEN_PLUGIN_ROOT:-}}"
 if [[ -z "$PLUGIN_ROOT" ]]; then
   # Resolve from this script's location: hooks/claude/stop-ralph.sh → plugin/
