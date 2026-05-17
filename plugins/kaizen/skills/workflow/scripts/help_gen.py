@@ -75,7 +75,7 @@ CLUSTERS: list[tuple[str, list[str]]] = [
         "models", "browser", "docs",
     ]),
     ("dev-aids", [
-        "rule", "schema", "inbox", "test", "help",
+        "rule", "rules", "schema", "inbox", "test", "help",
     ]),
 ]
 

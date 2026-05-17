@@ -6,7 +6,7 @@ argument-hint: "(none) | <command-name>"
 
 # /kaizen:help
 
-Static taxonomy of all 54 `/kaizen:*` commands. **One screen, zero bash
+Static taxonomy of all 55 `/kaizen:*` commands. **One screen, zero bash
 execution.** For full per-command docs use `kaizen help <name>`. Auto-
 generated from `commands/*.md` frontmatter via `kaizen-help-gen`.
 
@@ -56,7 +56,7 @@ generated from `commands/*.md` frontmatter via `kaizen-help-gen`.
 | `flow` | Run the async pocketflow Node+Flow reference pipeline over the current workspace.  |
 | `mode` | Set this session's mode (loop | workflow | neither) and pick discipline bundles vi |
 | `migrate` | Migrate from loose skills / separate plugins / non-canonical layouts to the kaizen |
-| `migrate-paths` | Migrate kaizen's pre-v1.22 scattered state into the unified ~/.claude/.kaizen/ lay |
+| `migrate-paths` | DEPRECATED ALIAS — use `/kaizen:migrate paths` instead. Migrate kaizen's pre-v1.22 |
 
 ## plugin-meta (13)
 
@@ -89,11 +89,12 @@ generated from `commands/*.md` frontmatter via `kaizen-help-gen`.
 | `browser` | Manage the Playwright-backed MCP browser server that gives Claude real browser-dri |
 | `docs` | Generate per-package documentation for any workspace — Rust (Cargo.toml), JS/TS (p |
 
-## dev-aids (5)
+## dev-aids (6)
 
 | Command | Does |
 |---|---|
-| `rule` | Inspect, validate, or generate templates for brain-sourced kaizen rules. Rules liv |
+| `rule` | DEPRECATED ALIAS — use `/kaizen:rules` (plural matches the bin `kaizen-rules`). In |
+| `rules` | Inspect, validate, or generate templates for brain-sourced kaizen rules. Rules liv |
 | `schema` | Inspect declarative workflow schemas (v1.14.0+). Schemas live as yaml in `.kaizen/ |
 | `inbox` | Manage the kaizen message inbox — captures every user message via UserPromptSubmit |
 | `test` | Run the full kaizen pipeline smoke-test (install → backlog → gate → hooks → backup |
