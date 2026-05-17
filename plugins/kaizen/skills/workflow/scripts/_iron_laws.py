@@ -96,14 +96,26 @@ def check_no_modify_vendored(ctx: CheckContext) -> list[Finding]:
     return out
 
 
+# Fan-out gather call: `gather(*<expr>)` — unpacked iterable. The
+# fixed-pair shape `gather(task_a, task_b)` is correct (heterogeneous
+# tasks, not a fan-out). Iron-law targets ONLY the fan-out pattern.
+_FANOUT_GATHER_RE = re.compile(r"asyncio\.gather\s*\(\s*\*")
+
+
 def check_node_flow_for_multi_step(ctx: CheckContext) -> list[Finding]:
+    """Flag files that fan-out work via `asyncio.gather(*<iter>)` without
+    subclassing AsyncParallelBatchNode. Fixed-pair gathers (heterogeneous
+    tasks like `ruff + ty`) are correct shape — only true fan-outs (`*`
+    unpack of a generator/comprehension) get flagged."""
     out = []
     for p in ctx.plugin_files("skills/workflow/scripts/*.py"):
         text = p.read_text(encoding="utf-8", errors="ignore")
-        if text.count("asyncio.gather") > 1 and "AsyncParallelBatchNode" not in text:
+        fanouts = len(_FANOUT_GATHER_RE.findall(text))
+        if fanouts >= 1 and "AsyncParallelBatchNode" not in text:
             out.append(Finding(
                 "node-flow-for-multi-step", "soft",
-                "multiple asyncio.gather calls without AsyncParallelBatchNode",
+                f"{fanouts} fan-out asyncio.gather call(s) without "
+                f"AsyncParallelBatchNode — refactor to the Node+Flow primitive",
                 ctx.rel(p)))
     return out
 

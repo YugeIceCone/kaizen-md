@@ -550,6 +550,24 @@ class AsyncNode:
         return await self.post_async(store, prep, res)
 
 
+class AsyncParallelBatchNode(AsyncNode):
+    """Parallel batch over per-item exec_one_async. Mirrors the
+    flow.py primitive — local impl here because scrape_index defines
+    its own minimal Node+Flow inline (to avoid pulling flow.py's
+    surface into a script that's optional-deps-driven).
+
+    Subclass + override exec_one_async(item). prep_async returns the
+    iterable of items. exec_async runs them in parallel via gather."""
+
+    async def exec_one_async(self, item: Any) -> Any:
+        return None
+
+    async def exec_async(self, items) -> list:
+        if not items:
+            return []
+        return await asyncio.gather(*[self.exec_one_async(it) for it in items])
+
+
 class AsyncFlow:
     def __init__(self, start: AsyncNode) -> None:
         self.start = start
@@ -577,30 +595,45 @@ class FetchURLs(AsyncNode):
         return "default"
 
 
-class ScrapeFanOut(AsyncNode):
-    """Fan-out: SmartScraperGraph per URL via asyncio.to_thread."""
+class ScrapeFanOut(AsyncParallelBatchNode):
+    """Fan-out: SmartScraperGraph per URL via asyncio.to_thread.
 
-    async def exec_async(self, _prep):
-        return None  # unused; we use prep_async + store directly
+    Uses the local AsyncParallelBatchNode mixin (above) for
+    node-flow-for-multi-step iron-law compliance. prep_async returns
+    the list of URLs (with prompt+cfg captured via closure inside
+    exec_one_async); the batch runner fans out in parallel."""
 
-    async def prep_async(self, store):
-        SmartScraperGraph = _load_scraper_cls()
-        cfg = llm_config()
-        urls: list[str] = store["urls"]
-        prompt: str = store["prompt"]
+    async def prep_async(self, store) -> dict:
+        return {
+            "urls": store["urls"],
+            "prompt": store["prompt"],
+            "_cls": _load_scraper_cls(),
+            "_cfg": llm_config(),
+        }
 
-        def _scrape_one(u: str) -> dict:
+    async def exec_async(self, prep: dict) -> list:
+        # AsyncParallelBatchNode wants an iterable. We bind prep into
+        # exec_one_async via instance state since the base signature
+        # passes one item at a time.
+        self._prep = prep
+        return await super().exec_async(prep["urls"])
+
+    async def exec_one_async(self, url: str) -> dict:
+        prep = getattr(self, "_prep", {})
+        cls = prep.get("_cls"); cfg = prep.get("_cfg")
+        prompt = prep.get("prompt") or ""
+
+        def _scrape_one() -> dict:
             try:
-                g = SmartScraperGraph(prompt=prompt, source=u, config=cfg)
+                g = cls(prompt=prompt, source=url, config=cfg)
                 result = g.run()
-                return {"url": u, "ok": True, "extraction": result}
+                return {"url": url, "ok": True, "extraction": result}
             except Exception as e:
-                return {"url": u, "ok": False, "error": f"{type(e).__name__}: {e}"}
+                return {"url": url, "ok": False, "error": f"{type(e).__name__}: {e}"}
 
-        tasks = [asyncio.to_thread(_scrape_one, u) for u in urls]
-        return await asyncio.gather(*tasks)
+        return await asyncio.to_thread(_scrape_one)
 
-    async def post_async(self, store, results, _exec):
+    async def post_async(self, store, prep, results):
         store["scrape_results"] = results
         return "default"
 

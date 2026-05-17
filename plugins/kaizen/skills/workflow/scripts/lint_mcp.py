@@ -62,6 +62,20 @@ from _curate import curate as _curate, SEVERITY_RANK  # noqa: E402
 from _uv import uv_cmd  # noqa: E402
 from _subproc import git_repo_root as _repo_root  # noqa: E402, F401 — M2 dedup
 from _subproc import run as _run_base  # noqa: E402
+import flow as _flow  # noqa: E402  # AsyncParallelBatchNode for fan-outs
+
+
+class _LintFilesBatch(_flow.AsyncParallelBatchNode):
+    """Fan-out: lint_path per file in parallel. Subclasses
+    AsyncParallelBatchNode per the node-flow-for-multi-step iron-law
+    (was raw asyncio.gather with a list-comprehension). exec_one_async
+    runs one lint_path call; the base handles concurrent dispatch +
+    result collection."""
+
+    verbose: bool = False
+
+    async def exec_one_async(self, path: str) -> dict:
+        return await lint_path(path, verbose=self.verbose)
 
 
 # ─── Subprocess wrapper — lint-MCP variant ────────────────────────────
@@ -411,8 +425,10 @@ async def lint_changed_files(
             "summary": {"files_checked": 0, "total_findings": 0, "max_severity": "none"},
         }
 
-    # Fan out per file (parallel via asyncio.gather)
-    results = await asyncio.gather(*[lint_path(f, verbose=verbose) for f in files])
+    # Fan out per file via AsyncParallelBatchNode (iron-law-compliant).
+    batch = _LintFilesBatch()
+    batch.verbose = verbose
+    results = await batch.exec_async(files)
 
     findings_by_file = {}
     total = 0

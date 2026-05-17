@@ -277,15 +277,32 @@ class TestChecker(unittest.TestCase):
         self.assertTrue(_iron_laws.check_claude_md_no_volatile_data(_ctx(self.tmp)))
 
     def test_node_flow_for_multi_step(self):
+        """Check is fan-out-aware: only flags `gather(*<iter>)` shape,
+        not fixed-pair `gather(task_a, task_b)`."""
         import _iron_laws
         p = self.pk / "skills/workflow/scripts/demo.py"
-        p.write_text("import asyncio\nasync def f():\n    await asyncio.gather(a())\n")
-        self.assertEqual(_iron_laws.check_node_flow_for_multi_step(_ctx(self.tmp)), [])
+        # Fixed-pair gather — heterogeneous tasks, correct shape, NOT flagged
         p.write_text(
             "import asyncio\n"
-            "async def f():\n    await asyncio.gather(a())\n"
-            "async def g():\n    await asyncio.gather(b())\n")
+            "async def f():\n    a, b = await asyncio.gather(task_a(), task_b())\n"
+        )
+        self.assertEqual(_iron_laws.check_node_flow_for_multi_step(_ctx(self.tmp)), [])
+        # Fan-out via list-comprehension unpack — flagged
+        p.write_text(
+            "import asyncio\n"
+            "async def f(items):\n"
+            "    return await asyncio.gather(*[do(i) for i in items])\n"
+        )
         self.assertTrue(_iron_laws.check_node_flow_for_multi_step(_ctx(self.tmp)))
+        # Even one fan-out triggers (was: needed 2+)
+        # Refactor exemption: if AsyncParallelBatchNode appears in file, allowed
+        p.write_text(
+            "import asyncio\n"
+            "from flow import AsyncParallelBatchNode  # noqa\n"
+            "async def f(items):\n"
+            "    return await asyncio.gather(*[do(i) for i in items])\n"
+        )
+        self.assertEqual(_iron_laws.check_node_flow_for_multi_step(_ctx(self.tmp)), [])
 
 
 class TestRegistryIntegrity(unittest.TestCase):

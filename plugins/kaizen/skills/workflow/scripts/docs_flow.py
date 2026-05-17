@@ -82,31 +82,27 @@ class DetectPackagesNode(_flow.AsyncNode):
         return "default"
 
 
-class AnalyzePackagesNode(_flow.AsyncNode):
-    """FAN-OUT: analyze N packages in parallel via asyncio.gather.
+class AnalyzePackagesNode(_flow.AsyncParallelBatchNode):
+    """FAN-OUT: analyze N packages in parallel via AsyncParallelBatchNode.
 
     Each analyze_package call is CPU-bound (regex over source files),
     so `to_thread` lets the event loop schedule them. At workspace
-    scale (~25 crates × ~50 files each), this completes in <2s end-to-end."""
+    scale (~25 crates × ~50 files each), this completes in <2s end-to-end.
 
-    async def prep_async(self, store: dict) -> dict:
-        return {
-            "packages": store["packages"],
-            "root": store["root"],
-        }
+    Per the iron-law node-flow-for-multi-step: fan-outs use
+    AsyncParallelBatchNode rather than raw asyncio.gather, so retry +
+    cycle-guard + event-hook tracing apply uniformly."""
 
-    async def exec_async(self, prep: dict) -> list:
-        packages: list[tuple[Path, str]] = prep["packages"]
-        root: Path = prep["root"]
-        if not packages:
-            return []
-        tasks = [
-            asyncio.to_thread(_dg.analyze_package, pkg_dir, lang, root)
-            for pkg_dir, lang in packages
-        ]
-        return await asyncio.gather(*tasks)
+    async def prep_async(self, store: dict) -> list:
+        # Pass tuples (pkg_dir, lang, root) — exec_one_async unpacks.
+        return [(pkg_dir, lang, store["root"])
+                for pkg_dir, lang in store["packages"]]
 
-    async def post_async(self, store: dict, prep: dict,
+    async def exec_one_async(self, item: tuple) -> dict:
+        pkg_dir, lang, root = item
+        return await asyncio.to_thread(_dg.analyze_package, pkg_dir, lang, root)
+
+    async def post_async(self, store: dict, prep: list,
                          profiles: list) -> str:
         store["profiles"] = profiles
         return "default"
@@ -145,44 +141,39 @@ class RenderNode(_flow.AsyncNode):
         return "default"
 
 
-class WriteNode(_flow.AsyncNode):
-    """Write per-package artifacts to output_dir. Concurrent writes are
-    safe (different files); fan out via asyncio.gather."""
+class WriteNode(_flow.AsyncParallelBatchNode):
+    """Write per-package artifacts to output_dir in parallel.
+    Different files → no contention. Uses AsyncParallelBatchNode per
+    the node-flow-for-multi-step iron-law."""
 
-    async def prep_async(self, store: dict) -> dict:
-        return {
-            "rendered": store.get("rendered", []),
-            "output_dir": store["output_dir"],
-        }
-
-    async def exec_async(self, prep: dict) -> list[str]:
-        out_dir: Path = prep["output_dir"]
+    async def prep_async(self, store: dict) -> list:
+        # Ensure output dir exists once (here, not per-write).
+        out_dir: Path = store["output_dir"]
         out_dir.mkdir(parents=True, exist_ok=True)
+        # Pair each render entry with the output dir so exec_one_async
+        # can write without re-reading store.
+        return [(entry, out_dir) for entry in store.get("rendered", [])]
 
-        async def _write_one(entry: dict) -> list[str]:
-            written: list[str] = []
-            stem = entry["stem"]
-            if "md" in entry:
-                mp = out_dir / f"{stem}.md"
-                await asyncio.to_thread(mp.write_text, entry["md"])
-                written.append(str(mp))
-            if "json" in entry:
-                jp = out_dir / f"{stem}.json"
-                await asyncio.to_thread(jp.write_text, entry["json"])
-                written.append(str(jp))
-            return written
+    async def exec_one_async(self, item: tuple) -> list[str]:
+        entry, out_dir = item
+        written: list[str] = []
+        stem = entry["stem"]
+        if "md" in entry:
+            mp = out_dir / f"{stem}.md"
+            await asyncio.to_thread(mp.write_text, entry["md"])
+            written.append(str(mp))
+        if "json" in entry:
+            jp = out_dir / f"{stem}.json"
+            await asyncio.to_thread(jp.write_text, entry["json"])
+            written.append(str(jp))
+        return written
 
-        if not prep["rendered"]:
-            return []
-        chunks = await asyncio.gather(*(_write_one(e) for e in prep["rendered"]))
+    async def post_async(self, store: dict, prep: list,
+                         chunks: list[list[str]]) -> str:
         flat: list[str] = []
         for c in chunks:
             flat.extend(c)
-        return flat
-
-    async def post_async(self, store: dict, prep: dict,
-                         written: list[str]) -> str:
-        store["written"] = written
+        store["written"] = flat
         return "default"
 
 
