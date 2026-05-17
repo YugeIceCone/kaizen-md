@@ -25,6 +25,41 @@ source "$_SCRIPT_REAL_DIR/_paths.sh"
 
 # ─── Args ────────────────────────────────────────────────────────────
 
+# ─── axis subcommand dispatch ─────────────────────────────────────────
+# Lets users invoke per-axis audits via `kaizen audit axis <name>` —
+# consolidates the 5 axis-specific slash commands (coverage /
+# schema-coverage / name-quality / frontmatter / token-bloat) under the
+# audit parent. The standalone /kaizen:<axis> commands stay as aliases
+# for back-compat.
+_SCRIPT_DIR="$(cd "$(dirname "$(python3 -c "import os, sys; print(os.path.realpath(sys.argv[1]))" "${BASH_SOURCE[0]}")")" && pwd)"
+_PLUGIN_ROOT="$(cd "$_SCRIPT_DIR/../../.." && pwd)"
+
+if [ "${1:-}" = "axis" ]; then
+  shift
+  axis_name="${1:-}"
+  shift 2>/dev/null || true
+  case "$axis_name" in
+    coverage)        exec "$_PLUGIN_ROOT/bin/kaizen-coverage" "${@:-gaps}" ;;
+    schema-coverage) exec "$_PLUGIN_ROOT/bin/kaizen-schema-coverage" "${@:-gaps}" ;;
+    name-quality)    exec "$_PLUGIN_ROOT/bin/kaizen-name-quality" "${@:-gaps}" ;;
+    frontmatter)     exec "$_PLUGIN_ROOT/bin/kaizen-frontmatter" "${@:-gaps}" ;;
+    token-bloat)     exec "$_PLUGIN_ROOT/bin/kaizen-token-bloat" "${@:-scan}" ;;
+    list|"")
+      echo "kaizen audit axis — available axes:"
+      echo "  coverage         1:1 code-to-test mapping"
+      echo "  schema-coverage  feature-shape conformance"
+      echo "  name-quality     filename ↔ docstring intent match"
+      echo "  frontmatter      SKILL.md name/triggers"
+      echo "  token-bloat      high-cost low-value content"
+      echo ""
+      echo "Usage: kaizen audit axis <name> [<axis-args>]"
+      echo "       /kaizen:audit axis <name>"
+      exit 0
+      ;;
+    *) echo "audit axis: unknown axis '$axis_name' — run 'audit axis list'" >&2; exit 2 ;;
+  esac
+fi
+
 SCOPE=""
 NO_REPORT=0
 JSON=0

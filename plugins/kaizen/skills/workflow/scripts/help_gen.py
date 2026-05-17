@@ -50,7 +50,7 @@ def _plugin_root() -> Path:
 # into "uncategorized" — gen flags them so the human adds the mapping.
 CLUSTERS: list[tuple[str, list[str]]] = [
     ("audit/quality", [
-        "audit", "gatekeeper", "gate", "review", "coverage",
+        "audit", "audit:axis", "gatekeeper", "gate", "review", "coverage",
         "iron-laws", "karpathy-check", "vibe-check", "self-audit",
         "agent-self-audit", "ci-gate",
     ]),
@@ -116,13 +116,25 @@ def _read_command(p: Path) -> dict | None:
 
 
 def discover_commands(root: Path | None = None) -> list[dict]:
+    """Walk commands/ recursively (CC's slash convention: `commands/foo/bar.md`
+    → `/kaizen:foo:bar`). Subdirectory commands surface as `<dir>:<file>`
+    so the help table shows them under their cluster correctly."""
     root = root or _plugin_root()
     cmds_dir = root / "commands"
     out = []
-    for p in sorted(cmds_dir.glob("*.md")):
+    for p in sorted(cmds_dir.rglob("*.md")):
         c = _read_command(p)
-        if c:
-            out.append(c)
+        if not c:
+            continue
+        # Nested: rewrite display name + stem to `<parent>:<stem>` so
+        # both cluster matching (uses stem) and table render (uses
+        # stem) show the colon-namespace correctly.
+        rel = p.relative_to(cmds_dir)
+        if len(rel.parts) > 1:
+            qualified = ":".join(rel.with_suffix("").parts)
+            c["name"] = qualified
+            c["stem"] = qualified
+        out.append(c)
     return out
 
 

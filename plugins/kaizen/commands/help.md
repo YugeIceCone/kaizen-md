@@ -6,15 +6,16 @@ argument-hint: "(none) | <command-name>"
 
 # /kaizen:help
 
-Static taxonomy of all 57 `/kaizen:*` commands. **One screen, zero bash
+Static taxonomy of all 58 `/kaizen:*` commands. **One screen, zero bash
 execution.** For full per-command docs use `kaizen help <name>`. Auto-
 generated from `commands/*.md` frontmatter via `kaizen-help-gen`.
 
-## audit/quality (11)
+## audit/quality (12)
 
 | Command | Does |
 |---|---|
 | `audit` | Periodic comprehensive audit (per the article's "code audit" definition). Whole-re |
+| `audit:axis` | Per-axis audit dispatcher. Consolidates the 5 audit-axis slash commands under the  |
 | `gatekeeper` | Run the unified kaizen gate — aggregates iron-laws + efficient-tool-use anti-patte |
 | `gate` | Dry-run the kaizen pre-commit gate against currently staged changes — without comm |
 | `review` | Fast diff-time code review (per the article's "code review" definition). Runs agai |
