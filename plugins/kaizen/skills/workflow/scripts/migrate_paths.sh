@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# kaizen migrate-paths — move v1.21-and-earlier scattered state into the
+# consolidated-cli-parent: migrate
+# kaizen migrate legacy — move v1.21-and-earlier scattered state into the
 # v1.22.0+ unified ~/.claude/.kaizen/{trace,knowledge,daemon,inbox,backups,schemas}/
 # layout, and per-project <repo>/.workflow/ → <repo>/.kaizen/workflow/.
 #

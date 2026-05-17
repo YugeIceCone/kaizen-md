@@ -1,6 +1,0 @@
-#!/usr/bin/env bash
-# kaizen-migrate-paths — move v1.21- scatter to the v1.22+ unified layout.
-set -uo pipefail
-SCRIPT=$(python3 -c "import os, sys; print(os.path.realpath(sys.argv[1]))" "${BASH_SOURCE[0]}")
-PLUGIN_ROOT=$(cd "$(dirname "$SCRIPT")/.." && pwd)
-exec bash "$PLUGIN_ROOT/skills/workflow/scripts/migrate_paths.sh" "$@"

@@ -301,7 +301,7 @@ LEGACY_PATHS: dict[str, Path] = {
     # DEBT-3: vestigial embed pipeline (pre-v1.22). Zero referrers in
     # current code (`_adapters.py`, `embed_chunked.py`, etc. were
     # superseded by `_embed.py` / `_chunk.py` / `_ast_chunk.py` in
-    # `scripts/`). Surfaces in `kaizen-path-migrate status` so the user
+    # `scripts/`). Surfaces in `kaizen-migrate path status` so the user
     # can choose to archive it to ARCHIVE_DIR.
     "vestigial_scripts":  KAIZEN_USER_DIR / "scripts",
 }

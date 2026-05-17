@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""kaizen-path-migrate — v1.38 → v1.39 layout restructure.
+# consolidated-cli-parent: migrate
+"""kaizen-migrate path — v1.38 → v1.39 layout restructure.
 
 Moves 4 search dirs into ``indexes/``, 1 multi-file daemon dir + 4
 bare singletons into ``data/``, hoists ``observe/snapshots/`` to
@@ -25,10 +26,10 @@ those moves landed long ago).
 
 ::
 
-    kaizen-path-migrate status        — per-move classification
-    kaizen-path-migrate dry-run       — print would-do, mutate nothing
-    kaizen-path-migrate apply         — execute moves
-    kaizen-path-migrate rollback      — restore from latest backup
+    kaizen-migrate path status        — per-move classification
+    kaizen-migrate path dry-run       — print would-do, mutate nothing
+    kaizen-migrate path apply         — execute moves
+    kaizen-migrate path rollback      — restore from latest backup
 
 Common flags: ``--json``, ``--no-backup``, ``--force-overwrite``.
 
@@ -54,8 +55,8 @@ import _paths  # noqa: E402
 import _envelope  # noqa: E402
 import _migrator as _mig  # noqa: E402 — shared migrator primitives (DEBT-1)
 
-_emit = _envelope.emitter("kaizen-path-migrate", tool_version="1.0.0")
-_LABEL = "kaizen-path-migrate"
+_emit = _envelope.emitter("kaizen-migrate path", tool_version="1.0.0")
+_LABEL = "kaizen-migrate path"
 
 _BACKUP_PREFIX = "path-restructure-"
 
@@ -137,7 +138,7 @@ def cmd_status(args) -> int:
                    "green")
         _emit(payload, verdict=verdict, counts=summary)
     else:
-        print("[kaizen-path-migrate status]")
+        print("[kaizen-migrate path status]")
         for r in rows:
             print(f"  [{r['state']:>17}] {r['label']:<14} {r['src']} → {r['dst']}")
         print(f"\nsummary: {summary}")
@@ -145,7 +146,7 @@ def cmd_status(args) -> int:
             print("\naction: CONFLICT(s) — inspect manually, then "
                   "`apply --force-overwrite` to merge")
         elif summary["needs-migration"]:
-            print("\naction: run `kaizen-path-migrate apply`")
+            print("\naction: run `kaizen-migrate path apply`")
         elif summary["already-migrated"]:
             print("\naction: nothing to do — already at the new layout")
         else:
@@ -178,7 +179,7 @@ def cmd_dry_run(args) -> int:
     if args.json:
         _emit(payload, verdict="green")
     else:
-        print("[kaizen-path-migrate dry-run]")
+        print("[kaizen-migrate path dry-run]")
         for a in actions:
             print(f"  • {a}")
     return 0
@@ -198,7 +199,7 @@ def cmd_apply(args) -> int:
         _report(args, {"action": "refused", "reason": "conflicts",
                        "conflicting": [c[0] for c in conflicts]},
                 verdict="red", text=
-                f"[kaizen-path-migrate] REFUSED — conflicts in: {labels}\n"
+                f"[kaizen-migrate path] REFUSED — conflicts in: {labels}\n"
                 "  use --force-overwrite to merge (rsync preserves dst-only files)")
         return 1
 
@@ -206,7 +207,7 @@ def cmd_apply(args) -> int:
     if not to_move:
         _report(args, {"action": "noop", "reason": "all-migrated-or-empty"},
                 verdict="green", text=
-                "[kaizen-path-migrate] no-op: nothing to migrate")
+                "[kaizen-migrate path] no-op: nothing to migrate")
         return 0
 
     # Whole-tree backup BEFORE any move
@@ -216,7 +217,7 @@ def cmd_apply(args) -> int:
         if backup_path is None:
             _report(args, {"action": "failed", "phase": "backup"},
                     verdict="red", text=
-                    "[kaizen-path-migrate] backup failed — aborting")
+                    "[kaizen-migrate path] backup failed — aborting")
             return 3
 
     # Per-move execution
@@ -231,7 +232,7 @@ def cmd_apply(args) -> int:
             _report(args, {"action": "failed", "phase": "rsync",
                            "label": label, "backup": str(backup_path)},
                     verdict="red", text=
-                    f"[kaizen-path-migrate] rsync failed on {label} ({src}). "
+                    f"[kaizen-migrate path] rsync failed on {label} ({src}). "
                     f"Backup at {backup_path}; src untouched.")
             return 4
         moved.append({"label": label, "src": str(src), "dst": str(dst)})
@@ -243,11 +244,11 @@ def cmd_apply(args) -> int:
         "count": len(moved),
     }
     _report(args, payload, verdict="green", text=
-            f"[kaizen-path-migrate] ✓ migrated {len(moved)} path(s)\n"
+            f"[kaizen-migrate path] ✓ migrated {len(moved)} path(s)\n"
             + "\n".join(f"  • {m['label']:<14} {m['src']} → {m['dst']}"
                         for m in moved)
             + f"\n  backup:   {backup_path}\n"
-            f"  rollback: `kaizen-path-migrate rollback`")
+            f"  rollback: `kaizen-migrate path rollback`")
     return 0
 
 
@@ -328,14 +329,14 @@ def cmd_rollback(args) -> int:
     if not backups:
         _report(args, {"action": "failed", "reason": "no-backup"},
                 verdict="red", text=
-                f"[kaizen-path-migrate rollback] no backup at {_paths.BACKUP_DIR}")
+                f"[kaizen-migrate path rollback] no backup at {_paths.BACKUP_DIR}")
         return 1
     latest = backups[-1]
     # CRYPTO-1: verify SHA-256 sidecar before any extraction
     if not _verify_sha256_sidecar(latest):
         _report(args, {"action": "failed", "reason": "integrity-failure",
                        "backup": str(latest)}, verdict="red", text=
-                f"[kaizen-path-migrate rollback] REFUSED: {latest} failed "
+                f"[kaizen-migrate path rollback] REFUSED: {latest} failed "
                 f"integrity check (corrupted or tampered).")
         return 2
     # Extract over the user-dir parent (the tar was rooted at .kaizen/).
@@ -346,7 +347,7 @@ def cmd_rollback(args) -> int:
         tar.extractall(target_parent, filter="data")
     _report(args, {"action": "rolled-back", "backup_used": str(latest)},
             verdict="green", text=
-            f"[kaizen-path-migrate rollback] restored from {latest}")
+            f"[kaizen-migrate path rollback] restored from {latest}")
     return 0
 
 
@@ -367,7 +368,7 @@ def _add_common_flags(sp):
 
 def main(argv: Optional[list[str]] = None) -> int:
     p = argparse.ArgumentParser(
-        prog="kaizen-path-migrate",
+        prog="kaizen-migrate path",
         description="v1.38 → v1.39 path restructure: indexes/ + data/ + "
                     "snapshots/ + archive/.",
     )

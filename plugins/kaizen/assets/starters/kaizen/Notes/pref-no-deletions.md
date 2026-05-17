@@ -43,5 +43,5 @@ When you encounter an apparently-unused file:
 - User explicitly says "delete X" (specific, not "clean up").
 - Log files, build artifacts, *.tmp — covered by gate allowlists
   (see `kaizen-allow-log-deletions.md` for the rule shape).
-- Vestigial files surfaced by `kaizen-path-migrate status` after
+- Vestigial files surfaced by `kaizen-migrate path status` after
   the user reviews and approves.

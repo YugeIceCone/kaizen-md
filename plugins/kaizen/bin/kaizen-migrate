@@ -1,11 +1,10 @@
 #!/usr/bin/env bash
-# kaizen-migrate — transitional. Points at code_lift.py since _migrate.py
-# was renamed in Tier-2 commit A. Commit B replaces this wrapper with the
-# new data-migrator dispatcher (path | legacy). Until then, callers of
-# `kaizen-migrate` keep getting the code-lift engine via the renamed path.
-#
-# After commit B lands, use `kaizen-code-lift` for the code-lift engine and
-# `kaizen-migrate <path|legacy>` for the data-migrator dispatcher.
+# kaizen-migrate — consolidated data-migrator dispatcher.
+# Dispatches:
+#   kaizen-migrate path   → path_migrate.py (v1.38 → v1.39 layout)
+#   kaizen-migrate legacy → migrate_paths.sh (v1.21 → v1.22 layout)
+# Brain migration lives under `kaizen-brain migrate` (single-surface).
+# Code-lift engine moved to `kaizen-code-lift` (Tier-2 commit A).
 
 set -euo pipefail
 
@@ -19,4 +18,4 @@ PLUGIN_ROOT="$(kaizen_plugin_root)" || {
     exit 1
 }
 
-exec python3 "$PLUGIN_ROOT/skills/workflow/scripts/code_lift.py" "$@"
+exec python3 "$PLUGIN_ROOT/skills/workflow/scripts/migrate.py" "$@"

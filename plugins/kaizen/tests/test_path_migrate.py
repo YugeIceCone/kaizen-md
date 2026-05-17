@@ -291,7 +291,7 @@ class EnvelopeOutput(_BaseCase):
         r = self._run("status", "--json")
         self.assertEqual(r.returncode, 0, r.stderr)
         out = json.loads(r.stdout)
-        self.assertEqual(out["kaizen"]["tool"], "kaizen-path-migrate")
+        self.assertEqual(out["kaizen"]["tool"], "kaizen-migrate path")
         self.assertIn("data", out)
         self.assertIn("moves", out["data"])
 
