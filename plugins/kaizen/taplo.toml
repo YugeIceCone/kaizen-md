@@ -1,0 +1,24 @@
+# Taplo config — binds the kaizen-config JSON Schema to every
+# `.kaizen.toml` file under this plugin tree (and any project that
+# nests this plugin / uses Taplo with this dir on its include path).
+#
+# Per-file override: prepend `#:schema <url-or-path>` to a .kaizen.toml
+# and Taplo honors that instead. See setup.sh — newly seeded
+# .kaizen.toml files lead with `#:schema` so editors auto-bind without
+# needing this taplo.toml on their schema search path.
+#
+# Formatter knobs are conservative — kaizen.toml files are tiny + the
+# generator-emitted layout (column-aligned `=`) reads better than
+# Taplo's default reformat. Keep `reorder_keys = false` so the
+# generator's grouping survives editor saves.
+
+[formatting]
+align_entries     = true
+reorder_keys      = false
+indent_string     = "  "
+column_width      = 100
+trailing_newline  = true
+
+[[schema]]
+path     = "assets/schemas/kaizen-config.schema.json"
+include  = ["**/.kaizen.toml"]
