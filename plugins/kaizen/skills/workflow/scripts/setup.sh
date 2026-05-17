@@ -328,6 +328,10 @@ if [ "${KAIZEN_NO_BIN:-0}" = "0" ] && [ -d "$PLUGIN_BIN" ]; then
         mkdir -p "$USER_BIN" 2>/dev/null || true
     fi
     if [ -d "$USER_BIN" ] && [ -w "$USER_BIN" ]; then
+        # GC orphans first — kaizen-* symlinks whose targets vanished in a
+        # prior plugin update accumulate without this step.
+        python3 "$SKILL_DIR/scripts/_prune_bin_symlinks.py" \
+            --user-bin "$USER_BIN" 2>/dev/null | sed 's/^/  /' || true
         BIN_COUNT=0
         for src in "$PLUGIN_BIN"/kaizen "$PLUGIN_BIN"/kaizen-*; do
             [ -f "$src" ] || continue
