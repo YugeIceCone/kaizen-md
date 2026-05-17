@@ -40,3 +40,4 @@
 | 2026-05-17 | perf     | +15    | context.py `line` subcommand emits pre-formatted statusline segment in 1 spawn (was 5). 160ms → 100ms per statusline render (37% faster). |
 | 2026-05-17 | perf     | +95    | pretooluse_trace.py — consolidates 4 python3 spawns into 1 per PreToolUse fire. ~120ms → ~25ms per tool call × 1000s of calls/session. |
 | 2026-05-17 | perf     | +85    | posttooluse_trace.py — same fix on PostToolUse (4 spawns → 1). Companion hot-path saving. |
+| 2026-05-17 | perf     | +120   | stop_backlog_reminder.py — Stop hook 3 spawns → 1. Also drops a redundant backlog.json double-read + adds KAIZEN_BACKLOG_DISABLE bypass for hook discipline parity. |
