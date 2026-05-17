@@ -13,15 +13,16 @@ globally — wants future sessions to start from. Read by
 (auto-handoff, skill-suggest) can also consult these defaults when no
 explicit session-mode is set.
 
-!`bash ${CLAUDE_PLUGIN_ROOT}/bin/kaizen-workflow-config $ARGUMENTS`
+!`bash -c 'exec ${CLAUDE_PLUGIN_ROOT}/bin/kaizen-workflow-config ${ARGUMENTS:-show}'`
 
 ## Interactive wizard (when `$ARGUMENTS` is empty)
 
 When the user invokes `/kaizen:workflow` with **no arguments**, the
-body above runs `kaizen-workflow-config` with no args (which errors
-because a subcommand is required — this is expected; the agent
-SHOULD step the user through the AskUserQuestion wizard below, then
-re-invoke this command with the resolved `set` flags).
+body above defaults to `kaizen-workflow-config show` — a clean
+read-only print of the current persisted state (empty on first run).
+The agent SHOULD then step the user through the AskUserQuestion
+wizard below and re-invoke this command with the resolved `set` flags
+to persist the picks.
 
 Follow the `/kaizen:session-mode` orchestration pattern: the body is
 instructional, the agent does the AskUserQuestion calls. All 4
