@@ -65,6 +65,9 @@ SUBSERVERS: list[tuple[str, str]] = [
     ("audit", "audit_mcp"),
     ("roadmap", "roadmap_mcp"),
     ("gatekeeper", "gatekeeper_mcp"),
+    # Phase 3 — live-state + intent automation
+    ("dxm", "dxm_mcp"),
+    ("intent", "intent_mcp"),
 ]
 
 gw = FastMCP("kaizen")
