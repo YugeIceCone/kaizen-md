@@ -2,7 +2,22 @@
 """kaizen config — single editable file for plugin-wide defaults + SSOT
 parser for per-project `.kaizen.toml`.
 
-## Two responsibilities
+## Where things live (the config trio)
+
+| File | Layer | What it owns |
+|---|---|---|
+| `config.py` (this file) | **Plugin defaults** + per-project TOML parser | `PLUGIN ▸ DEFAULTS` constants, embedding model, dims, size caps, `.kaizen.toml` reader |
+| `_paths.py`             | **Path SSOT (Python)**                       | every `KAIZEN_*_DIR` resolver — `~/.claude/.kaizen/` layout |
+| `_paths.sh`             | **Path SSOT (shell mirror)**                 | bash-source-able variants of the same KAIZEN_*_DIR vars |
+
+Resolution order (low → high precedence):
+  1. `config.py` PLUGIN_DEFAULTS               (shipped defaults)
+  2. `_paths.{py,sh}` env-overridable paths    (KAIZEN_* env vars)
+  3. `<repo>/.kaizen.toml`                     (per-project key=value)
+
+When prose and code disagree, **code wins** — these files are the SSOT.
+
+## Two responsibilities of THIS file
 
 1. **Plugin defaults** — the `PLUGIN ▸ DEFAULTS` section at the top of
    this file is the ONE place to edit the plugin's wide-reaching knobs:
@@ -27,6 +42,18 @@ per-project keys override defaults at the repo level.
     config.py --json          # full per-project config as JSON
     config.py --defaults      # print the plugin-wide DEFAULTS (v1.22.0+)
     config.py --validate      # schema + fs check
+
+Shell-facing wrapper: `kaizen-config <args>` (in `bin/`).
+
+## Env-var overrides (from _paths.{py,sh})
+
+  KAIZEN_DIR                       # user-global root (default ~/.claude/.kaizen)
+  KAIZEN_INDEXES_DIR / DATA_DIR / SNAPSHOTS_DIR / ARCHIVE_DIR
+  KAIZEN_INBOX_DIR / BACKUP_DIR / USER_SCHEMAS
+  KAIZEN_HANDOFF_DIR               # ~/.claude/handoff (separate; user-facing)
+  KAIZEN_*_DISABLE                 # per-feature bypass (every hook honors this)
+
+See `_paths.sh` for the complete list with defaults.
 """
 
 from __future__ import annotations

@@ -155,3 +155,32 @@ CONTRIBUTING.md rule). Use the helpers in `skills/workflow/scripts/`
 Per-file ownership (no cross-writes): `backlog.{json,md}` → the kaizen plugin;
 `state.json` + `snapshot.md` → the `/workflow` routing engine; `progress.md` →
 the architecture log (project convention).
+
+### Configuration & paths — the centralized trio
+
+| File | Layer | What it owns |
+|---|---|---|
+| `skills/workflow/scripts/config.py`  | **Plugin defaults** + per-project TOML parser | `PLUGIN ▸ DEFAULTS` constants (embedding model, dims, size caps) + `.kaizen.toml` reader |
+| `skills/workflow/scripts/_paths.py`  | **Path SSOT (Python)** | every `KAIZEN_*_DIR` resolver — the `~/.claude/.kaizen/` layout |
+| `skills/workflow/scripts/_paths.sh`  | **Path SSOT (shell mirror)** | bash-source-able variants of the same KAIZEN_*_DIR vars |
+
+**Resolution order** (low → high precedence):
+1. `config.py::PLUGIN_DEFAULTS` (shipped defaults)
+2. `_paths.{py,sh}` env-overridable paths (`KAIZEN_*` env vars)
+3. `<repo>/.kaizen.toml` (per-project key=value)
+
+**Inspect at runtime:**
+
+```bash
+kaizen-config --defaults                # plugin-wide defaults
+kaizen-config <key>                     # one resolved value
+source plugins/kaizen/skills/workflow/scripts/_paths.sh && env | grep KAIZEN_
+```
+
+**Common env knobs** (full list in `_paths.sh`):
+- `KAIZEN_DIR` — user-global root (default `~/.claude/.kaizen/`)
+- `KAIZEN_HANDOFF_DIR` — handoff YAMLs (default `~/.claude/handoff/`, separate from `.kaizen/` because it's user-facing)
+- `KAIZEN_BACKUP_DIR`, `KAIZEN_DXM_DIR`, `KAIZEN_INBOX_DIR`, …
+- `KAIZEN_<FEATURE>_DISABLE` — per-feature bypass (every hook honors this)
+
+When prose and these files disagree, **code wins** — the trio is the SSOT.
