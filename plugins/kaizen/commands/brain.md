@@ -1,10 +1,57 @@
 ---
 name: brain
-description: Schema-driven Second Brain — capture / search / promote / audit / evolve. Replaces the retired remember plugin's Node.js scripts with Python + Node+Flow engine + MCP tools. Subcommands - capture <text> [--type T] [--confidence X] [--tier brain|project] [--subject S] | detect <text> | status | path | search <q> [--type T] [--min-confidence X] | promote [--apply] | audit [--apply] | evolve [--stale-days N] | stats
-argument-hint: [capture <text>|search <q>|promote|audit|evolve|status|path|detect|stats]
+description: "Schema-driven Second Brain — capture / search / promote / audit / evolve. Replaces the retired remember plugin's Node.js scripts with Python + Node+Flow engine + MCP tools. No-args → multiSelect verb checklist (Capture / Search / Audit / Status). Subcommands - capture <text> [--type T] [--confidence X] [--tier brain|project] [--subject S] | detect <text> | status | path | search <q> [--type T] [--min-confidence X] | promote [--apply] | audit [--apply] | evolve [--stale-days N] | stats"
+argument-hint: "(empty = multiSelect verb checklist) | [capture <text>|search <q>|promote|audit|evolve|status|path|detect|stats]"
+allowed-tools: ["AskUserQuestion", "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/brain.py:*)", "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/brain_index.py:*)", "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/brain_promote.py:*)", "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/brain_audit.py:*)", "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/brain_evolve.py:*)"]
 ---
 
 # /kaizen:brain
+
+## Interactive menu (when `$ARGUMENTS` is empty)
+
+When invoked with **no arguments**, step the user through a single
+multiSelect AskUserQuestion call over the 4 most-frequent verbs.
+Dispatch each pick sequentially via the args-mode body below. For
+the less-common verbs (`detect`, `path`, `promote`, `evolve`,
+`migrate`, `index`, `stats`, `seed`), pass them as `$ARGUMENTS`
+directly — the menu intentionally curates the high-frequency surface
+to respect the 4-option-per-question ceiling.
+
+### Question — verb picker
+
+```
+question:    "Which brain operations should I run?"
+header:      "Verb"
+multiSelect: true
+options:
+  - label: "Capture"
+    description: "Write a thought to the brain — agent will prompt for the text body separately, then route by type."
+  - label: "Search"
+    description: "Semantic + frontmatter-filter search — agent will prompt for the query separately."
+  - label: "Audit"
+    description: "End-of-session discovery audit (dry-run unless --apply)."
+  - label: "Status"
+    description: "File counts per brain subdir (read-only diagnostic)."
+```
+
+### After the pick
+
+For each selected verb, prompt the user for the per-verb input it
+needs, then dispatch via this slash's args-mode body:
+
+| Verb pick | Follow-up prompt           | Dispatch                                 |
+|-----------|----------------------------|------------------------------------------|
+| Capture   | "What to capture?"         | `/kaizen:brain capture "<text>"`         |
+| Search    | "Search query?"            | `/kaizen:brain search "<query>"`         |
+| Audit     | "Apply changes (--apply) or dry-run?" | `/kaizen:brain audit [--apply]` |
+| Status    | (none — no parameters)     | `/kaizen:brain status`                   |
+
+Verbs not in the picker (`detect`, `path`, `promote`, `evolve`,
+`migrate`, `index`, `stats`, `seed`) are reachable directly:
+`/kaizen:brain <verb> [args]`. See the args-mode help below for the
+full list.
+
+## Args-mode dispatch
 
 !`bash -c '
 set -e

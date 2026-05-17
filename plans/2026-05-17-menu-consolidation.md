@@ -212,7 +212,7 @@ Backs to `/kaizen:onboard`, `/kaizen:knowledge`, `/kaizen:claude-docs`,
 - [x] **P3**: Loop sub-menu — nested under workflow Q2=Loop. 2
    questions (budget + stop-conditions). `/kaizen:loop` standalone
    stays as alias.
-- [ ] **P4**: Extend `/kaizen:brain` (empty-args) with multiSelect
+- [x] **P4**: Extend `/kaizen:brain` (empty-args) with multiSelect
    verb checklist.
 - [ ] **P5**: New `/kaizen:discovery` wrapper bundling onboard /
    knowledge / claude-docs / scrape.
