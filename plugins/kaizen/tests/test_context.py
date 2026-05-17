@@ -119,5 +119,157 @@ class TestZone(unittest.TestCase):
         self.assertEqual(self.c.zone_of(None), "unknown")
 
 
+# ─── BK-015: peak-aware get_usage_summary ───────────────────────────
+
+
+import json
+import tempfile
+
+
+def _usage_record(tokens: int, ts: str = "2026-01-01T00:00:00Z") -> dict:
+    """Build a minimal assistant JSONL record with the given total tokens
+    split across the four usage fields the same way CC reports them."""
+    return {
+        "type": "assistant",
+        "timestamp": ts,
+        "message": {
+            "usage": {
+                "input_tokens": tokens // 4,
+                "cache_creation_input_tokens": tokens // 4,
+                "cache_read_input_tokens": tokens // 4,
+                "output_tokens": tokens - 3 * (tokens // 4),
+            },
+        },
+    }
+
+
+def _compact_marker() -> dict:
+    return {
+        "type": "user",
+        "timestamp": "2026-01-01T00:00:30Z",
+        "isCompactSummary": True,
+        "isVisibleInTranscriptOnly": True,
+        "message": {"role": "user", "content": "summary…"},
+    }
+
+
+class PeakAwareReaderBase(unittest.TestCase):
+    def setUp(self):
+        self._cwd0 = os.getcwd()
+        self._tmp = tempfile.TemporaryDirectory()
+        self.tmp = Path(self._tmp.name)
+        self.fake_home = self.tmp / "home"
+        self.cwd = self.tmp / "repo"
+        self.cwd.mkdir()
+        self._orig_home = os.environ.get("HOME")
+        os.environ["HOME"] = str(self.fake_home)
+        os.chdir(self.cwd)
+        # Pre-create the project slug dir
+        slug = str(self.cwd.resolve()).replace("/", "-")
+        self.proj = self.fake_home / ".claude" / "projects" / slug
+        self.proj.mkdir(parents=True)
+        self.sid = "test-sid-peak"
+        self.jsonl = self.proj / f"{self.sid}.jsonl"
+        _clear_env()
+
+    def tearDown(self):
+        try: os.chdir(self._cwd0)
+        except OSError: pass
+        self._tmp.cleanup()
+        if self._orig_home is None: os.environ.pop("HOME", None)
+        else: os.environ["HOME"] = self._orig_home
+
+    def _write_jsonl(self, records: list[dict]):
+        with self.jsonl.open("w") as f:
+            for r in records:
+                f.write(json.dumps(r) + "\n")
+
+
+class TestPeakDetection(PeakAwareReaderBase):
+    def test_peak_equals_max_assistant_usage(self):
+        self._write_jsonl([
+            _usage_record(50_000),
+            _usage_record(120_000),
+            _usage_record(80_000),
+        ])
+        c = _fresh()
+        summary = c.get_usage_summary(cwd_path=self.cwd)
+        self.assertEqual(summary["peak_tokens"], 120_000)
+        self.assertEqual(summary["current_tokens"], 80_000)
+        self.assertEqual(summary["compact_count"], 0)
+        self.assertFalse(summary["peak_pre_compact"])
+
+    def test_peak_pre_compact_when_max_before_marker(self):
+        # Rising to 950K, then compact, then 30K (post-compact)
+        self._write_jsonl([
+            _usage_record(100_000),
+            _usage_record(500_000),
+            _usage_record(950_000),
+            _compact_marker(),
+            _usage_record(30_000),
+            _usage_record(45_000),
+        ])
+        c = _fresh()
+        summary = c.get_usage_summary(cwd_path=self.cwd)
+        self.assertEqual(summary["peak_tokens"], 950_000)
+        self.assertEqual(summary["current_tokens"], 45_000)
+        self.assertEqual(summary["compact_count"], 1)
+        self.assertTrue(summary["peak_pre_compact"])
+
+    def test_peak_post_compact_when_max_after_marker(self):
+        self._write_jsonl([
+            _usage_record(100_000),
+            _compact_marker(),
+            _usage_record(200_000),
+            _usage_record(150_000),
+        ])
+        c = _fresh()
+        summary = c.get_usage_summary(cwd_path=self.cwd)
+        self.assertEqual(summary["peak_tokens"], 200_000)
+        self.assertEqual(summary["compact_count"], 1)
+        self.assertFalse(summary["peak_pre_compact"])
+
+    def test_multiple_compact_markers_counted(self):
+        self._write_jsonl([
+            _usage_record(800_000),
+            _compact_marker(),
+            _usage_record(50_000),
+            _compact_marker(),
+            _usage_record(20_000),
+        ])
+        c = _fresh()
+        summary = c.get_usage_summary(cwd_path=self.cwd)
+        self.assertEqual(summary["compact_count"], 2)
+        self.assertEqual(summary["peak_tokens"], 800_000)
+        self.assertEqual(summary["current_tokens"], 20_000)
+        self.assertTrue(summary["peak_pre_compact"])
+
+    def test_no_jsonl_returns_all_none(self):
+        # No JSONL exists at all
+        c = _fresh()
+        summary = c.get_usage_summary(cwd_path=self.cwd)
+        self.assertIsNone(summary["current_tokens"])
+        self.assertIsNone(summary["peak_tokens"])
+        self.assertEqual(summary["compact_count"], 0)
+        self.assertFalse(summary["peak_pre_compact"])
+
+    def test_empty_jsonl_returns_all_none(self):
+        self.jsonl.write_text("")
+        c = _fresh()
+        summary = c.get_usage_summary(cwd_path=self.cwd)
+        self.assertIsNone(summary["peak_tokens"])
+
+    def test_existing_get_tokens_from_jsonl_unchanged(self):
+        # Backward-compat: the existing single-turn API still returns
+        # just the LAST assistant turn's total.
+        self._write_jsonl([
+            _usage_record(800_000),
+            _compact_marker(),
+            _usage_record(30_000),
+        ])
+        c = _fresh()
+        self.assertEqual(c.get_tokens_from_jsonl(cwd_path=self.cwd), 30_000)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

@@ -122,6 +122,96 @@ def get_tokens_from_jsonl(cwd_path=None):
     )
 
 
+def _usage_total(usage: dict) -> int:
+    return (
+        int(usage.get("input_tokens") or 0)
+        + int(usage.get("cache_creation_input_tokens") or 0)
+        + int(usage.get("cache_read_input_tokens") or 0)
+        + int(usage.get("output_tokens") or 0)
+    )
+
+
+def get_usage_summary(cwd_path=None) -> dict:
+    """BK-015 — peak-aware reader for the active CC session JSONL.
+
+    Walks every assistant turn (not just the last one) and tracks the
+    maximum total tokens. Counts `isCompactSummary:true` markers to
+    detect compaction events; flags whether the peak occurred before
+    the last marker (i.e. pre-compact peak that the post-compact view
+    can no longer see).
+
+    Returns dict with stable keys (None when JSONL unavailable):
+        {
+          "current_tokens":   int | None,  # last assistant turn
+          "peak_tokens":      int | None,  # max across all turns
+          "peak_pre_compact": bool,        # peak occurred before last
+                                            #  isCompactSummary marker
+          "compact_count":    int,         # number of compact markers
+        }
+    """
+    import sys as _sys
+    from pathlib import Path as _Path
+    _here = _Path(__file__).resolve().parent
+    _sys.path.insert(0, str(_here))
+    try:
+        import _session_jsonl as _sj
+    except ImportError:
+        return {"current_tokens": None, "peak_tokens": None,
+                 "peak_pre_compact": False, "compact_count": 0}
+    sid = _sj.discover_active_session_id(cwd_path)
+    empty = {"current_tokens": None, "peak_tokens": None,
+              "peak_pre_compact": False, "compact_count": 0}
+    if not sid:
+        return empty
+    slug = _sj.cwd_to_slug(_Path(cwd_path or ".").resolve())
+    jsonl = _Path.home() / ".claude" / "projects" / slug / f"{sid}.jsonl"
+    if not jsonl.is_file():
+        return empty
+
+    peak = 0
+    peak_line = -1
+    last_total = None
+    compact_count = 0
+    last_compact_line = -1
+    try:
+        with jsonl.open("r", encoding="utf-8") as f:
+            for line_no, line in enumerate(f):
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    o = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                if o.get("isCompactSummary") is True:
+                    compact_count += 1
+                    last_compact_line = line_no
+                    continue
+                if o.get("type") == "assistant":
+                    usage = (o.get("message") or {}).get("usage")
+                    if isinstance(usage, dict):
+                        total = _usage_total(usage)
+                        last_total = total
+                        if total > peak:
+                            peak = total
+                            peak_line = line_no
+    except OSError:
+        return empty
+
+    if last_total is None:
+        return empty
+
+    peak_pre_compact = (
+        last_compact_line >= 0 and peak_line < last_compact_line
+    )
+    return {
+        "current_tokens":   last_total,
+        "peak_tokens":      peak,
+        "peak_pre_compact": peak_pre_compact,
+        "compact_count":    compact_count,
+    }
+
+
 def main():
     stdin_text = ""
     if not sys.stdin.isatty():

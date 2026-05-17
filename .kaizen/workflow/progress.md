@@ -31,3 +31,4 @@
 | 2026-05-14 | feat     | ~+1.6k | iron-laws skill complete — SSOT registry + loader + codegen + checker + CLI + MCP + drift gate |
 | 2026-05-17 | fix      | +50    | BK-013 — dxm-event.sh _session_jsonl fallback when stdin lacks session_id (fixes silent PreCompact/SessionEnd/SubagentStop/Notification drops) |
 | 2026-05-17 | fix      | +25    | BK-014 — precompact-snapshot.sh runs backup sync + emits honest systemMessage with real tarball path (was backgrounded `&` + wrong hardcoded path) |
+| 2026-05-17 | feat     | +85    | BK-015 — context.get_usage_summary peak-aware reader (walks all assistant turns, detects compact via isCompactSummary marker, returns current+peak+peak_pre_compact+compact_count) |
