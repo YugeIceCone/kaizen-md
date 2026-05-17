@@ -86,6 +86,11 @@ except Exception:
 source = sys.argv[2] if len(sys.argv) > 2 else ""
 stages = s.get("stages", [])
 i = s.get("current", 0)
+# Suppress completed runs — current >= len(stages) means all stages
+# done; the "next stage: (complete)" line is pure noise per-prompt.
+# Use kaizen:status or read the state.json directly to view history.
+if stages and i >= len(stages):
+    sys.exit(0)
 nxt = stages[i] if 0 <= i < len(stages) else None
 completed = s.get("completed", [])
 done = ", ".join(c.get("stage", "?") for c in completed) or "(none)"

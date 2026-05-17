@@ -114,6 +114,47 @@ class BypassKnob(_BaseHook):
         self.assertEqual(r.stdout.strip(), "{}")
 
 
+class TestCompletedWorkflowSuppressed(_BaseHook):
+    """A workflow run with current == len(stages) is COMPLETE — it
+    shouldn't keep injecting into every prompt with 'next stage:
+    (complete)'. Stale runs from days ago are pure noise."""
+
+    def _seed_workflow_state(self, *, current: int, stages: list[str]):
+        wf = self.root / ".kaizen" / "workflow"
+        wf.mkdir(parents=True, exist_ok=True)
+        (wf / "state.json").write_text(json.dumps({
+            "routine": "harden", "stages": stages, "current": current,
+            "prompt": "test", "completed": [], "artifacts": {},
+        }))
+
+    def test_in_progress_workflow_still_injected(self):
+        self._seed_workflow_state(current=1, stages=["a", "b", "c"])
+        out = _parse(_run_hook("session", self.root))
+        body = out["hookSpecificOutput"]["additionalContext"]
+        self.assertIn("Active /workflow run", body)
+
+    def test_complete_workflow_suppressed(self):
+        # current == len(stages) → all stages done; nothing in progress.
+        self._seed_workflow_state(current=3, stages=["a", "b", "c"])
+        r = _run_hook("session", self.root)
+        if r.stdout.strip() == "{}":
+            return  # nothing to inject — pass
+        out = _parse(r)
+        body = out["hookSpecificOutput"]["additionalContext"]
+        self.assertNotIn("Active /workflow run", body,
+                         f"completed workflow should be suppressed; got: {body[:300]}")
+
+    def test_overflow_workflow_also_suppressed(self):
+        # Defensive: current > len(stages) shouldn't crash + shouldn't inject
+        self._seed_workflow_state(current=5, stages=["a", "b"])
+        r = _run_hook("session", self.root)
+        if r.stdout.strip() == "{}":
+            return
+        out = _parse(r)
+        body = out["hookSpecificOutput"]["additionalContext"]
+        self.assertNotIn("Active /workflow run", body)
+
+
 class PerEventTrimming(_BaseHook):
     """Token-cost optimization: UserPromptSubmit injects ONLY git
     state (the volatile section). SessionStart injected the stable
