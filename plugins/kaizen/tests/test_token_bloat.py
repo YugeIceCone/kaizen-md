@@ -613,6 +613,137 @@ class TestSessionStateSurvival(unittest.TestCase):
                           f"atomic_write left stray tempfiles: {leftover}")
 
 
+class TestStaleEntryValidator(unittest.TestCase):
+    """Stale / invalid finding detection + prune behavior."""
+
+    def setUp(self):
+        sys.path.insert(0, str(_KZ_DIR / "skills/workflow/scripts"))
+        if "token_bloat" in sys.modules:
+            del sys.modules["token_bloat"]
+        import token_bloat as tb
+        self.tb = tb
+        self._tmp = tempfile.TemporaryDirectory()
+        self.root = Path(self._tmp.name)
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    def _finding(self, path: str, start=1, end=100, lines=100) -> dict:
+        return {
+            "path": path, "start_line": start, "end_line": end, "lines": lines,
+            "severity": "high", "kind": "skill-md",
+        }
+
+    def test_active_finding_when_file_unchanged(self):
+        p = self.root / "x.md"
+        p.write_text("\n".join(f"l{i}" for i in range(100)))
+        self.assertEqual(
+            self.tb.validate_finding(self._finding("x.md", end=100, lines=100),
+                                      root=self.root),
+            "active")
+
+    def test_missing_when_file_gone(self):
+        self.assertEqual(
+            self.tb.validate_finding(self._finding("vanished.md"),
+                                      root=self.root),
+            "missing")
+
+    def test_moved_when_range_exceeds_file(self):
+        p = self.root / "shrunk.md"
+        p.write_text("\n".join(f"l{i}" for i in range(40)))
+        self.assertEqual(
+            self.tb.validate_finding(
+                self._finding("shrunk.md", end=100, lines=100),
+                root=self.root),
+            "moved")
+
+    def test_resolved_when_file_shrunk_below_half(self):
+        p = self.root / "trimmed.md"
+        p.write_text("\n".join(f"l{i}" for i in range(20)))  # was 100, now 20
+        self.assertEqual(
+            self.tb.validate_finding(
+                self._finding("trimmed.md", end=20, lines=100),
+                root=self.root),
+            "resolved")
+
+    def test_partition_splits_buckets_correctly(self):
+        p_active = self.root / "active.md"; p_active.write_text("x\n" * 100)
+        p_trimmed = self.root / "trimmed.md"; p_trimmed.write_text("x\n" * 20)
+        findings = [
+            self._finding("active.md", end=100, lines=100),
+            self._finding("missing.md"),
+            self._finding("trimmed.md", end=20, lines=100),
+        ]
+        buckets = self.tb._validate_and_partition(findings, root=self.root)
+        self.assertEqual(len(buckets["active"]), 1)
+        self.assertEqual(len(buckets["missing"]), 1)
+        self.assertEqual(len(buckets["resolved"]), 1)
+
+
+class TestValidateCLI(unittest.TestCase):
+    """CLI validate (read-only) + validate --prune (rewrites snapshot)."""
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.tmp = Path(self._tmp.name)
+        self.snap = self.tmp / "session.md"
+        self.env = {
+            "KAIZEN_DIR":                str(self.tmp),
+            "KAIZEN_BLOAT_SESSION_FILE": str(self.snap),
+        }
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    def test_validate_with_no_history_exits_1(self):
+        r = _run("validate", env=self.env)
+        self.assertEqual(r.returncode, 1)
+
+    def test_validate_active_after_fresh_scan(self):
+        # Fresh scan against real plugin — every finding is active
+        _run("scan", "--cache", env=self.env)
+        r = _run("validate", env=self.env)
+        self.assertEqual(r.returncode, 0)
+        self.assertIn("active", r.stdout)
+        # No missing / moved / resolved expected on a fresh scan
+        self.assertIn("0 missing", r.stdout)
+        self.assertIn("0 resolved", r.stdout)
+
+    def test_validate_prune_keeps_snapshot_only_with_active(self):
+        """Synthetic case: history with mix of active+missing+resolved.
+        --prune rewrites snapshot to drop missing/resolved, writes
+        resolved.log for the audit trail."""
+        _run("scan", "--cache", env=self.env)
+        # Tamper with history: inject a missing finding alongside real ones
+        hist = self.snap.with_suffix(".history.jsonl")
+        with hist.open("r") as f:
+            last = None
+            for line in f:
+                if line.strip():
+                    last = json.loads(line)
+        last["findings"].append({
+            "path": "definitely-not-a-real-file.md",
+            "start_line": 1, "end_line": 100, "lines": 100,
+            "severity": "high", "kind": "skill-md",
+        })
+        # Append the tampered entry as the new "latest"
+        with hist.open("a") as f:
+            f.write(json.dumps(last) + "\n")
+
+        before_count = len(last["findings"])
+        r = _run("validate", "--prune", env=self.env)
+        self.assertEqual(r.returncode, 0)
+        self.assertIn("pruned", r.stdout.lower())
+        # Audit log written
+        resolved_log = self.snap.parent / "resolved.log"
+        self.assertTrue(resolved_log.is_file())
+        # Snapshot regenerated with FEWER entries than tampered history
+        snap_text = self.snap.read_text()
+        for f_dict in last["findings"]:
+            if f_dict["path"] == "definitely-not-a-real-file.md":
+                self.assertNotIn("definitely-not-a-real-file.md", snap_text)
+
+
 class TestLineRangePresence(unittest.TestCase):
     """Every finding must carry start_line + end_line so the session
     state file can render `path:start-end` jump targets."""

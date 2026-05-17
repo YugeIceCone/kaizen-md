@@ -750,6 +750,56 @@ def _write_session_state(findings: list[dict]) -> None:
         pass
 
 
+def validate_finding(finding: dict, root: Path | None = None) -> str:
+    """Cross-reference a finding against the live filesystem. Returns one of:
+
+      "active"   — file exists, range still in file, content still at or
+                   above the original size (still bloated)
+      "missing"  — file doesn't exist anymore
+      "moved"    — file exists but end_line now exceeds file's line count
+      "resolved" — file + range still valid, but the body shrank below
+                   half its recorded line count (someone trimmed it)
+      "unknown"  — finding lacks the fields we need
+
+    Pure function: no side effects, no writes.
+    """
+    root = root or _plugin_root()
+    path_rel = finding.get("path")
+    if not path_rel:
+        return "unknown"
+    p = root / path_rel
+    if not p.is_file():
+        return "missing"
+    start = finding.get("start_line")
+    end = finding.get("end_line")
+    if start is None or end is None:
+        return "unknown"
+    try:
+        actual_lines = p.read_text(encoding="utf-8", errors="ignore").count("\n") + 1
+    except OSError:
+        return "missing"
+    if end > actual_lines:
+        return "moved"
+    recorded_lines = max(1, int(finding.get("lines", end - start + 1)))
+    # Heuristic: if the file shrank to less than half the recorded size,
+    # the original bloat is almost certainly gone (someone trimmed it).
+    if actual_lines * 2 < recorded_lines:
+        return "resolved"
+    return "active"
+
+
+def _validate_and_partition(findings: list[dict], root: Path | None = None) -> dict:
+    """Split findings into {active, missing, moved, resolved, unknown}."""
+    root = root or _plugin_root()
+    buckets: dict[str, list[dict]] = {
+        "active": [], "missing": [], "moved": [], "resolved": [], "unknown": [],
+    }
+    for f in findings:
+        status = validate_finding(f, root)
+        buckets.setdefault(status, []).append(f)
+    return buckets
+
+
 def _restore_snapshot_from_history() -> bool:
     """Regenerate the .md snapshot from the LAST entry in the history
     JSONL. Returns True on success, False when no history available."""
@@ -905,9 +955,80 @@ def _emit_trace(findings: list[dict]) -> None:
         pass
 
 
+def _read_last_history_findings() -> list[dict]:
+    """Pull findings list from the most recent history JSONL entry."""
+    hist = _session_history_path()
+    if not hist.is_file():
+        return []
+    last_obj = None
+    try:
+        with hist.open("r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    last_obj = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+    except OSError:
+        return []
+    return (last_obj or {}).get("findings") or []
+
+
+def _cmd_validate(args) -> int:
+    """Validate the LATEST snapshot's findings against the live FS.
+
+    With --prune: rewrite the snapshot to drop missing/resolved entries,
+    keeping only those still active or moved (worth investigating).
+    Records the prune in a sibling resolved.log for auditability."""
+    prior = _read_last_history_findings()
+    if not prior:
+        sys.stderr.write("[kaizen-token-bloat] no history to validate\n")
+        return 1
+    buckets = _validate_and_partition(prior)
+    summary = {k: len(v) for k, v in buckets.items()}
+    if args.json:
+        print(json.dumps({"summary": summary, "buckets": buckets},
+                          default=str, indent=2))
+    else:
+        print(f"kaizen-token-bloat validate: "
+              f"{summary['active']} active, {summary['missing']} missing, "
+              f"{summary['moved']} moved, {summary['resolved']} resolved")
+        for status in ("missing", "resolved", "moved"):
+            for f in buckets[status]:
+                print(f"  [{status:8s}] {f.get('path')}:"
+                      f"{f.get('start_line')}-{f.get('end_line')}")
+    if args.prune:
+        keep = buckets["active"] + buckets["moved"]  # moved == still worth a look
+        dropped = buckets["missing"] + buckets["resolved"]
+        _write_session_state(keep)
+        # Audit log for what was pruned
+        resolved_log = _session_state_path().parent / "resolved.log"
+        try:
+            sys.path.insert(0, str(_SCRIPT_DIR))
+            import _atomic
+            for f in dropped:
+                _atomic.atomic_append_line(resolved_log, json.dumps({
+                    "pruned_at":  _dt.datetime.now(_dt.timezone.utc).strftime(
+                                      "%Y-%m-%dT%H:%M:%SZ"),
+                    "status":     validate_finding(f),
+                    "finding":    f,
+                }, default=str))
+        except (OSError, ImportError):
+            pass
+        if not args.json:
+            print(f"pruned {len(dropped)} stale entries → snapshot now "
+                  f"contains {len(keep)} (audit: {resolved_log})")
+    return 0
+
+
 def _cmd_scan(args) -> int:
     findings = scan_all()
     if args.cache:
+        # Self-cleaning: scan_all returns CURRENT bloat only, so the
+        # new snapshot inherently drops resolved/missing entries from
+        # the prior scan. The history JSONL keeps the full audit trail.
         _write_cache(findings)
         _write_session_state(findings)
         _emit_trace(findings)
@@ -969,6 +1090,13 @@ def main(argv=None) -> int:
 
     phi = sub.add_parser("history", help="print history JSONL file path")
     phi.set_defaults(func=lambda a: (print(_session_history_path()), 0)[1])
+
+    pv = sub.add_parser("validate",
+                          help="cross-check last history's findings against the live FS")
+    pv.add_argument("--json", action="store_true")
+    pv.add_argument("--prune", action="store_true",
+                     help="rewrite snapshot to drop missing/resolved entries")
+    pv.set_defaults(func=_cmd_validate)
 
     prs = sub.add_parser("restore",
                           help="regenerate session-state .md from last history entry")
