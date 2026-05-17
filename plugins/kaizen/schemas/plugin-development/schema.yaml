@@ -1,0 +1,122 @@
+# yaml-language-server: $schema=../../assets/schemas/workflow.schema.json
+#
+# Plugin-development workflow — declarative routine for building a
+# new kaizen-plugin feature end-to-end. The 13-slot canonical
+# feature shape (skills/plugin-development/domain/feature-shape.yaml)
+# + the 13 iron-laws (skills/iron-laws/domain/iron-laws.yaml) +
+# TDD discipline, distilled into 8 ordered stages.
+#
+# Pair with /kaizen:plugin-development workflow or
+# /workflow schema=plugin-development.
+
+name: plugin-development
+version: 1
+description: |
+  Eight-stage TDD routine for adding a new feature to the kaizen
+  plugin. Each stage produces an artifact + has a machine-checkable
+  gate; the next stage is blocked until the current artifact exists
+  + passes. Pulls from the canonical feature-shape.yaml + iron-laws
+  registry so the schema does not duplicate those rules — it
+  references them.
+
+  Suitable for: shipping a new bin / skill / command / hook / MCP
+  server / indexer in plugins/kaizen/, when the canonical 13-slot
+  shape applies and you want TDD per stage.
+
+  NOT suitable for: doc-only edits, bug fixes, rename refactors,
+  vendored-bundle refreshes (see CONTRIBUTING.md::bundle-refresh).
+
+artifacts:
+  - id: scope
+    generates: .kaizen/workflow/plugin-dev-scope.md
+    template: null
+    requires: []
+    description: |
+      Stage 1 — pick the feature name + identify which of the 13
+      canonical slots apply. Reads skills/plugin-development/domain/
+      feature-shape.yaml::slots. Outputs a per-feature manifest:
+      kebab-name, owned slots, deferred slots (with reason), public
+      surface (slash command? bin? MCP?), tier (1 must-ship / 2
+      nice-to-have / 3 defer).
+
+  - id: scaffold
+    generates: plugins/kaizen/skills/<name>/ + scripts/<name>.py + ...
+    template: null
+    requires: [scope]
+    description: |
+      Stage 2 — create the directory structure per the scope
+      manifest. mkdir the owned slots: skills/<name>/SKILL.md,
+      domain/*.yaml, scripts/<name>.py, tests/test_<name>*.py.
+      Hook + bin + slash command + MCP server stubs as flagged.
+
+  - id: wire
+    generates: plugins/kaizen/.claude-plugin/plugin.json + hooks/hooks.json
+    template: null
+    requires: [scaffold]
+    description: |
+      Stage 3 — wiring per the iron-laws checklist:
+      `plugin-manifest-permissions` (every script + hook gets a
+      permission.allow entry), `bin-wrapper-per-cli` (every
+      argparse-main script gets bin/kaizen-<name>), hooks.json
+      registration for any lifecycle hooks, hook-bypass-knob
+      (KAIZEN_<FEATURE>_DISABLE), _trace.sh fire from every hook.
+
+  - id: red
+    generates: tests/test_<name>_*.py with failing test
+    template: null
+    requires: [wire]
+    description: |
+      Stage 4 — TDD RED. Write the failing test FIRST. Sandbox env
+      (KAIZEN_<X>_PATH for filesystem isolation). Run the test;
+      assert it fails for the right reason (not "module not found").
+      Iron-law `sandbox-tests` enforced.
+
+  - id: green
+    generates: skills/workflow/scripts/<name>.py + ...
+    template: null
+    requires: [red]
+    description: |
+      Stage 5 — TDD GREEN. Smallest implementation that passes the
+      RED test. Use flow.AsyncNode / AsyncFlow for any multi-step
+      orchestration (iron-law `multi-step-uses-async-flow`). Heavy
+      deps lazy-load + graceful fallback per the 4-element shape
+      in skills/plugin-development/SKILL.md PART 5.
+
+  - id: refactor
+    generates: (in-place edits)
+    template: null
+    requires: [green]
+    description: |
+      Stage 6 — TDD REFACTOR with the pinned coding-skills (KISS,
+      YAGNI, DRY, SoC, SOLID, LoD, Boy-Scout, Convention, Karpathy
+      4). Don't dilute Iron Laws — pick the dominant principle for
+      THIS change.
+
+  - id: validate
+    generates: validate-report.md
+    template: null
+    requires: [refactor]
+    description: |
+      Stage 7 — run `kaizen-gatekeeper check --staged` (9 sub-gates
+      aggregated) and `validate.py --feature <name>`. Both must be
+      green/yellow before proceeding. Red blocks the commit.
+
+  - id: document
+    generates: .kaizen/workflow/progress.md (+1 row), CLAUDE.md (taxonomy if new feature)
+    template: null
+    requires: [validate]
+    description: |
+      Stage 8 — append the structural row to progress.md (gate
+      enforces this for structural changes). If the feature adds a
+      new command/bin/skill to any of the 9 domain clusters, update
+      CLAUDE.md's bin + slash-command taxonomy tables. Update
+      command help (kaizen help-gen render) so /kaizen:help groups
+      the new entry correctly.
+
+apply:
+  gate: validate
+  progress: .kaizen/workflow/progress.md
+  description: |
+    Implementation cannot complete until `validate` artifact passes
+    (gatekeeper + validator both green/yellow). Progress is tracked
+    by structural rows in progress.md — one per stage that landed.

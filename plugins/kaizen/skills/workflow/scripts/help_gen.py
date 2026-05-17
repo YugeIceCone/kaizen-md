@@ -68,7 +68,7 @@ CLUSTERS: list[tuple[str, list[str]]] = [
     ("plugin-meta", [
         "setup", "bootstrap", "update", "refresh-cache", "daemon",
         "hygiene", "backup", "publish", "env", "health", "status",
-        "surface", "disable-dupes",
+        "surface", "disable-dupes", "plugin-development",
     ]),
     ("discovery/search", [
         "onboard", "knowledge", "claude-docs", "code-tour", "scrape",

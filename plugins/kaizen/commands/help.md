@@ -6,7 +6,7 @@ argument-hint: "(none) | <command-name>"
 
 # /kaizen:help
 
-Static taxonomy of all 55 `/kaizen:*` commands. **One screen, zero bash
+Static taxonomy of all 56 `/kaizen:*` commands. **One screen, zero bash
 execution.** For full per-command docs use `kaizen help <name>`. Auto-
 generated from `commands/*.md` frontmatter via `kaizen-help-gen`.
 
@@ -58,7 +58,7 @@ generated from `commands/*.md` frontmatter via `kaizen-help-gen`.
 | `migrate` | Migrate from loose skills / separate plugins / non-canonical layouts to the kaizen |
 | `migrate-paths` | DEPRECATED ALIAS — use `/kaizen:migrate paths` instead. Migrate kaizen's pre-v1.22 |
 
-## plugin-meta (13)
+## plugin-meta (14)
 
 | Command | Does |
 |---|---|
@@ -75,6 +75,7 @@ generated from `commands/*.md` frontmatter via `kaizen-help-gen`.
 | `status` | Show the kaizen setup for this repo at a glance — config, gate state, backlog summ |
 | `surface` | Unified MCP+hooks registry / validator. `list` enumerates all 22 MCP sub-servers a |
 | `disable-dupes` | Find and reversibly disable duplicate skills (loose ~/.claude/skills/X vs bundled  |
+| `plugin-development` | Multi-verb entry point for adding/auditing features in the kaizen-md plugin. Defau |
 
 ## discovery/search (8)
 
