@@ -1,0 +1,48 @@
+# kaizen auto-handoff rubric — multi-signal classifier.
+# Validated against domain/schemas/rubric.schema.json.
+# Walked via skills/workflow/scripts/schema_cli.py::BucketWalker.
+#
+# First match wins. Signals computed in auto_handoff.py:
+#   pct                — current context % of limit
+#   threshold          — user-chosen threshold (25/50/75/85)
+#   above_threshold    — 1 if pct >= threshold, else 0
+#   compact_count      — # of /compact events this session
+#   peak_pct           — max pct seen this session
+#   threshold_delta    — pct - threshold (negative = below)
+#
+# Bucket → action mapping lives in config.yaml::on_bucket.
+# This file is pure classification; config.yaml controls policy.
+
+version: 1
+
+rules:
+  # ─── critical: above 90% regardless of user threshold ──────────
+  # Fires even if user picked 85% and pct overshot. Hard ceiling.
+  - bucket: critical-block
+    require_all:
+      - {signal: pct, op: ">=", value: 90}
+
+  # ─── threshold-cross: pct met or exceeded user's choice ────────
+  - bucket: threshold-block
+    require_all:
+      - {signal: above_threshold, op: "==", value: 1}
+
+  # ─── post-compact climbing: already compacted, pct rising ──────
+  # If user compacted earlier and we're back at 50%+, prompt a
+  # pre-emptive handoff before the next compact (which loses more
+  # context each round).
+  - bucket: post-compact-warn
+    require_all:
+      - {signal: compact_count, op: ">=", value: 1}
+      - {signal: pct, op: ">=", value: 50}
+
+  # ─── peak-was-high: session peaked high even if currently low ──
+  # Useful when user just /compacted and pct dropped to 30% but
+  # peak_pct was 95% — they're in a high-churn session.
+  - bucket: high-peak-soft-warn
+    require_all:
+      - {signal: peak_pct, op: ">=", value: 85}
+      - {signal: above_threshold, op: "==", value: 0}
+
+confidence_threshold: 0.85
+fallback: noop

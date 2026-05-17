@@ -38,6 +38,7 @@ import session_mode as _sm  # noqa: E402
 # script at skills/workflow/scripts/ → plugin_root is 3 levels up
 _PLUGIN_ROOT = _SCRIPT_DIR.parent.parent.parent
 _DEFAULT_CONFIG_PATH = _PLUGIN_ROOT / "skills" / "auto-handoff" / "domain" / "config.yaml"
+_DEFAULT_RUBRIC_PATH = _PLUGIN_ROOT / "skills" / "auto-handoff" / "domain" / "rubric.yaml"
 
 _BUILTIN_DEFAULT = {
     "version": 1,
@@ -58,6 +59,49 @@ def _config_path() -> Path:
     if env:
         return Path(os.path.expandvars(env)).expanduser()
     return _DEFAULT_CONFIG_PATH
+
+
+def _rubric_path() -> Path:
+    env = os.environ.get("KAIZEN_AUTO_HANDOFF_RUBRIC")
+    if env:
+        return Path(os.path.expandvars(env)).expanduser()
+    return _DEFAULT_RUBRIC_PATH
+
+
+def _compute_signals(*, pct: int, threshold: int,
+                       compact_count: int = 0,
+                       peak_pct: int | None = None) -> dict:
+    """Pure-function signal computer for the BucketWalker. All ints
+    so the rubric's numeric comparisons work cleanly."""
+    return {
+        "pct":             int(pct),
+        "threshold":       int(threshold),
+        "above_threshold": 1 if pct >= threshold else 0,
+        "compact_count":   int(compact_count),
+        "peak_pct":        int(peak_pct if peak_pct is not None else pct),
+        "threshold_delta": int(pct) - int(threshold),
+    }
+
+
+def _walk_rubric(signals: dict) -> str | None:
+    """Load rubric.yaml + walk against signals. Returns the bucket
+    name (e.g. 'critical-block'), or None when the rubric is absent
+    or BucketWalker is unavailable. 'noop' bucket → None."""
+    path = _rubric_path()
+    if not path.is_file():
+        return None
+    try:
+        import schema_cli
+    except ImportError:
+        return None
+    try:
+        walker = schema_cli.BucketWalker.from_yaml(path)
+        result = walker.evaluate(signals)
+    except Exception:
+        return None
+    if not result.bucket or result.bucket == "noop":
+        return None
+    return result.bucket
 
 
 def load_config() -> dict:
@@ -153,8 +197,35 @@ def check(session_id: str | None = None) -> dict:
         return {}
     limit = _ctx.get_limit()
     pct = (summary["current_tokens"] * 100) // limit
-    if pct < threshold:
-        return {}
+
+    # Compute signals for the rubric (or for fallback single-threshold).
+    peak_tokens = summary["peak_tokens"]
+    peak_pct = (peak_tokens * 100 // limit) if peak_tokens is not None else pct
+    compact_count = int(summary.get("compact_count") or 0)
+    signals = _compute_signals(
+        pct=pct, threshold=threshold,
+        compact_count=compact_count, peak_pct=peak_pct,
+    )
+
+    # Rubric path (preferred) — multi-signal classification with
+    # per-bucket actions. Falls through to single-threshold logic
+    # when rubric is absent or returns noop.
+    bucket = _walk_rubric(signals)
+    if bucket is not None:
+        on_bucket = (cfg.get("on_bucket") or {}).get(bucket)
+        if on_bucket is None:
+            return {}  # bucket mapped to null = no-op
+        decision_kind = on_bucket.get("decision", "block")
+        if decision_kind == "noop":
+            return {}
+        template = on_bucket.get(
+            "reason_template", cfg["on_fire"]["reason_template"])
+    else:
+        # Fallback: original single-threshold gate (pct >= threshold).
+        if pct < threshold:
+            return {}
+        decision_kind = cfg["on_fire"]["decision"]
+        template = cfg["on_fire"]["reason_template"]
 
     # Write dedupe marker FIRST — concurrent fires don't double-block.
     _dxm_emit.emit_event(
@@ -162,20 +233,21 @@ def check(session_id: str | None = None) -> dict:
         tool_name="kaizen-auto-handoff",
         payload={"pct": pct, "threshold": threshold,
                   "tokens": summary["current_tokens"],
-                  "peak_tokens": summary["peak_tokens"]},
+                  "peak_tokens": peak_tokens,
+                  "bucket": bucket or "single-threshold"},
         session_id=sid,
     )
 
     reason = _format_reason(
-        cfg["on_fire"]["reason_template"],
+        template,
         pct=pct, threshold=threshold,
         tokens=summary["current_tokens"],
+        peak_pct=peak_pct,
+        compact_count=compact_count,
     ).strip()
 
-    decision_kind = cfg["on_fire"]["decision"]
     if decision_kind == "block":
         return {"decision": "block", "reason": reason}
-    # Else systemMessage (advisory fallback)
     return {"systemMessage": reason}
 
 

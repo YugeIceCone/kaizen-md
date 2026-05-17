@@ -19,6 +19,7 @@ on_fire:
   #                    Agent CANNOT exit until handoff is created.
   # "systemMessage"  — soft suggestion (advisory). Agent may skip.
   # Default is "block" — see SKILL.md "Contract" section.
+  # When rubric.yaml exists, on_bucket overrides this for each bucket.
   decision: "block"
 
   # Template for the reason text. Substitution:
@@ -45,3 +46,38 @@ on_fire:
     Skip this enforcement only via KAIZEN_AUTO_HANDOFF_DISABLE=1
     in the user's environment — never bypass without the user's
     explicit say-so.
+
+# Optional: per-bucket action policy when rubric.yaml drives the
+# classification. Bucket names must match those declared in rubric.yaml.
+# When a bucket is absent here OR mapped to null, that bucket is a no-op
+# (no fire). When `decision: noop`, also a no-op. Otherwise emits
+# according to decision + reason_template (same vars as on_fire).
+on_bucket:
+  critical-block:
+    decision: block
+    reason_template: |
+      🔥 CRITICAL — context at {pct}% (ceiling at 90%). Handoff NOW.
+      You may have only a few turns before /compact loses state.
+      Bash(kaizen-handoff scaffold ...) → fill fields → auto-finalize.
+
+  threshold-block:
+    decision: block
+    reason_template: |
+      ⚠ MANDATORY pre-compact handoff (context at {pct}%, threshold {threshold}%).
+      Stop is BLOCKED. Create the handoff before exiting:
+      Bash(kaizen-handoff scaffold --session <project> --goal '<one line>' --now 'pre-compact')
+      → fill qualitative fields → kaizen-handoff auto-finalize.
+
+  post-compact-warn:
+    decision: systemMessage
+    reason_template: |
+      🟡 Post-compact session climbing (pct {pct}%, prior compact x{compact_count}).
+      Consider pre-emptive handoff before next compact (each round loses more state).
+
+  high-peak-soft-warn:
+    decision: systemMessage
+    reason_template: |
+      🟡 High-churn session — peak {peak_pct}% reached even though current is {pct}%.
+      Consider an early handoff to capture the dense work before another peak.
+
+  noop: null

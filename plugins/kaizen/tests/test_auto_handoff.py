@@ -191,6 +191,8 @@ class TestConfigOverride(_Sandbox):
         )
         env = os.environ.copy()
         env["KAIZEN_AUTO_HANDOFF_CONFIG"] = str(cfg)
+        # Disable rubric so on_fire fallback path is taken.
+        env["KAIZEN_AUTO_HANDOFF_RUBRIC"] = str(self.tmp / "nonexistent.yaml")
         self._set_mode(50)
         self._seed_jsonl("sid-x", 60_000)
         r = subprocess.run(
@@ -201,6 +203,60 @@ class TestConfigOverride(_Sandbox):
         self.assertIn("systemMessage", out)
         self.assertNotIn("decision", out)
         self.assertIn("soft custom warning at 60%", out["systemMessage"])
+
+
+class TestRubricMultiSignal(_Sandbox):
+    """Rubric-driven classification: when domain/rubric.yaml is
+    present, multi-signal rules drive the bucket, and config.on_bucket
+    maps bucket → action."""
+
+    def test_critical_block_fires_above_90pct_even_over_threshold(self):
+        # threshold=85, pct=95 → critical-block rule fires FIRST
+        # (above-90 rule precedes threshold-block in rubric.yaml)
+        self._set_mode(85)
+        self._seed_jsonl("sid-x", 95_000)  # 95%
+        r = self._run()
+        out = json.loads(r.stdout)
+        self.assertEqual(out.get("decision"), "block")
+        # critical-block has 🔥 in its template
+        self.assertIn("🔥", out["reason"])
+        self.assertIn("CRITICAL", out["reason"])
+
+    def test_threshold_block_fires_when_above_threshold_but_below_90(self):
+        self._set_mode(75)
+        self._seed_jsonl("sid-x", 80_000)  # 80%, above 75, below 90
+        r = self._run()
+        out = json.loads(r.stdout)
+        self.assertEqual(out.get("decision"), "block")
+        # threshold-block template (not critical)
+        self.assertIn("MANDATORY", out["reason"])
+        self.assertNotIn("🔥", out["reason"])
+
+    def test_no_match_returns_empty_below_threshold(self):
+        self._set_mode(75)
+        self._seed_jsonl("sid-x", 40_000)  # 40%, below 75 threshold
+        r = self._run()
+        self.assertEqual(r.stdout.strip(), "{}")
+
+
+class TestRubricLoads(_Sandbox):
+    def test_signals_computed_correctly(self):
+        """Validates the signal computer in auto_handoff."""
+        import importlib, sys as _sys
+        _sys.path.insert(0,
+            "/home/cherry86/workspace/kaizen-md/plugins/kaizen/skills/workflow/scripts")
+        # Re-import to pick up any module cache reset
+        if "auto_handoff" in _sys.modules:
+            del _sys.modules["auto_handoff"]
+        import auto_handoff as ah
+        signals = ah._compute_signals(pct=80, threshold=75,
+                                        compact_count=2, peak_pct=95)
+        self.assertEqual(signals["pct"], 80)
+        self.assertEqual(signals["threshold"], 75)
+        self.assertEqual(signals["above_threshold"], 1)
+        self.assertEqual(signals["compact_count"], 2)
+        self.assertEqual(signals["peak_pct"], 95)
+        self.assertEqual(signals["threshold_delta"], 5)
 
 
 class TestSchemaValidation(unittest.TestCase):
@@ -235,6 +291,20 @@ class TestSchemaValidation(unittest.TestCase):
         jsonschema.validate({"decision": "block",
                               "reason": "x" * 40}, schema)
         jsonschema.validate({"systemMessage": "x" * 40}, schema)
+
+    def test_shipped_rubric_validates(self):
+        try:
+            import jsonschema  # type: ignore
+        except ImportError:
+            self.skipTest("jsonschema not installed")
+        import yaml
+        rubric = yaml.safe_load(
+            (_KZ_DIR / "skills/auto-handoff/domain/rubric.yaml").read_text()
+        )
+        schema = json.loads(
+            (_KZ_DIR / "skills/auto-handoff/domain/schemas/rubric.schema.json").read_text()
+        )
+        jsonschema.validate(rubric, schema)
 
     def test_event_payload_validates_against_schema(self):
         try:

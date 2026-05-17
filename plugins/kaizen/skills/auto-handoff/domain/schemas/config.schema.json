@@ -30,13 +30,31 @@
       "properties": {
         "decision": {
           "enum": ["block", "systemMessage"],
-          "description": "block = Stop hook prevents exit until handoff lands. systemMessage = advisory only."
+          "description": "block = Stop hook prevents exit until handoff lands. systemMessage = advisory only. Fallback when no rubric.yaml present."
         },
         "reason_template": {
           "type": "string",
           "minLength": 20,
           "description": "Template text emitted to the agent. Vars: {pct} {threshold} {tokens}."
         }
+      }
+    },
+    "on_bucket": {
+      "type": "object",
+      "description": "Per-bucket action policy when rubric.yaml drives classification. Keys are bucket names declared in rubric.yaml. Values may be null (no-op) or an action object.",
+      "additionalProperties": {
+        "oneOf": [
+          { "type": "null" },
+          {
+            "type": "object",
+            "required": ["decision"],
+            "additionalProperties": false,
+            "properties": {
+              "decision": { "enum": ["block", "systemMessage", "noop"] },
+              "reason_template": { "type": "string", "minLength": 20 }
+            }
+          }
+        ]
       }
     }
   }
