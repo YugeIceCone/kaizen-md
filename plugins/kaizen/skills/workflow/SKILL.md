@@ -1,6 +1,6 @@
 ---
 name: workflow
-description: Use when committing code, designing commit cadence, setting up a pre-commit gate, sizing work, choosing a multi-stage routine (audit / build-feature / fix-bug / refactor / migrate / harden / debug-with-pdb / mcp-build / minimalist / spec-driven / onion-tdd-strict / kaizen-default), running `/workflow`, or orchestrating audit-to-validate end-to-end. Triggers on "git workflow", "pre-commit hook", "commit discipline", "BACKLOG", "architecture log row", "plan-phase tick", "Conventional Commits", "pre-deletion gate", "core.hooksPath", "run a structured workflow", "build feature end-to-end", "fix bug end-to-end", "refactor with a plan", "audit the repo end-to-end". Skill body MUST be read end-to-end before applying any section.
+description: Commit cadence + pre-commit gate + multi-stage routines (audit / build-feature / fix-bug / refactor / migrate / harden / debug / mcp-build / spec-driven / onion-tdd-strict). Triggers on "git workflow", "pre-commit hook", "commit discipline", "BACKLOG", "architecture log row", "plan-phase tick", "Conventional Commits", "pre-deletion gate", "core.hooksPath", "run a structured workflow", "build feature end-to-end", "fix bug end-to-end", "refactor with a plan", "audit the repo end-to-end". Read body in full before applying.
 version: 2.0.0
 ---
 

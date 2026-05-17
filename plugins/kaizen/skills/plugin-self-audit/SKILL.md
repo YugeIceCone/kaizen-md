@@ -1,6 +1,6 @@
 ---
 name: plugin-self-audit
-description: Schema-driven plugin self-audit pipeline. Use BEFORE shipping a feature, AFTER landing structural changes, or PERIODICALLY to catch drift. Runs mechanical checks (canonical-shape validator, metrics-coverage, skip-detection, hook-trace, bin-permission, vendored-modification, claude-md-volatile-data) AND emits skill-checkpoint TODOs for the agent to apply (onion-ddd-workflow + 9 coding-skills). Triggers on "audit the kaizen plugin", "self-audit", "plugin health check", "find gaps in kaizen", "plugin coverage audit", "what should I fix in kaizen", "structured audit report", "remediation plan for kaizen", "what new functionality should kaizen have", "kaizen onion-ddd review", "review kaizen for solid/dry/kiss".
+description: Schema-driven plugin self-audit pipeline. Mechanical checks + skill-checkpoint TODOs (onion-ddd + 9 coding-skills). Triggers on "audit the kaizen plugin", "self-audit", "plugin health check", "find gaps in kaizen", "plugin coverage audit", "what should I fix in kaizen", "structured audit report", "remediation plan for kaizen", "what new functionality should kaizen have", "kaizen onion-ddd review", "review kaizen for solid/dry/kiss".
 version: 1.0.0
 ---
 

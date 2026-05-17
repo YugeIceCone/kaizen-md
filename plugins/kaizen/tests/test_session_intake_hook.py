@@ -66,18 +66,16 @@ class TestEmitsIntakePromptWhenUnset(Base):
         self.assertIn("--bundles", ctx)
 
     def test_includes_operational_bundles_question(self):
-        """Q3 must instruct multiSelect for operational bundles."""
+        """Q3 must instruct multiSelect for operational bundles. Bundle
+        ids are derived implicitly (lowercase label first word) per the
+        persistence rule in the intake body."""
         r = self._fire()
         ctx = self._additional_context(r)
         self.assertIn("Operational", ctx)
-        self.assertIn("Quality", ctx)
-        self.assertIn("Security", ctx)
-        self.assertIn("Brain hygiene", ctx)
-        self.assertIn("Plugin-dev", ctx)
-        # Bundle ids referenced in the persistence mapping
-        for bundle_id in ("quality", "security", "brain-hygiene", "plugin-dev"):
-            self.assertIn(bundle_id, ctx,
-                          f"intake missing bundle id {bundle_id!r}")
+        for label in ("Quality", "Security", "Brain hygiene", "Plugin-dev"):
+            self.assertIn(label, ctx, f"intake missing label {label!r}")
+        # The persistence rule explains how to derive ids from labels
+        self.assertIn("brain-hygiene", ctx)  # explicit example in rule
 
     def test_prescribes_single_command_for_persistence(self):
         """Mode + bundles persist via ONE call, not two."""

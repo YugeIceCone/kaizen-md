@@ -1,6 +1,6 @@
 ---
 name: efficient-tool-use
-description: Best practices, anti-patterns, and tool-selection guidance for the shell toolbox — grep, ripgrep, sed, awk, find, xargs, bash, jq, and friends. Use when the agent is about to chain shell commands, when a probe is slow, when a pipeline grows past 2-3 stages, or when reaching for the wrong tool (regex sed for syntax-aware edits, find from `/`, ls in scripts, etc.). Triggers on phrases like "is there a faster way", "this grep is slow", "should I use sed or python", "find vs rg", "before I write a bash loop", "best way to scan this codebase". Companion to ast-grep-router (structural search) and karpathy (surgical changes). Iron-Law skill — read in full before chaining 3+ shell commands.
+description: Tool-selection + anti-patterns for the shell toolbox (grep / rg / sed / awk / find / xargs / jq). Triggers on "is there a faster way", "this grep is slow", "should I use sed or python", "find vs rg", "before I write a bash loop", "best way to scan this codebase". Iron-Law skill — read in full before chaining 3+ shell commands.
 metadata:
   version: 1.0.0
 ---

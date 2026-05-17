@@ -1,6 +1,6 @@
 ---
 name: self-improving
-description: Use to curate Claude Code's auto-memory into durable project knowledge. Analyze MEMORY.md for promotion candidates, graduate proven learnings to CLAUDE.md / .claude/rules/ / `~/.claude/.kaizen/brain/Notes/pref-*.md`, extract recurring solutions into reusable kaizen skills. Triggers on "review memory", "promote this learning", "extract a skill from", "graduate this pattern", "what has Claude learned", "memory health", "curate auto-memory", "self-improve". Also implements the `self-analyze` workflow stage and the `self-improving` workflow routine (see "Workflow integration" section). Pairs with `kaizen:remember` (capture), `kaizen:evolve` (consolidate), `kaizen:reflect` (think). Originally based on claude-code-skills/engineering-team/self-improving-agent (per ATTRIBUTIONS.md) — now plugin-original.
+description: Curate Claude Code auto-memory into durable knowledge — promote MEMORY.md entries to CLAUDE.md / brain Notes, extract recurring solutions into reusable kaizen skills. Triggers on "review memory", "promote this learning", "extract a skill from", "graduate this pattern", "what has Claude learned", "memory health", "curate auto-memory", "self-improve". Implements the `self-analyze` workflow stage + `self-improving` routine. Pairs with `kaizen:remember` / `kaizen:evolve` / `kaizen:reflect`.
 version: 1.1.0
 tags: [memory, curation, promotion, self-improvement, brain, rules, workflow]
 ---

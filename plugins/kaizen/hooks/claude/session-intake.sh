@@ -65,93 +65,33 @@ fi
 # Imperative language: the agent's contract is "ask first, work after".
 python3 -c "
 import json
-body = '''MANDATORY — session intake (kaizen-md plugin)
+body = '''MANDATORY — session intake. Call AskUserQuestion with these 4 questions in ONE call, BEFORE the user's first prompt.
 
-This session has no recorded mode. BEFORE responding to the user's
-first prompt, call the AskUserQuestion tool with EXACTLY these four
-questions in a SINGLE call:
+Q1 (single) mode: \"How should this kaizen session be run?\" header=\"Session mode\"
+  Loop      | Iterative self-correcting loop
+  Workflow  | Multi-stage routine (explore → analyze → plan → execute)
+  Neither   | No loop/workflow scaffolding
 
-QUESTION 1 — mode (single-select):
-  question: \"How should this kaizen session be run?\"
-  header:   \"Session mode\"
-  multiSelect: false
-  options:
-    - label: \"Loop\"
-      description: \"Iterative self-correcting (ralph-loop). Best for greenfield with clear automated verification.\"
-    - label: \"Workflow\"
-      description: \"Multi-stage routine (explore → analyze → plan → execute). Best for non-trivial implementations.\"
-    - label: \"Neither\"
-      description: \"Proceed directly without loop/workflow scaffolding.\"
+Q2 (multi) coding-style: \"Which CODING-STYLE disciplines apply?\" header=\"Coding style\"
+  Simplicity (KISS + YAGNI + DRY)
+  Structure  (SOLID + SoC + LoD + Onion-DDD + Hexagonal + Clean + DIP + Bounded-Contexts)
+  Process    (TDD + Boy-Scout + Convention)
+  Karpathy 4
 
-QUESTION 2 — coding-style disciplines (multiSelect):
-  question: \"Which CODING-STYLE disciplines should be enforced this session?\"
-  header:   \"Coding style\"
-  multiSelect: true
-  options:
-    - label: \"Simplicity (KISS + YAGNI + DRY)\"
-      description: \"Anti-bloat — small code, no premature abstraction, no repetition.\"
-    - label: \"Structure (SOLID + SoC + LoD + Onion-DDD + Hexagonal + Clean + DIP + Bounded-Contexts)\"
-      description: \"Architecture — layered systems, inward-only deps, ports & adapters, bounded contexts.\"
-    - label: \"Process (TDD + Boy-Scout + Convention)\"
-      description: \"How-you-work — test-first, leave it cleaner, follow existing patterns.\"
-    - label: \"Karpathy 4\"
-      description: \"Code-as-communication — readable intent over clever density.\"
+Q3 (multi) operational: \"Which OPERATIONAL disciplines apply?\" header=\"Operational\"
+  Quality       (gatekeeper + iron-laws + karpathy + simplify + vibe-check)
+  Security      (security-review + iron-laws + verify-before-execution)
+  Brain hygiene (remember + reflect + memory-state + evolve)
+  Plugin-dev    (plugin-development + plugin-pitfalls + iron-laws + writing-skills + command-development)
 
-QUESTION 3 — operational disciplines (multiSelect):
-  question: \"Which OPERATIONAL disciplines should be cross-cutting this session?\"
-  header:   \"Operational\"
-  multiSelect: true
-  options:
-    - label: \"Quality (gatekeeper + iron-laws + karpathy + simplify + vibe-check)\"
-      description: \"Audit/review surface — auto-run gatekeeper + lint disciplines proactively.\"
-    - label: \"Security (security-review + iron-laws + verify-before-execution)\"
-      description: \"OWASP-style scan + verify-before-execute gates on risky operations.\"
-    - label: \"Brain hygiene (remember + reflect + memory-state + evolve)\"
-      description: \"Second Brain upkeep — capture / reflect / promote beliefs throughout session.\"
-    - label: \"Plugin-dev (plugin-development + plugin-pitfalls + iron-laws + writing-skills + command-development)\"
-      description: \"kaizen plugin authoring — canonical feature shape + iron laws + skill/command conventions.\"
+Q4 (single) auto-handoff: \"Auto-trigger a handoff at ___% context?\" header=\"Auto-handoff\"
+  25% | 50% | 75% (recommended) | 85% | Disabled
 
-QUESTION 4 — auto-handoff context-pressure trigger (single-select):
-  question: \"Auto-trigger a handoff when context window reaches ____ %?\"
-  header:   \"Auto-handoff\"
-  multiSelect: false
-  options:
-    - label: \"25%\"
-      description: \"Paranoid — fire very early. Best for long iterative loops with lots of context churn.\"
-    - label: \"50%\"
-      description: \"Half-full — comfortable buffer. Good default for medium sessions.\"
-    - label: \"75%\"
-      description: \"Conservative — fire well before compact pressure. Recommended for most work.\"
-    - label: \"85%\"
-      description: \"Pushing it — fire only when context is genuinely tight.\"
-    - label: \"Disabled\"
-      description: \"No auto-handoff. Manually trigger via /kaizen:handoff create when ready.\"
+Persist in ONE command — bundle id = lowercase label first word (e.g. \"Brain hygiene\" → brain-hygiene); merge Q2+Q3 picks into --bundles csv; omit --threshold for Disabled:
 
-After the user answers, persist ALL FOUR choices in ONE command.
-Merge picks from BOTH multiSelect questions (Q2 + Q3) into a single
---bundles CSV:
+  Bash(kaizen-session-mode set <loop|workflow|neither> --bundles <csv> [--threshold <25|50|75|85>])
 
-  Bash(kaizen-session-mode set <loop|workflow|neither> --bundles <csv> --threshold <25|50|75|85>)
-
-Bundle name mapping (lowercase, comma-separated):
-  Coding-style tier:
-    Simplicity → simplicity   Structure → structure
-    Process    → process      Karpathy 4 → karpathy
-  Operational tier:
-    Quality    → quality      Security  → security
-    Brain hygiene → brain-hygiene
-    Plugin-dev → plugin-dev
-
-Threshold mapping (integer or omit for Disabled):
-  25%/50%/75%/85% → pass numeric value via --threshold
-  Disabled        → OMIT the --threshold flag entirely
-
-Example: user picks Loop + (Simplicity, Process) + (Quality) + 75%:
-  kaizen-session-mode set loop --bundles simplicity,process,quality --threshold 75
-
-Only AFTER recording the choices, address the user's original request.
-
-To skip this intake permanently set KAIZEN_SESSION_INTAKE_DISABLE=1.
+Bypass: KAIZEN_SESSION_INTAKE_DISABLE=1.
 '''
 print(json.dumps({
     'hookSpecificOutput': {
