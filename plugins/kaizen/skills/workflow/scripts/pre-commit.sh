@@ -745,6 +745,52 @@ if [ -x "$_SCRIPT_REAL_DIR/context.py" ]; then
     esac
 fi
 
+# ─── Check 14: Affected-tests subset (HARD on failure) ──────────────
+# Default-on per user choice; disable with KAIZEN_PRECOMMIT_TESTS=0.
+# Direct map (scripts/foo.py → tests/test_foo.py); private helper or
+# unmappable Python file → full suite. No `.py` staged → skip cleanly.
+# Only fires inside the kaizen-md plugin repo (where the runner +
+# helper actually live).
+AFFECTED_PY="$_SCRIPT_REAL_DIR/_affected_tests.py"
+RUNNER_PY="$_SCRIPT_REAL_DIR/run_tests_parallel.py"
+KAIZEN_DIR="$REPO_ROOT/plugins/kaizen"
+if [ "${KAIZEN_PRECOMMIT_TESTS:-1}" = "0" ]; then
+    skip "affected-tests (KAIZEN_PRECOMMIT_TESTS=0)"
+elif [ -z "${KAIZEN_CI_GATE_RECURSION:-}" ] \
+   && [ -f "$AFFECTED_PY" ] \
+   && [ -f "$RUNNER_PY" ] \
+   && [ -d "$KAIZEN_DIR/tests" ] \
+   && command -v python3 >/dev/null 2>&1; then
+    # Derive subset from staged file list (one path per line on stdin).
+    AT_OUT=$(echo "$STAGED" | KAIZEN_AFFECTED_PLUGIN_ROOT="$KAIZEN_DIR" \
+                python3 "$AFFECTED_PY" 2>/tmp/kaizen-at.err)
+    AT_REASON=$(cat /tmp/kaizen-at.err 2>/dev/null | sed 's/^\[_affected_tests\] //')
+    if [ -z "$AT_OUT" ]; then
+        skip "affected-tests: $AT_REASON"
+    elif [ "$AT_OUT" = "FULL" ]; then
+        # Full suite — opt-out path; long-running. Surface as warn (not
+        # hard-fail target unless tests actually fail).
+        if KAIZEN_CI_GATE_RECURSION=1 python3 "$RUNNER_PY" \
+                --root "$KAIZEN_DIR" --tests-dir tests \
+                >/tmp/kaizen-tests.log 2>&1; then
+            pass "affected-tests (FULL: $AT_REASON)"
+        else
+            hard_fail "affected-tests FAILED (FULL suite; $AT_REASON) — see /tmp/kaizen-tests.log"
+        fi
+    else
+        # Direct-map subset — fast path.
+        if KAIZEN_CI_GATE_RECURSION=1 python3 "$RUNNER_PY" \
+                --root "$KAIZEN_DIR" --tests-dir tests \
+                --modules "$AT_OUT" >/tmp/kaizen-tests.log 2>&1; then
+            pass "affected-tests ($AT_REASON)"
+        else
+            hard_fail "affected-tests FAILED ($AT_REASON) — see /tmp/kaizen-tests.log"
+        fi
+    fi
+else
+    skip "affected-tests: not in kaizen-md plugin repo OR recursion guard active"
+fi
+
 # ─── Final summary ───────────────────────────────────────────────────
 echo "" >&2
 if [ "$HARD_FAILS" -gt 0 ]; then

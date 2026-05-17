@@ -121,5 +121,44 @@ class TestRunParallel(unittest.TestCase):
         self.assertIn("0 passed", out)
 
 
+class TestModulesFlag(unittest.TestCase):
+    """`--modules MOD,MOD,...` bypasses discovery and runs only the
+    named modules. Powers pre-commit.sh's affected-tests subset."""
+
+    def _invoke(self, root: Path, modules: str) -> tuple[int, str, str]:
+        proc = subprocess.run(
+            [sys.executable, str(_SCRIPT),
+             "--root", str(root), "--tests-dir", "tests",
+             "--modules", modules],
+            capture_output=True, text=True, timeout=30,
+            env=os.environ.copy(),
+        )
+        return proc.returncode, proc.stdout, proc.stderr
+
+    def test_modules_flag_runs_only_named_modules(self):
+        """Drop 3 test files; --modules picks 1 → only 1 runs."""
+        with tempfile.TemporaryDirectory() as tmp:
+            _seed_tests(Path(tmp), n_pass=3)
+            rc, out, _ = self._invoke(Path(tmp), "tests.test_pass_1")
+        self.assertEqual(rc, 0, out)
+        # Header reports 1 file, not 3
+        self.assertRegex(out, r"\b1 test files?\b|\b1 modules?\b")
+        self.assertIn("1 passed", out)
+
+    def test_modules_flag_propagates_failure(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            _seed_tests(Path(tmp), n_pass=1, n_fail=1)
+            rc, out, _err = self._invoke(Path(tmp), "tests.test_fail_0")
+        self.assertNotEqual(rc, 0)
+        self.assertIn("test_fail_0", out + _err)
+
+    def test_modules_flag_ignores_unknown_with_warning(self):
+        """Unknown module → unittest exits non-zero (informative)."""
+        with tempfile.TemporaryDirectory() as tmp:
+            _seed_tests(Path(tmp), n_pass=1)
+            rc, _out, _err = self._invoke(Path(tmp), "tests.nonexistent_module")
+        self.assertNotEqual(rc, 0)
+
+
 if __name__ == "__main__":
     unittest.main()

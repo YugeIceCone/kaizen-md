@@ -102,11 +102,18 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--concurrency", type=int, default=None,
                     help="Max concurrent test-file processes. Default: nproc, "
                          "overridable via KAIZEN_TEST_CONCURRENCY env.")
+    p.add_argument("--modules", default=None,
+                    help="Comma-separated module names (e.g. tests.test_foo,"
+                         "tests.test_bar). Bypasses discovery — used by "
+                         "pre-commit.sh's affected-tests subset.")
     args = p.parse_args(argv)
 
     root = Path(args.root).resolve()
     tests_dir = root / args.tests_dir
-    modules = discover_test_modules(tests_dir, args.pattern)
+    if args.modules:
+        modules = [m.strip() for m in args.modules.split(",") if m.strip()]
+    else:
+        modules = discover_test_modules(tests_dir, args.pattern)
     concurrency = _resolve_concurrency(args.concurrency)
 
     print(f"run_tests_parallel: {len(modules)} test files, "
