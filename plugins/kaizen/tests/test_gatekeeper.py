@@ -68,7 +68,7 @@ class TestGatekeeperAggregator(unittest.TestCase):
             set(self.gk.SUB_GATES.keys()),
             {"iron-laws", "etu", "karpathy", "validator",
              "token-bloat", "code-to-test-coverage", "schema-coverage",
-             "name-quality-coverage"},
+             "name-quality-coverage", "frontmatter-coverage"},
         )
 
     def test_norm_sev_maps_to_canonical(self):

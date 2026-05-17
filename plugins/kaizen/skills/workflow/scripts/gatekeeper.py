@@ -338,6 +338,35 @@ def _gate_schema_coverage(scope: str, repo_root: Path) -> list[GateFinding]:
 
 # ─── Orchestrator ───────────────────────────────────────────────────────
 
+def _gate_frontmatter(scope: str, repo_root: Path) -> list[GateFinding]:
+    """SKILL.md frontmatter conformance: name matches dir + ≥3 trigger phrases."""
+    script = _PLUGIN_ROOT / "skills" / "workflow" / "scripts" / "frontmatter.py"
+    if not script.is_file():
+        return []
+    try:
+        proc = subprocess.run(
+            [sys.executable, str(script), "gaps", "--json"],
+            cwd=repo_root, capture_output=True, text=True, timeout=10,
+        )
+    except (subprocess.TimeoutExpired, OSError):
+        return []
+    try:
+        data = json.loads(proc.stdout)
+    except (ValueError, json.JSONDecodeError):
+        return []
+    if isinstance(data, list) and data:
+        name_misses = sum(1 for r in data if not r.get("name_match"))
+        weak_routes = sum(1 for r in data
+                          if r.get("trigger_count", 0) < 3
+                          and r.get("name_match"))
+        return [GateFinding(
+            gate="frontmatter-coverage", severity="warn",
+            rule_id="frontmatter-gaps",
+            message=(f"{len(data)} skill(s) with gaps "
+                     f"({name_misses} name-mismatch, {weak_routes} weak-routing)"))]
+    return []
+
+
 def _gate_name_quality(scope: str, repo_root: Path) -> list[GateFinding]:
     """Surface kaizen-name-quality bad/weak findings — files whose
     name doesn't match their docstring intent."""
@@ -382,6 +411,7 @@ SUB_GATES = {
     "code-to-test-coverage":  _gate_coverage,           # 1:1 script ↔ test-file mapping
     "schema-coverage":        _gate_schema_coverage,    # feature shape conformance
     "name-quality-coverage":  _gate_name_quality,       # filename ↔ docstring intent
+    "frontmatter-coverage":   _gate_frontmatter,        # SKILL name=dir + ≥3 trigger phrases
 }
 
 

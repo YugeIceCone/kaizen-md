@@ -11,8 +11,8 @@
 {"id": 11, "round": 1, "bucket": "naming", "theme": "name-quality", "idea": "class-name quality", "tier": 2, "status": "deferred", "prose": "round-1-naming"}
 {"id": 12, "round": 1, "bucket": "naming", "theme": "name-quality", "idea": "test-name quality test_<X>_<scenario>", "tier": 3, "status": "deferred", "prose": "round-1-naming"}
 {"id": 13, "round": 1, "bucket": "naming", "theme": "name-quality", "idea": "variable-name discipline", "tier": 4, "status": "deferred", "prose": "round-1-naming"}
-{"id": 14, "round": 1, "bucket": "naming", "theme": "name-quality", "idea": "SKILL frontmatter name matches dir basename", "tier": 1, "status": "deferred", "prose": "round-1-naming"}
-{"id": 15, "round": 1, "bucket": "naming", "theme": "name-quality", "idea": "trigger-phrase coverage (>=3 quoted phrases per SKILL desc)", "tier": 1, "status": "deferred", "prose": "round-1-naming"}
+{"id": 14, "round": 1, "bucket": "naming", "theme": "name-quality", "idea": "SKILL frontmatter name matches dir basename", "tier": 1, "status": "shipped"}
+{"id": 15, "round": 1, "bucket": "naming", "theme": "name-quality", "idea": "trigger-phrase coverage (>=3 quoted phrases per SKILL desc)", "tier": 1, "status": "shipped"}
 {"id": 16, "round": 1, "bucket": "schema", "theme": "schema-coverage", "idea": "JSONSchema actually loaded at runtime", "tier": 2, "status": "deferred", "prose": "round-1-schema"}
 {"id": 17, "round": 1, "bucket": "schema", "theme": "schema-coverage", "idea": "schema-file naming convention", "tier": 4, "status": "deferred", "prose": "round-1-schema"}
 {"id": 18, "round": 1, "bucket": "schema", "theme": "schema-coverage", "idea": "validator-wiring (loader calls .validate)", "tier": 2, "status": "deferred", "prose": "round-1-schema"}
