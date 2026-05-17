@@ -338,14 +338,50 @@ def _gate_schema_coverage(scope: str, repo_root: Path) -> list[GateFinding]:
 
 # ─── Orchestrator ───────────────────────────────────────────────────────
 
+def _gate_name_quality(scope: str, repo_root: Path) -> list[GateFinding]:
+    """Surface kaizen-name-quality bad/weak findings — files whose
+    name doesn't match their docstring intent."""
+    script = _PLUGIN_ROOT / "skills" / "workflow" / "scripts" / "name_quality.py"
+    if not script.is_file():
+        return []
+    try:
+        proc = subprocess.run(
+            [sys.executable, str(script), "gaps", "--json"],
+            cwd=repo_root, capture_output=True, text=True, timeout=10,
+        )
+    except (subprocess.TimeoutExpired, OSError):
+        return []
+    try:
+        data = json.loads(proc.stdout)
+    except (ValueError, json.JSONDecodeError):
+        return []
+    bads = [r for r in data if r.get("verdict") == "bad"]
+    weak = [r for r in data if r.get("verdict") == "weak"]
+    if bads:
+        sample = ", ".join(Path(r["path"]).name for r in bads[:3])
+        if len(bads) > 3:
+            sample += "…"
+        return [GateFinding(
+            gate="name-quality-coverage", severity="warn",
+            rule_id="name-intent-mismatch",
+            message=f"{len(bads)} bad + {len(weak)} weak: {sample}")]
+    if weak:
+        return [GateFinding(
+            gate="name-quality-coverage", severity="warn",
+            rule_id="weak-naming",
+            message=f"{len(weak)} weak name-intent match(es)")]
+    return []
+
+
 SUB_GATES = {
-    "iron-laws":       _gate_iron_laws,
-    "etu":             _gate_etu,
-    "karpathy":        _gate_karpathy,
-    "validator":       _gate_validator,
-    "token-bloat":     _gate_token_bloat,
-    "code-to-test-coverage":   _gate_coverage,    # 1:1 script ↔ test-file mapping
-    "schema-coverage": _gate_schema_coverage,  # feature shape conformance
+    "iron-laws":              _gate_iron_laws,
+    "etu":                    _gate_etu,
+    "karpathy":               _gate_karpathy,
+    "validator":              _gate_validator,
+    "token-bloat":            _gate_token_bloat,
+    "code-to-test-coverage":  _gate_coverage,           # 1:1 script ↔ test-file mapping
+    "schema-coverage":        _gate_schema_coverage,    # feature shape conformance
+    "name-quality-coverage":  _gate_name_quality,       # filename ↔ docstring intent
 }
 
 

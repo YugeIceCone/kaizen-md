@@ -33,6 +33,8 @@
       "Bash(${CLAUDE_PLUGIN_ROOT}/bin/kaizen-token-bloat:*)",
       "Bash(${CLAUDE_PLUGIN_ROOT}/bin/kaizen-schema-coverage:*)",
       "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/schema_coverage.py:*)",
+      "Bash(${CLAUDE_PLUGIN_ROOT}/bin/kaizen-name-quality:*)",
+      "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/name_quality.py:*)",
       "Bash(uv run --script ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/token_bloat.py:*)",
       "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/token_bloat.py:*)",
       "Bash(bash ${CLAUDE_PLUGIN_ROOT}/hooks/claude/sessionend-token-bloat.sh:*)",

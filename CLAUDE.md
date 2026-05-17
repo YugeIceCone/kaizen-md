@@ -253,6 +253,7 @@ the bare `coverage` token).
 |---|---|---|---|---|
 | **code-to-test-coverage** | does every `workflow/scripts/*.py` have a matching `tests/test_*.py`? (file-mapping presence — not runtime line coverage) | `kaizen-coverage` (bin) | `code-to-test-coverage` | shipped |
 | **schema-coverage** | does every `domain/`-having feature match one of the 4 canonical shapes (lens-manifest / decision-rubric / plain-config / rule-catalog)? | `kaizen-schema-coverage` | `schema-coverage` | shipped |
+| **name-quality-coverage** | does each filename match the file's stated intent (first docstring or header comment)? Catches `_subproc.py` whose docstring says "subprocess", junk-drawer names like `utils.py`, etc. | `kaizen-name-quality` | `name-quality-coverage` | shipped |
 | **rubric-coverage** | does every feature that *should* use a decision rubric actually ship one? (subset of schema-coverage; flags cases where `--bundles` or routing logic would benefit from a rubric but uses ad-hoc Python) | future — partially answered by `kaizen-schema-coverage feature <name>` | (planned) | not built |
 | **trace-coverage** | does every hook fire `_trace.sh` and every MCP server emit `kaizen-trace` events? | iron-laws law `every_hook_script_traces_its_firing` (partial) | `iron-laws` | partial — covers hooks, not MCPs |
 
@@ -266,10 +267,11 @@ gatekeeper (don't overload an existing axis).
 ### Audit surface (one-command sanity)
 
 ```bash
-kaizen-gatekeeper check --all   # 7 sub-gates aggregated (one verdict)
+kaizen-gatekeeper check --all   # 8 sub-gates aggregated (one verdict)
 kaizen-token-bloat scan         # bloat axis: per-tier waste across loaded content
 kaizen-coverage gaps            # code-to-test-coverage axis: 1:1 script ↔ test-file presence
 kaizen-schema-coverage gaps     # schema-coverage axis: feature shape conformance
+kaizen-name-quality gaps        # name-quality axis: filename ↔ docstring intent match
 ```
 
 All four also fire automatically — the SessionEnd hook refreshes the
