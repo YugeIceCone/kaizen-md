@@ -14,7 +14,7 @@
 #   PATH              — prepends KAIZEN_SCRIPTS so scripts are directly callable
 #
 # Aliases (interactive shells only):
-#   kaizen-flow       async Node+Flow demo (cwd workspace)
+#   kaizen-flow       consolidated flow dispatcher (demo|docs|index|search)
 #   kaizen-docs       generic workspace docs generator
 #   kaizen-backlog    backlog CLI
 #   kaizen-cache      cache inspect/clear
@@ -53,7 +53,7 @@ export PATH
 
 # Interactive aliases — guarded so non-interactive shells stay quiet
 if [ -n "${PS1:-}" ] || [ -n "${ZSH_VERSION:-}" ]; then
-    alias kaizen-flow='python3 "$KAIZEN_SCRIPTS/flow.py"'
+    alias kaizen-flow='python3 "$KAIZEN_SCRIPTS/flow_cli.py"'
     alias kaizen-docs='python3 "$KAIZEN_SCRIPTS/docs_gen.py"'
     alias kaizen-backlog='python3 "$KAIZEN_SCRIPTS/backlog.py"'
     alias kaizen-cache='python3 "$KAIZEN_SCRIPTS/cache.py"'

@@ -1,4 +1,5 @@
 #!/usr/bin/env -S uv run --script
+# consolidated-cli-parent: flow
 # /// script
 # requires-python = ">=3.10"
 # dependencies = [

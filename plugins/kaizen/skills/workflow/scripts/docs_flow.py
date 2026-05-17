@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""kaizen docs_flow — pocketflow-shaped per-crate documentation pipeline.
+# consolidated-cli-parent: flow
+"""kaizen flow docs — pocketflow-shaped per-crate documentation pipeline.
 
 Wraps `docs_gen.detect_packages` + per-package `analyze_package` +
 `render_md` + write as a Node+Flow graph with `asyncio.gather` fan-out:

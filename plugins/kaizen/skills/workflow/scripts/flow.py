@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""kaizen flow — async Node+Flow primitives + the canonical example pipeline.
+# consolidated-cli-parent: flow
+"""kaizen flow demo — async Node+Flow primitives + the canonical example pipeline.
 
 This module IS the kaizen pocketflow runtime — ``AsyncNode`` and
 ``AsyncFlow`` below are the public primitives that every Node+Flow
