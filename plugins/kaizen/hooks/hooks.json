@@ -21,6 +21,11 @@
           },
           {
             "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/claude/session-intake.sh",
+            "timeout": 5
+          },
+          {
+            "type": "command",
             "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/claude/dxm-event.sh SessionStart",
             "timeout": 2
           }
