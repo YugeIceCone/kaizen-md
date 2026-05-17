@@ -44,7 +44,7 @@ sys.path.insert(0, str(_SCRIPT_DIR))
 
 import _handoff as _core  # noqa: E402
 import _envelope  # noqa: E402
-import lens  # noqa: E402
+import schema_cli  # noqa: E402
 
 _emit = _envelope.emitter("kaizen-handoff", tool_version="1.0.0")
 
@@ -52,10 +52,10 @@ _emit = _envelope.emitter("kaizen-handoff", tool_version="1.0.0")
 # fails fast (not at first call). Verify + future migrations dispatch
 # through this.
 _MANIFEST_PATH = _core.DOMAIN_DIR / "handoff.yaml"
-_MANIFEST = lens.Manifest.load(_MANIFEST_PATH)
+_MANIFEST = schema_cli.Manifest.load(_MANIFEST_PATH)
 _VERIFY_RULES_PATH = _core.DOMAIN_DIR / "verify-rules.yaml"
 _OUTCOME_RUBRIC_PATH = _core.DOMAIN_DIR / "outcome-rubric.yaml"
-_OUTCOME_RUBRIC = lens.BucketWalker.from_yaml(_OUTCOME_RUBRIC_PATH)
+_OUTCOME_RUBRIC = schema_cli.BucketWalker.from_yaml(_OUTCOME_RUBRIC_PATH)
 
 # Regex matching keywords that flag a `next:` item as blocking work
 # (the kind that should KEEP a session from being SUCCEEDED). Case-
@@ -443,7 +443,7 @@ def _cmd_verify(args) -> int:
         # The lens validates output against verify-report.schema.json
         # before emit — failing closed if the data shape doesn't match.
         try:
-            lens.lens_emit(
+            schema_cli.lens_emit(
                 "kaizen-handoff", _MANIFEST, "verify",
                 data=data,
                 verdict=("green" if verdict == "clean" else
@@ -455,7 +455,7 @@ def _cmd_verify(args) -> int:
                 },
                 tool_version="1.0.0",
             )
-        except lens.SchemaValidationError as exc:
+        except schema_cli.SchemaValidationError as exc:
             print(f"[kaizen-handoff verify] internal: {exc}", file=sys.stderr)
             return 2
     else:
@@ -503,12 +503,12 @@ def _cmd_assess(args) -> int:
                 "red"   if result.bucket == "FAILED" else
                 "yellow"
             )
-            lens.lens_emit(
+            schema_cli.lens_emit(
                 "kaizen-handoff", _MANIFEST, "assess",
                 data=data, verdict=verdict,
                 tool_version="1.0.0",
             )
-        except lens.SchemaValidationError as exc:
+        except schema_cli.SchemaValidationError as exc:
             print(f"[kaizen-handoff assess] internal: {exc}", file=sys.stderr)
             return 2
     else:

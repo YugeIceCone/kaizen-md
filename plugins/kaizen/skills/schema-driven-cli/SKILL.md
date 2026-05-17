@@ -1,6 +1,6 @@
 ---
 name: schema-driven-cli
-description: Reusable lens pattern for kaizen CLIs — declare subcommands + input/output JSON Schemas in a v2 manifest yaml, validate I/O via lens.py before/after each call, and emit the canonical envelope. Pairs with _envelope.py and BucketWalker for data-driven rubrics. Use when adding a new CLI feature or refactoring an existing one to make its contract discoverable + machine-checked.
+description: Reusable lens pattern for kaizen CLIs — declare subcommands + input/output JSON Schemas in a v2 manifest yaml, validate I/O via schema_cli.py before/after each call, and emit the canonical envelope. Pairs with _envelope.py and BucketWalker for data-driven rubrics. Use when adding a new CLI feature or refactoring an existing one to make its contract discoverable + machine-checked.
 metadata:
   version: "1.0"
 ---
@@ -115,7 +115,8 @@ the same object three times.
 ### Piece 3 — Rule yamls (data-driven classifiers)
 
 When a subcommand's behavior is a rubric / classifier / decision
-table, encode the rules in YAML. The `BucketWalker` API in `lens.py`
+table, encode the rules in YAML. The `BucketWalker` API in `schema_cli.py`
+(the lens runtime)
 walks it deterministically.
 
 ```yaml
@@ -189,13 +190,13 @@ Write per-subcommand input/output schemas in `domain/schemas/`.
 ```python
 # In skills/workflow/scripts/<feature>.py
 from pathlib import Path
-import lens
+import schema_cli
 
 _MANIFEST_PATH = (
     Path(__file__).resolve().parent.parent.parent
     / "skills" / "<feature>" / "domain" / "<feature>.yaml"
 )
-_MANIFEST = lens.Manifest.load(_MANIFEST_PATH)
+_MANIFEST = schema_cli.Manifest.load(_MANIFEST_PATH)
 ```
 
 The load itself validates the manifest against the meta-schema. A
@@ -212,7 +213,7 @@ Two patterns. Pick the one that fits the handler shape:
 def _cmd_verify(args) -> int:
     data = run_verification(args)
     if args.json:
-        lens.lens_emit(
+        schema_cli.lens_emit(
             "kaizen-<feature>", _MANIFEST, "verify",
             data=data, verdict=data["verdict"],
             tool_version="1.0.0",
@@ -226,7 +227,7 @@ def _cmd_verify(args) -> int:
 
 ```python
 def _cmd_verify(args) -> int:
-    return lens.lens_dispatch(
+    return schema_cli.lens_dispatch(
         "kaizen-<feature>", _MANIFEST, "verify",
         input_data={"file": args.file, "since": args.since},
         handler=lambda inp: run_verification(inp),
@@ -246,8 +247,8 @@ When a subcommand has a classifier or rubric, prefer the
 `BucketWalker` over inline if/elif chains:
 
 ```python
-import lens
-_RUBRIC = lens.BucketWalker.from_yaml(
+import schema_cli
+_RUBRIC = schema_cli.BucketWalker.from_yaml(
     Path(__file__).resolve().parent.parent.parent
     / "skills" / "handoff" / "domain" / "outcome-rubric.yaml"
 )
@@ -275,7 +276,7 @@ The TDD pattern for a lens-wired subcommand:
 
    ```python
    def test_verify_subcommand_in_manifest(self):
-       m = lens.Manifest.load(_MANIFEST_PATH)
+       m = schema_cli.Manifest.load(_MANIFEST_PATH)
        sub = m.get("verify")
        self.assertTrue(sub.output_schema_path.is_file())
    ```
@@ -285,7 +286,7 @@ The TDD pattern for a lens-wired subcommand:
 
    ```python
    def test_succeeded_bucket(self):
-       w = lens.BucketWalker.from_yaml(_RUBRIC_PATH)
+       w = schema_cli.BucketWalker.from_yaml(_RUBRIC_PATH)
        r = w.evaluate({"completed_ratio": 1.0, "test_delta": 0,
                         "blocker_count": 0})
        self.assertEqual(r.bucket, "SUCCEEDED")
@@ -301,9 +302,9 @@ The TDD pattern for a lens-wired subcommand:
 
 ## Iron-law interaction
 
-- **bin-wrapper-per-cli** — the lens is a library (`lens.py`), no
+- **bin-wrapper-per-cli** — the lens is a library (`schema_cli.py`), no
   bin needed.
-- **plugin-manifest-permissions** — `lens.py` lands under
+- **plugin-manifest-permissions** — `schema_cli.py` lands under
   `skills/workflow/scripts/` so the existing wildcard perm covers
   it. No explicit entry needed.
 - **schema-driven domain yaml** (soft iron-law) — this skill MAKES
@@ -317,7 +318,7 @@ Order of operations (each step independently mergeable):
    `description:` only (no schemas yet). Loads as a no-op.
 2. **Write the output schema for ONE subcommand** (start with the
    most-consumed one). Swap its `_emit(data)` for
-   `lens.lens_emit(tool, manifest, "<sub>", data)`.
+   `schema_cli.lens_emit(tool, manifest, "<sub>", data)`.
 3. **Add the input schema** if the subcommand reads structured args;
    migrate to `lens_dispatch`.
 4. **Migrate remaining subcommands** one at a time. Each commit

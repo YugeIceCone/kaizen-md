@@ -97,14 +97,14 @@ def _make_handoff_yaml(
 
 class TestHandoffManifestV2(unittest.TestCase):
     def test_handoff_manifest_loads_as_v2(self):
-        import lens
+        import schema_cli as lens
         manifest_path = _DOMAIN / "handoff.yaml"
         m = lens.Manifest.load(manifest_path)
         self.assertEqual(m.version, 2)
         self.assertEqual(m.feature, "handoff")
 
     def test_verify_subcommand_declared(self):
-        import lens
+        import schema_cli as lens
         m = lens.Manifest.load(_DOMAIN / "handoff.yaml")
         sub = m.get("verify")
         self.assertIsNotNone(sub.output_schema_path)
@@ -221,7 +221,7 @@ class TestVerifyRegression(HandoffVerifyBase):
 
 class TestVerifyEnvelopeShape(HandoffVerifyBase):
     def test_output_validates_against_schema(self):
-        import lens
+        import schema_cli as lens
         self._commit({"x.py": "y\n"})
         yaml_path = self._write_handoff(_make_handoff_yaml(done_files=["x.py"]))
         result = self._run("--file", str(yaml_path), "--json")

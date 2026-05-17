@@ -82,7 +82,7 @@ class TestRubricLoads(unittest.TestCase):
                         f"outcome-rubric.yaml missing at {_RUBRIC}")
 
     def test_walker_loads_rubric(self):
-        import lens
+        import schema_cli as lens
         w = lens.BucketWalker.from_yaml(_RUBRIC)
         # Sanity: each of the four canonical buckets has at least one rule
         buckets = {r.bucket for r in w.rules}
@@ -186,7 +186,7 @@ class TestAssessRationaleIncluded(HandoffAssessBase):
 
 class TestAssessOutputSchemaValid(HandoffAssessBase):
     def test_envelope_data_validates(self):
-        import lens
+        import schema_cli as lens
         p = self._write(_yaml_with(done=["x"]))
         r = self._run("--file", str(p), "--json")
         env = json.loads(r.stdout)

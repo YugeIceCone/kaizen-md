@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/YugeIceCone/kaizen-md/skills/schema-driven-cli/feature-manifest.schema.json",
   "title": "kaizen feature manifest (v2 — schema-driven CLI lens)",
-  "description": "Declares a feature's subcommands and their input/output JSON-Schema contracts. Loaded by lens.py::Manifest.load. Subcommand schema paths are resolved RELATIVE TO THIS MANIFEST FILE.",
+  "description": "Declares a feature's subcommands and their input/output JSON-Schema contracts. Loaded by schema_cli.py::Manifest.load. Subcommand schema paths are resolved RELATIVE TO THIS MANIFEST FILE.",
   "type": "object",
   "required": ["version", "feature", "subcommands"],
   "additionalProperties": false,

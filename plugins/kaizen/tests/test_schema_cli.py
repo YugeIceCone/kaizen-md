@@ -1,4 +1,4 @@
-"""Tests for lens.py — schema-driven CLI runtime helper.
+"""Tests for schema_cli.py — schema-driven CLI runtime (the lens layer).
 
 The lens pattern (skills/schema-driven-cli/SKILL.md):
 - Manifest declares a feature's subcommands + per-subcommand input/output schemas
@@ -6,9 +6,10 @@ The lens pattern (skills/schema-driven-cli/SKILL.md):
 - lens_emit wraps validated output in the canonical _envelope shape
 - BucketWalker walks data-driven rule yamls (rubric / classifier shape)
 
-TDD coverage written before implementation. Each test class targets one
-public surface; the failing skeleton runs first (RED), then lens.py
-implementation lands (GREEN).
+The module was named lens.py during initial TDD; renamed to
+schema_cli.py for descriptiveness (matches the skill's slug). Tests
+keep the `lens` alias inside test bodies for readability of the API
+surface.
 """
 
 from __future__ import annotations
@@ -47,7 +48,7 @@ class TestManifestLoad(unittest.TestCase):
         return p
 
     def test_load_returns_manifest_with_version_and_feature(self):
-        import lens
+        import schema_cli as lens
         p = self._write_manifest(textwrap.dedent("""\
             version: 2
             feature: handoff
@@ -62,13 +63,13 @@ class TestManifestLoad(unittest.TestCase):
         self.assertIn("verify", m.subcommands)
 
     def test_v1_manifest_is_rejected(self):
-        import lens
+        import schema_cli as lens
         p = self._write_manifest("version: 1\nfeature: handoff\nsubcommands: {}\n")
         with self.assertRaises(lens.ManifestError):
             lens.Manifest.load(p)
 
     def test_missing_required_key_raises(self):
-        import lens
+        import schema_cli as lens
         p = self._write_manifest("version: 2\nsubcommands: {}\n")  # no `feature`
         with self.assertRaises(lens.ManifestError):
             lens.Manifest.load(p)
@@ -94,7 +95,7 @@ class TestManifestGet(unittest.TestCase):
         self._tmp.cleanup()
 
     def test_get_known_subcommand_returns_subcommand(self):
-        import lens
+        import schema_cli as lens
         m = lens.Manifest.load(self.tmp / "manifest.yaml")
         sub = m.get("verify")
         self.assertEqual(sub.name, "verify")
@@ -110,7 +111,7 @@ class TestManifestGet(unittest.TestCase):
         )
 
     def test_get_unknown_subcommand_raises(self):
-        import lens
+        import schema_cli as lens
         m = lens.Manifest.load(self.tmp / "manifest.yaml")
         with self.assertRaises(KeyError):
             m.get("does-not-exist")
@@ -149,30 +150,30 @@ class TestSubcommandValidate(unittest.TestCase):
         self._tmp.cleanup()
 
     def test_valid_input_passes(self):
-        import lens
+        import schema_cli as lens
         sub = lens.Manifest.load(self.tmp / "manifest.yaml").get("verify")
         sub.validate_input({"file": "x.yaml"})  # no raise
 
     def test_invalid_input_raises(self):
-        import lens
+        import schema_cli as lens
         sub = lens.Manifest.load(self.tmp / "manifest.yaml").get("verify")
         with self.assertRaises(lens.SchemaValidationError):
             sub.validate_input({})  # missing required "file"
 
     def test_valid_output_passes(self):
-        import lens
+        import schema_cli as lens
         sub = lens.Manifest.load(self.tmp / "manifest.yaml").get("verify")
         sub.validate_output({"verdict": "clean"})
 
     def test_invalid_output_raises(self):
-        import lens
+        import schema_cli as lens
         sub = lens.Manifest.load(self.tmp / "manifest.yaml").get("verify")
         with self.assertRaises(lens.SchemaValidationError):
             sub.validate_output({"verdict": "not-a-bucket"})
 
     def test_no_schema_declared_is_passthrough(self):
         """Subcommands may omit one or both schemas — validation no-ops."""
-        import lens
+        import schema_cli as lens
         manifest = self.tmp / "manifest2.yaml"
         manifest.write_text("version: 2\nfeature: x\nsubcommands:\n  s: {}\n")
         sub = lens.Manifest.load(manifest).get("s")
@@ -207,7 +208,7 @@ class TestLensEmit(unittest.TestCase):
         self._tmp.cleanup()
 
     def test_valid_output_emits_envelope(self):
-        import lens
+        import schema_cli as lens
         m = lens.Manifest.load(self.tmp / "manifest.yaml")
         buf = io.StringIO()
         lens.lens_emit(
@@ -226,7 +227,7 @@ class TestLensEmit(unittest.TestCase):
         self.assertEqual(env["verdict"], "green")
 
     def test_invalid_output_raises_before_emit(self):
-        import lens
+        import schema_cli as lens
         m = lens.Manifest.load(self.tmp / "manifest.yaml")
         buf = io.StringIO()
         with self.assertRaises(lens.SchemaValidationError):
@@ -256,7 +257,7 @@ class TestBucketWalkerFromYaml(unittest.TestCase):
         return p
 
     def test_loads_bucketed_rules(self):
-        import lens
+        import schema_cli as lens
         p = self._rubric(textwrap.dedent("""\
             rules:
               - bucket: SUCCEEDED
@@ -308,7 +309,7 @@ class TestBucketWalkerEvaluate(unittest.TestCase):
         self._tmp.cleanup()
 
     def test_all_clean_picks_succeeded(self):
-        import lens
+        import schema_cli as lens
         w = lens.BucketWalker.from_yaml(self.rubric)
         result = w.evaluate({
             "completed_ratio": 1.0,
@@ -320,7 +321,7 @@ class TestBucketWalkerEvaluate(unittest.TestCase):
         self.assertGreaterEqual(result.confidence, 0.85)
 
     def test_partial_progress_picks_partial_plus(self):
-        import lens
+        import schema_cli as lens
         w = lens.BucketWalker.from_yaml(self.rubric)
         result = w.evaluate({
             "completed_ratio": 0.8,
@@ -331,7 +332,7 @@ class TestBucketWalkerEvaluate(unittest.TestCase):
 
     def test_blocker_picks_partial_minus(self):
         """PARTIAL_MINUS uses require_any — any of completed≥0.3 OR blocker>0."""
-        import lens
+        import schema_cli as lens
         w = lens.BucketWalker.from_yaml(self.rubric)
         result = w.evaluate({
             "completed_ratio": 0.5,
@@ -342,7 +343,7 @@ class TestBucketWalkerEvaluate(unittest.TestCase):
         self.assertEqual(result.bucket, "PARTIAL_MINUS")
 
     def test_test_regression_picks_failed(self):
-        import lens
+        import schema_cli as lens
         w = lens.BucketWalker.from_yaml(self.rubric)
         result = w.evaluate({
             "completed_ratio": 0.1,
@@ -353,7 +354,7 @@ class TestBucketWalkerEvaluate(unittest.TestCase):
 
     def test_no_rule_matches_falls_back(self):
         """Edge case where no bucket's require_* clears."""
-        import lens
+        import schema_cli as lens
         rubric = self.tmp / "narrow.yaml"
         rubric.write_text(textwrap.dedent("""\
             rules:
@@ -370,7 +371,7 @@ class TestBucketWalkerEvaluate(unittest.TestCase):
 
     def test_missing_signal_treated_as_unsatisfied(self):
         """A rule that references a signal not in the input fails to match."""
-        import lens
+        import schema_cli as lens
         w = lens.BucketWalker.from_yaml(self.rubric)
         result = w.evaluate({"completed_ratio": 1.0})  # missing test_delta, blocker_count
         # Can't match SUCCEEDED (needs test_delta + blocker_count); falls
@@ -378,7 +379,7 @@ class TestBucketWalkerEvaluate(unittest.TestCase):
         self.assertNotEqual(result.bucket, "SUCCEEDED")
 
     def test_rationale_explains_matched_rule(self):
-        import lens
+        import schema_cli as lens
         w = lens.BucketWalker.from_yaml(self.rubric)
         result = w.evaluate({
             "completed_ratio": 1.0, "test_delta": 0, "blocker_count": 0,
@@ -398,7 +399,7 @@ class TestBucketWalkerOperators(unittest.TestCase):
 
     def _make(self, op_pairs: list[tuple[str, str, int]]) -> "object":
         """Build a rubric with one require_all rule using the given (signal, op, value) triples."""
-        import lens
+        import schema_cli as lens
         import yaml as _yaml
         rules = [
             {
@@ -449,7 +450,7 @@ class TestBucketWalkerOperators(unittest.TestCase):
             )
 
     def test_unknown_op_raises_at_load_time(self):
-        import lens
+        import schema_cli as lens
         import yaml as _yaml
         p = self.tmp / "bad.yaml"
         p.write_text(_yaml.safe_dump({
@@ -496,7 +497,7 @@ class TestLensDispatch(unittest.TestCase):
         self._tmp.cleanup()
 
     def test_happy_path_runs_handler_emits_envelope(self):
-        import lens
+        import schema_cli as lens
         m = lens.Manifest.load(self.tmp / "manifest.yaml")
         buf = io.StringIO()
         rc = lens.lens_dispatch(
@@ -510,7 +511,7 @@ class TestLensDispatch(unittest.TestCase):
         self.assertEqual(rc, 0)
 
     def test_invalid_input_returns_nonzero_no_handler_call(self):
-        import lens
+        import schema_cli as lens
         m = lens.Manifest.load(self.tmp / "manifest.yaml")
         buf = io.StringIO()
         called = []
@@ -524,7 +525,7 @@ class TestLensDispatch(unittest.TestCase):
         self.assertEqual(called, [], "handler must not run on invalid input")
 
     def test_invalid_output_returns_nonzero_does_not_emit_partial(self):
-        import lens
+        import schema_cli as lens
         m = lens.Manifest.load(self.tmp / "manifest.yaml")
         buf = io.StringIO()
         rc = lens.lens_dispatch(

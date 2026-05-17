@@ -1,5 +1,5 @@
 # Handoff outcome rubric — data-driven classifier walked by
-# lens.BucketWalker. The `assess` subcommand reads this to recommend
+# schema_cli.BucketWalker. The `assess` subcommand reads this to recommend
 # an outcome bucket from mechanical signals computed off the handoff
 # YAML. The agent (or `--llm-assess` Haiku in a future commit) takes
 # over only when no rule matches (fallback → NEEDS_AGENT).

@@ -1,7 +1,7 @@
 # Handoff feature — schema-driven v2 manifest.
 #
 # Declares subcommands → input/output JSON Schemas, walked by
-# lens.py (skills/schema-driven-cli/). Each subcommand's contract
+# schema_cli.py (skills/schema-driven-cli/). Each subcommand's contract
 # lives in domain/schemas/; rule-driven behaviors live in their own
 # rule yamls (verify-rules.yaml, outcome-rubric.yaml, etc.).
 #
