@@ -399,7 +399,7 @@ def main(argv=None) -> int:
     pb.set_defaults(func=_cmd_bundles)
 
     pt = sub.add_parser("threshold",
-                          help="print the auto-handoff threshold (% int) "
+                          help="print the auto-handoff threshold (%% int) "
                                "or exit 1 when unset/disabled")
     pt.set_defaults(func=_cmd_threshold)
 

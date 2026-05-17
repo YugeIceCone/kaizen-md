@@ -373,5 +373,29 @@ class TestModeOverwrite(Base):
         self.assertEqual(data["skills"], ["tdd"])
 
 
+class HelpRendering(Base):
+    """`--help` must render top-level + per-subcommand help cleanly.
+
+    Regression: 2026-05-18 audit found `kaizen-session-mode --help` crashed
+    on Python 3.13 with `TypeError: %i format: a real number is required,
+    not dict` because the `threshold` subparser's help string contained a
+    literal `%` that argparse's _expand_help tried to format-substitute.
+    The fix: escape bare `%` in argparse help= strings as `%%`.
+    """
+
+    def test_top_level_help_does_not_traceback(self):
+        r = self._run("--help")
+        self.assertEqual(0, r.returncode, r.stderr)
+        self.assertNotIn("Traceback", r.stderr)
+        self.assertNotIn("TypeError", r.stderr)
+
+    def test_threshold_subcommand_help_does_not_traceback(self):
+        # The crash specifically came from rendering the threshold help.
+        r = self._run("threshold", "--help")
+        self.assertEqual(0, r.returncode, r.stderr)
+        self.assertNotIn("Traceback", r.stderr)
+        self.assertNotIn("TypeError", r.stderr)
+
+
 if __name__ == "__main__":
     unittest.main()
