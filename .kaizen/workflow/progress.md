@@ -29,3 +29,4 @@
 | 2026-05-14 | docs     | +157   | added repo-root CLAUDE.md — Claude Code onboarding rulebook for the marketplace              |
 | 2026-05-14 | refactor | ~0     | carved iron-laws.yaml + skeleton into new skills/iron-laws/ skill (iron-laws plan, phase 1)  |
 | 2026-05-14 | feat     | ~+1.6k | iron-laws skill complete — SSOT registry + loader + codegen + checker + CLI + MCP + drift gate |
+| 2026-05-17 | fix      | +50    | BK-013 — dxm-event.sh _session_jsonl fallback when stdin lacks session_id (fixes silent PreCompact/SessionEnd/SubagentStop/Notification drops) |

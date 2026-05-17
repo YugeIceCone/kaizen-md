@@ -31,6 +31,27 @@ SID=$(printf '%s' "$INPUT" \
     | head -n1 \
     | sed -E 's/.*:[[:space:]]*"([^"]*)".*/\1/')
 
+# Fallback: CC's stdin payload for PreCompact, SessionEnd, SubagentStop,
+# and Notification sometimes lacks session_id. Discover via
+# _session_jsonl (one python3 spawn, only on these low-volume events —
+# the hot-path PreToolUse/PostToolUse always have session_id in stdin
+# and skip this branch).
+if [ -z "$SID" ]; then
+    SID=$(python3 -c "
+import sys, os
+root = os.environ.get('CLAUDE_PLUGIN_ROOT') or os.environ.get('KAIZEN_PLUGIN_ROOT')
+if not root:
+    here = os.path.realpath('${BASH_SOURCE[0]}')
+    root = os.path.realpath(os.path.join(os.path.dirname(here), '..', '..'))
+sys.path.insert(0, os.path.join(root, 'skills', 'workflow', 'scripts'))
+try:
+    from _session_jsonl import discover_active_session_id
+    sid = discover_active_session_id()
+    if sid: print(sid)
+except Exception: pass
+" 2>/dev/null)
+fi
+
 if [ -z "$SID" ]; then echo '{}'; exit 0; fi
 
 # Extractor helper — single regex per field. CC's event JSON uses

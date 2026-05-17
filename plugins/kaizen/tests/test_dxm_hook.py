@@ -167,10 +167,81 @@ class TestDisableBypass(DxmHookBase):
 
 class TestNoOpWhenSessionIdMissing(DxmHookBase):
     def test_event_without_session_id_silently_skipped(self):
-        r = self._fire("PreToolUse", {"tool_name": "Bash"})
+        # No session_id in stdin AND no discoverable active session
+        # (HOME points to an empty dir → no ~/.claude/projects/).
+        # The fallback returns None; hook still no-ops cleanly.
+        empty_home = self.tmp / "empty-home"
+        empty_home.mkdir()
+        env = os.environ.copy()
+        env["HOME"] = str(empty_home)
+        r = subprocess.run(
+            ["bash", str(_HOOK), "PreToolUse"],
+            input=json.dumps({"tool_name": "Bash"}),
+            capture_output=True, text=True, timeout=5, env=env,
+        )
         # Hook always exits 0 and prints {} (never blocks host flow)
         self.assertEqual(r.returncode, 0)
         # No file created
+        files = list(self.tmp.glob("events-*.jsonl"))
+        self.assertEqual(files, [])
+
+
+class TestSessionIdFallbackToDiscovery(DxmHookBase):
+    """BK-013: PreCompact / SessionEnd / SubagentStop / Notification
+    sometimes don't include session_id in CC's stdin payload. Hook
+    should fall back to ~/.claude/projects/<cwd-slug>/<latest>.jsonl
+    discovery so the event isn't silently dropped."""
+
+    def _fire_with_fake_home(self, evt: str, stdin_payload: dict,
+                              sid_on_disk: str | None):
+        env = os.environ.copy()
+        fake_home = self.tmp / "home"
+        fake_home.mkdir(exist_ok=True)
+        env["HOME"] = str(fake_home)
+        if sid_on_disk:
+            cwd = Path.cwd().resolve()
+            slug = str(cwd).replace("/", "-")
+            proj = fake_home / ".claude" / "projects" / slug
+            proj.mkdir(parents=True, exist_ok=True)
+            (proj / f"{sid_on_disk}.jsonl").write_text('{"type":"system"}\n')
+        return subprocess.run(
+            ["bash", str(_HOOK), evt],
+            input=json.dumps(stdin_payload),
+            capture_output=True, text=True, timeout=5, env=env,
+        )
+
+    def test_precompact_without_session_id_uses_discovery(self):
+        r = self._fire_with_fake_home(
+            "PreCompact", {"some_field": "x"}, sid_on_disk="fb-sid-001")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        events = self._read_events("fb-sid-001")
+        self.assertEqual(len(events), 1, "fallback discovery should emit one event")
+        self.assertEqual(events[0]["evt_type"], "PreCompact")
+        self.assertEqual(events[0]["session_id"], "fb-sid-001")
+
+    def test_sessionend_without_session_id_uses_discovery(self):
+        r = self._fire_with_fake_home(
+            "SessionEnd", {}, sid_on_disk="fb-sid-002")
+        events = self._read_events("fb-sid-002")
+        self.assertEqual(len(events), 1)
+        self.assertEqual(events[0]["evt_type"], "SessionEnd")
+
+    def test_stdin_session_id_wins_over_discovery(self):
+        # Hot path: when stdin has session_id, never trigger discovery
+        # (no python3 spawn). Stdin value is the truth.
+        r = self._fire_with_fake_home(
+            "PreToolUse", {"session_id": "stdin-wins", "tool_name": "Bash"},
+            sid_on_disk="should-not-be-used")
+        events_stdin = self._read_events("stdin-wins")
+        events_disk = self._read_events("should-not-be-used")
+        self.assertEqual(len(events_stdin), 1)
+        self.assertEqual(events_disk, [])
+
+    def test_discovery_with_no_project_dir_silently_skips(self):
+        r = self._fire_with_fake_home(
+            "PreCompact", {}, sid_on_disk=None)
+        # Empty home → no project → discovery returns None → no-op
+        self.assertEqual(r.returncode, 0)
         files = list(self.tmp.glob("events-*.jsonl"))
         self.assertEqual(files, [])
 
