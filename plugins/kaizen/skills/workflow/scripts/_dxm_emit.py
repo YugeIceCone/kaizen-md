@@ -107,4 +107,27 @@ def emit_event(
         return False
 
 
-__all__ = ["emit_event"]
+def emit_subcommand_complete(
+    tool: str,
+    subcommand: str,
+    payload: Optional[dict[str, Any]] = None,
+    *,
+    session_id: Optional[str] = None,
+) -> bool:
+    """Convenience: emit '<tool>.<subcommand>.complete' with
+    tool_name='kaizen-<tool>'. Single-source the handler-completion
+    naming convention so a rename catches all sites and typos in the
+    event-name string become impossible by construction.
+
+    Used by handoff (verify/scaffold/create/assess/auto-finalize) and
+    intent (match/suggest/scan) handlers.
+    """
+    return emit_event(
+        f"{tool}.{subcommand}.complete",
+        tool_name=f"kaizen-{tool}",
+        payload=payload,
+        session_id=session_id,
+    )
+
+
+__all__ = ["emit_event", "emit_subcommand_complete"]

@@ -156,6 +156,49 @@ class TestNeverRaises(EmitBase):
         self.assertIsInstance(ok, bool)
 
 
+class TestEmitSubcommandComplete(EmitBase):
+    """Convenience helper for the handler-completion pattern.
+    Centralizes the 'kaizen-<tool>' + '<tool>.<sub>.complete' naming
+    convention across 8 callers (handoff verify/scaffold/create/
+    assess/auto-finalize + intent match/suggest/scan)."""
+
+    def test_writes_canonical_event_shape(self):
+        from _dxm_emit import emit_subcommand_complete
+        ok = emit_subcommand_complete("handoff", "verify",
+                                       payload={"verdict": "clean"},
+                                       session_id="sub-test")
+        self.assertTrue(ok)
+        events = self._read_events("sub-test")
+        self.assertEqual(events[0]["evt_type"], "handoff.verify.complete")
+        self.assertEqual(events[0]["tool_name"], "kaizen-handoff")
+        self.assertEqual(events[0]["payload"], {"verdict": "clean"})
+
+    def test_hyphenated_subcommand_preserved(self):
+        from _dxm_emit import emit_subcommand_complete
+        emit_subcommand_complete("handoff", "auto-finalize",
+                                  session_id="sub-h")
+        events = self._read_events("sub-h")
+        self.assertEqual(events[0]["evt_type"],
+                          "handoff.auto-finalize.complete")
+
+    def test_intent_tool(self):
+        from _dxm_emit import emit_subcommand_complete
+        emit_subcommand_complete("intent", "scan",
+                                  payload={"matched_count": 3},
+                                  session_id="sub-i")
+        events = self._read_events("sub-i")
+        self.assertEqual(events[0]["evt_type"], "intent.scan.complete")
+        self.assertEqual(events[0]["tool_name"], "kaizen-intent")
+
+    def test_payload_optional(self):
+        from _dxm_emit import emit_subcommand_complete
+        ok = emit_subcommand_complete("handoff", "verify",
+                                       session_id="sub-np")
+        self.assertTrue(ok)
+        events = self._read_events("sub-np")
+        self.assertNotIn("payload", events[0])
+
+
 class TestEventShape(EmitBase):
     def test_record_has_canonical_fields_only(self):
         from _dxm_emit import emit_event

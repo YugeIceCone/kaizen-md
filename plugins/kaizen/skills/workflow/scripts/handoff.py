@@ -464,12 +464,11 @@ def _cmd_verify(args) -> int:
             args.dxm_session, back_seconds=60.0)
 
     # BK-001 per-handler trace event (best-effort, never raises)
-    _dxm_emit.emit_event(
-        "handoff.verify.complete",
-        tool_name="kaizen-handoff",
-        payload={"verdict": verdict,
-                  "files": len(file_checks),
-                  "patterns": len(pattern_checks)},
+    _dxm_emit.emit_subcommand_complete(
+        "handoff", "verify",
+        {"verdict": verdict,
+         "files": len(file_checks),
+         "patterns": len(pattern_checks)},
     )
 
     if args.json:
@@ -831,10 +830,10 @@ def _cmd_scaffold(args) -> int:
             "peak_pre_compact":   usage["peak_pre_compact"],
             "compact_count":      usage["compact_count"],
         }
-    _dxm_emit.emit_event(
-        "handoff.scaffold.complete", tool_name="kaizen-handoff",
-        payload={"yaml_path": str(yaml_path.resolve()),
-                  "files_changed": len(changed)},
+    _dxm_emit.emit_subcommand_complete(
+        "handoff", "scaffold",
+        {"yaml_path": str(yaml_path.resolve()),
+         "files_changed": len(changed)},
     )
     if args.json:
         try:
@@ -983,9 +982,9 @@ def _cmd_create(args) -> int:
         "db_id":      int(db_id),
         "status":     "partial",
     }
-    _dxm_emit.emit_event(
-        "handoff.create.complete", tool_name="kaizen-handoff",
-        payload={"file_path": data["file_path"], "db_id": data["db_id"]},
+    _dxm_emit.emit_subcommand_complete(
+        "handoff", "create",
+        {"file_path": data["file_path"], "db_id": data["db_id"]},
     )
     if args.json:
         try:
@@ -1029,10 +1028,10 @@ def _cmd_assess(args) -> int:
         "rationale":   result.rationale,
     }
 
-    _dxm_emit.emit_event(
-        "handoff.assess.complete", tool_name="kaizen-handoff",
-        payload={"bucket": result.bucket, "method": result.method,
-                  "confidence": result.confidence},
+    _dxm_emit.emit_subcommand_complete(
+        "handoff", "assess",
+        {"bucket": result.bucket, "method": result.method,
+         "confidence": result.confidence},
     )
 
     if args.json:
@@ -1150,11 +1149,11 @@ def _cmd_auto_finalize(args) -> int:
         "dxm_parent_session": args.parent_session,
         "dxm_linked": dxm_linked,
     }
-    _dxm_emit.emit_event(
-        "handoff.auto-finalize.complete", tool_name="kaizen-handoff",
-        payload={"outcome": args.outcome, "status": args.status,
-                  "session_id": session_id,
-                  "assigned_by": args.assigned_by},
+    _dxm_emit.emit_subcommand_complete(
+        "handoff", "auto-finalize",
+        {"outcome": args.outcome, "status": args.status,
+         "session_id": session_id,
+         "assigned_by": args.assigned_by},
     )
     if args.json:
         verdict = "green" if args.outcome == "SUCCEEDED" else "yellow"

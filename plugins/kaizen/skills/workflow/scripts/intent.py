@@ -240,10 +240,10 @@ def _cmd_match(args) -> int:
     # Sort by confidence DESC
     matched.sort(key=lambda m: -m["confidence"])
     data = {"matched": matched, "count": len(matched)}
-    _dxm_emit.emit_event(
-        "intent.match.complete", tool_name="kaizen-intent",
-        payload={"matched_count": len(matched),
-                  "top_id": matched[0]["id"] if matched else None},
+    _dxm_emit.emit_subcommand_complete(
+        "intent", "match",
+        {"matched_count": len(matched),
+         "top_id": matched[0]["id"] if matched else None},
     )
     if args.json:
         verdict = "green" if matched else "yellow"
@@ -285,10 +285,10 @@ def _cmd_suggest(args) -> int:
             "confidence":  _intent_confidence(best),
             "action":      best.get("action") or {},
         }}
-    _dxm_emit.emit_event(
-        "intent.suggest.complete", tool_name="kaizen-intent",
-        payload={"intent_id": (best or {}).get("id"),
-                  "confidence": _intent_confidence(best) if best else None},
+    _dxm_emit.emit_subcommand_complete(
+        "intent", "suggest",
+        {"intent_id": (best or {}).get("id"),
+         "confidence": _intent_confidence(best) if best else None},
     )
     if args.json:
         verdict = "green" if best else "yellow"
@@ -366,11 +366,11 @@ def _cmd_scan(args) -> int:
         "matched": matched,
         "count": len(matched),
     }
-    _dxm_emit.emit_event(
-        "intent.scan.complete", tool_name="kaizen-intent",
-        payload={"session_scanned": args.session,
-                  "event_count": len(events),
-                  "matched_count": len(matched)},
+    _dxm_emit.emit_subcommand_complete(
+        "intent", "scan",
+        {"session_scanned": args.session,
+         "event_count": len(events),
+         "matched_count": len(matched)},
     )
     if args.json:
         verdict = "green" if matched else "yellow"
