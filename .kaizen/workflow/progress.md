@@ -37,3 +37,4 @@
 | 2026-05-17 | feat     | +25    | BK-016 — handoff scaffold mined_summary carries peak_tokens, peak_context_pct, peak_pre_compact, compact_count from BK-015 (compact-resilient handoff signal) |
 | 2026-05-17 | perf     | +30    | session-inject-context: UserPromptSubmit trims to git-only (workflow/handoff/plans/project-memory injected once at SessionStart). Saves ~1.4KB per prompt × N turns. |
 | 2026-05-17 | refactor | +25    | _dxm_emit.emit_subcommand_complete DRY helper — migrate 8 callers in handoff.py + intent.py to centralized {tool,sub} naming convention. Rename + typo safety by construction. |
+| 2026-05-17 | perf     | +15    | context.py `line` subcommand emits pre-formatted statusline segment in 1 spawn (was 5). 160ms → 100ms per statusline render (37% faster). |

@@ -263,6 +263,16 @@ def main():
     elif cmd == "should-warn":
         sys.exit(0 if z in ("yellow", "red") else 1)
 
+    elif cmd == "line":
+        # Pre-formatted statusline segment — replaces 5 python3 spawns
+        # in statusline.sh with 1. Empty stdout means "no segment".
+        if tokens is None:
+            return
+        icon = {"green": "🟢", "yellow": "🟡", "red": "🔴"}.get(z, "⚪")
+        tokens_k = tokens // 1000
+        limit_k = limit // 1000
+        print(f"{icon} {tokens_k}k/{limit_k}k ({pct}%)")
+
     elif cmd in ("-h", "--help"):
         print(__doc__)
 

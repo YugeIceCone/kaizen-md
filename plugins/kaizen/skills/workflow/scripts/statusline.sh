@@ -20,25 +20,10 @@ INPUT=$(cat 2>/dev/null || echo "")
 SCRIPT_DIR="$(cd "$(dirname "$(python3 -c "import os,sys; print(os.path.realpath(sys.argv[1]))" "${BASH_SOURCE[0]}")")" && pwd)"
 
 # ─── Context window ──────────────────────────────────────────────────
-CTX_JSON=$(echo "$INPUT" | python3 "$SCRIPT_DIR/context.py" json 2>/dev/null || echo "{}")
-CTX_TOKENS=$(echo "$CTX_JSON" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('tokens') or '')" 2>/dev/null || echo "")
-CTX_LIMIT=$(echo "$CTX_JSON" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('limit') or 200000)" 2>/dev/null || echo "200000")
-CTX_PCT=$(echo "$CTX_JSON"   | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('pct') if d.get('pct') is not None else '')" 2>/dev/null || echo "")
-CTX_ZONE=$(echo "$CTX_JSON"  | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('zone','unknown'))" 2>/dev/null || echo "unknown")
-
-CTX_PART=""
-if [ -n "$CTX_TOKENS" ] && [ "$CTX_TOKENS" != "None" ]; then
-    case "$CTX_ZONE" in
-        green)  ICON="🟢" ;;
-        yellow) ICON="🟡" ;;
-        red)    ICON="🔴" ;;
-        *)      ICON="⚪" ;;
-    esac
-    CTX_K=$(( CTX_TOKENS / 1000 ))
-    LIMIT_K=$(( CTX_LIMIT / 1000 ))
-    CTX_PART="${ICON} ${CTX_K}k/${LIMIT_K}k"
-    [ -n "$CTX_PCT" ] && CTX_PART="${CTX_PART} (${CTX_PCT}%)"
-fi
+# Single python3 spawn — context.py `line` returns the pre-formatted
+# segment ("🟢 50k/200k (25%)") or empty when token count unknown.
+# Replaces the prior 5-spawn pattern (1 json + 4 field extractions).
+CTX_PART=$(echo "$INPUT" | python3 "$SCRIPT_DIR/context.py" line 2>/dev/null || echo "")
 
 # ─── Backlog state ───────────────────────────────────────────────────
 BACKLOG_PART=""

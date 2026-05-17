@@ -271,5 +271,56 @@ class TestPeakDetection(PeakAwareReaderBase):
         self.assertEqual(c.get_tokens_from_jsonl(cwd_path=self.cwd), 30_000)
 
 
+class TestStatuslineLineSubcommand(unittest.TestCase):
+    """`context.py line` emits a pre-formatted statusline segment
+    (icon + tokens/limit + pct) in ONE python3 spawn — replacing the
+    5-spawn pattern in statusline.sh."""
+
+    def _run(self, stdin_text: str = "",
+              env_extra: dict | None = None) -> subprocess.CompletedProcess:
+        env = os.environ.copy()
+        for k in ("CLAUDE_CONTEXT_TOKENS", "CLAUDE_USAGE_TOTAL_TOKENS",
+                   "KAIZEN_CONTEXT_LIMIT"):
+            env.pop(k, None)
+        if env_extra:
+            env.update(env_extra)
+        script = (Path(__file__).resolve().parent.parent
+                   / "skills" / "workflow" / "scripts" / "context.py")
+        return subprocess.run(
+            ["python3", str(script), "line"],
+            input=stdin_text, capture_output=True, text=True,
+            timeout=10, env=env,
+        )
+
+    def test_green_zone_emits_green_icon(self):
+        env = {"KAIZEN_CONTEXT_LIMIT": "200000"}
+        r = self._run('{"total_tokens": 50000}', env_extra=env)
+        self.assertEqual(r.returncode, 0)
+        self.assertIn("🟢", r.stdout)
+        self.assertIn("50k", r.stdout)
+        self.assertIn("25%", r.stdout)
+
+    def test_yellow_zone(self):
+        env = {"KAIZEN_CONTEXT_LIMIT": "100000"}
+        r = self._run('{"total_tokens": 70000}', env_extra=env)
+        self.assertIn("🟡", r.stdout)
+
+    def test_red_zone(self):
+        env = {"KAIZEN_CONTEXT_LIMIT": "100000"}
+        r = self._run('{"total_tokens": 90000}', env_extra=env)
+        self.assertIn("🔴", r.stdout)
+
+    def test_unknown_emits_empty(self):
+        r = self._run("")  # no env, no stdin
+        self.assertEqual(r.returncode, 0)
+        # Empty stdout (or whitespace) — caller treats as "no segment"
+        self.assertEqual(r.stdout.strip(), "")
+
+
+# Imports needed by the subprocess test above (added at use site to
+# avoid pollution of earlier classes that use `_fresh()` reimport).
+import subprocess
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
