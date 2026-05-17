@@ -394,6 +394,94 @@ def _cmd_replay(args) -> int:
     return 0
 
 
+# ─── clean (retention/rotation; BK-009) ──────────────────────────────
+
+
+_AGE_RE = re.compile(r"^(\d+(?:\.\d+)?)\s*([smhd])$") if False else None
+
+
+def _parse_age(s: str) -> float:
+    """Parse '7d' / '2h' / '30m' / '15s' → seconds. Raise ValueError
+    on malformed input."""
+    import re as _re
+    m = _re.match(r"^(\d+(?:\.\d+)?)\s*([smhd])$", s.strip())
+    if not m:
+        raise ValueError(f"invalid age {s!r} (expected NUMBER+unit, e.g. 7d, 2h, 30m, 15s)")
+    n = float(m.group(1))
+    unit_seconds = {"s": 1, "m": 60, "h": 3600, "d": 86400}
+    return n * unit_seconds[m.group(2)]
+
+
+def _cmd_dxm_clean(args) -> int:
+    """Remove stale per-session events files. --older-than Nd|Nh|Nm|Ns
+    by mtime; --all wipes everything in the dxm dir."""
+    if _disabled():
+        if args.json:
+            _emit({"disabled": True, "removed_count": 0}, verdict="yellow")
+        return 0
+
+    dxm_root = _dxm_dir()
+    if not dxm_root.is_dir():
+        data = {"removed_count": 0, "dxm_dir": str(dxm_root)}
+        if args.json: _emit(data, verdict="green")
+        else: print(f"[kaizen-dxm clean] dxm dir doesn't exist: {dxm_root}")
+        return 0
+
+    candidates: list[Path] = []
+    if args.all:
+        # Everything in the dxm dir (files only — leave subdirs untouched)
+        candidates = [p for p in dxm_root.iterdir() if p.is_file()]
+    else:
+        if not args.older_than:
+            print("[kaizen-dxm clean] --older-than or --all required",
+                  file=sys.stderr)
+            return 2
+        try:
+            cutoff_age = _parse_age(args.older_than)
+        except ValueError as exc:
+            print(f"[kaizen-dxm clean] {exc}", file=sys.stderr)
+            return 2
+        cutoff_mtime = time.time() - cutoff_age
+        candidates = [
+            p for p in dxm_root.iterdir()
+            if p.is_file() and p.stat().st_mtime < cutoff_mtime
+        ]
+
+    if args.dry_run:
+        data = {
+            "dxm_dir":            str(dxm_root),
+            "would_remove_count": len(candidates),
+            "would_remove":       sorted(str(p) for p in candidates),
+            "dry_run":            True,
+        }
+        if args.json: _emit(data, verdict="yellow")
+        else:
+            print(f"[kaizen-dxm clean] DRY-RUN — would remove "
+                  f"{len(candidates)} file(s)")
+            for p in candidates:
+                print(f"  - {p}")
+        return 0
+
+    removed = 0
+    for p in candidates:
+        try:
+            p.unlink()
+            removed += 1
+        except OSError:
+            pass
+
+    data = {
+        "dxm_dir":       str(dxm_root),
+        "removed_count": removed,
+        "removed":       sorted(str(p) for p in candidates if not p.exists()),
+    }
+    if args.json:
+        _emit(data, verdict="green", counts={"removed": removed})
+    else:
+        print(f"[kaizen-dxm clean] removed {removed} file(s) from {dxm_root}")
+    return 0
+
+
 def _cmd_link(args) -> int:
     if _disabled():
         return 0
@@ -470,6 +558,20 @@ def main(argv=None) -> int:
                           "truncating (default: truncate first)")
     sr.add_argument("--json", action="store_true")
     sr.set_defaults(func=_cmd_replay)
+
+    scl = sub.add_parser(
+        "clean",
+        help="retention/rotation — remove stale events files by age or all",
+    )
+    scl.add_argument("--older-than", default=None,
+                      help="remove files older than N + unit (s|m|h|d), "
+                           "e.g. 7d, 2h, 30m, 15s")
+    scl.add_argument("--all", action="store_true",
+                      help="remove ALL files in the dxm dir (not just stale)")
+    scl.add_argument("--dry-run", action="store_true",
+                      help="report what would be removed; mutate nothing")
+    scl.add_argument("--json", action="store_true")
+    scl.set_defaults(func=_cmd_dxm_clean)
 
     args = p.parse_args(argv)
     return args.func(args)

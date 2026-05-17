@@ -23,7 +23,6 @@ subcommands:
       Append an event to a session's stream. Called by hooks via
       stdin JSON. Stamps ts_unix sub-millisecond.
     input_schema: schemas/capture-in.schema.json
-    # output: canonical envelope (no per-subcommand schema yet)
 
   now:
     description: >-
@@ -35,9 +34,25 @@ subcommands:
   tail:
     description: >-
       Most-recent events for a session. --limit N (default 20),
-      --since-unix T filters strictly-after.
+      --since-unix T filters strictly-after, --back SECONDS rolling
+      window, --window-from F --window-to T middle slice.
+    output_schema: schemas/tail-out.schema.json
 
   link:
     description: >-
       Record a parent→child session-continuity edge. Read by `now`
       to surface lineage. Pairs with handoff create/resume.
+    input_schema:  schemas/link-in.schema.json
+    output_schema: schemas/link-out.schema.json
+
+  replay:
+    description: >-
+      Backfill dxm events from a CC session JSONL — fixes install-day
+      blindspot when hooks aren't registered yet for the active session.
+    output_schema: schemas/replay-out.schema.json
+
+  clean:
+    description: >-
+      Retention / rotation — remove stale per-session events files by
+      age (--older-than 7d|2h|30m|15s) or wipe all (--all). --dry-run
+      reports without mutating.

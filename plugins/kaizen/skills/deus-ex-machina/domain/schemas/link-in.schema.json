@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/YugeIceCone/kaizen-md/skills/deus-ex-machina/link-in.schema.json",
+  "title": "deus-ex-machina link input",
+  "type": "object",
+  "required": ["parent", "child"],
+  "additionalProperties": false,
+  "properties": {
+    "parent": { "type": "string", "minLength": 1,
+                 "description": "Parent session_id" },
+    "child":  { "type": "string", "minLength": 1,
+                 "description": "Child session_id (the new session continuing from parent)" }
+  }
+}
