@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/YugeIceCone/kaizen-md/main/plugins/kaizen/skills/workflow/domain/schemas/workflow-config.schema.json",
+  "title": "kaizen workflow-config",
+  "description": "Persistent per-repo / user-global workflow-shape defaults — read by /kaizen:workflow, /kaizen:session-mode (as fallback), and downstream hooks.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version"],
+  "properties": {
+    "version": {
+      "type": "integer",
+      "const": 1,
+      "description": "Schema version. Currently 1."
+    },
+    "scope": {
+      "type": "string",
+      "enum": ["project", "global"],
+      "description": "Which file this config came from (set by the writer; informational)."
+    },
+    "run_mode": {
+      "type": "string",
+      "enum": ["routine", "loop", "schema"],
+      "description": "Default workflow shape — routine (multi-stage), loop (Ralph), or schema (declarative DAG)."
+    },
+    "routine": {
+      "type": "string",
+      "description": "When run_mode=routine, the routine id from routines.yaml (e.g. build-feature, fix-bug, refactor)."
+    },
+    "schema_name": {
+      "type": "string",
+      "description": "When run_mode=schema, the schema id resolved by workflow_runner.py (e.g. onion-tdd-strict, mcp-build)."
+    },
+    "disciplines": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "enum": [
+          "kiss", "yagni", "dry", "solid", "soc", "lod",
+          "onion-ddd", "hexagonal", "clean-arch", "dip", "bounded-contexts",
+          "tdd", "boy-scout", "convention", "karpathy"
+        ]
+      },
+      "description": "Default discipline bundles enforced in future sessions. Pre-fills the session-mode intake question."
+    },
+    "auto_handoff_threshold": {
+      "anyOf": [
+        {"type": "integer", "enum": [25, 50, 75, 85]},
+        {"type": "null"}
+      ],
+      "description": "Default auto-handoff trigger as % of context-window limit. null = disabled."
+    },
+    "loop": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "When run_mode=loop, the Ralph defaults.",
+      "properties": {
+        "max_iterations": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Default --its value for /kaizen:loop."
+        },
+        "stop_conditions": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": ["promise", "ledger-empty", "iteration-cap", "manual-cancel"]
+          },
+          "description": "Which exit signals are honored. Default: all four."
+        }
+      }
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO-8601 UTC timestamp of the last write."
+    }
+  }
+}
