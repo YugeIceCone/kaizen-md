@@ -1729,6 +1729,36 @@ def _build_commit_task_map(entries: list, *, repo: Path, since: str) -> dict:
             "skipped_no_files": skipped}
 
 
+def _smart_since(text: str) -> str | None:
+    """Pick the best `--since` cutoff for tree/queries on this handoff.
+
+    Priority:
+      1. parent_handoff's session_meta.handoff_generated_at (exact UTC
+         timestamp — catches commits made AFTER the prior session ended)
+      2. current handoff's `date:` field (broader day-bucket)
+      3. None (caller falls back to its own default, typically "1 week ago")
+
+    Graceful on:
+      - missing parent_handoff in session_meta
+      - parent file unreadable / missing
+      - parent's session_meta without handoff_generated_at
+    """
+    fm, body = _load_raw_handoff(text)
+    meta = body.get("session_meta") or {}
+    parent_path = meta.get("parent_handoff")
+    if parent_path:
+        try:
+            parent_text = Path(parent_path).read_text(encoding="utf-8")
+            _, pbody = _load_raw_handoff(parent_text)
+            pmeta = pbody.get("session_meta") or {}
+            pts = pmeta.get("handoff_generated_at")
+            if pts:
+                return str(pts)
+        except OSError:
+            pass  # missing parent file → fall through
+    return fm.get("date") or None
+
+
 def _normalize_since(since: str) -> str:
     """Add `00:00:00` time component when `since` is bare YYYY-MM-DD.
 
@@ -1750,7 +1780,9 @@ def _cmd_tree(args) -> int:
     text = fp.read_text(encoding="utf-8")
     fm, body = _load_raw_handoff(text)
     entries = body.get("done_this_session") or []
-    raw_since = args.since or fm.get("date") or "1 week ago"
+    # Default cutoff threading: --since wins, else smart pick from
+    # parent_handoff (most precise) → date → "1 week ago" fallback.
+    raw_since = args.since or _smart_since(text) or "1 week ago"
     since = _normalize_since(raw_since)
     repo = Path(args.repo or ".").resolve()
     result = _build_commit_task_map(entries, repo=repo, since=since)
