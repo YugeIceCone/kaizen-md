@@ -99,6 +99,8 @@
       "Bash(${CLAUDE_PLUGIN_ROOT}/bin/kaizen-mcp-coverage:*)",
       "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/test_isolation.py:*)",
       "Bash(${CLAUDE_PLUGIN_ROOT}/bin/kaizen-test-isolation:*)",
+      "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/dead_code.py:*)",
+      "Bash(${CLAUDE_PLUGIN_ROOT}/bin/kaizen-dead-code:*)",
       "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/schema_cli.py:*)",
       "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/scratch.py:*)",
       "Bash(bash ${CLAUDE_PLUGIN_ROOT}/bin/kaizen-scratch:*)",
