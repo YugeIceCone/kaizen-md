@@ -124,53 +124,61 @@ class TestSkillCheckpointEmit(unittest.TestCase):
 
 
 class TestEndToEndAudit(unittest.TestCase):
-    """Share one run_audit() across the 3 read-only assertions in this
-    class (saves ~2 × ~1s of pipeline work vs setUp-per-test). The
-    one write-path test runs separately."""
+    """Share ONE run_audit(no_write=False) call across all 3 tests in
+    this class — was 2 calls (no-write shared + write-path standalone),
+    now 1 (the write produces the same dict shape + the side-effect).
+    Saves ~1s solo (~5.65s → ~4.65s), drops the suite-wide ceiling.
+    """
 
     _shared_result = None
     _shared_skip_reason = None
+    _shared_report_path = None
 
     @classmethod
     def setUpClass(cls):
         try:
-            cls._shared_result = self_audit.run_audit(no_write=True)
+            cls._shared_result = self_audit.run_audit(no_write=False)
         except RuntimeError as e:
             if "PyYAML" in str(e):
                 cls._shared_skip_reason = "PyYAML not installed"
             else:
                 raise
+        rp = (cls._shared_result or {}).get("report_path")
+        if rp:
+            cls._shared_report_path = Path(rp)
+
+    @classmethod
+    def tearDownClass(cls):
+        # Single cleanup for the write produced in setUpClass.
+        if cls._shared_report_path and cls._shared_report_path.is_file():
+            try:
+                cls._shared_report_path.unlink()
+            except OSError:
+                pass
 
     def setUp(self):
         if self._shared_skip_reason:
             self.skipTest(self._shared_skip_reason)
 
-    def test_full_audit_no_write(self):
+    def test_full_audit_result_shape(self):
         result = self._shared_result
-        # Result has expected keys
+        # Result dict shape is identical whether no_write=True/False.
         self.assertIn("finding_count", result)
         self.assertIn("remediation_task_count", result)
         self.assertIn("new_functionality_count", result)
         self.assertIn("findings", result)
         self.assertIn("markdown", result)
-        # Has at least the skill-checkpoint findings
         self.assertGreater(result["finding_count"], 5)
 
     def test_audit_writes_report(self):
-        # Write-path test still does its own call — it's the only one
-        # that asserts on the side-effect (file written, content shape).
-        try:
-            result = self_audit.run_audit(no_write=False)
-        except RuntimeError as e:
-            if "PyYAML" in str(e):
-                self.skipTest("PyYAML not installed")
-            raise
-        path = Path(result["report_path"])
-        self.assertTrue(path.is_file())
-        text = path.read_text()
+        # Side-effect verification — file exists with the expected
+        # header. The write happened in setUpClass via no_write=False.
+        self.assertIsNotNone(self._shared_report_path,
+                              "setUpClass should have set report_path")
+        self.assertTrue(self._shared_report_path.is_file(),
+                         f"report not at {self._shared_report_path}")
+        text = self._shared_report_path.read_text()
         self.assertIn("kaizen self-audit", text)
-        # Cleanup
-        path.unlink()
 
     def test_markdown_has_canonical_sections(self):
         md = self._shared_result["markdown"]

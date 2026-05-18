@@ -658,6 +658,24 @@ def _archive_path_for(scanned_at: str) -> Path:
     return _archive_dir() / f"{safe}.md"
 
 
+def _uniq_archive_path(scanned_at: str) -> Path:
+    """Collision-safe archive path. When two scans share a second,
+    appends `-N` so neither overwrites the other.
+
+    Without this, the second scan's atomic_write silently replaces
+    the first archive — data loss. Returns the base path when free.
+    """
+    base = _archive_path_for(scanned_at)
+    if not base.exists():
+        return base
+    stem = base.stem
+    for n in range(1, 1000):
+        cand = base.with_name(f"{stem}-{n}.md")
+        if not cand.exists():
+            return cand
+    return base  # cap: 1000 archives/sec is absurd — fall back
+
+
 def _history_max_mb() -> int:
     return _envint("KAIZEN_BLOAT_HISTORY_MAX_MB", 5)
 
@@ -834,7 +852,7 @@ def _write_session_state(findings: list[dict]) -> None:
     # re-rendering from history. Cross-referenced to history.jsonl by
     # matching scanned_at timestamp.
     try:
-        atomic_write(_archive_path_for(scanned_at), rendered)
+        atomic_write(_uniq_archive_path(scanned_at), rendered)
     except OSError:
         pass
 

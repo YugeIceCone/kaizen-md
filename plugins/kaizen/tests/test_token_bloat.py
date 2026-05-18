@@ -739,8 +739,9 @@ class TestArchiveAndSmartRead(unittest.TestCase):
         self.assertEqual(len(archives), 1)
 
     def test_two_scans_produce_two_archives(self):
+        # _uniq_archive_path appends -N on collision, so back-to-back
+        # scans (sub-second) still produce two distinct archives.
         _run("scan", "--cache", env=self.env)
-        import time; time.sleep(1.1)  # ensure timestamp granularity
         _run("scan", "--cache", env=self.env)
         archives = list((self.tmp / "archive").glob("*.md"))
         self.assertEqual(len(archives), 2)
