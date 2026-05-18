@@ -131,6 +131,16 @@
         ]
       },
       {
+        "matcher": "Read",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/claude/pretooluse-brain-redirect.sh",
+            "timeout": 3
+          }
+        ]
+      },
+      {
         "matcher": "*",
         "hooks": [
           {

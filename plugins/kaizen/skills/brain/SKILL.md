@@ -1,6 +1,6 @@
 ---
 name: brain
-description: Capture, search, promote, audit, and evolve the kaizen Second Brain. Schema-driven (yaml + jsonschema), Node+Flow engine (PocketFlow AsyncNode), MCP-exposed, hook-automated. Replaces the retired remember plugin's Node.js scripts with a Python implementation that lives inside kaizen.
+description: Capture, search, promote, audit, evolve, AND surgically edit the kaizen Second Brain. Schema-driven (yaml + jsonschema), Node+Flow engine, MCP-exposed, hook-automated. Block-level addressing via heading-path means zero-roundtrip memory edits — use `kaizen-brain blocks` / `show --block X` / `edit --block X` INSTEAD OF `Read`+`Edit` on Persona.md / Notes / Inbox files (8× fewer tokens per read). Triggers on "edit persona top beliefs", "show evidence log", "read memory section", "extract block from note", "kaizen-brain blocks", "kaizen-brain show", "kaizen-brain edit", "remember this", "save this to brain", "capture belief", "promote note", "audit memory", "brain status", "brain stats", "evolve brain".
 ---
 
 # Brain — Schema-driven Second Brain inside kaizen
@@ -54,6 +54,34 @@ schema:
 - `brain_evolve(stale_days)` MCP
 - Reports duplicates, freshness drift, Persona.md ↔ Notes drift.
   NO auto-writes — read-only report.
+
+### Block ops — zero-roundtrip memory edits ⭐
+
+**ALWAYS prefer these over `Read` / `Edit` for any file under
+`~/.claude/.kaizen/brain/`.** Heading-path addressing lets you target
+exactly one block of a Markdown file in one CLI call — no whole-file
+load, no fragile `old_string` matching.
+
+- `kaizen-brain blocks --file <md>` — list addressable heading-paths
+  (returns `[{path, level, start, end}]`; ~10 lines for a Persona.md)
+- `kaizen-brain show --file <md> --block "<path>"` — extract one block
+  (e.g. `--block "Top Beliefs"` returns just those 14 lines, not the
+  whole 70-line Persona.md)
+- `kaizen-brain edit --file <md> --block "<path>" --replace "<body>"` —
+  atomic in-place full-block swap (tempfile + rename)
+- `kaizen-brain edit --file <md> --block "<path>" --append "<line>"` —
+  append one list-item (caller supplies marker: `- foo` or `4. bar`)
+
+Block path = heading text `/`-joined: `Persona/Top Beliefs`. Trailing-
+segment match (just `Top Beliefs`) works when unambiguous.
+
+**Token win:** `Read Persona.md` ≈ 1,250 tokens; `brain show --block
+"Top Beliefs"` ≈ 150 tokens. **8.3× less** per memory read. Edits
+similarly skip the Read→Edit roundtrip.
+
+**When NOT to use:** files without Markdown headings (a `## section`
+must exist to be addressable). Capture / search / promote stay on
+their own subcommands above.
 
 ## Schema
 
