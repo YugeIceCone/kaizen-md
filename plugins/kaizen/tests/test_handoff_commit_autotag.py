@@ -156,5 +156,84 @@ class TestQuoteIfUnsafeColonRegression(_RepoBase):
         self.assertIn(sha, parsed["done_this_session"][0]["commits"])
 
 
+class TestScaffoldJSONLMinedCommits(_RepoBase):
+    """Covers the JSONL-mined completed_tasks branch (the other half of the
+    feature — not exercised by TestScaffoldUmbrellaCommits which passes
+    --no-session-mine). Per-task entries MUST get `commits: []` placeholder;
+    the synthetic trailing entry MUST carry ALL window SHAs as a catch-all
+    so agents can re-distribute manually.
+    """
+
+    def setUp(self):
+        super().setUp()
+        # Sandbox HOME so cwd_to_slug points into our tempdir's fake CC tree.
+        self.fake_home = self.tmp / "home"
+        self.fake_home.mkdir()
+        slug = str(self.repo.resolve()).replace("/", "-")
+        self.fake_proj = self.fake_home / ".claude" / "projects" / slug
+        self.fake_proj.mkdir(parents=True)
+        self._orig_home = os.environ.get("HOME")
+        os.environ["HOME"] = str(self.fake_home)
+
+    def tearDown(self):
+        if self._orig_home is None:
+            os.environ.pop("HOME", None)
+        else:
+            os.environ["HOME"] = self._orig_home
+        super().tearDown()
+
+    def _seed_jsonl_with_completed_task(self) -> None:
+        records = [
+            {"type": "user", "timestamp": "2026-05-17T03:00:00.000Z",
+              "message": {"role": "user",
+                           "content": [{"type": "text", "text": "go"}]}},
+            {"type": "assistant", "timestamp": "2026-05-17T03:00:05.000Z",
+              "message": {"role": "assistant", "content": [
+                  {"type": "tool_use", "id": "tu1", "name": "TaskCreate",
+                    "input": {"subject": "first task subject",
+                                "description": "..."}}]}},
+            {"type": "user", "timestamp": "2026-05-17T03:00:06.000Z",
+              "message": {"role": "user", "content": [
+                  {"type": "tool_result", "tool_use_id": "tu1",
+                    "content": "Task #1 created successfully: first task subject"}]}},
+            {"type": "assistant", "timestamp": "2026-05-17T03:00:10.000Z",
+              "message": {"role": "assistant", "content": [
+                  {"type": "tool_use", "id": "tu2", "name": "TaskUpdate",
+                    "input": {"taskId": "1", "status": "completed"}}]}},
+        ]
+        p = self.fake_proj / "sess-test.jsonl"
+        with p.open("w", encoding="utf-8") as f:
+            for r in records:
+                f.write(json.dumps(r) + "\n")
+
+    def test_per_task_entries_get_empty_commits_placeholder(self):
+        sha1 = self._commit("a.py", "1\n")
+        sha2 = self._commit("b.py", "2\n")
+        self._seed_jsonl_with_completed_task()
+        r = subprocess.run(
+            [sys.executable, str(_HANDOFF_PY), "scaffold",
+             "--session", "demo",
+             "--goal", "g",
+             "--now",  "n",
+             "--at",   "2026-05-17_03-00",
+             "--since", "2000-01-01",   # window covers all session commits
+             "--json"],
+            capture_output=True, text=True, timeout=30,
+            cwd=str(self.repo),
+            env=os.environ.copy(),
+        )
+        self.assertEqual(r.returncode, 0, r.stderr)
+        body = Path(json.loads(r.stdout)["data"]["yaml_path"]).read_text(
+            encoding="utf-8"
+        )
+        # Per-task entry has commits: [] placeholder
+        self.assertIn("- task: first task subject", body)
+        self.assertIn("    commits: []", body)
+        self.assertIn("    files: []", body)
+        # Synthetic trailing entry exists AND carries ALL window SHAs
+        self.assertIn("- task: (git-touched files this session)", body)
+        self.assertIn(f"    commits: [{sha1}, {sha2}]", body)
+
+
 if __name__ == "__main__":
     unittest.main()
