@@ -155,7 +155,7 @@ mkdir -p "$HOOKS_DIR"
 #   commit-msg  — message-dependent checks (Conventional Commits, plan-file
 #                 mention). Lives here because `git commit -m` does NOT
 #                 pre-populate .git/COMMIT_EDITMSG for pre-commit to read.
-for hook_name in pre-commit commit-msg; do
+for hook_name in pre-commit commit-msg post-commit; do
     HOOK_TARGET="$SKILL_DIR/scripts/${hook_name}.sh"
     HOOK_LINK="$HOOKS_DIR/$hook_name"
     if [ ! -f "$HOOK_TARGET" ]; then

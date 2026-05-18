@@ -61,10 +61,20 @@ except Exception:
     fi
 fi
 
+# Phase 6 of /kaizen:workflow full-automation: prefill the QA wizard
+# from persisted .kaizen/workflow.json if it exists. Helper emits an
+# annotation block (empty when no config); concat into the body below.
+PREFILL=""
+if [ -f ".kaizen/workflow.json" ]; then
+    PREFILL=$(python3 "$PLUGIN_ROOT/skills/workflow/scripts/_workflow_prefill.py" \
+        --from ".kaizen/workflow.json" 2>/dev/null || echo "")
+fi
+
 # All gates clear → emit the intake prompt as additionalContext.
 # Imperative language: the agent's contract is "ask first, work after".
-python3 -c "
-import json
+PREFILL="$PREFILL" python3 -c "
+import json, os
+prefill = os.environ.get('PREFILL', '')
 body = '''MANDATORY — session intake. Call AskUserQuestion with these 4 questions in ONE call, BEFORE the user's first prompt.
 
 Q1 (single) mode: \"How should this kaizen session be run?\" header=\"Session mode\"
@@ -93,6 +103,8 @@ Persist in ONE command — bundle id = lowercase label first word (e.g. \"Brain 
 
 Bypass: KAIZEN_SESSION_INTAKE_DISABLE=1.
 '''
+if prefill:
+    body = body + prefill
 print(json.dumps({
     'hookSpecificOutput': {
         'hookEventName': 'SessionStart',

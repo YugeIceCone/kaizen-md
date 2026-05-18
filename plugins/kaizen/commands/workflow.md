@@ -13,7 +13,7 @@ globally — wants future sessions to start from. Read by
 (auto-handoff, skill-suggest) can also consult these defaults when no
 explicit session-mode is set.
 
-!`bash -c 'exec ${CLAUDE_PLUGIN_ROOT}/bin/kaizen-workflow-config ${ARGUMENTS:-show}'`
+!`bash -c '${CLAUDE_PLUGIN_ROOT}/bin/kaizen-workflow-config ${ARGUMENTS:-show}; [ -z "${ARGUMENTS:-}" ] && [ -f .kaizen/workflow.json ] && python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/_workflow_prefill.py --from .kaizen/workflow.json; true'`
 
 ## Interactive wizard (when `$ARGUMENTS` is empty)
 
@@ -28,6 +28,12 @@ Follow the `/kaizen:session-mode` orchestration pattern: the body is
 instructional, the agent does the AskUserQuestion calls. All 4
 questions fit in a single AskUserQuestion call (within the
 4-question-per-call contract).
+
+**Pre-fill defaults (Phase 9 auto-fill):** If the body output above
+contains a "PERSISTED workflow defaults" block, those values are the
+project's saved picks. Use them as the DEFAULT options in each
+AskUserQuestion (mark "(persisted)" in the label). User can confirm
+or override; only re-prompt for fields with no persisted value.
 
 ### Question 1 — scope
 

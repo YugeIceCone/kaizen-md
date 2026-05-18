@@ -106,6 +106,7 @@
       "Bash(uv run --script ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/handoff_mcp.py:*)",
       "Bash(uv run --script ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/config_mcp.py:*)",
       "Bash(bash ${CLAUDE_PLUGIN_ROOT}/hooks/claude/userprompt-skills-reminder.sh:*)",
+      "Bash(bash ${CLAUDE_PLUGIN_ROOT}/hooks/claude/userprompt-classify.sh:*)",
       "Bash(bash ${CLAUDE_PLUGIN_ROOT}/hooks/claude/auto-handoff.sh:*)",
       "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/auto_handoff.py:*)",
       "Bash(bash ${CLAUDE_PLUGIN_ROOT}/bin/kaizen-auto-handoff:*)",

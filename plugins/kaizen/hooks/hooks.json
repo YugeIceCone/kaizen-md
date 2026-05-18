@@ -95,6 +95,11 @@
             "type": "command",
             "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/claude/userprompt-skills-reminder.sh",
             "timeout": 3
+          },
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/claude/userprompt-classify.sh",
+            "timeout": 8
           }
         ]
       }
