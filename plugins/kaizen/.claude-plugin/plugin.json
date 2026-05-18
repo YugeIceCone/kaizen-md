@@ -105,6 +105,8 @@
       "Bash(${CLAUDE_PLUGIN_ROOT}/bin/kaizen-complexity:*)",
       "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/sql.py:*)",
       "Bash(${CLAUDE_PLUGIN_ROOT}/bin/kaizen-sql:*)",
+      "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/silent_fail.py:*)",
+      "Bash(${CLAUDE_PLUGIN_ROOT}/bin/kaizen-silent-fail:*)",
       "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/schema_cli.py:*)",
       "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/scratch.py:*)",
       "Bash(bash ${CLAUDE_PLUGIN_ROOT}/bin/kaizen-scratch:*)",
