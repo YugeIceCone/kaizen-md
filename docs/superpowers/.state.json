@@ -1,0 +1,371 @@
+{
+  "root": "/home/cherry86/workspace/kaizen-md/docs/superpowers",
+  "scanned_at": "2026-05-18T21:17:45Z",
+  "bundles": {
+    "2026-05-12-kaizen-md": {
+      "path": "/home/cherry86/workspace/kaizen-md/docs/superpowers/2026-05-12-kaizen-md",
+      "files": [
+        {
+          "name": "README.md",
+          "kind": "README",
+          "status": "unknown",
+          "size_bytes": 224,
+          "last_modified": "2026-05-18T19:32:58Z"
+        },
+        {
+          "name": "plan-kaizen-lint-mcp-tasks.md",
+          "kind": "plan",
+          "status": "shipped",
+          "size_bytes": 8283,
+          "last_modified": "2026-05-14T17:28:44Z"
+        },
+        {
+          "name": "plan-kaizen-lint-mcp.md",
+          "kind": "plan",
+          "status": "shipped",
+          "size_bytes": 5988,
+          "last_modified": "2026-05-14T17:28:27Z"
+        },
+        {
+          "name": "plan-workflow-merge.md",
+          "kind": "plan",
+          "status": "shipped",
+          "size_bytes": 12917,
+          "last_modified": "2026-05-14T17:32:40Z"
+        }
+      ],
+      "summary": {
+        "total": 4,
+        "by_kind": {
+          "README": 1,
+          "plan": 3
+        },
+        "by_status": {
+          "unknown": 1,
+          "shipped": 3
+        }
+      }
+    },
+    "2026-05-13-kaizen-md": {
+      "path": "/home/cherry86/workspace/kaizen-md/docs/superpowers/2026-05-13-kaizen-md",
+      "files": [
+        {
+          "name": "README.md",
+          "kind": "README",
+          "status": "unknown",
+          "size_bytes": 224,
+          "last_modified": "2026-05-18T19:32:58Z"
+        },
+        {
+          "name": "plan-cross-cli-portability-analysis.md",
+          "kind": "plan",
+          "status": "superseded",
+          "size_bytes": 25028,
+          "last_modified": "2026-05-13T21:31:32Z"
+        },
+        {
+          "name": "plan-handoff.md",
+          "kind": "plan",
+          "status": "superseded",
+          "size_bytes": 12229,
+          "last_modified": "2026-05-13T21:31:32Z"
+        },
+        {
+          "name": "plan-kaizen-roadmap.md",
+          "kind": "plan",
+          "status": "superseded",
+          "size_bytes": 20238,
+          "last_modified": "2026-05-13T21:31:32Z"
+        }
+      ],
+      "summary": {
+        "total": 4,
+        "by_kind": {
+          "README": 1,
+          "plan": 3
+        },
+        "by_status": {
+          "unknown": 1,
+          "superseded": 3
+        }
+      }
+    },
+    "2026-05-15-kaizen-md": {
+      "path": "/home/cherry86/workspace/kaizen-md/docs/superpowers/2026-05-15-kaizen-md",
+      "files": [
+        {
+          "name": "README.md",
+          "kind": "README",
+          "status": "unknown",
+          "size_bytes": 199,
+          "last_modified": "2026-05-18T19:11:19Z"
+        },
+        {
+          "name": "plan-kaizen-mcp-gateway.md",
+          "kind": "plan",
+          "status": "unknown",
+          "size_bytes": 37798,
+          "last_modified": "2026-05-15T00:39:35Z"
+        },
+        {
+          "name": "spec-mcp-gateway-design.md",
+          "kind": "spec",
+          "status": "unknown",
+          "size_bytes": 8875,
+          "last_modified": "2026-05-14T23:59:35Z"
+        }
+      ],
+      "summary": {
+        "total": 3,
+        "by_kind": {
+          "README": 1,
+          "plan": 1,
+          "spec": 1
+        },
+        "by_status": {
+          "unknown": 3
+        }
+      }
+    },
+    "2026-05-17-kaizen-md": {
+      "path": "/home/cherry86/workspace/kaizen-md/docs/superpowers/2026-05-17-kaizen-md",
+      "files": [
+        {
+          "name": "README.md",
+          "kind": "README",
+          "status": "unknown",
+          "size_bytes": 224,
+          "last_modified": "2026-05-18T19:32:58Z"
+        },
+        {
+          "name": "plan-brain-migration-to-kaizen.md",
+          "kind": "plan",
+          "status": "draft",
+          "size_bytes": 12148,
+          "last_modified": "2026-05-17T01:00:13Z"
+        },
+        {
+          "name": "plan-coverage-axis-backlog.md",
+          "kind": "plan",
+          "status": "deferred",
+          "size_bytes": 26615,
+          "last_modified": "2026-05-17T11:40:37Z"
+        },
+        {
+          "name": "plan-coverage-ideas.jsonl",
+          "kind": "data",
+          "status": "deferred",
+          "size_bytes": 48732,
+          "last_modified": "2026-05-17T11:44:24Z"
+        },
+        {
+          "name": "plan-menu-consolidation.md",
+          "kind": "plan",
+          "status": "unknown",
+          "size_bytes": 19717,
+          "last_modified": "2026-05-17T21:31:19Z"
+        },
+        {
+          "name": "plan-path-restructure-v1.39.0.md",
+          "kind": "plan",
+          "status": "draft",
+          "size_bytes": 6415,
+          "last_modified": "2026-05-17T01:23:49Z"
+        },
+        {
+          "name": "plan-quality-check-brainstorm.md",
+          "kind": "plan",
+          "status": "unknown",
+          "size_bytes": 4802,
+          "last_modified": "2026-05-17T18:52:39Z"
+        },
+        {
+          "name": "plan-ralph-automation-brainstorm.md",
+          "kind": "plan",
+          "status": "unknown",
+          "size_bytes": 6107,
+          "last_modified": "2026-05-17T21:14:31Z"
+        }
+      ],
+      "summary": {
+        "total": 8,
+        "by_kind": {
+          "README": 1,
+          "plan": 6,
+          "data": 1
+        },
+        "by_status": {
+          "unknown": 4,
+          "draft": 2,
+          "deferred": 2
+        }
+      }
+    },
+    "2026-05-18-kaizen-md-6ebbb7cb": {
+      "path": "/home/cherry86/workspace/kaizen-md/docs/superpowers/2026-05-18-kaizen-md-6ebbb7cb",
+      "files": [
+        {
+          "name": "README.md",
+          "kind": "README",
+          "status": "unknown",
+          "size_bytes": 222,
+          "last_modified": "2026-05-18T19:11:19Z"
+        },
+        {
+          "name": "plan-brainstorm-confidence-score.md",
+          "kind": "plan",
+          "status": "unknown",
+          "size_bytes": 56626,
+          "last_modified": "2026-05-18T02:02:30Z"
+        },
+        {
+          "name": "plan-coverage-axes-5-chunks.md",
+          "kind": "plan",
+          "status": "unknown",
+          "size_bytes": 63417,
+          "last_modified": "2026-05-18T16:18:26Z"
+        },
+        {
+          "name": "plan-coverage-axes-dynamic-chunks.md",
+          "kind": "plan",
+          "status": "deferred",
+          "size_bytes": 22996,
+          "last_modified": "2026-05-18T16:23:10Z"
+        },
+        {
+          "name": "plan-coverage-axes-tier-chain.md",
+          "kind": "plan",
+          "status": "deferred",
+          "size_bytes": 11593,
+          "last_modified": "2026-05-18T16:25:36Z"
+        },
+        {
+          "name": "plan-coverage-checklist.md",
+          "kind": "plan",
+          "status": "deferred",
+          "size_bytes": 28922,
+          "last_modified": "2026-05-18T16:03:28Z"
+        },
+        {
+          "name": "plan-coverage-loop-implemented.md",
+          "kind": "plan",
+          "status": "deferred",
+          "size_bytes": 5195,
+          "last_modified": "2026-05-18T16:00:22Z"
+        },
+        {
+          "name": "spec-brainstorming-confidence-score-design.md",
+          "kind": "spec",
+          "status": "unknown",
+          "size_bytes": 21642,
+          "last_modified": "2026-05-18T01:46:21Z"
+        },
+        {
+          "name": "spec-custom-observer-design.md",
+          "kind": "spec",
+          "status": "unknown",
+          "size_bytes": 15334,
+          "last_modified": "2026-05-18T18:21:21Z"
+        }
+      ],
+      "summary": {
+        "total": 9,
+        "by_kind": {
+          "README": 1,
+          "plan": 6,
+          "spec": 2
+        },
+        "by_status": {
+          "unknown": 5,
+          "deferred": 4
+        }
+      }
+    },
+    "2026-05-18-kaizen-md-9f4c8972": {
+      "path": "/home/cherry86/workspace/kaizen-md/docs/superpowers/2026-05-18-kaizen-md-9f4c8972",
+      "files": [
+        {
+          "name": "README.md",
+          "kind": "README",
+          "status": "unknown",
+          "size_bytes": 250,
+          "last_modified": "2026-05-18T20:11:57Z"
+        },
+        {
+          "name": "audit-heartbeat-daemon-watcher.md",
+          "kind": "audit",
+          "status": "unknown",
+          "size_bytes": 6231,
+          "last_modified": "2026-05-18T20:12:24Z"
+        },
+        {
+          "name": "brainstorm-handoff-automation.md",
+          "kind": "brainstorm",
+          "status": "unknown",
+          "size_bytes": 6303,
+          "last_modified": "2026-05-18T21:02:42Z"
+        }
+      ],
+      "summary": {
+        "total": 3,
+        "by_kind": {
+          "README": 1,
+          "audit": 1,
+          "brainstorm": 1
+        },
+        "by_status": {
+          "unknown": 3
+        }
+      }
+    },
+    "templates": {
+      "path": "/home/cherry86/workspace/kaizen-md/docs/superpowers/templates",
+      "files": [
+        {
+          "name": "README.md",
+          "kind": "README",
+          "status": "unknown",
+          "size_bytes": 3226,
+          "last_modified": "2026-05-18T19:52:27Z"
+        },
+        {
+          "name": "chunk-plan-template.md",
+          "kind": "other",
+          "status": "unknown",
+          "size_bytes": 17041,
+          "last_modified": "2026-05-18T16:15:24Z"
+        }
+      ],
+      "summary": {
+        "total": 2,
+        "by_kind": {
+          "README": 1,
+          "other": 1
+        },
+        "by_status": {
+          "unknown": 2
+        }
+      }
+    }
+  },
+  "totals": {
+    "bundles": 7,
+    "files": 33,
+    "by_kind": {
+      "README": 7,
+      "plan": 19,
+      "spec": 3,
+      "data": 1,
+      "audit": 1,
+      "brainstorm": 1,
+      "other": 1
+    },
+    "by_status": {
+      "unknown": 19,
+      "shipped": 3,
+      "superseded": 3,
+      "draft": 2,
+      "deferred": 6
+    }
+  }
+}

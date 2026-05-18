@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+# consolidated-cli-parent: bundle
 """kaizen-bundle — session-folder management for docs/superpowers/.
 
 Convention (per user 2026-05-18):
@@ -174,6 +176,178 @@ def _commit_subject(action: str, bundle_name: str, *, extra: str = "") -> str:
     if extra:
         parts.append(extra)
     return " ".join(parts)
+
+
+# ─── state — docs-state tracker (kind + status metadata) ─────────────
+
+_KIND_PREFIXES = {
+    "plan-":       "plan",
+    "spec-":       "spec",
+    "brainstorm-": "brainstorm",
+    "audit-":      "audit",
+    "notes-":      "notes",
+}
+_STATUS_PATTERNS = [
+    # Order matters — more specific markers first.
+    (re.compile(r"\bSUPERSEDED\b", re.IGNORECASE),         "superseded"),
+    (re.compile(r"\bDEFERRED\b", re.IGNORECASE),           "deferred"),
+    (re.compile(r"\b(COMPLETE|SHIPPED|DONE)\b"),           "shipped"),
+    (re.compile(r"\*\*State:\*\*\s*shipped", re.IGNORECASE),  "shipped"),
+    (re.compile(r"\*\*State:\*\*\s*in[- ]progress", re.IGNORECASE), "in-progress"),
+    (re.compile(r"\*\*State:\*\*\s*draft", re.IGNORECASE), "draft"),
+    (re.compile(r"\*\*State:\*\*\s*wip", re.IGNORECASE),   "in-progress"),
+]
+
+
+def _classify_kind(filename: str) -> str:
+    """Filename → kind (plan/spec/brainstorm/audit/notes/README/data/other)."""
+    if filename == "README.md":
+        return "README"
+    if filename.endswith(".jsonl"):
+        return "data"
+    for prefix, kind in _KIND_PREFIXES.items():
+        if filename.startswith(prefix):
+            return kind
+    return "other"
+
+
+def _extract_status(text: str) -> str:
+    """Walk the first window of text for status markers; return verdict."""
+    # Only scan the top 50 lines — status markers belong at the top
+    head = "\n".join(text.splitlines()[:50])
+    for pattern, status in _STATUS_PATTERNS:
+        if pattern.search(head):
+            return status
+    return "unknown"
+
+
+def _scan_state(root: Path) -> dict:
+    """Walk root → emit per-bundle + per-file metadata + aggregate totals."""
+    bundles: dict[str, dict] = {}
+    totals_kind: dict[str, int] = {}
+    totals_status: dict[str, int] = {}
+    file_count = 0
+    if not root.is_dir():
+        return {"bundles": {}, "totals": {"bundles": 0, "files": 0,
+                                            "by_kind": {}, "by_status": {}},
+                 "root": str(root), "scanned_at": _now_iso()}
+    for bundle_dir in sorted(p for p in root.iterdir()
+                                if p.is_dir() and not p.name.startswith(".")):
+        files: list[dict] = []
+        bundle_kinds: dict[str, int] = {}
+        bundle_statuses: dict[str, int] = {}
+        for fp in sorted(bundle_dir.iterdir()):
+            if not fp.is_file():
+                continue
+            kind = _classify_kind(fp.name)
+            try:
+                text = fp.read_text(encoding="utf-8", errors="replace")
+                status = _extract_status(text)
+            except OSError:
+                status = "unknown"
+            entry = {
+                "name":          fp.name,
+                "kind":          kind,
+                "status":        status,
+                "size_bytes":    fp.stat().st_size,
+                "last_modified": _mtime_iso(fp),
+            }
+            files.append(entry)
+            bundle_kinds[kind] = bundle_kinds.get(kind, 0) + 1
+            bundle_statuses[status] = bundle_statuses.get(status, 0) + 1
+            totals_kind[kind] = totals_kind.get(kind, 0) + 1
+            totals_status[status] = totals_status.get(status, 0) + 1
+            file_count += 1
+        bundles[bundle_dir.name] = {
+            "path": str(bundle_dir),
+            "files": files,
+            "summary": {
+                "total": len(files),
+                "by_kind": bundle_kinds,
+                "by_status": bundle_statuses,
+            },
+        }
+    return {
+        "root": str(root),
+        "scanned_at": _now_iso(),
+        "bundles": bundles,
+        "totals": {
+            "bundles":   len(bundles),
+            "files":     file_count,
+            "by_kind":   totals_kind,
+            "by_status": totals_status,
+        },
+    }
+
+
+def _now_iso() -> str:
+    return datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def _mtime_iso(path: Path) -> str:
+    return datetime.fromtimestamp(path.stat().st_mtime, UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def _cmd_state(args) -> int:
+    root = _superpowers_dir()
+    state = _scan_state(root)
+    if args.apply:
+        sf = root / ".state.json"
+        sf.write_text(json.dumps(state, indent=2, default=str) + "\n",
+                       encoding="utf-8")
+    if args.json:
+        print(json.dumps(state, indent=2, default=str))
+    else:
+        t = state["totals"]
+        print(f"superpowers state: {root}")
+        print(f"  bundles: {t['bundles']}   files: {t['files']}")
+        if t["by_kind"]:
+            print(f"  by kind:   {dict(sorted(t['by_kind'].items()))}")
+        if t["by_status"]:
+            print(f"  by status: {dict(sorted(t['by_status'].items()))}")
+        if args.apply:
+            print(f"  → wrote {root / '.state.json'}")
+        else:
+            print(f"  (dry run — pass --apply to write .state.json)")
+    return 0
+
+
+def _cmd_tasks(args) -> int:
+    root = _superpowers_dir()
+    state = _scan_state(root)
+    tasks: list[dict] = []
+    skip_status = "shipped"
+    for bundle_name, bundle in state["bundles"].items():
+        if args.bundle and bundle_name != args.bundle:
+            continue
+        for f in bundle["files"]:
+            if args.status:
+                if f["status"] != args.status:
+                    continue
+            elif f["status"] == skip_status:
+                continue
+            tasks.append({
+                "bundle": bundle_name,
+                "name":   f["name"],
+                "kind":   f["kind"],
+                "status": f["status"],
+                "path":   f"{bundle['path']}/{f['name']}",
+            })
+    if args.json:
+        print(json.dumps({"count": len(tasks), "tasks": tasks},
+                          indent=2, default=str))
+    else:
+        if not tasks:
+            print("no pending tasks")
+            return 0
+        marks = {"deferred": "⏸", "superseded": "✗",
+                  "draft": "☐", "in-progress": "▷", "unknown": "?"}
+        print(f"pending tasks ({len(tasks)}):")
+        for t in tasks:
+            mark = marks.get(t["status"], "?")
+            print(f"  {mark} [{t['kind']:<10}] {t['bundle']} / {t['name']}"
+                  f"  ({t['status']})")
+    return 0
 
 
 def _cmd_git_init(args) -> int:
@@ -525,6 +699,26 @@ def main(argv: list[str] | None = None) -> int:
                      help="git branch to checkout in the nested superpowers "
                           "repo before applying (requires --apply)")
     ps.set_defaults(fn=_cmd_scan)
+
+    pst = sub.add_parser("state",
+                          help="scan docs/superpowers/ + emit per-file "
+                               "metadata (kind / status / size / mtime). "
+                               "--apply writes .state.json under the root.")
+    pst.add_argument("--apply", action="store_true",
+                      help="write .state.json (default: dry run)")
+    pst.add_argument("--json", action="store_true")
+    pst.set_defaults(fn=_cmd_state)
+
+    pt = sub.add_parser("tasks",
+                         help="task-list view of non-shipped items in bundles. "
+                              "Filter via --bundle <name> or --status <s>.")
+    pt.add_argument("--bundle", default=None,
+                     help="restrict to one bundle (matches dir basename)")
+    pt.add_argument("--status", default=None,
+                     help="restrict to one status "
+                          "(draft / in-progress / deferred / superseded / unknown)")
+    pt.add_argument("--json", action="store_true")
+    pt.set_defaults(fn=_cmd_tasks)
 
     args = p.parse_args(argv)
     if not getattr(args, "fn", None):
