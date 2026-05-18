@@ -175,6 +175,8 @@
       "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/mermaid.py:*)",
       "Bash(bash ${CLAUDE_PLUGIN_ROOT}/hooks/claude/auto-handoff.sh:*)",
       "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/auto_handoff.py:*)",
+      "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/progress_log.py:*)",
+      "Bash(bash ${CLAUDE_PLUGIN_ROOT}/bin/kaizen-progress:*)",
       "Bash(bash ${CLAUDE_PLUGIN_ROOT}/bin/kaizen-auto-handoff:*)",
       "Bash(bash ${CLAUDE_PLUGIN_ROOT}/bin/kaizen-skill-suggest:*)",
       "Bash(bash ${CLAUDE_PLUGIN_ROOT}/bin/kaizen-context-notifier:*)",
