@@ -653,14 +653,36 @@ def _split_by_project(files: list[str], projects: dict[str, str],
     return groups
 
 
+def _most_recent_prior_handoff(session_dir: Path,
+                                  exclude: Path | None = None) -> Path | None:
+    """Return the lexicographically-newest .yaml in session_dir, or None.
+
+    `exclude` skips a specific path (the file we're about to write) so
+    a fresh scaffold doesn't point its parent_handoff at itself.
+
+    Filenames carry their own ordering — they're prefixed with
+    `YYYY-MM-DD_HH-MM_*`, so sort-by-name is sort-by-time.
+    """
+    if not session_dir.is_dir():
+        return None
+    candidates = sorted(
+        p for p in session_dir.glob("*.yaml")
+        if p != exclude
+    )
+    return candidates[-1] if candidates else None
+
+
 def _build_session_meta(*, repos: dict[str, Path],
-                          cc_jsonl: Path | None) -> dict:
+                          cc_jsonl: Path | None,
+                          parent_handoff: Path | None = None) -> dict:
     """Build session_meta dict: per-project HEAD SHAs + Claude Code session traceability.
 
     Auto-populates everything deterministic — no operator input needed:
     - handoff_generated_at (UTC ISO-8601)
     - primary_branch / head_at_handoff per repo (via git rev-parse)
     - cc_session_{uuid,jsonl,sha256,lines,size_bytes} when cc_jsonl given
+    - parent_handoff (file path string) when prior handoff exists
+      — closes the multi-handoff chain so resume agents see the lineage.
     """
     import hashlib
     from datetime import datetime, timezone
@@ -681,6 +703,8 @@ def _build_session_meta(*, repos: dict[str, Path],
         meta["cc_session_lines"]    = len([l for l in content.splitlines() if l.strip()])
         meta["cc_session_size_bytes"] = len(content)
         meta["cc_session_uuid"]     = cc_jsonl.stem
+    if parent_handoff is not None:
+        meta["parent_handoff"] = str(parent_handoff)
     return meta
 
 
@@ -864,9 +888,13 @@ def _cmd_scaffold(args) -> int:
         head_check = _git(r, "log", f"--since={since}", "-1", "--oneline")
         if head_check.returncode == 0 and head_check.stdout.strip():
             recent_repos[name] = r
+    # Multi-handoff chain — link to the previous handoff in the same
+    # session_dir so a fresh session can walk the lineage.
+    parent_handoff = _most_recent_prior_handoff(session_dir, exclude=yaml_path)
     session_meta = _build_session_meta(
         repos=recent_repos,
         cc_jsonl=Path(jsonl_path) if jsonl_path else None,
+        parent_handoff=parent_handoff,
     )
 
     body_lines = [
@@ -886,6 +914,8 @@ def _cmd_scaffold(args) -> int:
         body_lines.append(f"  cc_session_lines: {session_meta['cc_session_lines']}")
         body_lines.append(f"  cc_session_size_bytes: {session_meta['cc_session_size_bytes']}")
     body_lines.append(f"  handoff_generated_at: {session_meta['handoff_generated_at']!r}")
+    if session_meta.get("parent_handoff"):
+        body_lines.append(f"  parent_handoff: {session_meta['parent_handoff']!r}")
     if session_meta.get("primary_branch"):
         body_lines.append("  primary_branch:")
         for n, br in session_meta["primary_branch"].items():

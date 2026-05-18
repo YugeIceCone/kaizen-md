@@ -128,6 +128,58 @@ class TestSessionMeta(unittest.TestCase):
         self.assertIn("handoff_generated_at", meta)
 
 
+class TestParentHandoff(unittest.TestCase):
+    """multi-handoff chain — record the most-recent prior handoff under
+    parent_handoff so a fresh session can chain back through the lineage.
+    """
+
+    def test_no_prior_returns_none(self):
+        with tempfile.TemporaryDirectory() as td:
+            session_dir = Path(td) / "session"
+            session_dir.mkdir()
+            self.assertIsNone(handoff._most_recent_prior_handoff(session_dir))
+
+    def test_most_recent_prior_returned(self):
+        with tempfile.TemporaryDirectory() as td:
+            session_dir = Path(td) / "session"
+            session_dir.mkdir()
+            # Three handoffs with lexicographically-ordered names
+            older = session_dir / "2026-05-18_19-00_first.yaml"
+            mid   = session_dir / "2026-05-18_20-00_second.yaml"
+            newest = session_dir / "2026-05-18_21-00_third.yaml"
+            for p in (older, mid, newest):
+                p.write_text("---\nsession: x\n---\n")
+            got = handoff._most_recent_prior_handoff(session_dir)
+            self.assertEqual(got, newest)
+
+    def test_excludes_specific_file_when_asked(self):
+        # When scaffolding a NEW handoff, the about-to-be-written file
+        # must be excluded so we don't point a handoff at itself.
+        with tempfile.TemporaryDirectory() as td:
+            session_dir = Path(td) / "session"
+            session_dir.mkdir()
+            older = session_dir / "2026-05-18_19-00_first.yaml"
+            new = session_dir / "2026-05-18_21-00_being-written.yaml"
+            older.write_text("---\nsession: x\n---\n")
+            new.write_text("---\nsession: x\n---\n")  # already on disk
+            got = handoff._most_recent_prior_handoff(session_dir, exclude=new)
+            self.assertEqual(got, older)
+
+    def test_session_meta_carries_parent_when_present(self):
+        # _build_session_meta accepts an optional parent_handoff arg
+        meta = handoff._build_session_meta(
+            repos={}, cc_jsonl=None,
+            parent_handoff=Path("/prior/2026-05-18_19-00_x.yaml"),
+        )
+        self.assertEqual(meta["parent_handoff"],
+                          "/prior/2026-05-18_19-00_x.yaml")
+
+    def test_session_meta_omits_parent_when_none(self):
+        meta = handoff._build_session_meta(repos={}, cc_jsonl=None,
+                                            parent_handoff=None)
+        self.assertNotIn("parent_handoff", meta)
+
+
 class TestAutoTagCommits(unittest.TestCase):
     def test_tags_commits_touching_a_file(self):
         with tempfile.TemporaryDirectory() as td:
