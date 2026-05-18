@@ -26,7 +26,7 @@ class TestLoader(unittest.TestCase):
     def test_load_laws_returns_all(self):
         import _loader
         laws = _loader.load_laws()
-        self.assertEqual(len(laws), 30)
+        self.assertEqual(len(laws), 32)
 
     def test_every_law_has_required_fields(self):
         import _loader
@@ -53,7 +53,7 @@ class TestLoader(unittest.TestCase):
         auto = _loader.auto_laws()
         manual = _loader.manual_laws()
         self.assertEqual(len(auto), 19)   # unchanged — all 5 session additions are manual
-        self.assertEqual(len(manual), 11)
+        self.assertEqual(len(manual), 13)
         self.assertTrue(all(l["enforcement"] == "auto" for l in auto))
 
     def test_load_laws_rejects_schema_invalid(self):
@@ -339,7 +339,7 @@ class TestCLI(unittest.TestCase):
         r = self._run("list")
         self.assertEqual(r.returncode, 0)
         rows = [ln for ln in r.stdout.splitlines() if ln.strip()]
-        self.assertEqual(len(rows), 30)
+        self.assertEqual(len(rows), 32)
 
     def test_no_arg_defaults_to_list(self):
         r = self._run()
@@ -384,7 +384,7 @@ class TestMCP(unittest.TestCase):
     def test_list_returns_all_laws(self):
         m, aio = self._mod()
         laws = aio.run(m.iron_laws_list())
-        self.assertEqual(len(laws), 30)
+        self.assertEqual(len(laws), 32)
 
     def test_show_returns_one_law(self):
         m, aio = self._mod()
@@ -444,7 +444,7 @@ class TestCodegen(unittest.TestCase):
     def test_generated_reference_has_do_not_edit_header(self):
         ref = (_DOMAIN.parent / "references" / "iron-laws.md").read_text()
         self.assertIn("DO NOT HAND-EDIT", ref)
-        self.assertIn("30 laws", ref)
+        self.assertIn("32 laws", ref)
 
 
 if __name__ == "__main__":

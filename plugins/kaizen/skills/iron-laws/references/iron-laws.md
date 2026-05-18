@@ -14,7 +14,7 @@ The non-negotiable rules for kaizen-plugin-original development. This file is a 
 
 ## Summary
 
-30 laws — 19 auto, 11 manual.
+32 laws — 19 auto, 13 manual.
 
 | id | severity | enforcement | check |
 |---|---|---|---|
@@ -48,6 +48,8 @@ The non-negotiable rules for kaizen-plugin-original development. This file is a 
 | `prcdr-contract-declared` | soft | manual | — |
 | `cross-device-safe-move` | hard | manual | — |
 | `cli-json-flag` | soft | manual | — |
+| `shim-and-sweep` | hard | manual | — |
+| `dry-extract-on-third-repetition` | soft | manual | — |
 
 ## Laws
 
@@ -328,4 +330,20 @@ Every CLI subcommand that produces structured output offers a `--json` flag retu
 **Detect:** argparse subparser with output but no `--json` action='store_true' argument.
 
 **Why:** Programmability requirement — scripted / MCP consumers cannot parse human-readable variants reliably. Every kaizen-* CLI this session (progress, learn, observer-events, bundle, handoff get) ships --json. Default: human-readable for terminal use; --json for automation.
+
+### `shim-and-sweep` (hard · manual)
+
+When a feature changes shape (flag retired / default flipped / name changed / module renamed), sweep all docstrings + test docstrings + READMEs + commands/*.md for stale references IN THE SAME COMMIT. No dangling back-compat documentation.
+
+**Detect:** Diff retires/renames a public API element (flag / fn / module / file) but leaves stale references in module-level docstrings, test file docstrings, command bodies, or README text.
+
+**Why:** Caught via session trace 2026-05-18 — the --commit opt-in flag was retired in 6a717e1 but 2 test-file docstrings still described it 2 days later. Stale docs train wrong mental models + invite re-introduction. The sweep is cheap (grep + edit); the cost of skipping it accumulates. Pattern: every retirement commit also greps for the retired token + updates every prose mention.
+
+### `dry-extract-on-third-repetition` (soft · manual)
+
+When a pattern (helper fn / shape / constant block) appears in 3+ distinct call-sites with identical or near-identical shape, extract a shared helper IN THE SAME COMMIT THAT INTRODUCES THE 3RD. Don't wait for the 4th.
+
+**Detect:** Diff adds a 3rd instance of a pattern that's already present in 2 other files (e.g. _<feature>_dir env-overridable resolver; with open(p, 'a') append helper; subprocess git_run wrapper).
+
+**Why:** Rule-of-three is a discipline pinned (DRY) but easy to skip when adding 'just one more.' Session evidence — atomic_append_line existed since the start but was reimplemented 4 times before extraction (commit 3a18b8f); env_overridable_dir went 5 sites before extraction (commit 681a56d). Both extractions saved ~20-30 LOC AND unlocked future consistency changes in ONE place. The discipline cost (extract on add) is much lower than the consolidation cost later (refactor 4-5 sites + update tests). Reinforces shim-and-sweep — the third repetition is where shim-and-sweep work compounds, so catch it then.
 

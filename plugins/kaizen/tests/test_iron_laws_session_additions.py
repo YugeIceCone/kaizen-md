@@ -34,6 +34,8 @@ _NEW_LAW_IDS = {
     "prcdr-contract-declared",
     "cross-device-safe-move",
     "cli-json-flag",
+    "shim-and-sweep",
+    "dry-extract-on-third-repetition",
 }
 
 
@@ -101,6 +103,8 @@ def test_new_law_statements_reference_session_evidence():
         "prcdr-contract-declared":      ["programmable", "reproducible"],
         "cross-device-safe-move":       ["EXDEV", "shutil.move"],
         "cli-json-flag":                ["--json", "scripting"],
+        "shim-and-sweep":               ["6a717e1", "stale"],
+        "dry-extract-on-third-repetition": ["rule-of-three", "3a18b8f"],
     }
     for lid, hints in evidence_hints.items():
         why = by_id[lid].get("why", "").lower()
