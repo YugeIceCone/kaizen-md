@@ -23,6 +23,7 @@ Design contract:
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import re
@@ -290,6 +291,113 @@ def _cmd_add(args) -> int:
     return 0
 
 
+# ─── scan — orphan artifact tracker ───────────────────────────────────
+
+# Top-level entries that are NOT orphans (durable / docs / git):
+_NON_ORPHAN_TOP_LEVEL = frozenset({"README.md", "templates", ".git", ".gitignore"})
+
+
+def _sha256_file(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def _scan_bundles(root: Path) -> dict[str, list[tuple[str, str]]]:
+    """Walk every bundle folder and index its files by content hash.
+
+    Returns {sha256 -> [(bundle_name, file_name), ...]} for dupe detection.
+    """
+    index: dict[str, list[tuple[str, str]]] = {}
+    if not root.is_dir():
+        return index
+    for bundle in root.iterdir():
+        if not bundle.is_dir() or bundle.name in _NON_ORPHAN_TOP_LEVEL:
+            continue
+        # Skip bundles by date-prefix shape; treat unrecognized dirs as
+        # opaque so we don't dive into templates/ etc.
+        if not re.match(r"^\d{4}-\d{2}-\d{2}", bundle.name):
+            continue
+        for f in bundle.iterdir():
+            if not f.is_file():
+                continue
+            try:
+                sha = _sha256_file(f)
+            except OSError:
+                continue
+            index.setdefault(sha, []).append((bundle.name, f.name))
+    return index
+
+
+def _suggest_date(file_name: str, file_path: Path) -> str:
+    """Suggested date for the bundle this orphan should land in.
+
+    Prefer the YYYY-MM-DD prefix in the filename; fall back to file mtime.
+    """
+    m = re.match(r"^(\d{4}-\d{2}-\d{2})", file_name)
+    if m:
+        return m.group(1)
+    mtime = datetime.fromtimestamp(file_path.stat().st_mtime, tz=UTC)
+    return mtime.strftime("%Y-%m-%d")
+
+
+def _cmd_scan(args) -> int:
+    root = _superpowers_dir()
+    if not root.is_dir():
+        out = {"orphans": [], "dupes": []}
+        print(json.dumps(out) if args.json else "no superpowers root; nothing to scan")
+        return 0
+
+    bundle_index = _scan_bundles(root)
+    orphans: list[dict] = []
+    dupes: list[dict] = []
+
+    for entry in sorted(root.iterdir()):
+        # Skip non-orphan top-level entries
+        if entry.name in _NON_ORPHAN_TOP_LEVEL:
+            continue
+        # Skip bundle folders themselves
+        if entry.is_dir():
+            continue
+        if not entry.is_file():
+            continue
+        try:
+            sha = _sha256_file(entry)
+            size = entry.stat().st_size
+        except OSError:
+            continue
+        orphan = {
+            "name": entry.name,
+            "path": str(entry),
+            "size": size,
+            "sha256": sha,
+            "suggested_date": _suggest_date(entry.name, entry),
+        }
+        orphans.append(orphan)
+        # Dupe check — same content already in a bundle
+        if sha in bundle_index:
+            for bundle_name, bundle_file in bundle_index[sha]:
+                dupes.append({
+                    "orphan": entry.name,
+                    "bundle": bundle_name,
+                    "bundle_file": bundle_file,
+                    "sha256": sha,
+                })
+
+    result = {"orphans": orphans, "dupes": dupes}
+    if args.json:
+        print(json.dumps(result, indent=2))
+    else:
+        print(f"orphans: {len(orphans)}")
+        for o in orphans:
+            print(f"  {o['name']} ({o['size']}B; suggest "
+                   f"date={o['suggested_date']})")
+        if dupes:
+            print(f"dupes (orphan content matches existing bundle file): "
+                   f"{len(dupes)}")
+            for d in dupes:
+                print(f"  {d['orphan']} == {d['bundle']}/{d['bundle_file']}")
+    return 0
+
+
 def _cmd_backup(args) -> int:
     """`backup list` — show patch-journal entries from manifest.jsonl."""
     if args.backup_action == "list":
@@ -362,6 +470,13 @@ def main(argv: list[str] | None = None) -> int:
                      help="action — currently `list` only")
     pb.add_argument("--json", action="store_true")
     pb.set_defaults(fn=_cmd_backup)
+
+    ps = sub.add_parser("scan",
+                          help="walk docs/superpowers/ for orphan files + "
+                               "report metadata + dupe-check vs existing bundles")
+    ps.add_argument("--json", action="store_true",
+                     help="JSON output (default: human-readable)")
+    ps.set_defaults(fn=_cmd_scan)
 
     args = p.parse_args(argv)
     if not getattr(args, "fn", None):
