@@ -17,6 +17,7 @@ docs/superpowers/
 │   └── notes-<topic>.md
 ├── <YYYY-MM-DD>-<project>/                  ← no-sid form (pre-convention)
 └── templates/                                ← durable, cross-session
+    ├── README.md                              ← umbrella; what each kit is for
     ├── chunk-plan-template.md
     ├── parallel-branches/                    ← kit (11 docs + 8 schemas)
     └── observer/                             ← kit (event/rule schemas)
