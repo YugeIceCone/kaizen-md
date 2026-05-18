@@ -41,3 +41,9 @@ gwtest-*/
 # is the system-of-record for these bundles — push it to its own remote
 # if you want them shareable separately from the parent repo.
 docs/
+
+# Tool-scratch dirs dropped by external tooling (IDE / FleetView stack
+# context, kaizen-implementer subagent worktree metadata). Never plugin
+# content.
+.agents/
+.claude/
