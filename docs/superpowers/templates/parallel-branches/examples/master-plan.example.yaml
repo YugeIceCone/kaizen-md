@@ -36,7 +36,9 @@ chunks:
     subagent: "kaizen-implementer"
     isolation: "worktree"
     worktree_branch: "chunk-1-ast-naming"
-    budget_tokens: 32000
+    max_lines:     150
+    items_count:   2
+    design_heavy:  false
     owns:
       scripts:
         - "plugins/kaizen/skills/workflow/scripts/fn_name_quality.py"
@@ -119,7 +121,9 @@ chunks:
     deps: []
     subagent: "general-purpose"
     isolation: "none"
-    budget_tokens: 24000
+    max_lines:     150
+    items_count:   3
+    design_heavy:  false
     owns:
       scripts: []
       tests: []
@@ -149,7 +153,7 @@ chunks:
 
 merge:
   run_by: "parent"
-  budget_tokens: 22000
+  max_lines: 200
   actions:
     - "consolidate_perms"
     - "append_progress"

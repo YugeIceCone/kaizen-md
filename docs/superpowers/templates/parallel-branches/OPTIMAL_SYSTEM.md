@@ -1,6 +1,8 @@
 # The optimal parallel-branches system — synthesis
 
-Distilled from this session: BK-012 spec → 30-axis coverage loop → chunk-plan template → schema-driven kit → on-disk layout analysis → plan-level ledger+checklist → pre-dispatch audit → wave-mode walkthrough.
+> **Disciplines:** all rules in `DISCIPLINES.md` apply. See D1 (explicit info), D2 (floor), D3 (line caps) especially. This synthesis honors all 10 disciplines.
+
+Distilled from this session: BK-012 spec → 30-axis coverage loop → chunk-plan template → schema-driven kit → on-disk layout analysis → plan-level ledger+checklist → pre-dispatch audit → wave-mode walkthrough → chunking floor → line-based work orders.
 
 ## Design goals
 
@@ -33,7 +35,7 @@ Distilled from this session: BK-012 spec → 30-axis coverage loop → chunk-pla
 
 8. **Default `failure_policy: "partial"`.** Wave proceeds with successes; failed chunks file backlog parks for follow-up. Aborting the whole plan on one failure is too coarse.
 
-9. **Default budget `30k tokens per chunk` + `items_per_subagent: 2-3` (floor).** Mid-range of 20-40k cap. 2 items = comfortable; 3 = OK for trivial grep-style items. Validator warns on any chunk with < 2 items unless `design_heavy: true` flag is set.
+9. **Work-order size in LINES not tokens (D3).** Default `max_lines: 150` (≈ 2-3 items at floor with TDD snippets); hard cap `200`. `items_count` declared explicitly per chunk. Token budgets dropped entirely — too abstract, varied by content density. Lines are concrete + measurable + visible at-a-glance. Validator warns above hard cap.
 
 10. **Conflict pre-flight is non-negotiable.** `kaizen-plan check` runs before every `dispatch` and `merge` invocation. Silent collisions are the worst failure mode. **Also enforces the floor** — flags sub-2-item chunks.
 
@@ -70,7 +72,7 @@ decomposition:
   bucket: "GRID_15"                 # populated by `kaizen-plan size`; traceability
   total_items: 27
   per_axis_cost_k: 8
-  total_budget_tokens: 688000       # auto-computed; aborts dispatch if exceeded
+  total_lines_estimate: 1800        # auto-computed: sum(chunks.max_lines); operator sanity check
 
 concurrency:
   mode: "waves"                     # always; single-wave plans are just N=1
@@ -96,7 +98,9 @@ deps:              []                # ids of chunks that must finish first
 subagent:          "kaizen-implementer"
 isolation:         "worktree"
 worktree_branch:   "chunk-01-ast-naming"
-budget_tokens:     30000             # default; override per-chunk if needed
+max_lines:         150               # D3 default; hard cap 200
+items_count:       2                 # D2 floor: 2-3 items per chunk
+design_heavy:      false             # set true for legitimately-1-item chunks (bypasses floor check)
 
 owns:
   scripts:        ["plugins/kaizen/skills/.../foo.py"]
@@ -135,7 +139,7 @@ run_by: "parent"
 stages:
   # Runs after every wave (including the last — uniform shape)
   interwave:
-    budget_tokens: 8000
+    max_lines: 100      # interwave merge.yaml stays terse
     actions:
       - consolidate_perms           # merge .chunks/<wave-ids>/perms.json → plugin.json
       - append_progress             # cat .chunks/<wave-ids>/progress.md → progress.md
@@ -146,7 +150,7 @@ stages:
 
   # Runs ONCE after the final wave
   final:
-    budget_tokens: 20000
+    max_lines: 200      # final merge action list can be larger
     actions:
       - wire_mcp_mounts             # gateway.py::SUBSERVERS += .chunks/*/mcp-mounts.txt
       - action: retrofit
@@ -268,21 +272,23 @@ Honesty checklist:
 - ❌ **Concurrent operator edits** — two humans editing chunks/*.yaml at the same time still git-merge-conflict in the chunk files (just like any source). Mode B reduces blast radius but doesn't eliminate conflicts.
 - ❌ **Brainstorm freshness** — if the source brainstorm changes mid-plan, the rubric output may shift; current design has no "plan needs re-sizing" detector.
 
-## End-to-end token cost (the worked numbers)
+## End-to-end size estimate (line-based per D3)
 
-**For the 20-chunk × 4-wave plan (current coverage axes scope):**
+**For a 9-chunk × 3-wave plan (the 27-item coverage scope at the FLOOR per D2):**
 
-| Phase | Tokens |
+| Component | Lines authored |
 |---|---|
-| `kaizen-plan init` + `check` (parent) | ~10k |
-| 20 chunks × 30k avg | 600k |
-| 4 × `merge --stage interwave` (parent) | 4 × 8k = 32k |
-| Final `merge --stage final` (parent) | 20k |
-| Auto-handoffs (assume 2 chunks need them) | +12k |
-| Buffer (10%) | +67k |
-| **TOTAL** | **~740k** |
+| `plan.yaml` manifest | ~50 |
+| 9 × `chunks/chunk-NN.yaml` (3 items each at floor) | 9 × ~130 = ~1170 |
+| `merge.yaml` (staged) | ~80 |
+| `ledger/MASTER.jsonl` runtime (grows during execution; ~5 rows/item × 27 = ~135 rows) | ~135 |
+| `CHECKLIST.md` generated | ~100 |
+| **TOTAL authored content** | **~1,535 lines** |
+| **TOTAL inclusive of runtime** | **~1,670 lines** |
 
-Within typical paid-tier daily budgets. Distributed across ~3-4 hours of wall-clock if waves run smoothly.
+Each agent reads at most ONE chunk file (~130 lines) + template (~280 lines) + 1-2 exemplars. Subagent input ≤ ~800 lines total per dispatch — well within reasonable context.
+
+This replaces the prior token-budget table (D3 dropped tokens entirely — lines are concrete + visible at-a-glance; tokens were too abstract).
 
 ## TL;DR
 

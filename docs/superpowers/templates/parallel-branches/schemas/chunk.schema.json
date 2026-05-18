@@ -4,7 +4,7 @@
   "title": "Single chunk file (Mode B split layout)",
   "description": "When a master plan declares `chunks: \"./chunks/*.yaml\"` (Mode B), each matched file is one chunk validated against this schema. Same shape as the inline chunk definition in master-plan.schema.json#/$defs/chunk, just promoted to a standalone document so a chunk file can be edited/validated/templated independently.",
   "type": "object",
-  "required": ["id", "title", "purpose", "project", "deps", "subagent", "isolation", "budget_tokens", "owns", "fragments", "tasks"],
+  "required": ["id", "title", "purpose", "project", "deps", "subagent", "isolation", "max_lines", "items_count", "owns", "fragments", "tasks"],
   "properties": {
     "id":            {"type": "string", "pattern": "^[a-zA-Z0-9_-]+$"},
     "title":         {"type": "string"},
@@ -14,7 +14,9 @@
     "subagent":      {"enum": ["kaizen-implementer", "general-purpose", "Explore", "Plan", "parent"]},
     "isolation":     {"enum": ["worktree", "none"]},
     "worktree_branch": {"type": "string"},
-    "budget_tokens": {"type": "integer", "minimum": 20000, "maximum": 40000},
+    "max_lines":    {"type": "integer", "minimum": 50, "maximum": 200, "default": 150, "description": "Max line count for this chunk YAML (D3). Hard cap 200. Validator warns above."},
+    "items_count":  {"type": "integer", "minimum": 1, "maximum": 3, "description": "Number of TDD items in this chunk. Floor: 2-3 (D2)."},
+    "design_heavy": {"type": "boolean", "default": false, "description": "Set true for legitimately-1-item design-heavy chunks; bypasses the floor check."},
     "owns": {
       "type": "object",
       "required": ["scripts", "tests", "bins", "fragment_dir"],

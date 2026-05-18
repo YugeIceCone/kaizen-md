@@ -2,7 +2,7 @@
 # Validates against master-plan.schema.json#/$defs/merge.
 
 run_by: "parent"
-budget_tokens: 22000
+max_lines: 200    # D3 — merge action lists can be longer than chunk files
 
 actions:
   # 1. Consolidate fragment files into canonical state

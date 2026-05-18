@@ -9,20 +9,21 @@
 #   - NEW bucket ONE_SUBAGENT  (4-6 items — one dispatch, no decomposition)
 #   - GRID buckets now floor-aware: chunk_count = ceil(items / 3)
 #   - NEW bucket POOL — queue-picker for >30 items
+#   - Token budgets DROPPED (D3 from DISCIPLINES.md) — signals are now
+#     line-count + item-count based, never token-based.
 #
-# Floor discipline: 2-3 items per subagent. Below floor = setup waste
-# (full 15k setup paid for half the work). Above floor (4+/subagent) =
-# risks cap breach + handoff complexity.
+# Floor discipline (D2): 2-3 items per subagent. Below floor = setup
+# waste. Above floor = cap breach risk.
+# Line discipline (D3): work-order YAML ≤150 lines target, ≤200 hard cap.
 #
 # Signals (caller pre-computes):
 #   total_items                int    — number of leaf TDD items
-#   per_axis_cost_k             int    — token cost per item (in thousands)
-#   agent_slots_available       int    — concurrent agent slots available
-#   token_budget_constrained    bool   — total-budget matters > wall-clock
-#   tiers_used                  int    — distinct priority tiers
-#   projects_count              int    — distinct repos touched
-#   compounding_wins_possible   bool   — earlier work makes later cheaper
-#   per_chunk_cap_k             int    — max tokens per chunk (default 40)
+#   per_item_lines             int    — estimated lines per item entry in YAML (~45 typical)
+#   agent_slots_available      int    — concurrent agent slots available
+#   tiers_used                 int    — distinct priority tiers
+#   projects_count             int    — distinct repos touched
+#   compounding_wins_possible  bool   — earlier work makes later cheaper
+#   prefer_sequential          bool   — true when few slots OR ordered shipping desired
 #
 # First-match wins. Rule order: parent-does-it → 1 subagent → chained →
 #   grid (floor-aware) → pool.
@@ -37,8 +38,8 @@ rules:
   # ──────────────────────────────────────────────────────────────────
   - bucket: PARENT_DOES_IT
     require_all:
-      - {signal: total_items,     op: "<=", value: 3}
-      - {signal: per_axis_cost_k, op: "<=", value: 8}
+      - {signal: total_items,    op: "<=", value: 3}
+      - {signal: per_item_lines, op: "<=", value: 60}
 
   # ──────────────────────────────────────────────────────────────────
   # 2. ONE_SUBAGENT — single dispatch, no decomposition
@@ -56,9 +57,9 @@ rules:
   # ──────────────────────────────────────────────────────────────────
   - bucket: TIER_CHAIN
     require_all:
-      - {signal: tiers_used,               op: ">=", value: 2}
-      - {signal: agent_slots_available,    op: "<=", value: 4}
-      - {signal: token_budget_constrained, op: "==", value: true}
+      - {signal: tiers_used,            op: ">=", value: 2}
+      - {signal: agent_slots_available, op: "<=", value: 4}
+      - {signal: prefer_sequential,     op: "==", value: true}
 
   - bucket: TIER_CHAIN
     require_all:

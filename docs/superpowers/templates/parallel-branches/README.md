@@ -1,5 +1,7 @@
 # Parallel-branches kit (schema-driven)
 
+> **Read first:** [`DISCIPLINES.md`](DISCIPLINES.md) — kit-wide rules (D1 explicit info, D2 chunking floor, D3 line-based work orders, ...). Every doc + schema + rubric in this kit honors them.
+
 Reproducible architecture for **MASTER PLAN → PARALLEL BRANCHES → MERGE** workflows. All artifacts are schema-validated so the same plan rendered in YAML produces deterministic dispatch + verification regardless of who runs it.
 
 ## Files

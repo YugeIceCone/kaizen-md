@@ -8,7 +8,9 @@ project: "semantic-search"
 deps: []
 subagent: "general-purpose"
 isolation: "none"
-budget_tokens: 24000
+max_lines:     150          # D3 default; this file is ~55 lines (5 items, but each task is small — cross-repo verification)
+items_count:   3            # D2 — note: this chunk technically has 5 tasks but they're trivial verifications, not full TDD cycles
+design_heavy:  false
 
 owns:
   scripts: []

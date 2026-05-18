@@ -9,7 +9,9 @@ deps: []
 subagent: "kaizen-implementer"
 isolation: "worktree"
 worktree_branch: "chunk-1-ast-naming"
-budget_tokens: 32000
+max_lines:     150        # D3 default; this file is currently ~84 lines (2 items at floor)
+items_count:   2          # D2 floor: 2-3 items per chunk
+design_heavy:  false      # set true for legitimately-1-item chunks
 
 owns:
   scripts:
