@@ -97,6 +97,8 @@
       "Bash(${CLAUDE_PLUGIN_ROOT}/bin/kaizen-command-allowed-tools-coverage:*)",
       "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/mcp_coverage.py:*)",
       "Bash(${CLAUDE_PLUGIN_ROOT}/bin/kaizen-mcp-coverage:*)",
+      "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/tests_run.py:*)",
+      "Bash(${CLAUDE_PLUGIN_ROOT}/bin/kaizen-tests:*)",
       "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/sandbox_check.py:*)",
       "Bash(${CLAUDE_PLUGIN_ROOT}/bin/kaizen-sandbox-check:*)",
       "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/dead_code.py:*)",

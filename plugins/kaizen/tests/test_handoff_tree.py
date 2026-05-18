@@ -182,7 +182,7 @@ class TestTreeCLI(unittest.TestCase):
         r = self._run("tree", "--file", str(self.yaml))
         self.assertEqual(r.returncode, 0, r.stderr)
         data = json.loads(r.stdout)
-        self.assertEqual(data["since"], "2026-05-18 00:00:00")
+        self.assertEqual(data["since"], "2026-05-18T00:00:00Z")
 
 
 if __name__ == "__main__":

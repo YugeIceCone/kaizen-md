@@ -48,7 +48,14 @@ def discover_test_modules(tests_dir: Path,
 
 
 def _resolve_concurrency(arg_value: int | None) -> int:
-    """CLI > env > nproc, floor=1."""
+    """CLI > env > nproc (autodetection), floor=1.
+
+    Uses `os.cpu_count()` for full system-spec autodetection. Earlier
+    cap-at-4 attempt was a misdiagnosis — the apparent "parallelism
+    flake" was actually a git `--since=YYYY-MM-DD` bare-date bug in
+    `_auto_tag_commits` (fixed via `_normalize_since` → ISO 8601 with
+    Z). Full nproc is safe + fastest.
+    """
     if arg_value and arg_value > 0:
         return arg_value
     env = os.environ.get("KAIZEN_TEST_CONCURRENCY")

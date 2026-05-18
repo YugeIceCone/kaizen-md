@@ -712,9 +712,14 @@ def _auto_tag_commits(repo: Path, files: list[str], *, since: str) -> list[str]:
     """For the given file paths, return commits since `since` that touched any of them.
 
     Returns deduped short SHAs in chronological order (oldest first).
+    Normalizes bare YYYY-MM-DD `since` to include `00:00:00` time —
+    git's bare-date parser silently returns empty otherwise (verified
+    against ancient `1970-01-01` and same-day dates). The fix mirrors
+    `_normalize_since` used in `_cmd_tree`.
     """
     if not files:
         return []
+    since = _normalize_since(since)
     r = _git(repo, "log", f"--since={since}", "--reverse",
              "--format=%h", "--name-only", "--",  *files)
     if r.returncode != 0 or not r.stdout.strip():
@@ -2018,15 +2023,18 @@ def _smart_since(text: str) -> str | None:
 
 
 def _normalize_since(since: str) -> str:
-    """Add `00:00:00` time component when `since` is bare YYYY-MM-DD.
+    """Promote bare YYYY-MM-DD to ISO 8601 with Z (UTC) for git --since.
 
-    Git's `--since=2026-05-18` misses same-day commits in some configurations
-    (likely TZ-related parse ambiguity); `--since='2026-05-18 00:00:00'`
-    works reliably. Verified 2026-05-18 against author-dated commits.
+    Git's `--since=YYYY-MM-DD` (bare) silently returns empty regardless
+    of date (verified against `1970-01-01` and same-day dates 2026-05-18
+    / 2026-05-19). `--since='YYYY-MM-DD 00:00:00'` ALSO returns empty.
+    Only ISO 8601 with explicit Z timezone (`YYYY-MM-DDTHH:MM:SSZ`)
+    reliably parses. Other accepted forms: approxidate ("30 days ago"),
+    unix epoch (`@0`).
     """
     import re as _re
     if _re.fullmatch(r"\d{4}-\d{2}-\d{2}", since.strip()):
-        return f"{since.strip()} 00:00:00"
+        return f"{since.strip()}T00:00:00Z"
     return since
 
 
