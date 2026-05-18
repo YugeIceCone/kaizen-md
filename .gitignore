@@ -32,3 +32,7 @@ gwtest-*/
 # Audit reports under `.kaizen/workflow/audits/` are excluded via
 # the per-dir `.kaizen/.gitignore` (re-ignores under the broad
 # workflow/** whitelist there). Kept local to avoid double-rules.
+
+# Nested git repo at docs/superpowers/ — managed via kaizen-bundle git-init
+# Embedded .git/ is tracked by the nested repo, not the parent.
+docs/superpowers/.git

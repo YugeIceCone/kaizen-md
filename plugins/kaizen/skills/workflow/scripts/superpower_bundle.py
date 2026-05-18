@@ -26,6 +26,8 @@ import argparse
 import json
 import os
 import re
+import shutil
+import subprocess
 import sys
 from pathlib import Path
 
@@ -74,6 +76,69 @@ def bundle_path(date: str, project: str, sid: str | None,
     return base / bundle_folder_name(date, project, sid)
 
 
+# ─── git automation ──────────────────────────────────────────────────
+
+def _git_available() -> bool:
+    return shutil.which("git") is not None
+
+
+def _is_git_repo(root: Path) -> bool:
+    return (root / ".git").is_dir()
+
+
+def _git_run(root: Path, *args: str) -> subprocess.CompletedProcess:
+    """Run git inside the superpowers root. Returns CompletedProcess."""
+    return subprocess.run(
+        ["git", *args], cwd=str(root),
+        capture_output=True, text=True, timeout=15,
+    )
+
+
+def _git_commit(root: Path, message: str) -> None:
+    """Atomic stage-all + commit. Iron-law: never raises (the bundle
+    operation succeeds even if git fails)."""
+    try:
+        _git_run(root, "add", "-A")
+        # --allow-empty so re-runs don't crash; --no-verify to skip hooks
+        # in the embedded repo (kaizen-md's parent gate doesn't apply here).
+        _git_run(root, "commit", "-m", message, "--allow-empty",
+                  "--no-verify", "--no-gpg-sign")
+    except (OSError, subprocess.TimeoutExpired):
+        pass
+
+
+def _commit_subject(action: str, bundle_name: str, *, extra: str = "") -> str:
+    """Deterministic commit-message subject. Same inputs → same subject."""
+    parts = [f"{action}", f"bundle({bundle_name})"]
+    if extra:
+        parts.append(extra)
+    return " ".join(parts)
+
+
+def _cmd_git_init(args) -> int:
+    if not _git_available():
+        sys.stderr.write("kaizen-bundle: `git` not found on PATH\n")
+        return 1
+    root = _superpowers_dir()
+    root.mkdir(parents=True, exist_ok=True)
+    if _is_git_repo(root):
+        print(f"git-init: already a repo at {root}")
+    else:
+        r = _git_run(root, "init", "-q")
+        if r.returncode != 0:
+            sys.stderr.write(f"kaizen-bundle: git init failed: {r.stderr}\n")
+            return 1
+        # Set up local identity if not already configured (test envs typically lack it)
+        _git_run(root, "config", "user.email", "kaizen-bundle@local")
+        _git_run(root, "config", "user.name", "kaizen-bundle")
+        print(f"git-init: created repo at {root}")
+    # Bootstrap commit if there's anything to commit (e.g. root README)
+    status = _git_run(root, "status", "--short")
+    if status.stdout.strip():
+        _git_commit(root, _commit_subject("bootstrap", "superpowers"))
+    return 0
+
+
 def _cmd_init(args) -> int:
     try:
         folder = bundle_path(args.date, args.project, args.sid)
@@ -91,6 +156,10 @@ def _cmd_init(args) -> int:
             "Each file should carry a one-line purpose at top.\n",
             encoding="utf-8",
         )
+    if getattr(args, "commit", False) and _git_available():
+        root = _superpowers_dir()
+        if _is_git_repo(root):
+            _git_commit(root, _commit_subject("init", folder.name))
     print(str(folder))
     return 0
 
@@ -159,6 +228,12 @@ def _cmd_add(args) -> int:
     folder.mkdir(parents=True, exist_ok=True)
     target = folder / src.name
     src.rename(target)
+    if getattr(args, "commit", False) and _git_available():
+        root = _superpowers_dir()
+        if _is_git_repo(root):
+            _git_commit(root, _commit_subject(
+                "add", folder.name, extra=f"file({src.name})"
+            ))
     print(str(target))
     return 0
 
@@ -178,7 +253,13 @@ def main(argv: list[str] | None = None) -> int:
 
     pi = sub.add_parser("init", help="scaffold a bundle folder")
     add_spec_args(pi)
+    pi.add_argument("--commit", action="store_true",
+                     help="auto-commit the new bundle in the local superpowers git repo")
     pi.set_defaults(fn=_cmd_init)
+
+    pgi = sub.add_parser("git-init",
+                          help="`git init` in the superpowers root (idempotent)")
+    pgi.set_defaults(fn=_cmd_git_init)
 
     pl = sub.add_parser("list", help="show bundles")
     pl.add_argument("--project", default=None, help="filter by project")
@@ -192,6 +273,8 @@ def main(argv: list[str] | None = None) -> int:
     pa = sub.add_parser("add", help="move a file INTO a bundle")
     pa.add_argument("--file", required=True)
     add_spec_args(pa)
+    pa.add_argument("--commit", action="store_true",
+                     help="auto-commit the moved file in the local superpowers git repo")
     pa.set_defaults(fn=_cmd_add)
 
     args = p.parse_args(argv)
