@@ -74,8 +74,8 @@ import _paths as _p  # noqa: E402
 # ─── Storage layout ──────────────────────────────────────────────────
 
 BLOBS_DIR = _p.KAIZEN_USER_DIR / "blobs"
-MANIFEST_FILE = _p.KAIZEN_USER_DIR / "manifest.json"
-MANIFEST_LOCK = _p.KAIZEN_USER_DIR / "manifest.lock"
+MANIFEST_FILE = _p.MANIFEST_JSON
+MANIFEST_LOCK = _p.MANIFEST_LOCK
 
 MANIFEST_VERSION = 1
 CHUNK_SIZE = 1 << 20  # 1 MiB streaming chunk

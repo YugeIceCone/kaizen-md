@@ -52,6 +52,7 @@ from typing import Iterable, Optional
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import _envelope  # noqa: E402
+import _paths as _p  # noqa: E402
 
 _emit = _envelope.emitter("kaizen-models", tool_version="1.0.0")
 
@@ -463,8 +464,10 @@ def cmd_web_search(args) -> int:
 
 
 def _profile_env_path() -> Path:
-    return Path(os.environ.get("KAIZEN_PROFILE_ENV")
-                or (Path.home() / ".claude" / ".kaizen" / "profile.env"))
+    env = os.environ.get("KAIZEN_PROFILE_ENV")
+    if env:
+        return Path(env)
+    return _p.DATA_DIR / "profile.env"
 
 
 def _set_env_lines(path: Path, updates: dict[str, str]) -> None:
