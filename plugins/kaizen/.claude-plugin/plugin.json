@@ -127,6 +127,8 @@
       "Bash(${CLAUDE_PLUGIN_ROOT}/bin/kaizen-test-density:*)",
       "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/prompt_event_diff.py:*)",
       "Bash(${CLAUDE_PLUGIN_ROOT}/bin/kaizen-prompt-event-diff:*)",
+      "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/unused_env.py:*)",
+      "Bash(${CLAUDE_PLUGIN_ROOT}/bin/kaizen-unused-env:*)",
       "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/schema_cli.py:*)",
       "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/scratch.py:*)",
       "Bash(bash ${CLAUDE_PLUGIN_ROOT}/bin/kaizen-scratch:*)",
