@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# kaizen-mermaid — parse Mermaid flowchart source into structured JSON.
+# Strict-name wrapper required by iron-law `bin-wrapper-per-cli`.
+
+set -euo pipefail
+
+_SCRIPT_REAL="$(readlink -f "${BASH_SOURCE[0]}" 2>/dev/null \
+  || python3 -c 'import os,sys; print(os.path.realpath(sys.argv[1]))' "${BASH_SOURCE[0]}")"
+_BIN_DIR="$(cd "$(dirname "$_SCRIPT_REAL")" && pwd)"
+PLUGIN_ROOT="$(cd "$_BIN_DIR/.." && pwd)"
+
+exec python3 "$PLUGIN_ROOT/skills/workflow/scripts/mermaid.py" "$@"
