@@ -23,21 +23,24 @@ def _flush_daemon_modules():
 
 class TestDaemonBrainAuditWire(unittest.TestCase):
 
-    def test_tick_records_brain_audit_action_when_disabled(self):
-        """When KAIZEN_DAEMON_BRAIN_AUDIT_DISABLE=1, the job still
-        executes its early-return path and is counted in actions."""
+    def test_tick_records_brain_jobs_actions(self):
+        """A single tick fires every wired brain job and counts it in
+        state["actions"]. Sandboxed: each job is force-disabled via env
+        so the test stays fast + deterministic — we only verify the
+        wiring, not the underlying jobs (those have their own tests)."""
         with tempfile.TemporaryDirectory() as td:
             env = {
                 "KAIZEN_DAEMON_STATE": td,
                 "KAIZEN_DAEMON_BRAIN_AUDIT_DISABLE": "1",
+                "KAIZEN_DAEMON_BRAIN_INDEX_DISABLE": "1",
                 "KAIZEN_DAEMON_INDEX_DISABLE": "1",
             }
             with patch.dict(os.environ, env, clear=False):
                 _flush_daemon_modules()
                 import daemon as d
 
-                # Patch out network + hygiene to keep the tick fast +
-                # deterministic — we only care about the brain-audit wire.
+                # Patch out network + hygiene — we're testing the wire,
+                # not the actual jobs.
                 with patch.object(d, "remote_sha", return_value=""), \
                      patch.object(d, "local_sha", return_value=""), \
                      patch.object(d, "run_hygiene_fix",
@@ -45,8 +48,10 @@ class TestDaemonBrainAuditWire(unittest.TestCase):
                      patch.object(d, "dir_hash", return_value=""):
                     state = d.tick()
 
-        self.assertIn("brain-audit", state.get("actions", {}))
-        self.assertGreaterEqual(state["actions"]["brain-audit"], 1)
+        actions = state.get("actions", {})
+        for key in ("brain-audit", "brain-index"):
+            self.assertIn(key, actions, f"{key} should be wired into tick()")
+            self.assertGreaterEqual(actions[key], 1)
 
 
 if __name__ == "__main__":
