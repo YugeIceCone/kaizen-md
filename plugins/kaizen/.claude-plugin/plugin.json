@@ -111,6 +111,8 @@
       "Bash(${CLAUDE_PLUGIN_ROOT}/bin/kaizen-turn-density:*)",
       "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/prompt_rhythm.py:*)",
       "Bash(${CLAUDE_PLUGIN_ROOT}/bin/kaizen-prompt-rhythm:*)",
+      "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/hook_cascade.py:*)",
+      "Bash(${CLAUDE_PLUGIN_ROOT}/bin/kaizen-hook-cascade:*)",
       "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/schema_cli.py:*)",
       "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/scratch.py:*)",
       "Bash(bash ${CLAUDE_PLUGIN_ROOT}/bin/kaizen-scratch:*)",
