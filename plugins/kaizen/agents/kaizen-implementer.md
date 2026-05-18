@@ -22,8 +22,8 @@ description: |
   </example>
 model: inherit
 color: green
-tools: ["Read", "Edit", "Write", "Glob", "Grep", "TaskCreate", "TaskUpdate", "TaskList", "TaskGet", "Bash(*)"]
-disallowedTools: ["Bash(git push *)", "Bash(git push)", "Bash(git reset *)", "Bash(git reset)", "Bash(git checkout *)", "Bash(git checkout)", "Bash(git merge *)", "Bash(git merge)", "Bash(git rebase *)", "Bash(git rebase)", "Bash(git clean *)", "Bash(git clean)", "Bash(git branch -D *)", "Bash(git branch -d *)", "Bash(git remote *)", "Bash(rm -rf *)", "Bash(rmdir *)", "Bash(curl *)", "Bash(wget *)"]
+tools: [Read, Edit, Write, Glob, Grep, TaskCreate, TaskUpdate, TaskList, TaskGet, Bash(git *), Bash(python *), Bash(python3 *), Bash(pytest *), Bash(ruff *), Bash(uv *), Bash(npm *), Bash(npx *), Bash(node *), Bash(bash *), Bash(cd *), Bash(ls *), Bash(cat *), Bash(mkdir *), Bash(touch *), Bash(mv *), Bash(cp *), Bash(echo *), Bash(grep *), Bash(find *), Bash(make *), Bash(./*), Bash(.venv/bin/* *)]
+disallowedTools: [Bash(git push *), Bash(git push), Bash(git reset *), Bash(git reset), Bash(git checkout *), Bash(git checkout), Bash(git merge *), Bash(git merge), Bash(git rebase *), Bash(git rebase), Bash(git clean *), Bash(git clean), Bash(git branch -D *), Bash(git branch -d *), Bash(git remote *), Bash(rm -rf *), Bash(rmdir *), Bash(curl *), Bash(wget *)]
 ---
 
 # kaizen-implementer
