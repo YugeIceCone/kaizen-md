@@ -28,15 +28,47 @@ BIN_LOOP = PLUGIN_ROOT / "bin" / "kaizen-loop"
 
 def _init_loop(tmpdir: Path, items: list[str] | None = None,
                max_iter: int = 10) -> Path:
-    """Initialize a loop in `tmpdir` and return the state path."""
-    args = ["bash", str(SETUP_SCRIPT), "--max-iterations", str(max_iter)]
+    """Initialize a loop in `tmpdir` and return the state path.
+
+    Direct file-write instead of invoking setup-ralph-loop.sh — the
+    shell script spawns bash + 2× python3-heredoc which races under
+    heavy parallel load (32-process suite). The script's behavior is
+    tested separately by TestBinWrapper + the kaizen-loop integration
+    tests; what THIS file exercises is the loop_state Python API
+    (add_item / list_pending / complete / status) which only needs a
+    well-formed state file to read.
+    """
+    state_dir = tmpdir / ".kaizen"
+    state_dir.mkdir(parents=True, exist_ok=True)
     if items:
-        for it in items:
-            args.extend(["--item", it])
+        pending = []
+        for i, raw in enumerate(items, 1):
+            if "|" in raw:
+                desc, verify = raw.split("|", 1)
+                pending.append({"id": f"i{i}", "desc": desc.strip(),
+                                  "verify": verify.strip() or None})
+            else:
+                pending.append({"id": f"i{i}", "desc": raw.strip(),
+                                  "verify": None})
+        body = json.dumps({"pending": pending, "completed": []}, indent=2)
     else:
-        args.append("seed prompt")
-    subprocess.run(args, cwd=tmpdir, check=True, capture_output=True)
-    return tmpdir / ".kaizen" / "loop.state.md"
+        body = "seed prompt"
+    state_path = state_dir / "loop.state.md"
+    state_path.write_text(
+        f"""---
+active: true
+iteration: 1
+session_id:
+last_turn_id: ""
+max_iterations: {max_iter}
+completion_promise: null
+started_at: "2026-05-19T00:00:00Z"
+---
+
+{body}
+""",
+        encoding="utf-8")
+    return state_path
 
 
 class _CwdMixin:

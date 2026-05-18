@@ -7,6 +7,7 @@ Run:
 from __future__ import annotations
 
 import datetime as dt
+import json
 import os
 import subprocess
 import sys
@@ -162,10 +163,38 @@ class _CwdMixin:
 
 
 def _init_ledger_loop(tmpdir: Path, items: list[str], promise: str = "DONE"):
-    args = ["bash", str(SETUP_SCRIPT), "--its", "10", "--promise", promise]
-    for it in items:
-        args.extend(["--item", it])
-    subprocess.run(args, cwd=tmpdir, check=True, capture_output=True)
+    """Direct file-write — same fix as test_loop_state._init_loop.
+    The shell script (setup-ralph-loop.sh) spawns bash + 2× python3
+    heredocs which races under 32-process parallel load. This file
+    tests the loop_state Python API (next_pending / fail_run / etc.),
+    not the shell script — direct seeding preserves test intent.
+    """
+    state_dir = tmpdir / ".kaizen"
+    state_dir.mkdir(parents=True, exist_ok=True)
+    pending = []
+    for i, raw in enumerate(items, 1):
+        if "|" in raw:
+            desc, verify = raw.split("|", 1)
+            pending.append({"id": f"i{i}", "desc": desc.strip(),
+                              "verify": verify.strip() or None})
+        else:
+            pending.append({"id": f"i{i}", "desc": raw.strip(), "verify": None})
+    body = json.dumps({"pending": pending, "completed": []}, indent=2)
+    promise_yaml = f'"{promise}"' if promise and promise != "null" else "null"
+    (state_dir / "loop.state.md").write_text(
+        f"""---
+active: true
+iteration: 1
+session_id:
+last_turn_id: ""
+max_iterations: 10
+completion_promise: {promise_yaml}
+started_at: "2026-05-19T00:00:00Z"
+---
+
+{body}
+""",
+        encoding="utf-8")
 
 
 class TestNextPending(_CwdMixin, unittest.TestCase):
