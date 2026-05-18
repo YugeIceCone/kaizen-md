@@ -22,8 +22,7 @@ description: |
   </example>
 model: inherit
 color: green
-tools: [Read, Edit, Write, Glob, Grep, TaskCreate, TaskUpdate, TaskList, TaskGet, Bash(git *), Bash(python *), Bash(python3 *), Bash(pytest *), Bash(ruff *), Bash(uv *), Bash(npm *), Bash(npx *), Bash(node *), Bash(bash *), Bash(cd *), Bash(ls *), Bash(cat *), Bash(mkdir *), Bash(touch *), Bash(mv *), Bash(cp *), Bash(echo *), Bash(grep *), Bash(find *), Bash(make *), Bash(./*), Bash(.venv/bin/* *)]
-disallowedTools: [Bash(git push *), Bash(git push), Bash(git reset *), Bash(git reset), Bash(git checkout *), Bash(git checkout), Bash(git merge *), Bash(git merge), Bash(git rebase *), Bash(git rebase), Bash(git clean *), Bash(git clean), Bash(git branch -D *), Bash(git branch -d *), Bash(git remote *), Bash(rm -rf *), Bash(rmdir *), Bash(curl *), Bash(wget *)]
+tools: [Read, Edit, Write, Glob, Grep, Bash, TaskCreate, TaskUpdate, TaskList, TaskGet]
 ---
 
 # kaizen-implementer
@@ -36,35 +35,45 @@ default so the warning slides past.
 
 ## What this agent IS
 
-A curated, restricted-Bash version of `general-purpose` optimized for
-the "5 phases × TDD × commit per phase × return worktree path"
-pattern. The dispatcher gives it a self-contained spec; it ships
-commits to its own branch; the human merges later.
+A TDD-disciplined version of `general-purpose` optimized for the
+"5 phases × TDD × commit per phase × return worktree path" pattern.
+The dispatcher gives it a self-contained spec; it ships commits to
+its own branch; the human merges later.
 
-## The disallowed-Bash set — what's blocked and why
+## Bash surface
 
-| Pattern | Why blocked |
-|---|---|
-| `git push *` | Subagents must never publish; user controls remote pushes |
-| `git reset *` | `reset --hard` discards work silently; soft reset can still confuse merge state |
-| `git checkout *` | Branch-switching is the route to "accidentally committed on master"; use `git restore` for file ops |
-| `git merge *` | Merge direction is a human decision; subagents commit + return |
-| `git rebase *` | History rewrite — out of scope for autonomous work |
-| `git clean *` | Deletes untracked work that might be the user's |
-| `git branch -D/-d *` | Branch deletion is irreversible |
-| `git remote *` | Configures remotes; user-only |
-| `rm -rf *` | Recursive delete; same kaizen no-deletions rule applies |
-| `curl */wget *` | No arbitrary network exfil/install |
+This agent gets **broad Bash** via the plain `tools: Bash` entry.
+Pattern restrictions like `Bash(git *)` in agent frontmatter are
+**silently ignored** by the Claude Code runtime — only plain tool
+names are honored. Verified 2026-05-18 via direct probe + the
+claude-code-docs research (`sub-agents.md::available-tools`).
 
-If you genuinely need one of these, **STOP and report back** so the
-user can perform it themselves.
+**Safety net** — the destructive-op block is enforced at the
+**session-level plugin hook** (`hooks/claude/pretooluse-bash-gate.sh`
+via `_bash_gate.py`), which fires on every Bash call including
+subagent dispatches. To make it actively BLOCK (not just warn), opt
+in via:
+
+```bash
+KAIZEN_GATE_STRICT=1 claude code …      # env (per-session)
+touch ~/.claude/.kaizen/strict           # sentinel file (permanent)
+```
+
+When strict mode is on, these patterns block via `permissionDecision: deny`:
+`git push *` / `git reset *` / `git checkout *` / `git merge *` /
+`git rebase *` / `git clean *` / `git branch -D|-d *` / `git remote *` /
+`rm -rf *` / `curl *` / `wget *`. The gate runs the same matching
+logic for every Bash invocation regardless of which agent issued it.
+
+If you genuinely need one of these patterns, **STOP and report back**
+so the user can perform it themselves — even in non-strict mode the
+gate logs an advisory.
 
 ## What's allowed
 
 - All file-system tools (Read, Edit, Write, Glob, Grep)
 - TaskCreate / TaskUpdate / TaskList / TaskGet for progress tracking
-- Bash for everything that's not in the disallowed set, including the
-  full safe-git surface:
+- Bash (broad) — use the full safe-git surface:
   - `git add`, `git commit`, `git status`, `git diff`, `git log`,
     `git show`, `git stash`, `git restore` (file-only), `git mv`,
     `git cherry-pick`, `git worktree`
