@@ -183,19 +183,34 @@ class TestStdinJsonAppend(_LearnBase):
 
 class TestAppendOnlyInvariant(_LearnBase):
     """The point: NEVER read the existing log. Verified by size-delta on
-    a seeded log (same proof pattern as kaizen-progress)."""
+    a seeded log (same proof pattern as kaizen-progress).
+
+    Seeds via direct file-write (1001 subprocess calls would dominate
+    the parallel-suite wall clock — ~30s of pure python cold-start).
+    The CRITICAL append (the one being measured) IS via the CLI — that's
+    the actual code path verified to be append-only.
+    """
 
     def test_append_cost_constant(self):
-        # Seed 1000 entries
-        for i in range(1000):
-            self._run("append",
-                       "--category", "roundtrips",
-                       "--problem", f"problem {i}" * 5,
-                       "--solution", f"solution {i}" * 5,
-                       "--pattern", f"pattern {i}" * 5)
+        # Seed 1000 fake-but-realistic JSONL lines directly to disk —
+        # the bytes have to LOOK like real entries (the test asserts
+        # >50KB before the measured append). 100B per line × 1000 = 100KB.
+        seed_line = json.dumps({
+            "id": "deadbeef",
+            "ts": "2026-05-19T00:00:00Z",
+            "promotion_status": "pending",
+            "category": "roundtrips",
+            "problem": "x" * 20,
+            "solution": "y" * 20,
+            "pattern": "z" * 20,
+        }) + "\n"
+        with self.log.open("w", encoding="utf-8") as f:
+            for _ in range(1000):
+                f.write(seed_line)
         size_before = self.log.stat().st_size
         self.assertGreater(size_before, 50_000)
-        # One more append
+        # The MEASURED append — via the actual CLI (this is what we're
+        # asserting is append-only). One subprocess call instead of 1001.
         self._run("append",
                    "--category", "wasteful_tokens",
                    "--problem", "extra", "--solution", "x", "--pattern", "y")
