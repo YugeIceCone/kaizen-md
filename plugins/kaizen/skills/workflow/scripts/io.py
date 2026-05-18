@@ -158,15 +158,35 @@ async def _run_batch(ops: list[dict]) -> list[dict]:
 
 
 def _cmd_read(args) -> int:
-    r = _read_one(args.file_path)
-    if args.json:
-        print(json.dumps(r))
-    else:
-        if r["ok"]:
-            print(r["content"], end="")
+    paths = args.file_path
+    # Back-compat: single positional arg → identical to pre-multi-arg behavior
+    # (raw content to stdout; --json returns ONE envelope, not a length-1 array).
+    if len(paths) == 1:
+        r = _read_one(paths[0])
+        if args.json:
+            print(json.dumps(r))
         else:
-            sys.stderr.write(f"[kaizen-io read] {r['error']}\n")
-    return 0 if r["ok"] else 1
+            if r["ok"]:
+                print(r["content"], end="")
+            else:
+                sys.stderr.write(f"[kaizen-io read] {r['error']}\n")
+        return 0 if r["ok"] else 1
+
+    # Multi-arg: parallel reads via _run_batch (same primitive `batch` uses).
+    ops = [{"op": "read", "file_path": p} for p in paths]
+    results = asyncio.run(_run_batch(ops))
+    if args.json:
+        print(json.dumps(results))
+    else:
+        # Concatenated form with path separators — readable for human consumers
+        # and for "feed N files into one Read call" workflows.
+        for r in results:
+            print(f"=== {r.get('file_path', '?')} ===")
+            if r.get("ok"):
+                print(r.get("content", ""), end="")
+            else:
+                print(f"[error] {r.get('error', 'unknown')}")
+    return 0 if all(r.get("ok") for r in results) else 1
 
 
 def _cmd_write(args) -> int:
@@ -214,9 +234,14 @@ def main(argv=None) -> int:
     )
     sub = p.add_subparsers(dest="cmd", required=True)
 
-    pr = sub.add_parser("read", help="single read")
-    pr.add_argument("file_path")
-    pr.add_argument("--json", action="store_true")
+    pr = sub.add_parser("read",
+                          help="read 1+ files (parallel when N>1; back-compat "
+                               "single-arg returns raw content)")
+    pr.add_argument("file_path", nargs="+",
+                     help="one or more file paths (parallel reads when 2+)")
+    pr.add_argument("--json", action="store_true",
+                     help="JSON output (single envelope when N=1, "
+                          "array of envelopes when N>1)")
     pr.set_defaults(func=_cmd_read)
 
     pw = sub.add_parser("write", help="single atomic write")
