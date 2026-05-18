@@ -169,6 +169,11 @@
             "type": "command",
             "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/claude/dxm-event.sh PostToolUse",
             "timeout": 2
+          },
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/claude/posttool-roundtrip-detect.sh",
+            "timeout": 3
           }
         ]
       }
