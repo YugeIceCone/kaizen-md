@@ -1299,6 +1299,58 @@ def _cmd_assess(args) -> int:
     return 0
 
 
+def _maybe_auto_bridge(fp: Path, *, outcome: str, force: bool) -> dict | None:
+    """Auto-bridge handoff durables to brain when appropriate.
+
+    Per Task #40 brainstorm item #4 — closes the mental-load gap
+    between auto-finalize and brain capture. Gating:
+
+      - Triggered by `force=True` (--auto-bridge flag) OR
+        `KAIZEN_HANDOFF_AUTO_BRIDGE=1` env (per-session)
+      - Only fires when `outcome == "SUCCEEDED"` (high-confidence —
+        partial / failed outcomes likely have non-durable noise mixed in)
+      - Brain.py subprocess failures NEVER fail the parent finalize
+        (errors counted in `failed`, finalize continues)
+
+    Returns:
+      - None when not triggered
+      - {"skipped": True, "reason": "..."} when triggered but outcome filter blocks
+      - {"applied": int, "failed": int, "total": int, "rows": [...]} on real run
+    """
+    import os as _os
+    auto = force or _os.environ.get("KAIZEN_HANDOFF_AUTO_BRIDGE") == "1"
+    if not auto:
+        return None
+    if outcome != "SUCCEEDED":
+        return {"skipped": True,
+                "reason": f"outcome {outcome} != SUCCEEDED — bridge gated"}
+    candidates = _core.extract_brain_candidates(fp.read_text(encoding="utf-8"))
+    if not candidates:
+        return {"applied": 0, "failed": 0, "total": 0,
+                "reason": "no durable candidates", "rows": []}
+    brain_py = (_core.PLUGIN_ROOT / "skills" / "workflow"
+                 / "scripts" / "brain.py")
+    rows = []
+    applied = 0
+    failed = 0
+    for c in candidates:
+        try:
+            r = subprocess.run(
+                ["python3", str(brain_py), "capture", c["text"]],
+                capture_output=True, text=True, timeout=30,
+            )
+            captured = r.returncode == 0
+        except (subprocess.SubprocessError, OSError):
+            captured = False
+        if captured:
+            applied += 1
+        else:
+            failed += 1
+        rows.append({**c, "captured": captured})
+    return {"applied": applied, "failed": failed,
+            "total": len(candidates), "rows": rows}
+
+
 def _cmd_auto_finalize(args) -> int:
     """Agent-assigned Step 4 of the handoff create flow — no AskUserQuestion.
 
@@ -1390,6 +1442,12 @@ def _cmd_auto_finalize(args) -> int:
         "dxm_parent_session": args.parent_session,
         "dxm_linked": dxm_linked,
     }
+    # Optional: auto-bridge durables to brain. Never fails the finalize.
+    bridge_result = _maybe_auto_bridge(
+        fp, outcome=args.outcome, force=getattr(args, "auto_bridge", False),
+    )
+    if bridge_result is not None:
+        result["auto_bridge"] = bridge_result
     _dxm_emit.emit_subcommand_complete(
         "handoff", "auto-finalize",
         {"outcome": args.outcome, "status": args.status,
@@ -2030,6 +2088,14 @@ def main(argv: Optional[list[str]] = None) -> int:
         "--parent-session", default=None,
         help="when set, calls `kaizen-dxm link --parent PARENT --child <session>` "
              "to record cross-session continuity in dxm's sessions.jsonl",
+    )
+    s_auto.add_argument(
+        "--auto-bridge", action="store_true",
+        help="after finalize, run bridge --apply on the YAML to capture "
+             "durable learnings (decisions / findings / worked / failed) "
+             "into the brain. Gated to outcome=SUCCEEDED only — high-"
+             "confidence finalizations. Subprocess failures don't block "
+             "the finalize. Also honors KAIZEN_HANDOFF_AUTO_BRIDGE=1 env.",
     )
     s_auto.add_argument("--json", action="store_true")
     s_auto.set_defaults(func=_cmd_auto_finalize)
