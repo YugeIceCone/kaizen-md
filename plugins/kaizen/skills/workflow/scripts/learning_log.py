@@ -26,6 +26,7 @@ import argparse
 import json
 import os
 import secrets
+import subprocess
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
@@ -33,6 +34,21 @@ from pathlib import Path
 _VALID_CATEGORIES = frozenset({
     "wasteful_tokens", "roundtrips", "anti_patterns",
 })
+
+
+def _detect_branch() -> str | None:
+    """Resolve current git branch via cwd. None when not in a repo."""
+    try:
+        r = subprocess.run(
+            ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+            capture_output=True, text=True, timeout=5,
+        )
+        if r.returncode == 0:
+            branch = r.stdout.strip()
+            return branch or None
+    except (OSError, subprocess.TimeoutExpired):
+        pass
+    return None
 
 
 def _learning_dir() -> Path:
@@ -111,6 +127,13 @@ def _cmd_append(args: argparse.Namespace) -> int:
             payload["source_commits"] = list(args.source_commit)
         if args.reference:
             payload["references"] = list(args.reference)
+        # Branch capture: explicit --branch wins; else auto-detect from cwd.
+        if args.branch:
+            payload["branch"] = args.branch
+        else:
+            detected = _detect_branch()
+            if detected:
+                payload["branch"] = detected
     err = _validate(payload)
     if err:
         sys.stderr.write(f"learning_log: {err}\n")
@@ -141,6 +164,8 @@ def _cmd_list(args: argparse.Namespace) -> int:
             continue
     if args.category:
         entries = [e for e in entries if e.get("category") == args.category]
+    if args.branch:
+        entries = [e for e in entries if e.get("branch") == args.branch]
     if args.json:
         print(json.dumps(entries, indent=2))
     else:
@@ -178,6 +203,9 @@ def main(argv: list[str] | None = None) -> int:
                      help="short SHA of commit(s) that landed the solution (repeatable)")
     pa.add_argument("--reference", action="append", default=[],
                      help="path:line reference to code (repeatable)")
+    pa.add_argument("--branch", default=None,
+                     help="override the auto-detected git branch (default: "
+                          "current branch via git rev-parse on cwd)")
     pa.add_argument("--stdin", action="store_true",
                      help="read JSON payload from stdin instead of CLI flags")
     pa.set_defaults(fn=_cmd_append)
@@ -185,6 +213,8 @@ def main(argv: list[str] | None = None) -> int:
     pl = sub.add_parser("list", help="show entries")
     pl.add_argument("--category", choices=sorted(_VALID_CATEGORIES),
                      default=None, help="filter by category")
+    pl.add_argument("--branch", default=None,
+                     help="filter by git branch (entries whose `branch` field matches)")
     pl.add_argument("--json", action="store_true")
     pl.set_defaults(fn=_cmd_list)
 
