@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "kaizen brainstorm idea row",
+  "type": "object",
+  "required": [
+    "id",
+    "theme",
+    "idea",
+    "confidence",
+    "auto_bucket",
+    "classification_confidence",
+    "rationale",
+    "rubric_version"
+  ],
+  "properties": {
+    "id":              {"type": "integer", "minimum": 1},
+    "theme":           {"type": "string"},
+    "idea":            {"type": "string", "minLength": 1},
+    "confidence":      {"type": "number", "minimum": 0.0, "maximum": 1.0,
+                        "description": "LLM self-rated 0.0-1.0; the primary signal driving bucket choice."},
+    "auto_bucket":     {"enum": ["KEEP", "YAGNI", "RADICAL", "PHASE_2", "RESEARCH", "NEEDS_AGENT"]},
+    "classification_confidence": {"type": "number", "minimum": 0.0, "maximum": 1.0,
+                        "description": "Rubric's confidence in its own bucket assignment. 1.0 deterministic, confidence_threshold (0.85) when fallback."},
+    "rationale":       {"type": "string"},
+    "rubric_version":  {"type": "string", "description": "Matches version: in rubric YAML."},
+    "manual_bucket":   {"oneOf": [{"enum": ["KEEP", "YAGNI", "RADICAL", "PHASE_2", "RESEARCH"]}, {"type": "null"}]},
+    "tools":           {"type": "array", "items": {"type": "string"}},
+    "effort_estimate": {"enum": ["XS", "S", "M", "L", "XL"]},
+    "yagni":           {"type": "boolean"},
+    "radical":         {"type": "boolean"},
+    "novelty_score":   {"type": "number", "minimum": 0.0, "maximum": 1.0},
+    "trigger_present": {"type": "boolean"},
+    "prose":           {"type": "string"},
+    "round":           {"type": "integer", "minimum": 1}
+  },
+  "additionalProperties": false
+}
