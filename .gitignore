@@ -33,6 +33,11 @@ gwtest-*/
 # the per-dir `.kaizen/.gitignore` (re-ignores under the broad
 # workflow/** whitelist there). Kept local to avoid double-rules.
 
-# Nested git repo at docs/superpowers/ — managed via kaizen-bundle git-init
-# Embedded .git/ is tracked by the nested repo, not the parent.
-docs/superpowers/.git
+# docs/ — per-author session-bundle working content (managed by
+# kaizen-bundle). Each project gets its own docs/superpowers/ via the
+# plugin's `_superpowers_dir()` default (cwd/docs/superpowers), so we
+# don't ship the kaizen-md author's bundles to plugin consumers.
+# The nested `docs/superpowers/.git` (managed via kaizen-bundle git-init)
+# is the system-of-record for these bundles — push it to its own remote
+# if you want them shareable separately from the parent repo.
+docs/
