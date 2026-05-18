@@ -46,6 +46,24 @@ _ROOT_DOCS = frozenset({
     "ATTRIBUTIONS.md", "CONTRIBUTING.md",
 })
 
+# Umbrella subcommands — consolidated-CLI-parent pattern. Each maps to
+# an existing sibling bin (still callable directly for back-compat).
+# Per user 2026-05-18 "consolidate docs related systems/logic under
+# this new one."
+UMBRELLA_BINS: dict[str, str] = {
+    "frontmatter":    "kaizen-frontmatter",
+    "links":          "kaizen-md-link-rot",
+    "dupes":          "kaizen-md-dupes",
+    "whitespace":     "kaizen-md-whitespace",
+    "heading-depth":  "kaizen-md-heading-depth",
+}
+
+
+def resolve_umbrella_bin(subcommand: str) -> str | None:
+    """Pure compute — return the sibling bin name for an umbrella
+    subcommand, or None if unknown."""
+    return UMBRELLA_BINS.get(subcommand)
+
 
 def _plugin_root() -> Path:
     env = os.environ.get("KAIZEN_PLUGIN_ROOT")
@@ -161,10 +179,29 @@ def _cmd_list(args) -> int:
     return 0
 
 
+def _cmd_umbrella(args, subcommand: str) -> int:
+    """Dispatch an umbrella subcommand to its sibling bin. Passes raw
+    args through (subparser uses parse_known_args via REMAINDER)."""
+    import subprocess
+    bin_name = resolve_umbrella_bin(subcommand)
+    if bin_name is None:
+        sys.stderr.write(f"kaizen-plugin-docs: unknown umbrella: {subcommand}\n")
+        return 1
+    bin_path = Path(__file__).resolve().parent.parent.parent.parent / "bin" / bin_name
+    if not bin_path.is_file():
+        sys.stderr.write(f"kaizen-plugin-docs: bin not found: {bin_path}\n")
+        return 1
+    rest = getattr(args, "rest", []) or []
+    return subprocess.run(["bash", str(bin_path), *rest]).returncode
+
+
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(
         prog="kaizen-plugin-docs",
-        description="Utility surface tracker for plugins/kaizen/ docs.",
+        description="Utility surface tracker for plugins/kaizen/ docs. "
+                    "Native subcommands (scan/list) + umbrella dispatchers "
+                    "to sibling docs bins (frontmatter/links/dupes/whitespace/"
+                    "heading-depth).",
     )
     sub = p.add_subparsers(dest="command")
 
@@ -179,6 +216,16 @@ def main(argv: list[str] | None = None) -> int:
                      help="filter by kind")
     pl.add_argument("--json", action="store_true")
     pl.set_defaults(fn=_cmd_list)
+
+    # Umbrella subcommands — dispatch to sibling bins.
+    for subname, bin_name in UMBRELLA_BINS.items():
+        u = sub.add_parser(
+            subname,
+            help=f"→ {bin_name} (umbrella dispatcher; passes args through)",
+        )
+        u.add_argument("rest", nargs=argparse.REMAINDER,
+                        help="args forwarded to the underlying bin")
+        u.set_defaults(fn=lambda a, _s=subname: _cmd_umbrella(a, _s))
 
     args = p.parse_args(argv)
     if not getattr(args, "fn", None):
