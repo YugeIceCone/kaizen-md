@@ -29,6 +29,7 @@ import re
 import shutil
 import subprocess
 import sys
+from datetime import UTC, datetime
 from pathlib import Path
 
 _DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
@@ -94,17 +95,63 @@ def _git_run(root: Path, *args: str) -> subprocess.CompletedProcess:
     )
 
 
-def _git_commit(root: Path, message: str) -> None:
-    """Atomic stage-all + commit. Iron-law: never raises (the bundle
-    operation succeeds even if git fails)."""
+def _git_commit(root: Path, message: str) -> str | None:
+    """Atomic stage-all + commit + write patch-journal entry. Returns
+    the new commit's short SHA, or None on failure. Iron-law: never
+    raises (the bundle operation succeeds even if git fails)."""
     try:
         _git_run(root, "add", "-A")
         # --allow-empty so re-runs don't crash; --no-verify to skip hooks
         # in the embedded repo (kaizen-md's parent gate doesn't apply here).
-        _git_run(root, "commit", "-m", message, "--allow-empty",
-                  "--no-verify", "--no-gpg-sign")
+        commit_r = _git_run(root, "commit", "-m", message, "--allow-empty",
+                             "--no-verify", "--no-gpg-sign")
+        if commit_r.returncode != 0:
+            return None
+        # Use full SHA so `commit_sha[:8]` yields exactly 8 chars (git's
+        # default --short is 7 chars, which would truncate to 7).
+        sha_r = _git_run(root, "rev-parse", "HEAD")
+        if sha_r.returncode != 0:
+            return None
+        sha = sha_r.stdout.strip()
+        _write_patch_journal(root, sha)
+        return sha
     except (OSError, subprocess.TimeoutExpired):
-        pass
+        return None
+
+
+def _backup_dir() -> Path:
+    """Patch-journal backup root. Env-overridable via KAIZEN_BACKUP_DIR."""
+    env = os.environ.get("KAIZEN_BACKUP_DIR")
+    if env:
+        return Path(env) / "superpowers"
+    return Path.home() / ".claude" / ".kaizen" / "backups" / "superpowers"
+
+
+def _write_patch_journal(root: Path, commit_sha: str) -> Path | None:
+    """Write `git format-patch -1 <sha>` to <KAIZEN_BACKUP_DIR>/
+    superpowers/patches/<UTC>-<sha8>.patch + append manifest row.
+
+    Never raises (host op must continue).
+    """
+    try:
+        r = _git_run(root, "format-patch", "-1", commit_sha, "--stdout")
+        if r.returncode != 0 or not r.stdout.strip():
+            return None
+        patches_dir = _backup_dir() / "patches"
+        patches_dir.mkdir(parents=True, exist_ok=True)
+        ts = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
+        sha8 = commit_sha[:8]
+        patch_path = patches_dir / f"{ts}-{sha8}.patch"
+        patch_path.write_text(r.stdout, encoding="utf-8")
+        manifest = _backup_dir() / "manifest.jsonl"
+        manifest.parent.mkdir(parents=True, exist_ok=True)
+        with manifest.open("a", encoding="utf-8") as f:
+            f.write(json.dumps({
+                "ts": ts, "sha": commit_sha, "path": str(patch_path),
+            }) + "\n")
+        return patch_path
+    except (OSError, subprocess.TimeoutExpired):
+        return None
 
 
 def _commit_subject(action: str, bundle_name: str, *, extra: str = "") -> str:
@@ -156,7 +203,9 @@ def _cmd_init(args) -> int:
             "Each file should carry a one-line purpose at top.\n",
             encoding="utf-8",
         )
-    if getattr(args, "commit", False) and _git_available():
+    # Auto-commit is the DEFAULT (per user 2026-05-18: "automate the commits").
+    # Opt-out via --no-commit.
+    if not getattr(args, "no_commit", False) and _git_available():
         root = _superpowers_dir()
         if _is_git_repo(root):
             _git_commit(root, _commit_subject("init", folder.name))
@@ -227,8 +276,10 @@ def _cmd_add(args) -> int:
         return 1
     folder.mkdir(parents=True, exist_ok=True)
     target = folder / src.name
-    src.rename(target)
-    if getattr(args, "commit", False) and _git_available():
+    # shutil.move handles cross-filesystem moves (Path.rename would raise
+    # OSError(EXDEV) when src is on tmpfs and target on home, etc.)
+    shutil.move(str(src), str(target))
+    if not getattr(args, "no_commit", False) and _git_available():
         root = _superpowers_dir()
         if _is_git_repo(root):
             _git_commit(root, _commit_subject(
@@ -236,6 +287,34 @@ def _cmd_add(args) -> int:
             ))
     print(str(target))
     return 0
+
+
+def _cmd_backup(args) -> int:
+    """`backup list` — show patch-journal entries from manifest.jsonl."""
+    if args.backup_action == "list":
+        manifest = _backup_dir() / "manifest.jsonl"
+        if not manifest.is_file():
+            print("[]" if args.json else "")
+            return 0
+        rows = []
+        for line in manifest.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                rows.append(json.loads(line))
+            except json.JSONDecodeError:
+                continue
+        if args.json:
+            print(json.dumps(rows, indent=2))
+        else:
+            for r in rows:
+                print(f"{r.get('ts', '?')}  {r.get('sha', '?'):<10}  "
+                       f"{r.get('path', '?')}")
+        return 0
+    sys.stderr.write(f"kaizen-bundle backup: unknown action "
+                       f"{args.backup_action!r}\n")
+    return 1
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -251,10 +330,10 @@ def main(argv: list[str] | None = None) -> int:
         parser.add_argument("--sid", default=None,
                              help="session UUID (full or short); optional")
 
-    pi = sub.add_parser("init", help="scaffold a bundle folder")
+    pi = sub.add_parser("init", help="scaffold a bundle folder (auto-commits by default)")
     add_spec_args(pi)
-    pi.add_argument("--commit", action="store_true",
-                     help="auto-commit the new bundle in the local superpowers git repo")
+    pi.add_argument("--no-commit", action="store_true",
+                     help="skip the auto-commit (default: commit via local superpowers git)")
     pi.set_defaults(fn=_cmd_init)
 
     pgi = sub.add_parser("git-init",
@@ -270,12 +349,18 @@ def main(argv: list[str] | None = None) -> int:
     add_spec_args(pp)
     pp.set_defaults(fn=_cmd_path)
 
-    pa = sub.add_parser("add", help="move a file INTO a bundle")
+    pa = sub.add_parser("add", help="move a file INTO a bundle (auto-commits by default)")
     pa.add_argument("--file", required=True)
     add_spec_args(pa)
-    pa.add_argument("--commit", action="store_true",
-                     help="auto-commit the moved file in the local superpowers git repo")
+    pa.add_argument("--no-commit", action="store_true",
+                     help="skip the auto-commit (default: commit via local superpowers git)")
     pa.set_defaults(fn=_cmd_add)
+
+    pb = sub.add_parser("backup", help="patch-journal backup ops")
+    pb.add_argument("backup_action", choices=["list"],
+                     help="action — currently `list` only")
+    pb.add_argument("--json", action="store_true")
+    pb.set_defaults(fn=_cmd_backup)
 
     args = p.parse_args(argv)
     if not getattr(args, "fn", None):

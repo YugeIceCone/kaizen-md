@@ -28,9 +28,13 @@ class _GitBundleBase(unittest.TestCase):
         self.tmp = Path(self._tmp.name)
         self.root = self.tmp / "superpowers"
         self.root.mkdir()
+        # Sandbox BOTH the superpowers dir AND the backup dir to prevent
+        # patch-journal pollution of the real ~/.claude/.kaizen/backups/.
         self._orig = os.environ.get("KAIZEN_SUPERPOWERS_DIR")
+        self._orig_backup = os.environ.get("KAIZEN_BACKUP_DIR")
         os.environ["KAIZEN_SUPERPOWERS_DIR"] = str(self.root)
-        # Local git identity (tests run in arbitrary env)
+        os.environ["KAIZEN_BACKUP_DIR"] = str(self.tmp / "backup")
+        # Local git identity
         self._orig_email = os.environ.get("GIT_AUTHOR_EMAIL")
         self._orig_name = os.environ.get("GIT_AUTHOR_NAME")
         os.environ.setdefault("GIT_AUTHOR_EMAIL", "t@t")
@@ -41,6 +45,7 @@ class _GitBundleBase(unittest.TestCase):
     def tearDown(self):
         self._tmp.cleanup()
         for var, orig in (("KAIZEN_SUPERPOWERS_DIR", self._orig),
+                           ("KAIZEN_BACKUP_DIR", self._orig_backup),
                            ("GIT_AUTHOR_EMAIL", self._orig_email),
                            ("GIT_AUTHOR_NAME", self._orig_name)):
             if orig is None:
@@ -90,42 +95,39 @@ class TestGitInit(_GitBundleBase):
 
 
 class TestInitWithAutoCommit(_GitBundleBase):
-    def test_init_commit_flag_creates_per_bundle_commit(self):
+    """Auto-commit is now DEFAULT (per user 2026-05-18 'automate the commits')."""
+
+    def test_init_commits_by_default(self):
         self._run("git-init")
         r = self._run("init", "--date", "2026-05-18",
-                       "--project", "kaizen-md", "--sid", "abc",
-                       "--commit")
+                       "--project", "kaizen-md", "--sid", "abc")
         self.assertEqual(r.returncode, 0, r.stderr)
         log = self._git("log", "--oneline")
-        # Expect the bundle-init commit subject to mention the bundle name
         self.assertIn("2026-05-18-kaizen-md-abc", log.stdout)
 
-    def test_init_without_commit_does_not_create_commit(self):
+    def test_no_commit_flag_skips(self):
         self._run("git-init")
-        # Take baseline log count
         before = len(self._git("log", "--oneline").stdout.splitlines())
         self._run("init", "--date", "2026-05-18",
-                   "--project", "kaizen-md", "--sid", "abc")
+                   "--project", "kaizen-md", "--sid", "abc",
+                   "--no-commit")
         after = len(self._git("log", "--oneline").stdout.splitlines())
         self.assertEqual(after, before,
-                          "init without --commit must not add commits")
+                          "--no-commit must skip the auto-commit")
 
 
 class TestAddWithAutoCommit(_GitBundleBase):
     def test_add_commit_creates_commit_referencing_filename(self):
         self._run("git-init")
         self._run("init", "--date", "2026-05-18",
-                   "--project", "kaizen-md", "--sid", "abc", "--commit")
-        # Loose file in tempdir
+                   "--project", "kaizen-md", "--sid", "abc")
         src = self.tmp / "spec.md"
         src.write_text("# spec\n")
         r = self._run("add", "--file", str(src),
                        "--date", "2026-05-18",
-                       "--project", "kaizen-md", "--sid", "abc",
-                       "--commit")
+                       "--project", "kaizen-md", "--sid", "abc")
         self.assertEqual(r.returncode, 0, r.stderr)
         log = self._git("log", "--oneline")
-        # Commit should mention the file name
         self.assertIn("spec.md", log.stdout)
 
 
@@ -149,7 +151,7 @@ class TestCommitDeterministic(_GitBundleBase):
     def test_subject_format_includes_bundle_name(self):
         self._run("git-init")
         self._run("init", "--date", "2026-05-18",
-                   "--project", "kaizen-md", "--sid", "abc", "--commit")
+                   "--project", "kaizen-md", "--sid", "abc")
         log = self._git("log", "-1", "--format=%s")
         subject = log.stdout.strip()
         # Should be a deterministic, parseable format
