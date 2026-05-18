@@ -54,7 +54,7 @@ __all__ = [
 
 _EXCLUDED_DIR_RE = re.compile(
     r"(^|/)(target|node_modules|\.venv|__pycache__|dist|build|\.git|"
-    r"\.cargo|\.cache)(/|$)"
+    r"\.cargo|\.cache|\.kaizen)(/|$)"
 )
 _EXCLUDED_FILE_RE = re.compile(r"\.(swp|tmp|bak|pyc)$|~$")
 

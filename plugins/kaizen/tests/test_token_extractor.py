@@ -64,6 +64,15 @@ class TestExclusions(unittest.TestCase):
     def test_normal_src_extractable(self):
         self.assertTrue(is_extractable(Path("src/foo.rs")))
 
+    def test_dot_kaizen_root_skipped(self):
+        self.assertFalse(is_extractable(Path(".kaizen/workflow/backlog.json")))
+
+    def test_dot_kaizen_progress_skipped(self):
+        self.assertFalse(is_extractable(Path(".kaizen/workflow/progress.md")))
+
+    def test_dot_kaizen_nested_skipped(self):
+        self.assertFalse(is_extractable(Path("repo/.kaizen/state.yaml")))
+
 
 class TestLFNormalization(unittest.TestCase):
     """V23 — line-ending normalization for cross-platform blake3 stability."""
