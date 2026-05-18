@@ -220,7 +220,7 @@
     },
     {
       "id": "BK-012",
-      "section": "next_up",
+      "section": "done",
       "title": "Brainstorming skill — add per-idea confidence score + deferral threshold",
       "ref": null,
       "probe": "/kaizen:brainstorming today produces a flat list of ideas; no quantitative basis for deferral. Should expose a 0.0-1.0 confidence per idea + a configurable threshold for KEEP vs Phase 2 vs YAGNI cutoffs.",
@@ -229,7 +229,7 @@
       "created": "2026-05-18",
       "started_at": null,
       "committed": null,
-      "committed_at": null,
+      "committed_at": "2026-05-18T02:10:21Z",
       "parked_reason": null,
       "probe_output": null
     },
@@ -265,6 +265,63 @@
         "phase-2",
         "yagni-deferred",
         "trigger-gated"
+      ],
+      "created": "2026-05-18",
+      "started_at": null,
+      "committed": null,
+      "committed_at": null,
+      "parked_reason": null,
+      "probe_output": null
+    },
+    {
+      "id": "BK-015",
+      "section": "parked",
+      "title": "Brainstorm signal: novelty_score (Jaccard idea-overlap)",
+      "ref": "docs/superpowers/specs/2026-05-18-brainstorming-confidence-score-design.md",
+      "probe": "Phase 2 deferral from BK-012 spec §row 3 — implement Jaccard-overlap signal so the rubric can flag near-dup ideas during the score pass",
+      "verify": "Trigger: first duplicate-idea complaint OR ≥2 rubric-tuning sessions where bucket distribution warrants overlap discount. Verify: novelty_score in signals dict + new rubric rule + paired test for the dup-collapse case.",
+      "tags": [
+        "brainstorm",
+        "phase-2",
+        "signals"
+      ],
+      "created": "2026-05-18",
+      "started_at": null,
+      "committed": null,
+      "committed_at": null,
+      "parked_reason": null,
+      "probe_output": null
+    },
+    {
+      "id": "BK-016",
+      "section": "parked",
+      "title": "kaizen-brainstorm stats subcommand (bucket distribution drift)",
+      "ref": "docs/superpowers/specs/2026-05-18-brainstorming-confidence-score-design.md",
+      "probe": "Phase 2 deferral from BK-012 spec §row 16 — add stats subcommand that reports bucket distribution + drift across N JSONLs",
+      "verify": "Trigger: bucket distribution shifts ≥20% across 3 brainstorms. Verify: stats subcommand returns per-bucket counts + delta vs baseline + paired tests for distribution-rollup math.",
+      "tags": [
+        "brainstorm",
+        "phase-2",
+        "cli"
+      ],
+      "created": "2026-05-18",
+      "started_at": null,
+      "committed": null,
+      "committed_at": null,
+      "parked_reason": null,
+      "probe_output": null
+    },
+    {
+      "id": "BK-017",
+      "section": "parked",
+      "title": "Pre-commit gate nudge: *-brainstorm.md without sibling .jsonl",
+      "ref": "docs/superpowers/specs/2026-05-18-brainstorming-confidence-score-design.md",
+      "probe": "Phase 2 deferral from BK-012 spec §row 18 — gate nudges when a brainstorm.md lands without its companion .jsonl",
+      "verify": "Trigger: first real 'I forgot to score it' incident. Verify: new gate check in skills/iron-laws or commit-msg hook that warns when *-brainstorm.md staged without sibling .jsonl.",
+      "tags": [
+        "brainstorm",
+        "phase-2",
+        "gate"
       ],
       "created": "2026-05-18",
       "started_at": null,

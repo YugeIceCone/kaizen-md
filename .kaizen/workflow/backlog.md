@@ -10,11 +10,11 @@ _(none)_
 
 ## Next up
 
-- [ ] **BK-012** Brainstorming skill — add per-idea confidence score + deferral threshold — probe: `/kaizen:brainstorming today produces a flat list of ideas; no quantitative basis for deferral. Should expose a 0.0-1.0 confidence per idea + a configurable threshold for KEEP vs Phase 2 vs YAGNI cutoffs.` — verify: `brainstorming output emits {description, confidence, deferral_bucket} per idea; threshold configurable via skill arg; bucket auto-suggested + user-confirmable`
+_(none)_
 
 ## Done (this week)
 
-_(none)_
+- [x] **BK-012** Brainstorming skill — add per-idea confidence score + deferral threshold — probe: `/kaizen:brainstorming today produces a flat list of ideas; no quantitative basis for deferral. Should expose a 0.0-1.0 confidence per idea + a configurable threshold for KEEP vs Phase 2 vs YAGNI cutoffs.` — verify: `brainstorming output emits {description, confidence, deferral_bucket} per idea; threshold configurable via skill arg; bucket auto-suggested + user-confirmable`
 
 ## Parked / deferred
 
@@ -31,3 +31,6 @@ _(none)_
 - [ ] **BK-011** dxm: TDD the dxm-event.sh shell hot path — probe: `dxm-event.sh has zero test coverage; regression in grep -oE / sed / printf template would silently break capture` — verify: `tests/test_dxm_hook_sh.py feeds canned event JSON to the hook, asserts the resulting JSONL line shape; covers BSD date %N fallback + KAIZEN_DXM_DISABLE=1 early-exit + missing-session_id no-op`  `[dxm tdd hooks]`
 - [ ] **BK-013** positional-tokens Phase 2: per-slot embeddings (trigger: onboard.db unification) *(design/2026-05-18-positional-token-schema-design.md:38-41,271)* — probe: `grep 'embedding' plugins/kaizen/skills/workflow/scripts/_token_db.py` — verify: `test_token_db tests for embedding column + retrieval green; semantic search returns slot-granular hits`  `[tokens phase-2 yagni-deferred trigger-gated]`
 - [ ] **BK-014** positional-tokens Phase 2: tree-sitter-typescript + tree-sitter-markdown grammars (trigger: first TS/MD user) *(design/2026-05-18-positional-token-schema-design.md:40,268-270)* — probe: `grep -E 'typescript|markdown' plugins/kaizen/skills/workflow/scripts/_token_extractor.py` — verify: `test_token_extractor: TS file slots, MD heading slots extracted; _LANG_BY_EXT covers .ts/.tsx/.md`  `[tokens phase-2 yagni-deferred trigger-gated]`
+- [ ] **BK-015** Brainstorm signal: novelty_score (Jaccard idea-overlap) *(docs/superpowers/specs/2026-05-18-brainstorming-confidence-score-design.md)* — probe: `Phase 2 deferral from BK-012 spec §row 3 — implement Jaccard-overlap signal so the rubric can flag near-dup ideas during the score pass` — verify: `Trigger: first duplicate-idea complaint OR ≥2 rubric-tuning sessions where bucket distribution warrants overlap discount. Verify: novelty_score in signals dict + new rubric rule + paired test for the dup-collapse case.`  `[brainstorm phase-2 signals]`
+- [ ] **BK-016** kaizen-brainstorm stats subcommand (bucket distribution drift) *(docs/superpowers/specs/2026-05-18-brainstorming-confidence-score-design.md)* — probe: `Phase 2 deferral from BK-012 spec §row 16 — add stats subcommand that reports bucket distribution + drift across N JSONLs` — verify: `Trigger: bucket distribution shifts ≥20% across 3 brainstorms. Verify: stats subcommand returns per-bucket counts + delta vs baseline + paired tests for distribution-rollup math.`  `[brainstorm phase-2 cli]`
+- [ ] **BK-017** Pre-commit gate nudge: *-brainstorm.md without sibling .jsonl *(docs/superpowers/specs/2026-05-18-brainstorming-confidence-score-design.md)* — probe: `Phase 2 deferral from BK-012 spec §row 18 — gate nudges when a brainstorm.md lands without its companion .jsonl` — verify: `Trigger: first real 'I forgot to score it' incident. Verify: new gate check in skills/iron-laws or commit-msg hook that warns when *-brainstorm.md staged without sibling .jsonl.`  `[brainstorm phase-2 gate]`
