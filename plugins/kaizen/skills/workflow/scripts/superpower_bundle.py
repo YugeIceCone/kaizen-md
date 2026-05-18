@@ -383,6 +383,30 @@ def _cmd_scan(args) -> int:
                 })
 
     result = {"orphans": orphans, "dupes": dupes}
+
+    # --apply: move non-dupe orphans into target bundles, optionally on
+    # a fresh git branch. Dry-run is the default (no --apply).
+    if getattr(args, "apply", False):
+        dupe_names = {d["orphan"] for d in dupes}
+        if args.branch and _git_available() and _is_git_repo(root):
+            _git_run(root, "checkout", "-b", args.branch)
+        moved: list[dict] = []
+        for o in orphans:
+            if o["name"] in dupe_names:
+                continue
+            target_bundle = bundle_path(
+                o["suggested_date"], args.project, None,
+            )
+            target_bundle.mkdir(parents=True, exist_ok=True)
+            dest = target_bundle / o["name"]
+            shutil.move(o["path"], str(dest))
+            moved.append({"orphan": o["name"], "target": str(dest)})
+        if moved and _git_available() and _is_git_repo(root):
+            _git_commit(root, _commit_subject(
+                "scan-apply", f"moved-{len(moved)}", extra=f"project({args.project})"
+            ))
+        result["moved"] = moved
+
     if args.json:
         print(json.dumps(result, indent=2))
     else:
@@ -395,6 +419,10 @@ def _cmd_scan(args) -> int:
                    f"{len(dupes)}")
             for d in dupes:
                 print(f"  {d['orphan']} == {d['bundle']}/{d['bundle_file']}")
+        if result.get("moved"):
+            print(f"moved: {len(result['moved'])}")
+            for m in result["moved"]:
+                print(f"  {m['orphan']} → {m['target']}")
     return 0
 
 
@@ -476,6 +504,14 @@ def main(argv: list[str] | None = None) -> int:
                                "report metadata + dupe-check vs existing bundles")
     ps.add_argument("--json", action="store_true",
                      help="JSON output (default: human-readable)")
+    ps.add_argument("--apply", action="store_true",
+                     help="move non-dupe orphans into target bundles "
+                          "(default: dry-run)")
+    ps.add_argument("--project", default="kaizen-md",
+                     help="project name for target bundles (default: kaizen-md)")
+    ps.add_argument("--branch", default=None,
+                     help="git branch to checkout in the nested superpowers "
+                          "repo before applying (requires --apply)")
     ps.set_defaults(fn=_cmd_scan)
 
     args = p.parse_args(argv)
