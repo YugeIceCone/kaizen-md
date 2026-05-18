@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+# kaizen-better-memory — auto-memory MEMORY.md index management.
+# Symlinked to ~/.local/bin/kaizen-better-memory by /kaizen:install.
+#
+# Backed by ${PLUGIN_ROOT}/skills/workflow/scripts/better_memory.py.
+# Subcommands:
+#   regen [--dir PATH] [--json]   — rebuild MEMORY.md from sibling *.md files
+#   path  [--dir PATH]            — print the resolved auto-memory dir
+#
+# The auto-memory dir at ~/.claude/projects/<cwd-slug>/memory/ accumulates
+# captured project_*.md + feedback_*.md entries over time. Claude Code's
+# harness auto-loads the first 200 lines / 25KB of MEMORY.md at session
+# start; this tool keeps MEMORY.md indexing every sibling so all captures
+# stay reachable.
+
+set -euo pipefail
+
+_SCRIPT_REAL="$(readlink -f "${BASH_SOURCE[0]}" 2>/dev/null \
+  || python3 -c 'import os,sys; print(os.path.realpath(sys.argv[1]))' "${BASH_SOURCE[0]}")"
+_BIN_DIR="$(cd "$(dirname "$_SCRIPT_REAL")" && pwd)"
+# shellcheck source=../skills/workflow/scripts/_plugin_root.sh
+source "$_BIN_DIR/../skills/workflow/scripts/_plugin_root.sh"
+PLUGIN_ROOT="$(kaizen_plugin_root)" || {
+    echo "kaizen-better-memory: plugin root unresolved — set CLAUDE_PLUGIN_ROOT or KAIZEN_PLUGIN_ROOT" >&2
+    exit 1
+}
+
+exec python3 "$PLUGIN_ROOT/skills/workflow/scripts/better_memory.py" "$@"
