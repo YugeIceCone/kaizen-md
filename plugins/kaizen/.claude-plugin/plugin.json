@@ -131,6 +131,8 @@
       "Bash(${CLAUDE_PLUGIN_ROOT}/bin/kaizen-unused-env:*)",
       "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/md_link_rot.py:*)",
       "Bash(${CLAUDE_PLUGIN_ROOT}/bin/kaizen-md-link-rot:*)",
+      "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/class_name_quality.py:*)",
+      "Bash(${CLAUDE_PLUGIN_ROOT}/bin/kaizen-class-name-quality:*)",
       "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/schema_cli.py:*)",
       "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/scratch.py:*)",
       "Bash(bash ${CLAUDE_PLUGIN_ROOT}/bin/kaizen-scratch:*)",
