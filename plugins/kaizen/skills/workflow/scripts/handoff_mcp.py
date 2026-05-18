@@ -14,9 +14,10 @@ they're high-stakes (write YAML + index + emit assess decision) and
 benefit from the slash body's instructional context.
 
 Tools:
-  handoff_latest(limit=1)        → {handoffs: [...]}
+  handoff_latest(limit=1)        → {handoff, handoffs[]}
   handoff_list(limit=20, session=None) → {handoffs: [...]}
   handoff_path()                  → {db_path, yaml_dir}
+  handoff_get(file, section)      → {section, value} | {error, available}
 """
 
 from __future__ import annotations
@@ -82,9 +83,44 @@ def handoff_path() -> dict:
     }
 
 
+def handoff_get(file: str, section: str) -> dict:
+    """Extract one named section from a handoff YAML — surgical read for
+    resume agents. Saves ~87% of the read cost vs whole-file Read.
+
+    Args:
+      file:    path to the handoff YAML
+      section: one of {status, outcome, outcome_assigned_by,
+               outcome_justification, date, session,
+               goal, now, test, done_this_session, blockers, questions,
+               decisions, findings, worked, failed, next, files,
+               code_context, session_meta}
+
+    Returns:
+      success → {"section": str, "value": scalar | list | dict}
+      error   → {"error": str, "available": [str, ...]}
+
+    Reuses handoff.py's _load_raw_handoff + section registries (DRY).
+    """
+    # Import lazily so module-import doesn't pay the cost when only
+    # latest/list/path are used.
+    import handoff as _hcli  # noqa: PLC0415
+    p = Path(file)
+    if not p.is_file():
+        return {"error": f"file not found: {p}",
+                 "available": sorted(_hcli._ALL_SECTIONS)}
+    if section not in _hcli._ALL_SECTIONS:
+        return {"error": f"unknown section {section!r}",
+                 "available": sorted(_hcli._ALL_SECTIONS)}
+    fm, body = _hcli._load_raw_handoff(p.read_text(encoding="utf-8"))
+    value = fm.get(section, "") if section in _hcli._FRONTMATTER_SECTIONS \
+        else body.get(section)
+    return {"section": section, "value": value}
+
+
 mcp.tool()(handoff_latest)
 mcp.tool()(handoff_list)
 mcp.tool()(handoff_path)
+mcp.tool()(handoff_get)
 
 
 if __name__ == "__main__":
