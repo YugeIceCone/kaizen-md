@@ -121,6 +121,34 @@ def run_brain_index(state: dict) -> tuple[bool, str, str]:
     return ok, msg, action
 
 
+def run_gold_mine(state: dict) -> tuple[bool, str, str]:
+    """Weekly trace-mining pass — gold.py mine wraps gold_mine.run_mine.
+
+    Mining parses the trace log, dedupes templates, and emits proposals
+    (and auto-captures when score ≥ AUTO_CAPTURE_THRESHOLD). The
+    KAIZEN_GOLD_MINE_ENABLE env (read inside run_mine) gates whether
+    LLM scoring happens — without it, mining still runs and produces
+    unscored proposals.
+    """
+    action = "gold-mine"
+    if _disabled("KAIZEN_DAEMON_GOLD_MINE_DISABLE"):
+        return True, "disabled via env", action
+    if _throttled(state, action, _GOLD_THROTTLE_SEC):
+        return True, "throttled (≤7d since last run)", action
+    script = _SCRIPT_DIR / "gold.py"
+    result = subprocess.run(
+        [_python(), str(script), "mine", "--json"],
+        capture_output=True, text=True, timeout=300,
+    )
+    ok = result.returncode == 0
+    if ok:
+        _stamp_last_run(state, action)
+    msg = f"rc={result.returncode}"
+    if not ok and result.stderr:
+        msg += f" stderr={result.stderr.strip()[:200]}"
+    return ok, msg, action
+
+
 def run_brain_evolve(state: dict) -> tuple[bool, str, str]:
     """Daily LLM-driven consolidation/reflection (opt-in).
 

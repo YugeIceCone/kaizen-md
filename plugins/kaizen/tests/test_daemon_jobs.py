@@ -279,5 +279,59 @@ class TestRunBrainEvolve(unittest.TestCase):
         self.assertEqual(state["last_evolve_date"], "2020-01-01")
 
 
+class TestRunGoldMine(unittest.TestCase):
+    """Weekly throttled trace-mining + pattern proposal pass.
+
+    Note: the JOB is named ``gold-mine`` (matches gold.py's actual CLI
+    surface). Originally planned as ``gold-promote`` but gold's
+    ``promote`` is per-pattern manual; ``mine`` is the periodic-
+    automation surface that produces proposals.jsonl + auto-captures.
+    """
+
+    def test_disabled_via_env_returns_skipped(self):
+        import _daemon_jobs as jobs
+        with patch.dict(os.environ, {"KAIZEN_DAEMON_GOLD_MINE_DISABLE": "1"}):
+            ok, msg, action = jobs.run_gold_mine(state={})
+        self.assertTrue(ok)
+        self.assertEqual(action, "gold-mine")
+        self.assertIn("disabled", msg.lower())
+
+    def test_weekly_throttle_skips_when_recent(self):
+        import _daemon_jobs as jobs
+        import time
+        # 3 days ago — well inside the 7-day window
+        state = {"last_run_at": {"gold-mine": time.time() - 3 * 86400}}
+        env_copy = {k: v for k, v in os.environ.items()
+                    if k != "KAIZEN_DAEMON_GOLD_MINE_DISABLE"}
+        with patch.dict(os.environ, env_copy, clear=True), \
+             patch("subprocess.run") as run:
+            ok, msg, _ = jobs.run_gold_mine(state)
+        run.assert_not_called()
+        self.assertIn("throttled", msg.lower())
+
+    def test_runs_when_throttle_expired(self):
+        import _daemon_jobs as jobs
+        import time
+        # 8 days ago — past the 7-day window
+        state = {"last_run_at": {"gold-mine": time.time() - 8 * 86400}}
+
+        def fake_run(cmd, **kw):
+            return _fake_proc()
+
+        env_copy = {k: v for k, v in os.environ.items()
+                    if k != "KAIZEN_DAEMON_GOLD_MINE_DISABLE"}
+        with patch.dict(os.environ, env_copy, clear=True), \
+             patch("subprocess.run", side_effect=fake_run) as run:
+            ok, _, _ = jobs.run_gold_mine(state)
+
+        self.assertTrue(ok)
+        called = list(run.call_args[0][0])
+        # gold.py mine is the canonical CLI entry for run_mine()
+        self.assertIn("gold.py", " ".join(called))
+        self.assertIn("mine", called)
+        self.assertGreater(state["last_run_at"]["gold-mine"],
+                           time.time() - 5)
+
+
 if __name__ == "__main__":
     unittest.main()

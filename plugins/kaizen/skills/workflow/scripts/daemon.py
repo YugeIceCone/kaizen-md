@@ -409,6 +409,11 @@ def tick() -> dict:
     actions[action] = actions.get(action, 0) + 1
     log_line("INFO" if ok else "ERROR", f"{action}: {msg}")
 
+    # 10. Gold-mine — weekly trace-mining + pattern proposal pass.
+    ok, msg, action = _jobs.run_gold_mine(state)
+    actions[action] = actions.get(action, 0) + 1
+    log_line("INFO" if ok else "ERROR", f"{action}: {msg}")
+
     save_state(state)
     log_line("INFO", "daemon tick complete")
     return state
