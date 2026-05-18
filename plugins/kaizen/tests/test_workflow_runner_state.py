@@ -208,5 +208,52 @@ class TestStateAndReset(_Base):
         self.assertFalse(self.state_file.exists())
 
 
+# ─── legacy state schema (pre-2026-05-15) ─────────────────────────────
+# State.json from prior runner generations used `current` (int) + `stages`
+# (list) instead of `current_stage` (string). Loading one of those into the
+# current runner used to KeyError on `state["current_stage"]`. The runner
+# now detects the missing key, warns the user, and treats the file as
+# "no state" so the user can `state-reset --yes` and start over.
+
+
+def _plant_legacy_state(project_root: Path) -> Path:
+    sd = project_root / ".kaizen" / "workflow"
+    sd.mkdir(parents=True, exist_ok=True)
+    sp = sd / "state.json"
+    sp.write_text(json.dumps({
+        "id":       "wf-legacy",
+        "prompt":   "legacy state from an old runner generation",
+        "routine":  "harden",
+        "stages":   ["explore", "audit", "analyze"],
+        "current":  2,
+        "completed": [{"stage": "explore", "msg": "x", "at": "2026-05-14T00:00:00Z"}],
+    }) + "\n")
+    return sp
+
+
+class TestLegacyStateSchema(_Base):
+    def test_advance_on_legacy_state_does_not_crash(self):
+        _plant_legacy_state(self.project)
+        r = _run("advance", project_root=self.project)
+        self.assertNotEqual(0, r.returncode,
+                            "advance on legacy state must fail cleanly, not 0")
+        self.assertIn("legacy", (r.stderr + r.stdout).lower(),
+                      f"expected 'legacy' in output; got stderr={r.stderr!r} stdout={r.stdout!r}")
+        self.assertNotIn("Traceback", r.stderr,
+                         "must not raise KeyError; got traceback")
+
+    def test_current_on_legacy_state_does_not_crash(self):
+        _plant_legacy_state(self.project)
+        r = _run("current", project_root=self.project)
+        self.assertNotEqual(0, r.returncode)
+        self.assertNotIn("Traceback", r.stderr)
+
+    def test_state_on_legacy_state_does_not_crash(self):
+        _plant_legacy_state(self.project)
+        r = _run("state", project_root=self.project)
+        self.assertNotEqual(0, r.returncode)
+        self.assertNotIn("Traceback", r.stderr)
+
+
 if __name__ == "__main__":
     unittest.main()

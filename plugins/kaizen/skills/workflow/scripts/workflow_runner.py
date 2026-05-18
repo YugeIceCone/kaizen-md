@@ -436,7 +436,17 @@ def _load_state() -> dict | None:
     p = _state_path()
     if not p.exists():
         return None
-    return json.loads(p.read_text(encoding="utf-8"))
+    state = json.loads(p.read_text(encoding="utf-8"))
+    if "current_stage" not in state or "schema" not in state:
+        print(
+            f"workflow_runner: legacy state.json at {p} (missing "
+            "`current_stage`/`schema`; written by an older runner). "
+            "Run `kaizen-workflow run state-reset --yes` to clear it, "
+            "then `start <schema>` to re-init.",
+            file=sys.stderr,
+        )
+        return None
+    return state
 
 
 def _save_state(state: dict) -> None:
