@@ -29,6 +29,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import os
 import subprocess
 import sys
 import time
@@ -519,6 +520,43 @@ def _gate_menu_lint(scope: str, repo_root: Path) -> list[GateFinding]:
     return out
 
 
+# ─── Sub-gate: auto-load-budget ──────────────────────────────────────
+
+
+def _gate_auto_load_budget(scope: str, repo_root: Path) -> list[GateFinding]:
+    """Warn when the daemon-built ~/.claude/.kaizen/auto-load.md exceeds
+    KAIZEN_AUTO_LOAD_BUDGET (default 5120 bytes).
+
+    Advisory only — never blocks. An oversized file means the daemon's
+    truncation logic didn't fire enough; raise the budget or reduce
+    top_n. Read-only filesystem probe; no subprocess.
+    """
+    env_path = os.environ.get("KAIZEN_AUTO_LOAD_PATH")
+    if env_path:
+        target = Path(env_path).expanduser()
+    else:
+        target = Path.home() / ".claude" / ".kaizen" / "auto-load.md"
+    if not target.is_file():
+        return []
+    try:
+        budget = int(os.environ.get("KAIZEN_AUTO_LOAD_BUDGET", "5120"))
+    except ValueError:
+        budget = 5120
+    try:
+        size = target.stat().st_size
+    except OSError:
+        return []
+    if size <= budget:
+        return []
+    return [GateFinding(
+        gate="auto-load-budget", severity="warn",
+        rule_id="size-over-budget",
+        message=(f"{target} is {size}B (budget {budget}B). "
+                 "Raise KAIZEN_AUTO_LOAD_BUDGET or reduce top_n in "
+                 "auto_load.build_auto_load()."),
+    )]
+
+
 SUB_GATES = {
     "iron-laws":              _gate_iron_laws,
     "etu":                    _gate_etu,
@@ -531,6 +569,7 @@ SUB_GATES = {
     "frontmatter-coverage":   _gate_frontmatter,        # SKILL name=dir + ≥3 trigger phrases
     "slash-collision":        _gate_slash_collision,   # tab-completion-ambiguous prefix pairs
     "menu-lint":              _gate_menu_lint,         # AskUserQuestion contract conformance
+    "auto-load-budget":       _gate_auto_load_budget,  # daemon-built auto-load.md size
 }
 
 

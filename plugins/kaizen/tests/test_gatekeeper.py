@@ -3,6 +3,7 @@ skills/efficient-tool-use/application/etu_scan.py — the unified gate."""
 from __future__ import annotations
 
 import importlib.util
+import os
 import sys
 import tempfile
 import unittest
@@ -61,18 +62,14 @@ class TestGatekeeperAggregator(unittest.TestCase):
         self.gk = _load("gatekeeper_test", _GATEKEEPER)
 
     def test_list_subgates(self):
-        # 11 sub-gates: 4 commit-blocking originals + 7 audit aggregators
-        # (token-bloat, coverage, schema-coverage, name-quality-coverage,
-        # frontmatter-coverage, slash-collision, menu-lint). Frontmatter
-        # splits its findings — name-mismatch=error (blocks),
-        # weak-routing=warn (advisory). Slash-collision is advisory only;
-        # menu-lint errors (missing AskUserQuestion perm) block.
+        # 12 sub-gates: original 11 + auto-load-budget (Phase 13 — surfaces
+        # when ~/.claude/.kaizen/auto-load.md exceeds KAIZEN_AUTO_LOAD_BUDGET).
         self.assertEqual(
             set(self.gk.SUB_GATES.keys()),
             {"iron-laws", "etu", "karpathy", "validator",
              "token-bloat", "code-to-test-coverage", "schema-coverage",
              "name-quality-coverage", "frontmatter-coverage",
-             "slash-collision", "menu-lint"},
+             "slash-collision", "menu-lint", "auto-load-budget"},
         )
 
     def test_norm_sev_maps_to_canonical(self):
@@ -125,6 +122,65 @@ class TestGatekeeperAggregator(unittest.TestCase):
         """The etu sub-gate returns a list (possibly empty), never crashes."""
         out = self.gk._gate_etu("staged", _REPO_ROOT)
         self.assertIsInstance(out, list)
+
+
+class TestAutoLoadBudgetGate(unittest.TestCase):
+    """The auto-load-budget gate warns when ~/.claude/.kaizen/auto-load.md
+    exceeds KAIZEN_AUTO_LOAD_BUDGET (default 5120). Never blocks — auto-
+    load is daemon-managed advisory content; an oversized file just
+    means the daemon's truncation logic didn't fire (real fix is to
+    raise the budget or reduce top_n).
+
+    Sandbox: KAIZEN_AUTO_LOAD_PATH points the gate at a tempfile.
+    """
+
+    def setUp(self):
+        self.gk = _load("gatekeeper_test_aulb", _GATEKEEPER)
+
+    def test_no_file_returns_no_findings(self):
+        from unittest.mock import patch
+        import tempfile
+        from pathlib import Path
+        with tempfile.TemporaryDirectory() as td:
+            target = Path(td) / "auto-load.md"
+            with patch.dict(os.environ,
+                            {"KAIZEN_AUTO_LOAD_PATH": str(target)}):
+                findings = self.gk._gate_auto_load_budget(
+                    "staged", _REPO_ROOT)
+        self.assertEqual(findings, [])
+
+    def test_within_budget_returns_no_findings(self):
+        from unittest.mock import patch
+        import tempfile
+        from pathlib import Path
+        with tempfile.TemporaryDirectory() as td:
+            target = Path(td) / "auto-load.md"
+            target.write_text("a" * 100, encoding="utf-8")
+            with patch.dict(os.environ,
+                            {"KAIZEN_AUTO_LOAD_PATH": str(target),
+                             "KAIZEN_AUTO_LOAD_BUDGET": "5120"}):
+                findings = self.gk._gate_auto_load_budget(
+                    "staged", _REPO_ROOT)
+        self.assertEqual(findings, [])
+
+    def test_over_budget_emits_warn(self):
+        from unittest.mock import patch
+        import tempfile
+        from pathlib import Path
+        with tempfile.TemporaryDirectory() as td:
+            target = Path(td) / "auto-load.md"
+            target.write_text("a" * 8000, encoding="utf-8")
+            with patch.dict(os.environ,
+                            {"KAIZEN_AUTO_LOAD_PATH": str(target),
+                             "KAIZEN_AUTO_LOAD_BUDGET": "5120"}):
+                findings = self.gk._gate_auto_load_budget(
+                    "staged", _REPO_ROOT)
+        self.assertEqual(len(findings), 1)
+        self.assertEqual(findings[0].severity, "warn")
+        self.assertEqual(findings[0].gate, "auto-load-budget")
+        # Message includes actual and budget for diagnosis
+        self.assertIn("8000", findings[0].message)
+        self.assertIn("5120", findings[0].message)
 
 
 class TestGatekeeperCollisionResistance(unittest.TestCase):
