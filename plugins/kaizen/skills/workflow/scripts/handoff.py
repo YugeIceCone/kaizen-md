@@ -1473,6 +1473,129 @@ def _render_section(value, *, as_json: bool) -> str:
     return str(value)
 
 
+# ─── append — mid-session list-section append (Task #40) ──────────────
+
+_LIST_BODY_SECTIONS = {
+    "done_this_session", "blockers", "questions",
+    "decisions", "findings", "worked", "failed", "next",
+}
+
+
+def _format_entry_yaml(section: str, entry, indent: str = "  ") -> str:
+    """Render one list item under `section:` with proper indent.
+
+    dict entry → `  - key1: value1\\n    key2: value2\\n...`
+    string entry → `  - 'value'\\n`
+    """
+    if isinstance(entry, dict):
+        keys = list(entry.keys())
+        if not keys:
+            return f"{indent}- {{}}\n"
+        lines = []
+        first = keys[0]
+        lines.append(f"{indent}- {first}: {_quote_if_unsafe(str(entry[first])) if isinstance(entry[first], str) else json.dumps(entry[first])}")
+        for k in keys[1:]:
+            v = entry[k]
+            v_s = (_quote_if_unsafe(str(v)) if isinstance(v, str)
+                    else json.dumps(v))
+            lines.append(f"{indent}  {k}: {v_s}")
+        return "\n".join(lines) + "\n"
+    # string / scalar
+    return f"{indent}- {_quote_if_unsafe(str(entry))}\n"
+
+
+def _append_to_list_section(text: str, section: str, entry) -> str:
+    """Insert entry at end of section's list-items. Returns mutated text.
+
+    Handles 3 shapes:
+    1. `section: []`  → replaces with `section:\\n  - <entry>\\n`
+    2. `section:\\n  - item1\\n  - item2` → inserts after last item, before
+       the next top-level key
+    3. section missing → appends `\\nsection:\\n  - <entry>\\n` at EOF
+
+    Raises ValueError if section is a known scalar/dict (not a list-section).
+    """
+    if section in {"goal", "now", "test", "files", "code_context",
+                    "session_meta", "status", "outcome", "date", "session"}:
+        raise ValueError(f"section {section!r} is not a list — append unsupported")
+    entry_yaml = _format_entry_yaml(section, entry)
+    lines = text.splitlines(keepends=True)
+    # Find section start
+    section_start = None
+    for i, line in enumerate(lines):
+        if line.startswith(f"{section}:"):
+            section_start = i
+            break
+    if section_start is None:
+        # Append new section at EOF
+        suffix = f"\n{section}:\n{entry_yaml}"
+        if not text.endswith("\n"):
+            suffix = "\n" + suffix
+        return text + suffix
+    # Empty inline form `section: []`
+    if lines[section_start].rstrip().endswith(": []"):
+        lines[section_start] = lines[section_start].replace(": []", ":\n")
+        return "".join(lines[:section_start + 1] + [entry_yaml]
+                        + lines[section_start + 1:])
+    # Populated form — find the END of this section (next top-level key).
+    section_end = len(lines)
+    for j in range(section_start + 1, len(lines)):
+        s = lines[j]
+        if s.rstrip() == "" or s.startswith((" ", "\t")):
+            continue
+        if s.startswith("---"):
+            section_end = j
+            break
+        if ":" in s and not s.lstrip().startswith("#"):
+            section_end = j
+            break
+    return "".join(lines[:section_end] + [entry_yaml] + lines[section_end:])
+
+
+def _cmd_append(args) -> int:
+    fp = Path(args.file)
+    if not fp.is_file():
+        sys.stderr.write(f"handoff append: file not found: {fp}\n")
+        return 2
+    section = args.section
+    if section not in _LIST_BODY_SECTIONS:
+        sys.stderr.write(
+            f"handoff append: unknown list-section {section!r}\n"
+            f"  supported: {sorted(_LIST_BODY_SECTIONS)}\n"
+        )
+        return 1
+    if args.task and section == "done_this_session":
+        entry: object = {"task": args.task}
+        if args.files:
+            entry["files"] = [f.strip() for f in args.files.split(",")
+                               if f.strip()]
+    elif args.entry:
+        entry = args.entry
+    elif args.task:
+        # User passed --task for a string-section; treat as plain entry
+        entry = args.task
+    else:
+        sys.stderr.write("handoff append: provide --task (done_this_session) "
+                          "or --entry (other sections)\n")
+        return 1
+    text = fp.read_text(encoding="utf-8")
+    try:
+        new_text = _append_to_list_section(text, section, entry)
+    except ValueError as e:
+        sys.stderr.write(f"handoff append: {e}\n")
+        return 1
+    # Atomic write
+    tmp = fp.with_suffix(fp.suffix + ".tmp")
+    tmp.write_text(new_text, encoding="utf-8")
+    tmp.replace(fp)
+    if args.json:
+        print(json.dumps({"file": str(fp), "section": section,
+                           "appended": entry}, indent=2))
+    else:
+        print(f"appended to {section} in {fp}")
+    return 0
+
+
 def _cmd_get(args) -> int:
     fp = Path(args.file)
     if not fp.is_file():
@@ -1733,6 +1856,26 @@ def main(argv: Optional[list[str]] = None) -> int:
                         help="JSON output (default: human-readable — one line "
                              "per list item, raw scalar for strings)")
     s_get.set_defaults(func=_cmd_get)
+
+    s_ap = sub.add_parser(
+        "append",
+        help="append one entry to a list-section (done_this_session / blockers / "
+             "questions / decisions / findings / worked / failed / next). "
+             "Atomic write; preserves the rest of the file byte-for-byte."
+    )
+    s_ap.add_argument("--file", required=True, help="path to the handoff YAML")
+    s_ap.add_argument("--section", required=True,
+                       help="list-section name to append to")
+    s_ap.add_argument("--task", default=None,
+                       help="task text — used as {task: ...} for done_this_session, "
+                            "or as plain string entry for other sections")
+    s_ap.add_argument("--entry", default=None,
+                       help="plain string entry (alt to --task for non-task sections)")
+    s_ap.add_argument("--files", default=None,
+                       help="comma-separated file paths — attached as files: [...] "
+                            "when section is done_this_session")
+    s_ap.add_argument("--json", action="store_true")
+    s_ap.set_defaults(func=_cmd_append)
 
     s_vh = sub.add_parser(
         "verify-hash",
