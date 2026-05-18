@@ -620,6 +620,96 @@ _HUNK_RE = __import__("re").compile(
 )
 
 
+def _git_head_sha(repo: Path) -> str:
+    """Return short SHA at HEAD, or empty string if no commits / not a repo."""
+    r = _git(repo, "rev-parse", "--short", "HEAD")
+    if r.returncode != 0:
+        return ""
+    return r.stdout.strip()
+
+
+def _split_by_project(files: list[str], projects: dict[str, str],
+                       *, primary: str) -> dict[str, list[str]]:
+    """Group file paths by which project's root they fall under.
+
+    projects: name → absolute-or-~-anchored repo root path
+    primary: project that owns paths not matching any explicit project root
+
+    Returns dict[name, list[paths]] — only includes projects with ≥1 matched path.
+    """
+    import os as _os
+    expanded = {name: _os.path.expanduser(root.rstrip("/"))
+                 for name, root in projects.items()}
+    groups: dict[str, list[str]] = {}
+    for f in files:
+        f_expanded = _os.path.expanduser(f) if f.startswith("~") else f
+        matched: str | None = None
+        for name, root in expanded.items():
+            if f_expanded.startswith(root + "/") or f_expanded == root:
+                matched = name
+                break
+        target = matched or primary
+        groups.setdefault(target, []).append(f)
+    return groups
+
+
+def _build_session_meta(*, repos: dict[str, Path],
+                          cc_jsonl: Path | None) -> dict:
+    """Build session_meta dict: per-project HEAD SHAs + Claude Code session traceability.
+
+    Auto-populates everything deterministic — no operator input needed:
+    - handoff_generated_at (UTC ISO-8601)
+    - primary_branch / head_at_handoff per repo (via git rev-parse)
+    - cc_session_{uuid,jsonl,sha256,lines,size_bytes} when cc_jsonl given
+    """
+    import hashlib
+    from datetime import datetime, timezone
+    meta: dict = {
+        "handoff_generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+    }
+    if repos:
+        meta["primary_branch"] = {}
+        meta["head_at_handoff"] = {}
+        for name, repo in repos.items():
+            br = _git(repo, "rev-parse", "--abbrev-ref", "HEAD")
+            meta["primary_branch"][name] = br.stdout.strip() if br.returncode == 0 else "?"
+            meta["head_at_handoff"][name] = _git_head_sha(repo)
+    if cc_jsonl is not None and cc_jsonl.is_file():
+        content = cc_jsonl.read_bytes()
+        meta["cc_session_jsonl"]    = str(cc_jsonl)
+        meta["cc_session_sha256"]   = hashlib.sha256(content).hexdigest()
+        meta["cc_session_lines"]    = len([l for l in content.splitlines() if l.strip()])
+        meta["cc_session_size_bytes"] = len(content)
+        meta["cc_session_uuid"]     = cc_jsonl.stem
+    return meta
+
+
+def _auto_tag_commits(repo: Path, files: list[str], *, since: str) -> list[str]:
+    """For the given file paths, return commits since `since` that touched any of them.
+
+    Returns deduped short SHAs in chronological order (oldest first).
+    """
+    if not files:
+        return []
+    r = _git(repo, "log", f"--since={since}", "--reverse",
+             "--format=%h", "--name-only", "--",  *files)
+    if r.returncode != 0 or not r.stdout.strip():
+        return []
+    shas: list[str] = []
+    seen: set[str] = set()
+    current_sha: str | None = None
+    for line in r.stdout.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        if all(c in "0123456789abcdef" for c in line) and 7 <= len(line) <= 12:
+            current_sha = line
+        elif current_sha and current_sha not in seen:
+            shas.append(current_sha)
+            seen.add(current_sha)
+    return shas
+
+
 def _parse_hunk_header(line: str) -> tuple[int, int] | None:
     """Parse `@@ -A,B +C,D @@` → (start, end) line range on the new side.
 
@@ -756,6 +846,29 @@ def _cmd_scaffold(args) -> int:
     # so resume agents see code-context, not just paths.
     line_ranges = _git_changed_line_ranges(repo, since)
 
+    # Auto-build session_meta: per-project HEAD + Claude Code session traceability.
+    # Detects sibling repos via $HOME/workspace/* convention (cheap heuristic).
+    import os as _os
+    repos_for_meta: dict[str, Path] = {session: repo}
+    sibling_root = Path(_os.path.expanduser("~/workspace"))
+    if sibling_root.is_dir():
+        for sib in sibling_root.iterdir():
+            if sib.is_dir() and (sib / ".git").exists() and sib != repo:
+                # Only include siblings whose name differs from the primary
+                if sib.name != session:
+                    repos_for_meta.setdefault(sib.name, sib)
+    # Cap siblings — we only care about ones touched THIS session
+    # (cheap filter: prune those with no recent commits)
+    recent_repos: dict[str, Path] = {session: repo}
+    for name, r in list(repos_for_meta.items())[1:]:
+        head_check = _git(r, "log", f"--since={since}", "-1", "--oneline")
+        if head_check.returncode == 0 and head_check.stdout.strip():
+            recent_repos[name] = r
+    session_meta = _build_session_meta(
+        repos=recent_repos,
+        cc_jsonl=Path(jsonl_path) if jsonl_path else None,
+    )
+
     body_lines = [
         "---",
         f"session: {session}",
@@ -763,6 +876,24 @@ def _cmd_scaffold(args) -> int:
         "status: partial",
         "outcome: IN_PROGRESS",
         "---",
+        "",
+        "session_meta:",
+    ]
+    if session_meta.get("cc_session_uuid"):
+        body_lines.append(f"  cc_session_uuid: {session_meta['cc_session_uuid']!r}")
+        body_lines.append(f"  cc_session_jsonl: {session_meta['cc_session_jsonl']!r}")
+        body_lines.append(f"  cc_session_sha256: {session_meta['cc_session_sha256']!r}")
+        body_lines.append(f"  cc_session_lines: {session_meta['cc_session_lines']}")
+        body_lines.append(f"  cc_session_size_bytes: {session_meta['cc_session_size_bytes']}")
+    body_lines.append(f"  handoff_generated_at: {session_meta['handoff_generated_at']!r}")
+    if session_meta.get("primary_branch"):
+        body_lines.append("  primary_branch:")
+        for n, br in session_meta["primary_branch"].items():
+            body_lines.append(f"    {n}: {br!r}")
+        body_lines.append("  head_at_handoff:")
+        for n, sha in session_meta["head_at_handoff"].items():
+            body_lines.append(f"    {n}: {sha!r}")
+    body_lines += [
         "",
         f"goal: {_quote_if_unsafe(goal)}",
         f"now: {_quote_if_unsafe(now_text)}",
@@ -810,13 +941,18 @@ def _cmd_scaffold(args) -> int:
     else:
         body_lines.append("next: []")
 
-    body_lines += [
-        "",
-        "files:",
-        f"  created: [{', '.join(created)}]",
-        f"  modified: [{', '.join(modified)}]",
-        "",
-    ]
+    # Per-project file splitting — paths grouped by which repo they belong to.
+    # Reduces operator mental load; no cross-project mixing in file lists.
+    project_roots = {name: str(p) for name, p in recent_repos.items()}
+    created_grouped = _split_by_project(created, project_roots, primary=session)
+    modified_grouped = _split_by_project(modified, project_roots, primary=session)
+    project_names = sorted(set(created_grouped) | set(modified_grouped))
+    body_lines += ["", "files:"]
+    for pname in project_names:
+        body_lines.append(f"  {pname}:")
+        body_lines.append(f"    created: [{', '.join(created_grouped.get(pname, []))}]")
+        body_lines.append(f"    modified: [{', '.join(modified_grouped.get(pname, []))}]")
+    body_lines.append("")
 
     # D1 fine-grained code context — per-file line ranges from git hunks.
     # Format: code_context:
