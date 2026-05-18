@@ -903,22 +903,30 @@ def _cmd_scaffold(args) -> int:
 
     # done_this_session: prefer mined completed-tasks (per-task entries),
     # else fall back to one umbrella task with the git-touched files.
+    # `commits:` auto-tagged via _auto_tag_commits — saves the agent the
+    # hand-typing pass (prior session's handoff had 60+ SHAs typed manually).
     completed = mined.get("completed_tasks") or []
+    all_window_shas = _auto_tag_commits(repo, changed, since=since) if changed else []
     if completed:
         body_lines.append("done_this_session:")
         for task in completed:
             body_lines.append(f"  - task: {_quote_if_unsafe(task)}")
-            body_lines.append(f"    files: []")
+            body_lines.append("    commits: []")
+            body_lines.append("    files: []")
         if changed:
             # Stash a final synthetic entry holding the git-touched
-            # files so reviewers can see what moved this session.
+            # files + ALL window commits so reviewers can see what moved
+            # this session and re-distribute SHAs to the right tasks.
             body_lines.append(
                 "  - task: (git-touched files this session)")
+            body_lines.append(
+                f"    commits: [{', '.join(all_window_shas)}]")
             body_lines.append(
                 f"    files: [{', '.join(changed)}]")
     elif changed:
         body_lines.append("done_this_session:")
         body_lines.append("  - task: TBD (scaffolded — agent fills)")
+        body_lines.append(f"    commits: [{', '.join(all_window_shas)}]")
         body_lines.append(f"    files: [{', '.join(changed)}]")
     else:
         body_lines.append("done_this_session: []")
