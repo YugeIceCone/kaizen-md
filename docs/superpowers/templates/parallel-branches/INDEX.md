@@ -30,6 +30,26 @@ Read in this order:
 13. **[QUEUE_PICKER_BRAINSTORM.md](QUEUE_PICKER_BRAINSTORM.md)** — current pool-style design (xargs-N mental model). **Now realized via clever-lama's `parallel_subagents`** (see CLEVER_LAMA_INTEGRATION.md).
 14. **[SHARED_POOL_BRAINSTORM.md](SHARED_POOL_BRAINSTORM.md)** — coordination pool (heartbeat + messages). **PARTIALLY SUPERSEDED** — clever-lama's `recall_learnings` + skill_stats hooks provide most of what we proposed; Phase A1 heartbeat may still be worth adding.
 
+## Runtime status (clever-lama-mcp side; 2026-05-18)
+
+The runtime modules implementing this kit live in
+`~/workspace/mcp-server-stack/clever-lama-mcp/src/parallel_branches/`:
+
+| Phase | Module | Status |
+|---|---|---|
+| **Phase 1** — load + check | `loader.py` + `checker.py` | ✓ shipped |
+| **Phase 1** — dispatch | `dispatcher.py` (`dispatch_wave`) | ✓ shipped |
+| **Phase 1** — render | `_plan_render.py` (`render_checklist`) | ✓ shipped |
+| **Phase 1** — interwave merge | `merge_handlers.py` ×4 (consolidate_perms / append_progress / render_master_ledger / render_checklist_to_file) | ✓ shipped |
+| **Phase 1** — CLI | `_plan_cli.py` (`kaizen-plan` console script) | ✓ shipped |
+| **Phase 1** — integration | `test_integration_end_to_end.py` (8-step pipeline against real plan) | ✓ shipped |
+| **Phase 2** — final stage | `merge_handlers.py` ×3 (cleanup_fragments / merge_commit / final_verify) | ✓ shipped |
+| **Phase 2** — final stage (rest) | wire_mcp_mounts / retrofit / cross_pollinate / dispatch_backlog / cleanup_merged_worktrees | ⏸ deferred (need concrete consumers) |
+| **Phase 3** — production wiring | live `parallel_subagents` MCP tool integration | ⏸ deferred |
+
+Total: 7 runtime modules + 56 unit tests + 2 integration tests + 7
+merge handlers covering interwave (4) + final (3).
+
 ## Document inventory (this folder)
 
 ```
