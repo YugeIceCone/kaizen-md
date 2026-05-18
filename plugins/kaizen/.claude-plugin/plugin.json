@@ -139,6 +139,8 @@
       "Bash(${CLAUDE_PLUGIN_ROOT}/bin/kaizen-md-heading-depth:*)",
       "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/md_dupes.py:*)",
       "Bash(${CLAUDE_PLUGIN_ROOT}/bin/kaizen-md-dupes:*)",
+      "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/todo_inventory.py:*)",
+      "Bash(${CLAUDE_PLUGIN_ROOT}/bin/kaizen-todo-inventory:*)",
       "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/schema_cli.py:*)",
       "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/scratch.py:*)",
       "Bash(bash ${CLAUDE_PLUGIN_ROOT}/bin/kaizen-scratch:*)",
