@@ -169,6 +169,36 @@ Wait for the user's response. If they request changes, make them and re-run the 
 - **Incremental validation** - Present design, get approval before moving on
 - **Be flexible** - Go back and clarify when something doesn't make sense
 
+## UPGRADE NOTE — All information must be explicit, never implied
+
+When brainstorming, EVERY decision / constraint / assumption / dependency / threshold / signal / token-budget / file-path / convention / Iron-Law-binding MUST be written out explicitly in the artifact (spec, plan, chunk, item, fragment, rubric). Never lean on:
+
+- "the operator knows what we mean here"
+- "the agent will figure out the right defaults"
+- "downstream phase will sort the details"
+- "obvious from context"
+- "we always do it this way"
+
+These all create **implicit knowledge** that survives only in the parent's session memory. When a subagent picks up the artifact fresh (worktree dispatch, queue-picker pick, handoff resume), implicit knowledge is invisible — the subagent does the wrong thing OR asks back-and-forth.
+
+**The discipline:**
+- Every numeric threshold has a literal value in the spec (`budget_tokens: 30000`, not "around 30k")
+- Every dependency has an explicit reference (`deps: [chunk-3]`, not "after the runner is built")
+- Every assumption has a quoted source (`Per docs/X.md:42`, not "we discussed earlier")
+- Every constraint has its rationale inlined (`# Why: prior session burned 50k on this — explicit cap`)
+- Every default has a written justification (`# Default 3: floor from CHUNKING_FLOOR.md`)
+
+**Anti-test:** if a fresh subagent reading ONLY the artifact (no parent context, no prior conversation) would have to guess at any value, the artifact has implicit information and needs to be explicit.
+
+**Cross-references** (this discipline appears across the kit):
+- `docs/superpowers/templates/parallel-branches/CHUNKING_FLOOR.md` — floor is explicit numeric value, not vibe
+- `docs/superpowers/templates/parallel-branches/PRE_DISPATCH_AUDIT.md::#2` — prompt generator must surface every owned path, never imply "you know what files you own"
+- `docs/superpowers/templates/chunk-plan-template.md::Guide` section — explicit `conventions: [...]` + `upstream_decisions: [...]` + `do_not_touch: [...]` for the same reason
+
+Brainstorming is the EARLIEST phase to enforce this. A spec that ships implicit knowledge to writing-plans pollutes the plan; a plan that ships implicit knowledge to chunks pollutes the chunks; a chunk that ships implicit knowledge to its subagent burns dispatch tokens on back-and-forth.
+
+**Boy-Scout corollary:** if you find yourself answering an implicit-knowledge question during brainstorming, write the answer into the spec inline before proceeding. The next brainstorm doesn't re-ask.
+
 ## Visual Companion
 
 A browser-based companion for showing mockups, diagrams, and visual options during brainstorming. Available as a tool — not a mode. Accepting the companion means it's available for questions that benefit from visual treatment; it does NOT mean every question goes through the browser.

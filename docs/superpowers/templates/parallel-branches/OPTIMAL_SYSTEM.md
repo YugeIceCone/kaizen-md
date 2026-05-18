@@ -15,7 +15,9 @@ Distilled from this session: BK-012 spec → 30-axis coverage loop → chunk-pla
 
 ## Hard design choices (lock these in)
 
-1. **Wave mode is the default.** `concurrency_mode: "waves"`, `wave_size: 5`. Even "small" 5-chunk plans use one wave — uniform shape beats mode-switching. Full-parallel and chain are special cases of N=1 wave and 1-per-wave respectively.
+0. **Chunking floor is non-negotiable: 2-3 items per subagent** (see `CHUNKING_FLOOR.md`). Below floor = setup waste. Routing tree: **≤3 items total → parent does it (no dispatch)**; **4-6 items → one subagent (no chunking)**; **7-30 items → `ceil(N/3)` chunks**; **30+ items → queue-picker pool**. This is choice #0 because it gates every decomposition that follows. If the rubric returns `PARENT_DOES_IT`, NONE of the choices below apply — work happens in the parent.
+
+1. **Wave mode is the default** (when decomposition IS justified). `concurrency_mode: "waves"`, `wave_size: 5`. Even "small" 5-chunk plans use one wave — uniform shape beats mode-switching. Full-parallel and chain are special cases of N=1 wave and 1-per-wave respectively.
 
 2. **Mode B (split files) always.** No Mode A blob option in the recommended path. One chunk per file from day one, even for tiny plans. Uniformity > one-file convenience.
 
@@ -31,9 +33,9 @@ Distilled from this session: BK-012 spec → 30-axis coverage loop → chunk-pla
 
 8. **Default `failure_policy: "partial"`.** Wave proceeds with successes; failed chunks file backlog parks for follow-up. Aborting the whole plan on one failure is too coarse.
 
-9. **Default budget `30k tokens per chunk`** (mid-range of 20-40k cap). Allows 2 substantive axes per chunk with retry headroom.
+9. **Default budget `30k tokens per chunk` + `items_per_subagent: 2-3` (floor).** Mid-range of 20-40k cap. 2 items = comfortable; 3 = OK for trivial grep-style items. Validator warns on any chunk with < 2 items unless `design_heavy: true` flag is set.
 
-10. **Conflict pre-flight is non-negotiable.** `kaizen-plan check` runs before every `dispatch` and `merge` invocation. Silent collisions are the worst failure mode.
+10. **Conflict pre-flight is non-negotiable.** `kaizen-plan check` runs before every `dispatch` and `merge` invocation. Silent collisions are the worst failure mode. **Also enforces the floor** — flags sub-2-item chunks.
 
 ## Complete on-disk layout
 
