@@ -1,20 +1,20 @@
-"""kaizen-memory — auto-memory MEMORY.md index management.
+"""kaizen-better-memory — auto-memory MEMORY.md index management.
 
 The auto-memory dir at ``~/.claude/projects/<slug>/memory/`` accumulates
 captured ``project_*.md`` + ``feedback_*.md`` entries over time. Claude
 Code auto-loads the first 200 lines / 25KB of ``MEMORY.md`` at every
 session start, but it does NOT keep MEMORY.md in sync with the captured
 files — orphan entries are loaded only on-demand (Claude reads them
-when relevant). ``kaizen-memory regen`` rebuilds MEMORY.md from the
+when relevant). ``kaizen-better-memory regen`` rebuilds MEMORY.md from the
 frontmatter of every sibling so all captures become reachable at
 session start.
 
 ## Subcommands
 
-    kaizen-memory regen [--dir PATH] [--json]
+    kaizen-better-memory regen [--dir PATH] [--json]
         Rebuild MEMORY.md from the dir's *.md files.
 
-    kaizen-memory path [--dir PATH]
+    kaizen-better-memory path [--dir PATH]
         Print the resolved auto-memory dir for the current cwd.
 
 ## Frontmatter normalization
@@ -155,7 +155,7 @@ def _cmd_regen(args) -> int:
     if args.json:
         print(json.dumps({"data": {"dir": str(d), "indexed": count}}))
     else:
-        print(f"kaizen-memory regen: indexed {count} entries -> {d / 'MEMORY.md'}")
+        print(f"kaizen-better-memory regen: indexed {count} entries -> {d / 'MEMORY.md'}")
     return 0
 
 
@@ -166,7 +166,7 @@ def _cmd_path(args) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
-    p = argparse.ArgumentParser(prog="kaizen-memory",
+    p = argparse.ArgumentParser(prog="kaizen-better-memory",
                                  description="Auto-memory index management.")
     sub = p.add_subparsers(dest="cmd", required=True)
 
