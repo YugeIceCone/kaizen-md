@@ -218,5 +218,87 @@ class TestDeterminismAndConsistency(unittest.TestCase):
         self.assertNotIn("Notes/ghost", notes)
 
 
+class TestPinList(unittest.TestCase):
+    """Pure pin list: load / add / remove / dedup. Sandboxed via
+    KAIZEN_AUTO_LOAD_PINS_PATH (matches the kaizen per-feature env
+    convention)."""
+
+    def _path(self, td):
+        return Path(td) / "pins.json"
+
+    def test_load_pins_returns_empty_when_no_file(self):
+        import auto_load as al
+        import tempfile
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory() as td:
+            with patch.dict(os.environ,
+                            {"KAIZEN_AUTO_LOAD_PINS_PATH": str(self._path(td))}):
+                pins = al.load_pins()
+            self.assertEqual(pins, [])
+
+    def test_add_pin_persists_and_dedups(self):
+        import auto_load as al
+        import tempfile
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory() as td:
+            with patch.dict(os.environ,
+                            {"KAIZEN_AUTO_LOAD_PINS_PATH": str(self._path(td))}):
+                al.add_pin("Notes/pref-x")
+                al.add_pin("Notes/pref-y")
+                al.add_pin("Notes/pref-x")  # dedup
+                pins = al.load_pins()
+            self.assertEqual(sorted(pins), ["Notes/pref-x", "Notes/pref-y"])
+
+    def test_remove_pin_idempotent(self):
+        import auto_load as al
+        import tempfile
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory() as td:
+            with patch.dict(os.environ,
+                            {"KAIZEN_AUTO_LOAD_PINS_PATH": str(self._path(td))}):
+                al.add_pin("Notes/pref-x")
+                al.remove_pin("Notes/pref-x")
+                al.remove_pin("Notes/pref-x")  # idempotent — no error
+                pins = al.load_pins()
+            self.assertEqual(pins, [])
+
+
+class TestPinnedBuild(unittest.TestCase):
+    """Pinned notes always render even when outside top-N. They sit in
+    a dedicated `## Pinned` section above Top Beliefs so they're easy
+    to spot."""
+
+    def test_pins_appear_in_output_above_top_n(self):
+        import auto_load as al
+        # Pin a Note that would normally be cut by top_n=2
+        out = al.build_auto_load(
+            _SAMPLE_PERSONA, top_n=2, byte_budget=5000,
+            pins=["Notes/pref-handoff-over-raw-log"],
+        )
+        self.assertIn("## Pinned", out)
+        self.assertIn("pref-handoff-over-raw-log", out)
+        # Pinned section appears before Top beliefs section
+        self.assertLess(out.index("## Pinned"), out.index("## Top beliefs"))
+
+    def test_pins_dedup_against_top_beliefs(self):
+        """Don't list a Note twice if it's both pinned and in top-N."""
+        import auto_load as al
+        # pref-no-deletions is #1 in Top Beliefs; pinning shouldn't dupe.
+        out = al.build_auto_load(
+            _SAMPLE_PERSONA, top_n=10, byte_budget=5000,
+            pins=["Notes/pref-no-deletions"],
+        )
+        # Pinned section should NOT contain a Note that's already in Top Beliefs
+        if "## Pinned" in out:
+            pinned_section = out.split("## Pinned", 1)[1].split("## ", 1)[0]
+            self.assertNotIn("pref-no-deletions", pinned_section)
+
+    def test_pins_param_defaults_to_empty(self):
+        """Backward-compatible: no pins arg → no Pinned section."""
+        import auto_load as al
+        out = al.build_auto_load(_SAMPLE_PERSONA, top_n=10, byte_budget=5000)
+        self.assertNotIn("## Pinned", out)
+
+
 if __name__ == "__main__":
     unittest.main()

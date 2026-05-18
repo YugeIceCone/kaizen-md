@@ -672,6 +672,43 @@ def _cmd_edit(args) -> int:
     return 0
 
 
+# ─── auto-load pin management ────────────────────────────────────────
+
+
+def _cmd_pin(args) -> int:
+    """Pin a Note into the daemon-built auto-load.md."""
+    import auto_load as _al
+    _al.add_pin(args.note)
+    print(f"brain pin: pinned {args.note} (pins now: "
+          f"{len(_al.load_pins())})")
+    return 0
+
+
+def _cmd_unpin(args) -> int:
+    """Remove a Note from the pin list (idempotent)."""
+    import auto_load as _al
+    _al.remove_pin(args.note)
+    print(f"brain unpin: unpinned {args.note} (pins now: "
+          f"{len(_al.load_pins())})")
+    return 0
+
+
+def _cmd_list_pins(args) -> int:
+    """Print the current pin list."""
+    import auto_load as _al
+    pins = _al.load_pins()
+    if args.json:
+        print(json.dumps({"data": {"pins": pins, "count": len(pins)}}))
+    else:
+        if not pins:
+            print("brain pins: (none)")
+        else:
+            print(f"brain pins: {len(pins)} pinned")
+            for p in pins:
+                print(f"  - {p}")
+    return 0
+
+
 # ─── Starter seeding (onboarding) ────────────────────────────────────
 
 
@@ -806,6 +843,19 @@ def main(argv: Optional[list[str]] = None) -> int:
                           "(caller provides marker e.g. `- foo` or `4. bar`)")
     se.add_argument("--json", action="store_true")
     se.set_defaults(func=_cmd_edit)
+
+    # Pin management for auto-load.md.
+    pn = sub.add_parser("pin", help="pin a Note into ~/.claude/.kaizen/auto-load.md")
+    pn.add_argument("note", help="note ref, e.g. Notes/pref-x")
+    pn.set_defaults(func=_cmd_pin)
+
+    up = sub.add_parser("unpin", help="unpin a Note from auto-load.md")
+    up.add_argument("note", help="note ref, e.g. Notes/pref-x")
+    up.set_defaults(func=_cmd_unpin)
+
+    lp = sub.add_parser("list-pins", help="list currently pinned Notes")
+    lp.add_argument("--json", action="store_true")
+    lp.set_defaults(func=_cmd_list_pins)
 
     # Onboarding: seed the brain from a curated starter.
     ssd = sub.add_parser("seed",
