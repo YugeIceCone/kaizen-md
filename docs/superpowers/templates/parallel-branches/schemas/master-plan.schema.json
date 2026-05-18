@@ -14,8 +14,18 @@
     "wave_size":      {"type": "integer", "minimum": 1, "description": "Required when concurrency_mode == waves"},
     "verification_cadence": {"enum": ["per_item", "per_chunk", "end_of_plan"]},
     "rubric":         {"type": "string", "description": "Optional path to chunk-sizing rubric YAML"},
-    "chunks":         {"type": "array", "items": {"$ref": "#/$defs/chunk"}, "minItems": 1},
-    "merge":          {"$ref": "#/$defs/merge"}
+    "chunks": {
+      "oneOf": [
+        {"type": "array", "items": {"$ref": "#/$defs/chunk"}, "minItems": 1, "description": "Mode A — inline array of chunks"},
+        {"type": "string", "pattern": "^\\.?\\.?/.+\\*.*\\.ya?ml$", "description": "Mode B — glob string resolved relative to plan.yaml (e.g. './chunks/*.yaml'). Each matched file validates against chunk.schema.json."}
+      ]
+    },
+    "merge": {
+      "oneOf": [
+        {"$ref": "#/$defs/merge", "description": "Inline merge config"},
+        {"type": "string", "description": "Path (relative to plan.yaml) to a merge.yaml file"}
+      ]
+    }
   },
   "$defs": {
     "chunk": {

@@ -1,0 +1,27 @@
+# merge.yaml — referenced by plan.yaml::merge.
+# Validates against master-plan.schema.json#/$defs/merge.
+
+run_by: "parent"
+budget_tokens: 22000
+
+actions:
+  - "consolidate_perms"
+  - "append_progress"
+  - "dispatch_backlog"
+  - "wire_mcp_mounts"
+  - action: "retrofit"
+    targets:
+      - "md_whitespace"
+      - "md_dupes"
+      - "md_heading_depth"
+      - "todo_inventory"
+      - "unused_env"
+  - action: "cross_pollinate"
+    to_project: "~/workspace/semantic-search"
+    axes:
+      - "fn-name-quality"
+      - "validator-wiring"
+      - "trace-bloat-join"
+  - "cleanup_fragments"
+  - "merge_commit"
+  - "final_verify"
