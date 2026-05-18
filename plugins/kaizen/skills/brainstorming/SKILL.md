@@ -187,3 +187,43 @@ A question about a UI topic is not automatically a visual question. "What does p
 
 If they agree to the companion, read the detailed guide before proceeding:
 `skills/brainstorming/visual-companion.md`
+
+## Threshold-gated output contract
+
+For brainstorms with **>10 ideas** (configurable: `--threshold N`), the
+skill emits a typed JSONL alongside the prose spec:
+
+  plans/<date>-<topic>.jsonl    structured per-idea records
+  plans/<date>-<topic>.md       narrative spec (existing)
+
+Each idea row validates against
+`plugins/kaizen/skills/brainstorming/domain/schemas/idea.schema.json`
+and carries:
+
+- `auto_bucket` — assigned by `brainstorm-rubric.yaml` via
+  `schema_cli.BucketWalker` (KEEP / YAGNI / RADICAL / PHASE_2 /
+  RESEARCH / NEEDS_AGENT)
+- `confidence` — 0.0–1.0, LLM self-rated input per idea
+- `classification_confidence` — 0.0–1.0, rubric-emitted output
+  (1.0 deterministic, 0.85 fallback)
+- `rationale` — one-line justification from the rubric walker
+- `rubric_version` — matches the rubric YAML's `version:` key
+- `manual_bucket` — user override from the batch-confirm step
+  (null if no override)
+
+Brainstorms **≤10 ideas** → prose-narration only (no JSONL).
+Empty brainstorms (0 ideas) → no-op; stderr `"no ideas to score"`.
+
+Scripted / CI runs set `KAIZEN_BRAINSTORM_BATCH=1` to skip the
+`AskUserQuestion` override loop. `NEEDS_AGENT` rows emit with
+`manual_bucket = null` and a STDERR warning naming the count.
+
+CLI: `kaizen-brainstorm score --input PATH --rubric PATH [--rewrite] [--force]`.
+
+The threshold check is exposed as a pure helper for the SKILL agent
+loop:
+
+  from brainstorm import should_emit_jsonl
+  if should_emit_jsonl(len(ideas)):
+      # emit JSONL via `kaizen-brainstorm score`
+

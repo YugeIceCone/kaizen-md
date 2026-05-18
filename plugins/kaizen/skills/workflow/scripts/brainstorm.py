@@ -48,7 +48,16 @@ except ImportError:  # pragma: no cover — installed in kaizen environments
 
 _TRIGGER_RE = re.compile(r"\bwhen\b|\btrigger\b|→|\bif\b.*\bthen\b", re.I)
 _DEFAULT_MAX_IDEAS = 250
+_DEFAULT_THRESHOLD = 10
 _emit = _envelope.emitter("kaizen-brainstorm", tool_version="1.0.0")
+
+
+def should_emit_jsonl(idea_count: int, *, threshold: int = _DEFAULT_THRESHOLD) -> bool:
+    """True when brainstorm has > threshold ideas (default 10).
+
+    Pure fn. Empty brainstorms (0 ideas) always return False (no-op,
+    not an error). Under-threshold means prose-only narration."""
+    return idea_count > threshold
 
 
 # ─── Pure-fn signal computer ─────────────────────────────────────────
