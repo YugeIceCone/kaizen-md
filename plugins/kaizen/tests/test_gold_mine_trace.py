@@ -46,7 +46,11 @@ class TraceBase(unittest.TestCase):
         os.environ["KAIZEN_TRACE_DIR"]      = str(self.trace_dir)
         os.environ["KAIZEN_PROJECT_SLUG"]   = self.slug
         os.environ["KAIZEN_GOLD_FILE"]      = str(self.gold_dir / "patterns.jsonl")
-        os.environ["KAIZEN_GOLD_MINE_ENABLE"] = "1"
+        # Intentionally NOT setting KAIZEN_GOLD_MINE_ENABLE=1 — Ollama
+        # scoring is gated off so urllib.urlopen calls don't add ~1s
+        # per test. Tests assert on scan / cursor state, not score
+        # outcomes; the unscored count covers the no-LLM path.
+        os.environ.pop("KAIZEN_GOLD_MINE_ENABLE", None)
 
     def tearDown(self):
         self._tmp.cleanup()

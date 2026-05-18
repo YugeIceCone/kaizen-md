@@ -593,9 +593,15 @@ def run_mine() -> dict:
     recent_types = [e.get("evt_type", "") for e in filtered[-5:]]
 
     # Lazy-import Ollama caller — costs nothing when disabled.
-    try:
-        import _ollama
-    except ImportError:
+    # Gate per the documented `KAIZEN_GOLD_MINE_ENABLE=1` env knob;
+    # default-off keeps tests + non-LLM runs fast (each Ollama call
+    # is ~1s urllib.urlopen to localhost:11434 even when timing out).
+    if os.environ.get("KAIZEN_GOLD_MINE_ENABLE") == "1":
+        try:
+            import _ollama
+        except ImportError:
+            _ollama = None  # noqa: N806
+    else:
         _ollama = None  # noqa: N806
 
     for tpl, recurrence in dedup:

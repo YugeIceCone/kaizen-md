@@ -65,27 +65,33 @@ class TestDefaultIsSyntaxOnly(unittest.TestCase):
     Pre-refactor, bare invocation ran the full ~80s suite. Post-refactor
     static-only is the default; caller opts INTO unittests via --full
     or KAIZEN_CI_GATE_FULL=1.
+
+    All 3 tests assert different facets of the SAME `_run([])` output.
+    Cached via setUpClass — one invocation amortized across 3 asserts
+    (was 3 × ~750ms = ~2.3s; now 1 × ~750ms).
     """
 
+    @classmethod
+    def setUpClass(cls):
+        cls._rc, cls._out, cls._err, cls._elapsed = _run([])
+
     def test_default_skips_unittests(self):
-        rc, out, _, elapsed = _run([])
-        self.assertEqual(rc, 0, f"default invocation must pass (got rc={rc})")
-        self.assertNotIn("unittest suite", out,
+        self.assertEqual(self._rc, 0,
+                          f"default invocation must pass (got rc={self._rc})")
+        self.assertNotIn("unittest suite", self._out,
                           "default must NOT run the unittest suite")
-        self.assertLess(elapsed, 30.0,
-                         f"default must be fast (got {elapsed:.1f}s)")
+        self.assertLess(self._elapsed, 30.0,
+                         f"default must be fast (got {self._elapsed:.1f}s)")
 
     def test_default_runs_static_checks(self):
-        _, out, _, _ = _run([])
         for marker in ("shell scripts parse", "python scripts parse",
                         "json manifests valid", "SKILL.md frontmatter"):
-            self.assertIn(marker, out, f"default missing: {marker!r}")
+            self.assertIn(marker, self._out, f"default missing: {marker!r}")
 
     def test_default_emits_indicator(self):
         """Output must explain that unittests were skipped (so the user
         knows to pass --full when they want them)."""
-        _, out, _, _ = _run([])
-        self.assertRegex(out.lower(), r"static|--full|unittests? skipped")
+        self.assertRegex(self._out.lower(), r"static|--full|unittests? skipped")
 
 
 class TestFullOptIn(unittest.TestCase):
