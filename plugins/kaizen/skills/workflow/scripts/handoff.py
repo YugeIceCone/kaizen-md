@@ -1596,6 +1596,106 @@ def _cmd_append(args) -> int:
     return 0
 
 
+# ─── cost — token-budget estimator (Task #40 brainstorm #1) ──────────
+
+_COST_DEFAULT_BUDGET = 2000
+
+
+def _approx_tokens(s: str) -> int:
+    """Chars-divided-by-4 token estimate (kaizen convention).
+
+    Ceiling division — avoids under-reporting on small strings. Empty
+    string returns 0. Matches the estimate used in token-bloat reports
+    and the skill-listing-budget analysis.
+    """
+    if not s:
+        return 0
+    return (len(s) + 3) // 4
+
+
+def _cost_threshold() -> int:
+    """Drift-resilient (re-read per call): env wins, else default."""
+    try:
+        return int(os.environ.get("KAIZEN_HANDOFF_COST_TOKEN_BUDGET",
+                                    _COST_DEFAULT_BUDGET))
+    except ValueError:
+        return _COST_DEFAULT_BUDGET
+
+
+def _compute_costs(text: str) -> dict:
+    """Pure function: total size + per-section chars/tokens + threshold verdict.
+
+    Per-section breakdown uses PyYAML body parse — same shape as
+    `_load_raw_handoff` returns. Each section's serialized length is
+    approximated via json.dumps (faithful enough for budget signaling).
+    """
+    size_bytes = len(text.encode("utf-8"))
+    approx_total = _approx_tokens(text)
+    _, body = _load_raw_handoff(text)
+    per_section: dict[str, dict] = {}
+    for section in sorted(_BODY_SECTIONS):
+        value = body.get(section)
+        if value is None:
+            serialized = ""
+        elif isinstance(value, str):
+            serialized = value
+        else:
+            serialized = json.dumps(value, default=str)
+        chars = len(serialized)
+        tokens = _approx_tokens(serialized)
+        pct = (chars / len(text) * 100.0) if text else 0.0
+        per_section[section] = {
+            "chars": chars,
+            "approx_tokens": tokens,
+            "pct": round(pct, 1),
+        }
+    threshold = _cost_threshold()
+    over = approx_total > threshold
+    if over:
+        recommendation = ("over budget — scaffold a fresh handoff + link via "
+                          "parent_handoff so the chain stays intact without bloat")
+    else:
+        recommendation = "ok — under budget"
+    return {
+        "size_bytes": size_bytes,
+        "approx_tokens": approx_total,
+        "threshold_tokens": threshold,
+        "over_threshold": over,
+        "per_section": per_section,
+        "recommendation": recommendation,
+    }
+
+
+def _cmd_cost(args) -> int:
+    fp = Path(args.file)
+    if not fp.is_file():
+        sys.stderr.write(f"handoff cost: file not found: {fp}\n")
+        return 2
+    text = fp.read_text(encoding="utf-8")
+    result = _compute_costs(text)
+    out = {"file": str(fp), **result}
+    if args.json:
+        print(json.dumps(out, indent=2, default=str))
+    else:
+        verdict = "✗ over budget" if result["over_threshold"] else "✓ ok"
+        print(f"handoff cost: {fp}")
+        print(f"total: {result['size_bytes']:>7,} bytes  "
+              f"~{result['approx_tokens']:>6,} tokens  "
+              f"(threshold {result['threshold_tokens']:,})  {verdict}")
+        print()
+        print("per section (sorted by tokens):")
+        sorted_sections = sorted(result["per_section"].items(),
+                                  key=lambda kv: -kv[1]["approx_tokens"])
+        for name, st in sorted_sections:
+            if st["approx_tokens"] == 0:
+                continue
+            print(f"  {name:<22} {st['chars']:>6,} chars  "
+                  f"~{st['approx_tokens']:>5,} tok  ({st['pct']:>4.1f}% of total)")
+        print()
+        print(f"  → {result['recommendation']}")
+    return 0
+
+
 # ─── tree — bidirectional commit↔task map (Task #40) ──────────────────
 
 def _build_commit_task_map(entries: list, *, repo: Path, since: str) -> dict:
@@ -1939,6 +2039,16 @@ def main(argv: Optional[list[str]] = None) -> int:
                             "when section is done_this_session")
     s_ap.add_argument("--json", action="store_true")
     s_ap.set_defaults(func=_cmd_append)
+
+    s_co = sub.add_parser(
+        "cost",
+        help="token-budget estimator — total size + per-section breakdown + "
+             "threshold verdict. Pure read; chars/4 approximation. "
+             "Threshold via KAIZEN_HANDOFF_COST_TOKEN_BUDGET (default 2000)."
+    )
+    s_co.add_argument("--file", required=True, help="path to the handoff YAML")
+    s_co.add_argument("--json", action="store_true")
+    s_co.set_defaults(func=_cmd_cost)
 
     s_tr = sub.add_parser(
         "tree",
