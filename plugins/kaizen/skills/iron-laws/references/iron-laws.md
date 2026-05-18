@@ -14,7 +14,7 @@ The non-negotiable rules for kaizen-plugin-original development. This file is a 
 
 ## Summary
 
-32 laws — 19 auto, 13 manual.
+33 laws — 19 auto, 14 manual.
 
 | id | severity | enforcement | check |
 |---|---|---|---|
@@ -50,6 +50,7 @@ The non-negotiable rules for kaizen-plugin-original development. This file is a 
 | `cli-json-flag` | soft | manual | — |
 | `shim-and-sweep` | hard | manual | — |
 | `dry-extract-on-third-repetition` | soft | manual | — |
+| `flake-audit-load-before-logic` | soft | manual | — |
 
 ## Laws
 
@@ -346,4 +347,12 @@ When a pattern (helper fn / shape / constant block) appears in 3+ distinct call-
 **Detect:** Diff adds a 3rd instance of a pattern that's already present in 2 other files (e.g. _<feature>_dir env-overridable resolver; with open(p, 'a') append helper; subprocess git_run wrapper).
 
 **Why:** Rule-of-three is a discipline pinned (DRY) but easy to skip when adding 'just one more.' Session evidence — atomic_append_line existed since the start but was reimplemented 4 times before extraction (commit 3a18b8f); env_overridable_dir went 5 sites before extraction (commit 681a56d). Both extractions saved ~20-30 LOC AND unlocked future consistency changes in ONE place. The discipline cost (extract on add) is much lower than the consolidation cost later (refactor 4-5 sites + update tests). Reinforces shim-and-sweep — the third repetition is where shim-and-sweep work compounds, so catch it then.
+
+### `flake-audit-load-before-logic` (soft · manual)
+
+When a test flakes ONLY under full-suite parallel load (passes solo + passes under narrow --pattern), audit sibling tests for heavy subprocess pressure BEFORE debugging the failing test's own logic. The cause is often elsewhere — fixture-spawning shell scripts in other test families create subprocess / filesystem contention that perturbs the failing test's timing.
+
+**Detect:** A test fails intermittently only under `kaizen-tests` full-suite parallel run, but `python3 -m unittest tests.<failing>` passes consistently AND `kaizen-tests --pattern test_<family>_*` passes consistently.
+
+**Why:** Caught via session trace 2026-05-19 — test_handoff_commit_autotag flaked 2 of 3 full-suite runs (different test in test_loop_state OR test_loop_hardening also failed each time). Solo + pattern runs all clean. After fixing the loop tests to stop invoking setup-ralph-loop.sh (which spawns bash + 2× python3-heredoc per `_init_loop` call → ~88 spawns across 22+ tests in 2 files), the handoff flake vanished — 15 of 15 consecutive clean runs without touching handoff code. The 88 invisible spawns were creating filesystem / process-table contention that perturbed git subprocess timing in unrelated tests. Diagnostic ladder: (1) solo run (2) --pattern run (3) `kaizen-tests bench` for >5s outliers (4) audit setUps for subprocess loops where the script's behavior isn't what's tested (5) only THEN debug the failing test's logic.
 

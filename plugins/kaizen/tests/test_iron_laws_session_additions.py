@@ -36,6 +36,7 @@ _NEW_LAW_IDS = {
     "cli-json-flag",
     "shim-and-sweep",
     "dry-extract-on-third-repetition",
+    "flake-audit-load-before-logic",
 }
 
 
