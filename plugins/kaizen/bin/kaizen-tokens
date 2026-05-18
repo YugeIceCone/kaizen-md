@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+# kaizen-tokens — CLI for the positional token map.
+#
+# Thin dispatcher to `skills/workflow/scripts/tokens.py`. Uses plain
+# `python3` because the script's PEP-723 shebang (`#!/usr/bin/env -S uv
+# run --script`) is honored when the file is exec'd directly; passing
+# it as an argv to python3 would bypass the inline-deps venv (see
+# plugin-development SKILL.md Part 5 — explicit routing rule). For
+# verbs that need tree-sitter (`index`), users can run the script
+# directly or via `uv run --script` — argv normalization keeps both
+# paths working.
+#
+# The cross-platform readlink dance handles macOS (no `readlink -f`).
+set -euo pipefail
+
+_SCRIPT_REAL="$(readlink -f "${BASH_SOURCE[0]}" 2>/dev/null \
+  || python3 -c 'import os,sys; print(os.path.realpath(sys.argv[1]))' "${BASH_SOURCE[0]}")"
+_BIN_DIR="$(cd "$(dirname "$_SCRIPT_REAL")" && pwd)"
+PLUGIN_ROOT="$(cd "$_BIN_DIR/.." && pwd)"
+
+exec uv run --script "$PLUGIN_ROOT/skills/workflow/scripts/tokens.py" "$@"
