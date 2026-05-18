@@ -414,6 +414,16 @@ def tick() -> dict:
     actions[action] = actions.get(action, 0) + 1
     log_line("INFO" if ok else "ERROR", f"{action}: {msg}")
 
+    # 11. Auto-load — rebuild ~/.claude/.kaizen/auto-load.md from
+    # Persona top-N + hard gates. Imported by CLAUDE.md via @path.
+    try:
+        import auto_load as _al
+        ok, msg, action = _al.run_auto_load(state)
+        actions[action] = actions.get(action, 0) + 1
+        log_line("INFO" if ok else "ERROR", f"{action}: {msg}")
+    except ImportError:
+        log_line("WARN", "auto-load: module not importable (skip)")
+
     save_state(state)
     log_line("INFO", "daemon tick complete")
     return state

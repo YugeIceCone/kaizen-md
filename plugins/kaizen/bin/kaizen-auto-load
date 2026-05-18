@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+# kaizen-auto-load — render ~/.claude/.kaizen/auto-load.md from Persona.
+# Symlinked to ~/.local/bin/kaizen-auto-load by /kaizen:install.
+#
+# Backed by ${PLUGIN_ROOT}/skills/workflow/scripts/auto_load.py.
+#
+# The daemon job `run_auto_load` does this automatically every tick;
+# this bin is for ad-hoc / debug invocation (e.g., preview the output
+# with `--print` before letting the daemon overwrite the file).
+
+set -uo pipefail
+
+_SCRIPT_REAL="$(readlink -f "${BASH_SOURCE[0]}" 2>/dev/null \
+  || python3 -c 'import os,sys; print(os.path.realpath(sys.argv[1]))' "${BASH_SOURCE[0]}")"
+_BIN_DIR="$(cd "$(dirname "$_SCRIPT_REAL")" && pwd)"
+# shellcheck source=../skills/workflow/scripts/_plugin_root.sh
+source "$_BIN_DIR/../skills/workflow/scripts/_plugin_root.sh"
+PLUGIN_ROOT="$(kaizen_plugin_root)" || {
+    echo "kaizen-auto-load: plugin root unresolved" >&2
+    exit 1
+}
+
+exec python3 "$PLUGIN_ROOT/skills/workflow/scripts/auto_load.py" "$@"
