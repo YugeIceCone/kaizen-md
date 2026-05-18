@@ -544,6 +544,82 @@ def _cmd_status(args) -> int:
     return 0
 
 
+# ─── block-level addressing — zero-roundtrip memory edits ────────────
+
+def _cmd_blocks(args) -> int:
+    """List addressable blocks in a Markdown file."""
+    from pathlib import Path as _P
+    import _brain_blocks as _bb
+    fp = _P(args.file)
+    if not fp.is_file():
+        sys.stderr.write(f"brain blocks: file not found: {fp}\n")
+        return 2
+    blocks = _bb.parse_blocks(fp.read_text(encoding="utf-8"))
+    if args.json:
+        print(json.dumps({"file": str(fp), "blocks": blocks}, indent=2))
+    else:
+        print(f"brain blocks: {fp}")
+        for b in blocks:
+            indent = "  " * max(0, b["level"] - 1)
+            n_lines = b["end"] - b["start"]
+            print(f"  {b['start']:>4}+{n_lines:<3}  {indent}{b['path']}")
+    return 0
+
+
+def _cmd_show(args) -> int:
+    """Extract one block (no whole-file Read)."""
+    from pathlib import Path as _P
+    import _brain_blocks as _bb
+    fp = _P(args.file)
+    if not fp.is_file():
+        sys.stderr.write(f"brain show: file not found: {fp}\n")
+        return 2
+    text = fp.read_text(encoding="utf-8")
+    body = _bb.extract_block(text, args.block)
+    if body is None:
+        sys.stderr.write(f"brain show: block not found: {args.block!r}\n")
+        return 1
+    if args.json:
+        print(json.dumps({"file": str(fp), "block": args.block,
+                           "body": body}, indent=2))
+    else:
+        print(body)
+    return 0
+
+
+def _cmd_edit(args) -> int:
+    """Atomic in-place edit of a single block. Replace or append."""
+    from pathlib import Path as _P
+    import _brain_blocks as _bb
+    fp = _P(args.file)
+    if not fp.is_file():
+        sys.stderr.write(f"brain edit: file not found: {fp}\n")
+        return 2
+    if not (args.replace or args.append):
+        sys.stderr.write("brain edit: --replace OR --append required\n")
+        return 1
+    text = fp.read_text(encoding="utf-8")
+    try:
+        if args.replace is not None:
+            new_text = _bb.replace_block(text, args.block, args.replace)
+        else:
+            new_text = _bb.append_to_list_block(text, args.block, args.append)
+    except KeyError as e:
+        sys.stderr.write(f"brain edit: {e}\n")
+        return 1
+    tmp = fp.with_suffix(fp.suffix + ".tmp")
+    tmp.write_text(new_text, encoding="utf-8")
+    tmp.replace(fp)
+    if args.json:
+        print(json.dumps({"file": str(fp), "block": args.block,
+                           "op": "replace" if args.replace else "append"},
+                          indent=2))
+    else:
+        op = "replaced" if args.replace else "appended"
+        print(f"brain edit: {op} block {args.block!r} in {fp}")
+    return 0
+
+
 # ─── Starter seeding (onboarding) ────────────────────────────────────
 
 
@@ -648,6 +724,36 @@ def main(argv: Optional[list[str]] = None) -> int:
 
     ss = sub.add_parser("status", help="brain stats")
     ss.set_defaults(func=_cmd_status)
+
+    # ─── block-level zero-roundtrip memory edits ─────────────────────
+    sb = sub.add_parser("blocks",
+                          help="list addressable blocks (heading-paths) in a Markdown file")
+    sb.add_argument("--file", required=True, help="Markdown file path")
+    sb.add_argument("--json", action="store_true")
+    sb.set_defaults(func=_cmd_blocks)
+
+    sh = sub.add_parser("show",
+                          help="extract one block by heading-path "
+                               "(zero whole-file Read)")
+    sh.add_argument("--file", required=True, help="Markdown file path")
+    sh.add_argument("--block", required=True,
+                     help="block path (e.g. 'Top Beliefs' or 'Document/Top Beliefs')")
+    sh.add_argument("--json", action="store_true")
+    sh.set_defaults(func=_cmd_show)
+
+    se = sub.add_parser("edit",
+                          help="atomic in-place block edit. Use --replace "
+                               "for full-block swap, --append for list-item add.")
+    se.add_argument("--file", required=True, help="Markdown file path")
+    se.add_argument("--block", required=True, help="block path")
+    se.add_argument("--replace", default=None,
+                     help="new full block body (replaces lines from heading "
+                          "to next sibling-or-shallower heading)")
+    se.add_argument("--append", default=None,
+                     help="single list-item line to append at end of block "
+                          "(caller provides marker e.g. `- foo` or `4. bar`)")
+    se.add_argument("--json", action="store_true")
+    se.set_defaults(func=_cmd_edit)
 
     # Onboarding: seed the brain from a curated starter.
     ssd = sub.add_parser("seed",
