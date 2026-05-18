@@ -143,12 +143,13 @@ def _write_patch_journal(root: Path, commit_sha: str) -> Path | None:
         sha8 = commit_sha[:8]
         patch_path = patches_dir / f"{ts}-{sha8}.patch"
         patch_path.write_text(r.stdout, encoding="utf-8")
+        # DRY — shared atomic_append_line preserves the append-only-sink
+        # iron-law (per registry 2026-05-18).
+        from _atomic import atomic_append_line
         manifest = _backup_dir() / "manifest.jsonl"
-        manifest.parent.mkdir(parents=True, exist_ok=True)
-        with manifest.open("a", encoding="utf-8") as f:
-            f.write(json.dumps({
-                "ts": ts, "sha": commit_sha, "path": str(patch_path),
-            }) + "\n")
+        atomic_append_line(manifest, json.dumps({
+            "ts": ts, "sha": commit_sha, "path": str(patch_path),
+        }))
         return patch_path
     except (OSError, subprocess.TimeoutExpired):
         return None

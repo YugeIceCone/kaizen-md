@@ -98,9 +98,10 @@ def _build_entry(payload: dict) -> dict:
 
 
 def _atomic_append(path: Path, entry: dict) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("a", encoding="utf-8") as f:
-        f.write(json.dumps(entry) + "\n")
+    # DRY — delegates to the shared _atomic.atomic_append_line helper
+    # (also enforces append-only-sink iron-law).
+    from _atomic import atomic_append_line
+    atomic_append_line(path, json.dumps(entry))
 
 
 def _cmd_append(args: argparse.Namespace) -> int:

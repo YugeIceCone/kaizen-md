@@ -69,15 +69,19 @@ def _render_row(payload: dict) -> str:
 
 
 def _atomic_append(path: Path, row: str) -> None:
-    """Append `row` (one line) to `path` via O_APPEND. Creates the file
-    with the canonical 4-column header if absent. NEVER reads the existing
-    file — preserves the "append-only, constant-cost" guarantee."""
+    """Append `row` (one line) to `path`. Creates the file with the
+    canonical 4-column header if absent. NEVER reads existing — preserves
+    the append-only-sink iron-law (delta cost is constant).
+
+    Delegates to the shared _atomic.atomic_append_line helper (DRY).
+    """
+    from _atomic import atomic_append_line
     path.parent.mkdir(parents=True, exist_ok=True)
     if not path.exists():
-        with path.open("w", encoding="utf-8") as f:
-            f.write(_HEADER)
-    with path.open("a", encoding="utf-8") as f:
-        f.write(row + "\n")
+        # Header bootstrap is a one-shot write (not append-with-content);
+        # use raw write — atomic_append_line is for per-row appends.
+        path.write_text(_HEADER, encoding="utf-8")
+    atomic_append_line(path, row)
 
 
 def _cmd_append(args: argparse.Namespace) -> int:

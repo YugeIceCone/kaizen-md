@@ -112,10 +112,17 @@ def normalize_cc_event(stdin_text: str, *,
 
 def _atomic_append(sink: Path, event: dict) -> None:
     """Append-only — never reads existing file. Same iron-law as
-    kaizen-progress / kaizen-learn."""
-    sink.parent.mkdir(parents=True, exist_ok=True)
-    with sink.open("a", encoding="utf-8") as f:
-        f.write(json.dumps(event) + "\n")
+    kaizen-progress / kaizen-learn. DRY — delegates to shared
+    _atomic.atomic_append_line."""
+    # _atomic lives in skills/workflow/scripts/, not on this module's sys.path
+    # by default — resolve relative to plugin root.
+    import sys as _sys
+    from pathlib import Path as _Path
+    scripts_dir = _Path(__file__).resolve().parent.parent.parent / "skills" / "workflow" / "scripts"
+    if str(scripts_dir) not in _sys.path:
+        _sys.path.insert(0, str(scripts_dir))
+    from _atomic import atomic_append_line  # noqa: E402
+    atomic_append_line(sink, json.dumps(event))
 
 
 def capture(stdin_text: str, *, event_kind: str, now: str) -> dict:
