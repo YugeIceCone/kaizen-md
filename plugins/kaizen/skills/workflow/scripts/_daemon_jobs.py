@@ -14,6 +14,7 @@ are pure: pass in state, mutate state, return tuple.
 """
 from __future__ import annotations
 
+import datetime as _dt
 import hashlib
 import os
 import subprocess
@@ -115,6 +116,33 @@ def run_brain_index(state: dict) -> tuple[bool, str, str]:
     if ok:
         state["brain_notes_hash"] = current
     msg = f"reindex ({prior or 'none'} → {current}) rc={result.returncode}"
+    if not ok and result.stderr:
+        msg += f" stderr={result.stderr.strip()[:200]}"
+    return ok, msg, action
+
+
+def run_brain_evolve(state: dict) -> tuple[bool, str, str]:
+    """Daily LLM-driven consolidation/reflection (opt-in).
+
+    Default OFF — set ``KAIZEN_DAEMON_BRAIN_EVOLVE_ENABLE=1`` to enable.
+    Once enabled, runs at most once per calendar day (tracked via
+    ``state["last_evolve_date"]``).
+    """
+    action = "brain-evolve"
+    if os.environ.get("KAIZEN_DAEMON_BRAIN_EVOLVE_ENABLE") != "1":
+        return True, "opt-in only (set KAIZEN_DAEMON_BRAIN_EVOLVE_ENABLE=1)", action
+    today = _dt.date.today().isoformat()
+    if state.get("last_evolve_date") == today:
+        return True, f"already ran today ({today})", action
+    script = _SCRIPT_DIR / "brain_evolve.py"
+    result = subprocess.run(
+        [_python(), str(script), "--json"],
+        capture_output=True, text=True, timeout=600,
+    )
+    ok = result.returncode == 0
+    if ok:
+        state["last_evolve_date"] = today
+    msg = f"rc={result.returncode}"
     if not ok and result.stderr:
         msg += f" stderr={result.stderr.strip()[:200]}"
     return ok, msg, action

@@ -50,7 +50,8 @@ class TestDaemonBrainAuditWire(unittest.TestCase):
                     state = d.tick()
 
         actions = state.get("actions", {})
-        for key in ("brain-audit", "brain-index", "brain-promote"):
+        for key in ("brain-audit", "brain-index", "brain-promote",
+                    "brain-evolve"):
             self.assertIn(key, actions, f"{key} should be wired into tick()")
             self.assertGreaterEqual(actions[key], 1)
 
