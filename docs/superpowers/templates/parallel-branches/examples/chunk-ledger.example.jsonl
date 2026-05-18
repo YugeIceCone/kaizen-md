@@ -1,0 +1,16 @@
+{"chunk_id": "chunk-1", "item_id": "1.A", "brainstorm_ref": "#10", "status": "pending", "ts": "2026-05-18T10:00:00Z"}
+{"chunk_id": "chunk-1", "item_id": "1.A", "brainstorm_ref": "#10", "status": "in_progress", "ts": "2026-05-18T10:00:30Z", "tokens_used": 1200}
+{"chunk_id": "chunk-1", "item_id": "1.A", "brainstorm_ref": "#10", "status": "done", "ts": "2026-05-18T10:08:42Z", "commit_sha": "a3f2b18", "tokens_used": 8400, "notes": "kaizen-fn-name-quality shipped + paired test green"}
+{"chunk_id": "chunk-1", "item_id": "1.B", "brainstorm_ref": "#47", "status": "pending", "ts": "2026-05-18T10:08:43Z"}
+{"chunk_id": "chunk-1", "item_id": "1.B", "brainstorm_ref": "#47", "status": "in_progress", "ts": "2026-05-18T10:09:00Z", "tokens_used": 14200}
+{"chunk_id": "chunk-1", "item_id": "1.B", "brainstorm_ref": "#47", "status": "done", "ts": "2026-05-18T10:17:15Z", "commit_sha": "8b1e3d0", "tokens_used": 22100, "notes": "kaizen-iron-law-per-feature shipped; .chunks/1/{perms.json,progress.md} written"}
+{"chunk_id": "chunk-3", "item_id": "3.A", "brainstorm_ref": "#1", "status": "pending", "ts": "2026-05-18T10:00:00Z"}
+{"chunk_id": "chunk-3", "item_id": "3.A", "brainstorm_ref": "#1", "status": "in_progress", "ts": "2026-05-18T10:01:10Z"}
+{"chunk_id": "chunk-3", "item_id": "3.A", "brainstorm_ref": "#1", "status": "failed", "ts": "2026-05-18T10:14:33Z", "tokens_used": 17500, "notes": "comment-quality heuristic too aggressive — flagged legitimate WHY comments; needs algorithm rethink"}
+{"chunk_id": "chunk-3", "item_id": "3.A", "brainstorm_ref": "#1", "status": "skipped", "ts": "2026-05-18T10:14:45Z", "notes": "deferring to follow-on chunk; chunk-3 proceeds with 3.B only"}
+{"chunk_id": "chunk-3", "item_id": "3.B", "brainstorm_ref": "#19", "status": "done", "ts": "2026-05-18T10:25:20Z", "commit_sha": "c0d4e2a", "tokens_used": 9100}
+{"chunk_id": "chunk-3", "item_id": "3-close", "status": "done", "ts": "2026-05-18T10:26:00Z", "commit_sha": "d8e3a01", "notes": ".chunks/3/perms.json + progress.md fragments written; 3.A deferred to BK-NNN park entry"}
+{"chunk_id": "chunk-7", "item_id": "7.A", "brainstorm_ref": "#161", "status": "in_progress", "ts": "2026-05-18T10:30:00Z"}
+{"chunk_id": "chunk-7", "item_id": "7.A", "brainstorm_ref": "#161", "status": "handoff", "ts": "2026-05-18T11:15:00Z", "tokens_used": 31800, "handoff_to": "chunk-7-sibling-b", "notes": "context near 30k cap; sibling agent continues with axis.schema.json design ready, runner build-out pending"}
+{"chunk_id": "chunk-7-sibling-b", "item_id": "7.B", "brainstorm_ref": "#161", "status": "in_progress", "ts": "2026-05-18T11:15:10Z", "notes": "resumed from chunk-7 handoff; reading chunks/7/ledger.jsonl for prior state"}
+{"chunk_id": "chunk-7-sibling-b", "item_id": "7.B", "brainstorm_ref": "#161", "status": "done", "ts": "2026-05-18T11:42:00Z", "commit_sha": "e9f2c41", "tokens_used": 18600}

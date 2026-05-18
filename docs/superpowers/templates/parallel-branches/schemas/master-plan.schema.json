@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kaizen-md/templates/parallel-branches/master-plan.schema.json",
+  "title": "Parallel-branches master plan",
+  "type": "object",
+  "required": ["version", "date", "scope", "projects", "concurrency_mode", "verification_cadence", "chunks", "merge"],
+  "properties": {
+    "version":        {"type": "integer", "const": 1},
+    "date":           {"type": "string", "format": "date"},
+    "scope":          {"type": "string", "minLength": 10},
+    "projects":       {"type": "array", "items": {"type": "string"}, "minItems": 1},
+    "source":         {"type": "string", "description": "Path to source brainstorm/doc"},
+    "concurrency_mode": {"enum": ["full_parallel", "waves", "chain", "sequential"]},
+    "wave_size":      {"type": "integer", "minimum": 1, "description": "Required when concurrency_mode == waves"},
+    "verification_cadence": {"enum": ["per_item", "per_chunk", "end_of_plan"]},
+    "rubric":         {"type": "string", "description": "Optional path to chunk-sizing rubric YAML"},
+    "chunks":         {"type": "array", "items": {"$ref": "#/$defs/chunk"}, "minItems": 1},
+    "merge":          {"$ref": "#/$defs/merge"}
+  },
+  "$defs": {
+    "chunk": {
+      "type": "object",
+      "required": ["id", "title", "purpose", "project", "deps", "subagent", "isolation", "budget_tokens", "owns", "fragments", "tasks"],
+      "properties": {
+        "id":            {"type": "string", "pattern": "^[a-zA-Z0-9_-]+$"},
+        "title":         {"type": "string"},
+        "purpose":       {"type": "string"},
+        "project":       {"type": "string"},
+        "deps":          {"type": "array", "items": {"type": "string"}, "description": "Chunk IDs that must finish first"},
+        "subagent":      {"enum": ["kaizen-implementer", "general-purpose", "Explore", "Plan", "parent"]},
+        "isolation":     {"enum": ["worktree", "none"]},
+        "worktree_branch": {"type": "string"},
+        "budget_tokens": {"type": "integer", "minimum": 20000, "maximum": 40000},
+        "owns": {
+          "type": "object",
+          "required": ["scripts", "tests", "bins", "fragment_dir"],
+          "properties": {
+            "scripts":      {"type": "array", "items": {"type": "string"}},
+            "tests":        {"type": "array", "items": {"type": "string"}},
+            "bins":         {"type": "array", "items": {"type": "string"}},
+            "fragment_dir": {"type": "string", "pattern": "^\\.chunks/.+/$"},
+            "other":        {"type": "array", "items": {"type": "string"}, "description": "Non-script/test/bin paths owned by this chunk"}
+          },
+          "additionalProperties": false
+        },
+        "fragments":     {"type": "array", "items": {"enum": ["perms.json", "progress.md", "backlog.jsonl", "mcp-mounts.txt"]}},
+        "tasks":         {"type": "array", "items": {"$ref": "#/$defs/task"}, "minItems": 1},
+        "guide":         {"$ref": "#/$defs/guide"}
+      },
+      "additionalProperties": false
+    },
+    "task": {
+      "type": "object",
+      "required": ["id", "description", "commit_message"],
+      "properties": {
+        "id":               {"type": "string"},
+        "brainstorm_ref":   {"type": "string", "description": "ID in source brainstorm, if any"},
+        "description":      {"type": "string"},
+        "red_test_snippet": {"type": "string"},
+        "green_outline":    {"type": "string"},
+        "commit_message":   {"type": "string"}
+      },
+      "additionalProperties": false
+    },
+    "guide": {
+      "type": "object",
+      "properties": {
+        "working_dir":            {"type": "string"},
+        "skills_to_load":         {"type": "array", "items": {"type": "string"}},
+        "exemplar_files":         {"type": "array", "items": {"type": "string"}},
+        "conventions":            {"type": "array", "items": {"type": "string"}},
+        "upstream_decisions":     {"type": "array", "items": {"type": "string"}},
+        "do_not_touch":           {"type": "array", "items": {"type": "string"}}
+      },
+      "additionalProperties": false
+    },
+    "merge": {
+      "type": "object",
+      "required": ["actions", "budget_tokens", "run_by"],
+      "properties": {
+        "run_by":        {"const": "parent", "description": "MERGE always runs in the parent orchestrator, never a chunk agent"},
+        "actions":       {"type": "array", "items": {"$ref": "merge-action.schema.json#"}, "minItems": 1},
+        "budget_tokens": {"type": "integer", "minimum": 15000, "maximum": 30000}
+      },
+      "additionalProperties": false
+    }
+  }
+}

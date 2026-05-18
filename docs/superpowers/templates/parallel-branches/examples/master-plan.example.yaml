@@ -1,0 +1,173 @@
+# Worked example: coverage-axes plan (rendered as a master-plan YAML).
+# This is the schema-valid form of the prose plan at
+# `docs/superpowers/plans/2026-05-18-coverage-axes-dynamic-chunks.md`.
+# Validated by: docs/superpowers/templates/parallel-branches/schemas/master-plan.schema.json
+#
+# To validate:
+#   python3 -c "import json, yaml, jsonschema; \
+#     p = yaml.safe_load(open('master-plan.example.yaml')); \
+#     s = json.load(open('../schemas/master-plan.schema.json')); \
+#     jsonschema.validate(p, s); print('valid')"
+
+version: 1
+date: "2026-05-18"
+scope: "Drain remaining tier-1/2/3 coverage-axes from brainstorm + axis-runner (#161) + cross-repo wiring"
+projects:
+  - "~/workspace/kaizen-md"
+  - "~/workspace/semantic-search"
+source: "~/workspace/semantic-search/docs/2026-05-17-coverage-ideas.jsonl"
+concurrency_mode: "full_parallel"
+verification_cadence: "per_chunk"
+rubric: "../rubrics/chunk-sizing.yaml"
+
+# Signals that pre-computed the chunk count (for documentation only — rubric
+# evaluated these to produce bucket=GRID_15):
+#   total_items=27, per_axis_cost_k=8, agent_slots_available=15,
+#   token_budget_constrained=false, tiers_used=3,
+#   compounding_wins_possible=true, projects_count=2
+
+chunks:
+  # ─── Chunk 1 — Foundation AST: naming + iron-law ──────────────────────
+  - id: "chunk-1"
+    title: "Foundation AST — naming + iron-law"
+    purpose: "2 small AST audits — fn-name verb-match + iron-law-per-feature rollup"
+    project: "kaizen-md"
+    deps: []
+    subagent: "kaizen-implementer"
+    isolation: "worktree"
+    worktree_branch: "chunk-1-ast-naming"
+    budget_tokens: 32000
+    owns:
+      scripts:
+        - "plugins/kaizen/skills/workflow/scripts/fn_name_quality.py"
+        - "plugins/kaizen/skills/workflow/scripts/iron_law_per_feature.py"
+      tests:
+        - "plugins/kaizen/tests/test_fn_name_quality.py"
+        - "plugins/kaizen/tests/test_iron_law_per_feature.py"
+      bins:
+        - "plugins/kaizen/bin/kaizen-fn-name-quality"
+        - "plugins/kaizen/bin/kaizen-iron-law-per-feature"
+      fragment_dir: ".chunks/1/"
+    fragments:
+      - "perms.json"
+      - "progress.md"
+    guide:
+      working_dir: "/home/cherry86/workspace/kaizen-md"
+      skills_to_load:
+        - "kaizen:tdd"
+        - "kaizen:plugin-development"
+      exemplar_files:
+        - "plugins/kaizen/skills/workflow/scripts/class_name_quality.py"
+      conventions:
+        - "_envelope.emitter is the output emitter"
+        - "scan_text(source, *, path) pure-fn for AST scans"
+        - "report + gaps subcommands; gaps exits 1 on violations"
+        - "NEVER name a script test_*.py (shadows unittest discovery)"
+      upstream_decisions:
+        - "30 axes already shipped in master — build on top, don't re-do"
+      do_not_touch:
+        - "Vendored skills under plugins/kaizen/skills/{coding-skills,superpowers,remember}/"
+        - "gateway.py::SUBSERVERS (chunk 8 owns MCP mounting)"
+    tasks:
+      - id: "1.A"
+        brainstorm_ref: "10"
+        description: "AST: function names start with verb"
+        red_test_snippet: |
+          def test_get_user_starts_with_verb(self):
+              findings = fn_name_quality.scan_text("def get_user(): pass\n", path="ok.py")
+              self.assertEqual(findings, [])
+
+          def test_user_data_missing_verb(self):
+              findings = fn_name_quality.scan_text("def user_data(): pass\n", path="bad.py")
+              self.assertEqual(findings[0]["rule"], "no-leading-verb")
+        green_outline: |
+          AST walk top-level FunctionDefs; split name on `_`; first part
+          must be in known-verb list (get/set/build/parse/load/save/run/
+          scan/find/...). Flag missing-verb names.
+        commit_message: "feat(fn-name-quality): AST verb-vs-name check (chunk 1 item A)"
+      - id: "1.B"
+        brainstorm_ref: "47"
+        description: "rollup iron-law findings grouped by owning feature dir"
+        red_test_snippet: |
+          def test_rollup_by_feature_dir(self):
+              findings = [
+                  {"path": "skills/brainstorming/SKILL.md", "rule_id": "x", "severity": "warn"},
+                  {"path": "skills/workflow/scripts/foo.py", "rule_id": "x", "severity": "warn"},
+              ]
+              rollup = iron_law_per_feature.rollup_by_feature(findings)
+              self.assertEqual(rollup["brainstorming"]["total"], 1)
+              self.assertEqual(rollup["workflow"]["total"], 1)
+        green_outline: |
+          Pure fn rollup_by_feature(findings: list[dict]) -> dict[str, dict].
+          Key by path.split('/')[1] (feature dir under skills/).
+          Aggregate {total, by_severity, by_rule}. CLI subcommand `report`
+          shells out to kaizen-iron-laws check --json, feeds to rollup,
+          emits envelope.
+        commit_message: "feat(iron-law-per-feature): rollup findings by feature (chunk 1 item B)"
+
+  # ─── Chunks 2-14 omitted for brevity — same shape as chunk-1.
+  # The full coverage-axes plan declares 15 chunks; this example shows
+  # the schema-valid form of one chunk in detail. See
+  # docs/superpowers/plans/2026-05-18-coverage-axes-dynamic-chunks.md for
+  # the prose form of all 15.
+
+  # ─── Chunk 15 — Cross-repo: semantic-search wiring (no worktree, no .chunks/) ──
+  - id: "chunk-15"
+    title: "Cross-repo audit using the 30 pre-existing axes"
+    purpose: "Wire 30 already-shipped kaizen-* axes into semantic-search verify_cmd + file findings"
+    project: "semantic-search"
+    deps: []
+    subagent: "general-purpose"
+    isolation: "none"
+    budget_tokens: 24000
+    owns:
+      scripts: []
+      tests: []
+      bins: []
+      fragment_dir: ".chunks/15/"
+      other:
+        - "~/workspace/semantic-search/.kaizen.toml"
+        - "~/workspace/semantic-search/scripts/coverage-gate.sh"
+        - "~/workspace/semantic-search/docs/2026-05-18-coverage-findings.md"
+    fragments: []  # cross-repo: no kaizen-md fragments
+    tasks:
+      - id: "15.A"
+        description: "Verify bin/kaizen-* on PATH from semantic-search cwd"
+        commit_message: "(verification — no commit)"
+      - id: "15.B"
+        description: "Run 30 pre-existing axes; write findings doc"
+        commit_message: "docs(coverage): per-axis findings rollup (chunk 15 item B)"
+      - id: "15.C"
+        description: "File top-10 findings as semantic-search backlog"
+        commit_message: "chore(backlog): file 10 coverage findings (chunk 15 item C)"
+      - id: "15.D"
+        description: "Wire 3 axes into verify_cmd"
+        commit_message: "feat(gate): 3-gate coverage gate (chunk 15 item D)"
+      - id: "15.E"
+        description: "close-out commit refs kaizen-md plan path"
+        commit_message: "chore(chunk-15): close-out (Refs: kaizen-md::dynamic-chunks::chunk-15)"
+
+merge:
+  run_by: "parent"
+  budget_tokens: 22000
+  actions:
+    - "consolidate_perms"
+    - "append_progress"
+    - "dispatch_backlog"
+    - "wire_mcp_mounts"
+    - action: "retrofit"
+      targets:
+        - "md_whitespace"
+        - "md_dupes"
+        - "md_heading_depth"
+        - "todo_inventory"
+        - "unused_env"
+    - action: "cross_pollinate"
+      to_project: "~/workspace/semantic-search"
+      axes:
+        - "fn-name-quality"
+        - "validator-wiring"
+        - "trace-bloat-join"
+    - "cleanup_fragments"
+    - "merge_commit"
+    - "final_verify"

@@ -1,0 +1,68 @@
+# chunk-sizing.yaml — data-driven decomposition rubric.
+#
+# Walked by schema_cli.BucketWalker. Input: a signals dict computed
+# from the unscored master plan. Output: a recommended bucket
+# (SEQUENTIAL_ONE_AGENT / TIER_CHAIN / GRID_5 / GRID_15 / GRID_LARGE)
+# + confidence + rationale.
+#
+# Signals (caller pre-computes):
+#   total_items                int    — number of deliverables in the plan
+#   per_axis_cost_k             int    — token cost per axis (in thousands)
+#   agent_slots_available       int    — concurrent agent slots the operator can dispatch
+#   token_budget_constrained    bool   — true when total-budget matters more than wall-clock
+#   tiers_used                  int    — distinct priority tiers (e.g. 3 = T1+T2+T3)
+#   projects_count              int    — distinct repos touched (>1 → multi-project)
+#   compounding_wins_possible   bool   — true when earlier work makes later work cheaper
+#   per_chunk_cap_k             int    — max tokens per chunk (default 40)
+#
+# First-match wins. Rule order: simplest → most parallel → fallback.
+
+version: 1
+
+rules:
+  # 1. SEQUENTIAL — tiny plan, no point parallelizing
+  - bucket: SEQUENTIAL_ONE_AGENT
+    require_all:
+      - {signal: total_items,    op: "<=", value: 3}
+      - {signal: per_axis_cost_k, op: "<=", value: 10}
+
+  # 2. TIER_CHAIN — token-frugal + few slots + compounding wins available
+  - bucket: TIER_CHAIN
+    require_all:
+      - {signal: tiers_used,                op: ">=", value: 2}
+      - {signal: agent_slots_available,     op: "<=", value: 4}
+      - {signal: token_budget_constrained,  op: "==", value: true}
+
+  # 3. TIER_CHAIN — also preferred when compounding wins exist regardless of constraints
+  - bucket: TIER_CHAIN
+    require_all:
+      - {signal: tiers_used,                op: ">=", value: 3}
+      - {signal: compounding_wins_possible, op: "==", value: true}
+      - {signal: agent_slots_available,     op: "<=", value: 6}
+
+  # 4. GRID_5 — small parallelism, fits in a single dispatch wave
+  - bucket: GRID_5
+    require_all:
+      - {signal: total_items,           op: "<=", value: 10}
+      - {signal: agent_slots_available, op: ">=", value: 5}
+
+  # 5. GRID_15 — typical mid-size plan, 15 parallel agents
+  - bucket: GRID_15
+    require_all:
+      - {signal: total_items,           op: ">=", value: 20}
+      - {signal: total_items,           op: "<=", value: 35}
+      - {signal: agent_slots_available, op: ">=", value: 15}
+
+  # 6. GRID_LARGE — >35 items, dispatch in waves
+  - bucket: GRID_LARGE
+    require_all:
+      - {signal: total_items, op: ">", value: 35}
+
+  # 7. GRID_5 with waves — fallback when slots constrained but items moderate
+  - bucket: GRID_5
+    require_all:
+      - {signal: total_items,           op: "<=", value: 30}
+      - {signal: agent_slots_available, op: ">=", value: 5}
+
+confidence_threshold: 0.85
+fallback: NEEDS_AGENT

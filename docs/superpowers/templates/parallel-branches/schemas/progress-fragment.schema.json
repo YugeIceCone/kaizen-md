@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kaizen-md/templates/parallel-branches/progress-fragment.schema.json",
+  "title": "Architecture-log row fragment",
+  "description": "Per-chunk fragment containing exactly ONE markdown table row destined for `.kaizen/workflow/progress.md`. The MERGE step concatenates these in chunk-id order. Validated as a string matching the canonical row shape.",
+  "type": "object",
+  "required": ["row"],
+  "properties": {
+    "row": {
+      "type": "string",
+      "pattern": "^\\| \\d{4}-\\d{2}-\\d{2} \\| (feat|fix|refactor|chore|docs|test|perf) +\\| .+ \\| .+ \\|$",
+      "description": "Single-line table row: `| YYYY-MM-DD | <kind> | +X -Y | <one-line summary> |`. The MERGE step appends one such row per fragment to .kaizen/workflow/progress.md."
+    }
+  },
+  "additionalProperties": false
+}

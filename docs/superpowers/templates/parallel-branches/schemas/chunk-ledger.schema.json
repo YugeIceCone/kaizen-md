@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kaizen-md/templates/parallel-branches/chunk-ledger.schema.json",
+  "title": "Chunk progress ledger row",
+  "description": "One row per chunk-item, JSONL format. Written to .chunks/<chunk_id>/ledger.jsonl by the chunk agent as it progresses through its task list. Append-only; each tick is a new row (last-row-per-item wins on replay).",
+  "type": "object",
+  "required": ["chunk_id", "item_id", "status", "ts"],
+  "properties": {
+    "chunk_id":       {"type": "string", "description": "Matches master-plan chunk.id"},
+    "item_id":        {"type": "string", "description": "Matches master-plan chunk.tasks[].id"},
+    "brainstorm_ref": {"type": "string", "description": "Source-brainstorm ID, if any (e.g. \"#10\")"},
+    "status":         {"enum": ["pending", "in_progress", "done", "skipped", "failed", "handoff"]},
+    "ts":             {"type": "string", "format": "date-time"},
+    "commit_sha":     {"type": "string", "pattern": "^[0-9a-f]{7,40}$"},
+    "tokens_used":    {"type": "integer", "minimum": 0},
+    "handoff_to":     {"type": "string", "description": "When status==handoff: id of the sibling agent picking up"},
+    "notes":          {"type": "string"}
+  },
+  "additionalProperties": false
+}
