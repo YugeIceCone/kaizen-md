@@ -1,6 +1,6 @@
 {
   "name": "kaizen-md",
-  "description": "Marketplace wrapping kaizen (commit discipline + JSON-sourced backlog) plus 12 LSP plugins redistributed from claude-plugins-official under Apache 2.0 with attribution.",
+  "description": "Marketplace wrapping the kaizen plugin (schema-driven workflow / 91 skills / 121 bins / 7 sub-agents / 31 MCP servers / lens-driven handoff / 6-layer observability) plus 12 LSP plugins redistributed from claude-plugins-official under Apache 2.0 with attribution.",
   "owner": {
     "name": "YugeIceCone",
     "url": "https://github.com/YugeIceCone"
@@ -8,7 +8,7 @@
   "plugins": [
     {
       "name": "kaizen",
-      "description": "Pre-commit gate + BACKLOG (JSON-source, .md generated) + skill that solidifies consistent git workflow across projects. Weaves with coding-skills, onion-ddd-workflow, superpowers:*, tdd, Remember.",
+      "description": "Schema-driven workflow plugin (v1.39.0). 91 skills + 121 bins + 56 slash commands + 7 sub-agents + 40 hooks + 31 MCP servers behind one FastMCP gateway. 17-routine engine + 16-sub-gate gatekeeper + lens-driven handoff + 6-layer observability (trace / dxm / heartbeat) + PARA brain + chatlog slicer + session bundles.",
       "category": "productivity",
       "source": "./plugins/kaizen",
       "license": "MIT"
