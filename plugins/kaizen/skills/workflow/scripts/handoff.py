@@ -1629,6 +1629,14 @@ def _cmd_append(args) -> int:
                                if f.strip()]
     elif args.entry:
         entry = args.entry
+        # Structured next[]: --why / --blocker promote string entry to dict
+        if section == "next" and (args.why or args.blocker):
+            d: dict = {"item": args.entry}
+            if args.why:
+                d["why"] = args.why
+            if args.blocker:
+                d["blocker"] = args.blocker
+            entry = d
     elif args.task:
         # User passed --task for a string-section; treat as plain entry
         entry = args.task
@@ -1651,6 +1659,113 @@ def _cmd_append(args) -> int:
                            "appended": entry}, indent=2))
     else:
         print(f"appended to {section} in {fp}")
+    return 0
+
+
+# ─── tasks — emit TaskCreate-ready JSON per next[] item ──────────────
+
+def _extract_tasks_from_next(text: str) -> list[dict]:
+    """Normalize handoff's `next:` entries into TaskCreate-shaped dicts.
+
+    Each plain-string entry becomes `{subject: <text>}`.
+    Each structured entry (dict with `item` key) becomes
+    `{subject: <item>, why?: <why>, blocker?: <blocker>}`.
+    Empty/missing `next:` returns [].
+    """
+    _, body = _load_raw_handoff(text)
+    entries = body.get("next") or []
+    out: list[dict] = []
+    for entry in entries:
+        if isinstance(entry, str):
+            out.append({"subject": entry})
+        elif isinstance(entry, dict):
+            d = {"subject": entry.get("item") or entry.get("subject") or "?"}
+            if entry.get("why"):
+                d["why"] = entry["why"]
+            if entry.get("blocker"):
+                d["blocker"] = entry["blocker"]
+            out.append(d)
+    return out
+
+
+def _cmd_tasks(args) -> int:
+    fp = Path(args.file)
+    if not fp.is_file():
+        sys.stderr.write(f"handoff tasks: file not found: {fp}\n")
+        return 2
+    tasks = _extract_tasks_from_next(fp.read_text(encoding="utf-8"))
+    out = {"file": str(fp), "count": len(tasks), "tasks": tasks}
+    if args.json:
+        print(json.dumps(out, indent=2, default=str))
+    else:
+        print(f"handoff tasks: {fp} ({len(tasks)} next[] item(s))")
+        for i, t in enumerate(tasks, 1):
+            line = f"  {i}. {t['subject']}"
+            if t.get("why"):
+                line += f"  (why: {t['why']})"
+            if t.get("blocker"):
+                line += f"  (blocker: {t['blocker']})"
+            print(line)
+    return 0
+
+
+# ─── diff — section-by-section delta between 2 handoff yamls ─────────
+
+def _compute_diff(text_a: str, text_b: str) -> dict:
+    """Return per-section change status for body sections.
+
+    Status values: identical | added | removed | modified.
+    Pure function — no I/O. Comparison uses normalized JSON serialization
+    so dict-key order doesn't trigger false-positives.
+    """
+    _, body_a = _load_raw_handoff(text_a)
+    _, body_b = _load_raw_handoff(text_b)
+    per_section: dict[str, dict] = {}
+    counts = {"identical": 0, "added": 0, "removed": 0, "modified": 0}
+    all_sections = sorted(_BODY_SECTIONS | set(body_a.keys()) | set(body_b.keys()))
+    for section in all_sections:
+        in_a = section in body_a and body_a[section] not in (None, [], {}, "")
+        in_b = section in body_b and body_b[section] not in (None, [], {}, "")
+        if not in_a and not in_b:
+            status = "identical"
+        elif in_a and not in_b:
+            status = "removed"
+        elif in_b and not in_a:
+            status = "added"
+        else:
+            ja = json.dumps(body_a.get(section), sort_keys=True, default=str)
+            jb = json.dumps(body_b.get(section), sort_keys=True, default=str)
+            status = "identical" if ja == jb else "modified"
+        per_section[section] = {"status": status}
+        counts[status] += 1
+    return {"per_section": per_section, "counts": counts}
+
+
+def _cmd_diff(args) -> int:
+    fa = Path(args.a)
+    fb = Path(args.b)
+    if not fa.is_file():
+        sys.stderr.write(f"handoff diff: --a not found: {fa}\n")
+        return 2
+    if not fb.is_file():
+        sys.stderr.write(f"handoff diff: --b not found: {fb}\n")
+        return 2
+    result = _compute_diff(fa.read_text(encoding="utf-8"),
+                            fb.read_text(encoding="utf-8"))
+    out = {"a": str(fa), "b": str(fb), **result}
+    if args.json:
+        print(json.dumps(out, indent=2, default=str))
+    else:
+        print(f"handoff diff: {fa.name} → {fb.name}")
+        c = result["counts"]
+        print(f"  identical={c['identical']}  added={c['added']}  "
+              f"removed={c['removed']}  modified={c['modified']}")
+        print()
+        for section, st in result["per_section"].items():
+            if st["status"] == "identical":
+                continue
+            mark = {"added": "+", "removed": "-", "modified": "~"}[st["status"]]
+            print(f"  {mark} {section:<22} ({st['status']})")
     return 0
 
 
@@ -2135,8 +2250,35 @@ def main(argv: Optional[list[str]] = None) -> int:
     s_ap.add_argument("--files", default=None,
                        help="comma-separated file paths — attached as files: [...] "
                             "when section is done_this_session")
+    s_ap.add_argument("--why", default=None,
+                       help="reason this item is in next[] (structured form). "
+                            "Promotes the plain --entry to {item, why, blocker?} "
+                            "dict. Only honored for section=next.")
+    s_ap.add_argument("--blocker", default=None,
+                       help="what's blocking this next-item (structured form). "
+                            "Same gating as --why.")
     s_ap.add_argument("--json", action="store_true")
     s_ap.set_defaults(func=_cmd_append)
+
+    s_tk = sub.add_parser(
+        "tasks",
+        help="emit TaskCreate-ready JSON per `next[]` item. Handles both "
+             "plain-string entries and structured {item, why, blocker} dicts."
+    )
+    s_tk.add_argument("--file", required=True, help="path to the handoff YAML")
+    s_tk.add_argument("--json", action="store_true")
+    s_tk.set_defaults(func=_cmd_tasks)
+
+    s_df = sub.add_parser(
+        "diff",
+        help="section-by-section delta between 2 handoff yamls — emits "
+             "{per_section: {<name>: {status}}, counts: {...}}. Statuses: "
+             "identical / added / removed / modified."
+    )
+    s_df.add_argument("--a", required=True, help="first handoff YAML")
+    s_df.add_argument("--b", required=True, help="second handoff YAML")
+    s_df.add_argument("--json", action="store_true")
+    s_df.set_defaults(func=_cmd_diff)
 
     s_co = sub.add_parser(
         "cost",
