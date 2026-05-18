@@ -93,6 +93,8 @@
       "Bash(${CLAUDE_PLUGIN_ROOT}/bin/kaizen-hook-coverage:*)",
       "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/bin_coverage.py:*)",
       "Bash(${CLAUDE_PLUGIN_ROOT}/bin/kaizen-bin-coverage:*)",
+      "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/command_allowed_tools_coverage.py:*)",
+      "Bash(${CLAUDE_PLUGIN_ROOT}/bin/kaizen-command-allowed-tools-coverage:*)",
       "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/schema_cli.py:*)",
       "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/scratch.py:*)",
       "Bash(bash ${CLAUDE_PLUGIN_ROOT}/bin/kaizen-scratch:*)",
