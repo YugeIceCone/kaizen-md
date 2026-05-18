@@ -44,10 +44,9 @@ from typing import Any
 
 
 def _observer_dir() -> Path:
-    env = os.environ.get("KAIZEN_OBSERVER_DIR")
-    if env:
-        return Path(env)
-    return Path.home() / ".claude" / ".kaizen" / "observer"
+    # DRY — delegates to shared _paths.env_overridable_dir helper.
+    from _paths import env_overridable_dir
+    return env_overridable_dir("KAIZEN_OBSERVER_DIR", "observer")
 
 
 def _sink_path() -> Path:

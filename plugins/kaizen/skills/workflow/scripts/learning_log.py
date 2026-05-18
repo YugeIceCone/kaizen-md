@@ -52,10 +52,9 @@ def _detect_branch() -> str | None:
 
 
 def _learning_dir() -> Path:
-    env = os.environ.get("KAIZEN_LEARNING_DIR")
-    if env:
-        return Path(env)
-    return Path.home() / ".claude" / ".kaizen" / "learning"
+    # DRY — delegates to shared _paths.env_overridable_dir helper.
+    from _paths import env_overridable_dir
+    return env_overridable_dir("KAIZEN_LEARNING_DIR", "learning")
 
 
 def _log_path() -> Path:

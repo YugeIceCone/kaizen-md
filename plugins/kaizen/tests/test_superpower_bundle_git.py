@@ -6,8 +6,9 @@ DRY / programmable / reproducible / consistent / deterministic / reusable).
 
 New subcommand + flag:
   kaizen-bundle git-init    — `git init` in the superpowers root (idempotent)
-  kaizen-bundle init --commit / add --commit
-                            — auto-commit via the local git after the operation
+  kaizen-bundle init / add  — auto-commit by default; opt-out via --no-commit
+                              (the original --commit opt-in flag was retired
+                              in 6a717e1; default flipped per user direction)
 """
 from __future__ import annotations
 

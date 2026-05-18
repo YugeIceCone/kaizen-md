@@ -130,6 +130,39 @@ KAIZEN_USER_DIR = Path(
 )
 
 
+# ─── DRY helper for env-overridable feature dirs (consolidation 2026-05-18) ─
+
+def env_overridable_dir(env_name: str, *default_segments: str,
+                          base: Path | None = None) -> Path:
+    """Resolve a feature directory: env wins; else `base / *default_segments`.
+
+    Replaces the 5-site duplicated pattern:
+
+        def _<feature>_dir() -> Path:
+            env = os.environ.get("KAIZEN_<FEATURE>_DIR")
+            if env:
+                return Path(env)
+            return Path.home() / ".claude" / ".kaizen" / "<feature>"
+
+    Usage:
+        env_overridable_dir("KAIZEN_OBSERVER_DIR", "observer")
+            → $KAIZEN_OBSERVER_DIR or ~/.claude/.kaizen/observer
+
+        env_overridable_dir("KAIZEN_BACKUP_DIR", "backups", "superpowers")
+            → $KAIZEN_BACKUP_DIR or ~/.claude/.kaizen/backups/superpowers
+
+    Empty-string env value is treated as unset (falls back to default).
+    Per the drift-resilient-config-read iron-law: re-reads os.environ
+    on every call (no module-level caching).
+    """
+    env = os.environ.get(env_name)
+    if env:
+        return Path(env)
+    if base is None:
+        base = Path.home() / ".claude" / ".kaizen"
+    return base.joinpath(*default_segments)
+
+
 # ─── v1.39.0 umbrella dirs ───────────────────────────────────────────
 #
 # Flatten + categorize: 4 search-style dirs go under `indexes/`,

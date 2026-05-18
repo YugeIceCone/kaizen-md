@@ -29,11 +29,18 @@ from typing import Any
 
 
 def _observer_dir() -> Path:
-    """~/.claude/.kaizen/observer/ — env-overridable for tests + relocation."""
-    env = os.environ.get("KAIZEN_OBSERVER_DIR")
-    if env:
-        return Path(env)
-    return Path.home() / ".claude" / ".kaizen" / "observer"
+    """~/.claude/.kaizen/observer/ — env-overridable for tests + relocation.
+
+    DRY — delegates to shared _paths.env_overridable_dir. _paths.py
+    lives in skills/workflow/scripts/, not on this hook's sys.path
+    by default — resolve relative to plugin root.
+    """
+    import sys as _sys
+    scripts_dir = Path(__file__).resolve().parent.parent.parent / "skills" / "workflow" / "scripts"
+    if str(scripts_dir) not in _sys.path:
+        _sys.path.insert(0, str(scripts_dir))
+    from _paths import env_overridable_dir
+    return env_overridable_dir("KAIZEN_OBSERVER_DIR", "observer")
 
 
 def _sink_path() -> Path:

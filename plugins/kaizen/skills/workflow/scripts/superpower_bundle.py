@@ -42,11 +42,17 @@ class BundleError(ValueError):
 
 
 def _superpowers_dir() -> Path:
-    """Root of docs/superpowers/. Env-overridable for tests."""
-    env = os.environ.get("KAIZEN_SUPERPOWERS_DIR")
-    if env:
-        return Path(env)
-    return Path.cwd() / "docs" / "superpowers"
+    """Root of docs/superpowers/. Env-overridable for tests.
+
+    Note: base defaults to cwd/docs/superpowers (NOT ~/.claude/.kaizen),
+    so we pass an explicit `base=Path.cwd() / "docs" / "superpowers"`
+    to env_overridable_dir.
+    """
+    from _paths import env_overridable_dir
+    return env_overridable_dir(
+        "KAIZEN_SUPERPOWERS_DIR",
+        base=Path.cwd() / "docs" / "superpowers",
+    )
 
 
 def _kebab(text: str) -> str:
@@ -121,7 +127,13 @@ def _git_commit(root: Path, message: str) -> str | None:
 
 
 def _backup_dir() -> Path:
-    """Patch-journal backup root. Env-overridable via KAIZEN_BACKUP_DIR."""
+    """Patch-journal backup root. Env-overridable via KAIZEN_BACKUP_DIR.
+
+    Note: env value gets `superpowers` appended (not the env value itself
+    becoming the root). Distinct from the standard env_overridable_dir
+    shape — env points to the BACKUP root, this resolves the superpowers
+    SUB-dir within it.
+    """
     env = os.environ.get("KAIZEN_BACKUP_DIR")
     if env:
         return Path(env) / "superpowers"
