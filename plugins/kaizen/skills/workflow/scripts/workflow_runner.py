@@ -450,6 +450,23 @@ def _now_iso() -> str:
     return _dt.datetime.now(_dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
+def _emit_trace(evt: str, data: dict) -> None:
+    """Best-effort kaizen trace emit. Never raises (trace is observability,
+    not behaviour). Honored env: KAIZEN_TRACE_DIR + KAIZEN_TRACE_DISABLE.
+    """
+    try:
+        import trace as _trace
+        _trace.append_event({
+            "ts":   _now_iso(),
+            "src":  "tool",
+            "evt":  evt,
+            "tool": "kaizen-workflow-runner",
+            "data": data,
+        })
+    except Exception:
+        pass
+
+
 def cmd_start(name: str, force: bool = False) -> int:
     """Initialize state.json for a schema. Refuses to clobber unless --force."""
     sp = _state_path()
@@ -483,6 +500,11 @@ def cmd_start(name: str, force: bool = False) -> int:
         "done":          False,
     }
     _save_state(state)
+    _emit_trace("schema.start", {
+        "schema":        name,
+        "first_stage":   state["current_stage"],
+        "stage_count":   len(order),
+    })
     print(f"workflow_runner: started {name!r} @ stage {state['current_stage']!r}")
     return 0
 
@@ -525,15 +547,27 @@ def cmd_advance() -> int:
     cur = state["current_stage"]
     state["completed"].append(cur)
     if state["remaining"]:
-        state["current_stage"] = state["remaining"].pop(0)
+        next_stage = state["remaining"].pop(0)
+        state["current_stage"] = next_stage
         state["advanced_at"] = _now_iso()
-        print(f"workflow_runner: {cur!r} done → advanced to {state['current_stage']!r}")
+        _save_state(state)
+        _emit_trace("schema.advance", {
+            "schema":          state["schema"],
+            "from":            cur,
+            "to":              next_stage,
+            "completed_count": len(state["completed"]),
+        })
+        print(f"workflow_runner: {cur!r} done → advanced to {next_stage!r}")
     else:
         state["current_stage"] = None
         state["done"] = True
         state["advanced_at"] = _now_iso()
+        _save_state(state)
+        _emit_trace("schema.done", {
+            "schema":            state["schema"],
+            "stages_completed":  state["completed"],
+        })
         print(f"workflow_runner: {cur!r} done → schema complete")
-    _save_state(state)
     return 0
 
 
@@ -561,7 +595,15 @@ def cmd_state_reset(yes: bool = False) -> int:
     if not yes:
         print(f"workflow_runner: would delete {sp} — pass --yes to apply")
         return 0
+    # Best-effort: read schema name before deletion for the trace payload
+    schema_name = None
+    try:
+        existing = json.loads(sp.read_text(encoding="utf-8"))
+        schema_name = existing.get("schema")
+    except Exception:
+        pass
     sp.unlink()
+    _emit_trace("schema.reset", {"schema": schema_name})
     print(f"workflow_runner: deleted {sp}")
     return 0
 

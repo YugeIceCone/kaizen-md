@@ -387,7 +387,7 @@ def cmd_dry_run(args) -> int:
     # Schema name: --schema arg, else persisted schema_name in merged config
     schema_name = getattr(args, "schema", None)
     if not schema_name:
-        cfg = _merge(_read(_global_path()), _read(_project_path()))
+        cfg = _merged()
         schema_name = cfg.get("schema_name")
     if not schema_name:
         print("workflow_config dry-run: no --schema given and none persisted",
@@ -453,6 +453,27 @@ def cmd_dry_run(args) -> int:
         if bucket_skips.get("skip"):
             print(f"  skip stages: {', '.join(bucket_skips['skip'])}")
     return 0
+
+
+def cmd_run(args) -> int:
+    """Start a schema run — `kaizen-workflow-config run [--schema X] [--force]`.
+
+    Thin wrapper that resolves schema_name (from --schema or persisted
+    config) and delegates to workflow_runner.cmd_start. Phase 4 of
+    /kaizen:workflow full-automation pipeline.
+    """
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    import workflow_runner as _wr  # noqa: E402
+
+    schema_name = getattr(args, "schema", None)
+    if not schema_name:
+        cfg = _merged()
+        schema_name = cfg.get("schema_name")
+    if not schema_name:
+        print("workflow_config run: no --schema given and none persisted "
+              "(set via `workflow_config set --schema X`)", file=sys.stderr)
+        return 1
+    return _wr.cmd_start(schema_name, force=bool(getattr(args, "force", False)))
 
 
 # ─── argparse wiring ─────────────────────────────────────────────────
@@ -525,6 +546,18 @@ def _build_parser() -> argparse.ArgumentParser:
     dr.add_argument("--json", action="store_true",
                      help="Emit envelope JSON instead of prose.")
     dr.set_defaults(func=cmd_dry_run)
+
+    rn = sub.add_parser(
+        "run",
+        help="Start a schema run — initializes state.json. Reads "
+              "schema_name from persisted config unless --schema given. "
+              "Thin wrapper over `workflow_runner start`.",
+    )
+    rn.add_argument("--schema", default=None,
+                     help="Override the persisted schema_name.")
+    rn.add_argument("--force", action="store_true",
+                     help="Overwrite existing state.json if present.")
+    rn.set_defaults(func=cmd_run)
 
     return p
 
