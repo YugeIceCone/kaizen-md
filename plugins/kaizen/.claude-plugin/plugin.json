@@ -62,6 +62,7 @@
       "Bash(${CLAUDE_PLUGIN_ROOT}/bin/kaizen-tokens:*)",
       "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/tokens.py:*)",
       "Bash(uv run --script ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/tokens.py:*)",
+      "Bash(uv run --script ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/tokens_mcp.py:*)",
       "Bash(bash ${CLAUDE_PLUGIN_ROOT}/hooks/claude/sessionend-token-bloat.sh:*)",
       "Bash(bash ${CLAUDE_PLUGIN_ROOT}/hooks/claude/session-start-token-bloat.sh:*)",
       "Bash(bash ${CLAUDE_PLUGIN_ROOT}/hooks/claude/pretooluse-write-atomic.sh:*)",
