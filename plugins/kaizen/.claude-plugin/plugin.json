@@ -89,6 +89,8 @@
       "Bash(${CLAUDE_PLUGIN_ROOT}/bin/kaizen-brainstorm:*)",
       "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/perm_coverage.py:*)",
       "Bash(${CLAUDE_PLUGIN_ROOT}/bin/kaizen-perm-coverage:*)",
+      "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/hook_coverage.py:*)",
+      "Bash(${CLAUDE_PLUGIN_ROOT}/bin/kaizen-hook-coverage:*)",
       "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/schema_cli.py:*)",
       "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/scratch.py:*)",
       "Bash(bash ${CLAUDE_PLUGIN_ROOT}/bin/kaizen-scratch:*)",
