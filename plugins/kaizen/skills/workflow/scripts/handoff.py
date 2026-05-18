@@ -615,6 +615,55 @@ def _git_created_files(repo: Path, since: str) -> list[str]:
     return sorted({line.strip() for line in r.stdout.splitlines() if line.strip()})
 
 
+_HUNK_RE = __import__("re").compile(
+    r"^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@"
+)
+
+
+def _parse_hunk_header(line: str) -> tuple[int, int] | None:
+    """Parse `@@ -A,B +C,D @@` → (start, end) line range on the new side.
+
+    Returns None for malformed headers or zero-length hunks (pure deletions).
+    """
+    m = _HUNK_RE.match(line)
+    if not m:
+        return None
+    start = int(m.group(1))
+    length = int(m.group(2)) if m.group(2) else 1
+    if length == 0:
+        return None  # deletion-only hunk; no new lines to capture
+    return (start, start + length - 1)
+
+
+def _git_changed_line_ranges(repo: Path, since: str) -> dict[str, list[tuple[int, int]]]:
+    """Return dict[path, [(start_line, end_line), ...]] for all changes since `since`.
+
+    Uses `git log -U0 -p` to get hunk headers without context lines, then parses
+    `@@ -A,B +C,D @@` per file. Captures the NEW-side line range — what the
+    file looks like AFTER the change. Empty dict on no commits or git failure.
+
+    Fine-grained code-context capture for D1 (explicit info in handoff).
+    """
+    r = _git(repo, "log", f"--since={since}", "-U0", "--no-color",
+             "-p", "--pretty=format:%n%n%n")  # 3 newlines as commit separator
+    if r.returncode != 0 or not r.stdout.strip():
+        return {}
+    ranges: dict[str, list[tuple[int, int]]] = {}
+    current_file: str | None = None
+    for line in r.stdout.splitlines():
+        if line.startswith("+++ b/"):
+            current_file = line[len("+++ b/"):]
+            ranges.setdefault(current_file, [])
+        elif line.startswith("+++ ") and " /dev/null" in line:
+            current_file = None  # file deletion
+        elif line.startswith("@@ ") and current_file:
+            parsed = _parse_hunk_header(line)
+            if parsed:
+                ranges[current_file].append(parsed)
+    # Drop empty entries (no new-side hunks)
+    return {p: rs for p, rs in ranges.items() if rs}
+
+
 def _discover_active_session(cwd: Path):
     """Find the active Claude Code session JSONL for this cwd. Returns
     (jsonl_path, mined_dict) or (None, None) if unreachable. Graceful
@@ -703,6 +752,9 @@ def _cmd_scaffold(args) -> int:
     changed, commits = _git_log_files(repo, since)
     created  = _git_created_files(repo, since)
     modified = sorted(set(changed) - set(created))
+    # D1 explicit-info: capture per-file line ranges where work happened
+    # so resume agents see code-context, not just paths.
+    line_ranges = _git_changed_line_ranges(repo, since)
 
     body_lines = [
         "---",
@@ -766,9 +818,24 @@ def _cmd_scaffold(args) -> int:
         "",
     ]
 
+    # D1 fine-grained code context — per-file line ranges from git hunks.
+    # Format: code_context:
+    #           - path: relative/file.py
+    #             ranges: ["10:42", "55:80"]   # inclusive line ranges
+    # Resume agents jump directly to where the work happened, not just which file.
+    if line_ranges:
+        body_lines.append("code_context:")
+        for path in sorted(line_ranges):
+            ranges_str = ", ".join(f'"{s}:{e}"' for s, e in line_ranges[path])
+            body_lines.append(f"  - path: {_quote_if_unsafe(path)}")
+            body_lines.append(f"    ranges: [{ranges_str}]")
+        body_lines.append("")
+
     yaml_path.write_text("\n".join(body_lines), encoding="utf-8")
 
     prefilled = ["date", "test", "files.created", "files.modified"]
+    if line_ranges:
+        prefilled.append("code_context")
     if changed or completed:
         prefilled.append("done_this_session")
     if mined.get("ai_title") and not args.goal:
