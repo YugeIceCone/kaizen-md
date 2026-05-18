@@ -14,7 +14,7 @@ The non-negotiable rules for kaizen-plugin-original development. This file is a 
 
 ## Summary
 
-25 laws — 19 auto, 6 manual.
+30 laws — 19 auto, 11 manual.
 
 | id | severity | enforcement | check |
 |---|---|---|---|
@@ -43,6 +43,11 @@ The non-negotiable rules for kaizen-plugin-original development. This file is a 
 | `brain-rule-schema` | hard | auto | `brain_rule_schema` |
 | `starter-no-personal-data` | hard | auto | `starter_no_personal_data` |
 | `brain-no-orphan-toplevel` | hard | auto | `brain_no_orphan_toplevel` |
+| `append-only-sink` | soft | manual | — |
+| `drift-resilient-config-read` | soft | manual | — |
+| `prcdr-contract-declared` | soft | manual | — |
+| `cross-device-safe-move` | hard | manual | — |
+| `cli-json-flag` | soft | manual | — |
 
 ## Laws
 
@@ -283,4 +288,44 @@ Starter root dir contains only the PARA dirs (Inbox / Journal / Projects / Peopl
 **Detect:** Entry in assets/starters/<name>/ that isn't in the sanctioned set
 
 **Why:** When a starter accumulates `scratch.md` / `oldidea.md` / `temp/` cruft, new users seed those too. The PARA convention is THE brain UX — drift here erodes the value of every downstream brain.
+
+### `append-only-sink` (soft · manual)
+
+Structured-event sinks (progress.md rows, learn log, observer events.jsonl, patch journal, etc.) NEVER read the existing file — open with 'a' mode + write one line; constant-cost append regardless of sink size.
+
+**Detect:** Module that writes to a *.jsonl / *.md / *.log file uses read() before write — should use open(path, 'a').
+
+**Why:** Read-then-Edit costs ~2KB context per row + 2 tool calls. Proven canonical CLIs (kaizen-progress, kaizen-learn, kaizen-observer-events, kaizen-bundle patch-journal) all follow append-only. Test pattern: seed 50KB log, append one row, assert size-delta < N bytes (the row size) — see test_append_cost_constant in test_progress_log.py.
+
+### `drift-resilient-config-read` (soft · manual)
+
+Config / rules / schema files that drive runtime behavior are RE-READ from disk on every evaluation — never cached in-memory.
+
+**Detect:** Loader fn cached with @lru_cache or module-level dict; rule/schema loaded once at import time and reused for many evaluations.
+
+**Why:** Counter to the cache-pinning bug class — kaizen-implementer 9b29d3d landed because agent tools list was pinned at session start; mid-session edits to the disk file silently didn't take effect. Observer rules engine + ingest module both re-load source per call. Proven via test_rules_reloaded_per_eval + test_load_schema_called_per_event.
+
+### `prcdr-contract-declared` (soft · manual)
+
+Every new public-API module declares the 5-property contract (PROGRAMMABLE / REPRODUCIBLE / CONSISTENT / DETERMINISTIC / REUSABLE) in its module docstring.
+
+**Detect:** Module under skills/workflow/scripts/ exporting a CLI or pure-function API lacks the 5-property contract block.
+
+**Why:** User directive 2026-05-18 — 'programmable, reproducible, consistent, deterministic, reusable'. Declaring the contract per-module makes design intent reviewable + reusable across features. Pattern: every new kaizen-* surface this session (progress, learn, observer-events, bundle) declares the contract; readers verify each property via the named tests.
+
+### `cross-device-safe-move` (hard · manual)
+
+File-move operations use shutil.move, NOT Path.rename — Path.rename raises OSError(EXDEV) across filesystems (tmpfs → home, etc.).
+
+**Detect:** Module under skills/workflow/scripts/ or hooks/claude/ uses Path.rename or os.rename for paths that might span filesystems.
+
+**Why:** Caught via live smoke in kaizen-bundle add: /tmp (tmpfs) → ~/workspace (home fs) move failed with OSError(EXDEV) when implemented as src.rename(target). shutil.move handles the fallback (copy + delete) transparently. Universally safer for cross-mount user workflows.
+
+### `cli-json-flag` (soft · manual)
+
+Every CLI subcommand that produces structured output offers a `--json` flag returning canonical JSON to stdout.
+
+**Detect:** argparse subparser with output but no `--json` action='store_true' argument.
+
+**Why:** Programmability requirement — scripted / MCP consumers cannot parse human-readable variants reliably. Every kaizen-* CLI this session (progress, learn, observer-events, bundle, handoff get) ships --json. Default: human-readable for terminal use; --json for automation.
 
