@@ -1,5 +1,8 @@
 # Work pool — agents pick items, sequential picking
 
+> ⚠️ **SUPERSEDED** by [`QUEUE_PICKER_BRAINSTORM.md`](QUEUE_PICKER_BRAINSTORM.md). The atomic-rename pool design here is more complex than the simpler "parent-as-xargs" pattern. Kept for historical context.
+> **Disciplines:** all rules in [`DISCIPLINES.md`](DISCIPLINES.md) apply.
+
 > User idea sharpened: "shared work pool, agent picks work, picking happens sequentially"
 
 A different shape from the coordination pool (`SHARED_POOL_BRAINSTORM.md`). That added inter-agent messaging on top of pre-assigned chunks. This re-imagines dispatch itself: **no pre-assigned chunks** — agents are generic workers that pick from a shared queue. Picking is serialized (atomic), execution is parallel.

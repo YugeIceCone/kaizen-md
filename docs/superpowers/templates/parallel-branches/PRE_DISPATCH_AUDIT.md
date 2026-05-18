@@ -1,8 +1,11 @@
 # Pre-dispatch audit — 20-agent readiness
 
+> ⚠️ **PARTIALLY OUTDATED** — written before [`CLEVER_LAMA_INTEGRATION.md`](CLEVER_LAMA_INTEGRATION.md) was discovered. Gaps #2 (prompt generator), #4 (conflict detector), #5 (merge handlers vaporware) STILL HOLD. Gap #3 (worktree orchestration) and the DISPATCH piece of #2 are now solved by clever-lama's `parallel_subagents` + `chain_subagents` + `agentic_loop`.
+> **Disciplines:** all rules in [`DISCIPLINES.md`](DISCIPLINES.md) apply.
+
 ## TL;DR
 
-If I had to dispatch 20 parallel `Agent()` calls **right now**, I'd hit ≥6 blockers. The schemas + examples exist but the **runtime is largely vaporware** — no loader, no prompt generator, no worktree orchestrator, no merge-action handlers, no conflict pre-flight. Operators would hand-roll all of it.
+If I had to dispatch 20 parallel `Agent()` calls **right now**, I'd hit ≥6 blockers (now ~4 after clever-lama integration). The schemas + examples exist but the **runtime is largely vaporware** — no loader, no prompt generator, no worktree orchestrator, no merge-action handlers, no conflict pre-flight. Operators would hand-roll all of it.
 
 Severity at a glance:
 

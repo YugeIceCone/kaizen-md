@@ -1,5 +1,8 @@
 # Shared coordination pool — brainstorm
 
+> ⚠️ **PARTIALLY SUPERSEDED** — clever-lama's persistence layer (`learnings` table + FTS5, `recall_learnings`, `recall_semantic`, `skill_stats`) already provides 70%+ of what Phases B1-B3 proposed. The remaining ~30% is Phase A1 (heartbeat ledger) which may still be worth a thin layer. See [`CLEVER_LAMA_INTEGRATION.md`](CLEVER_LAMA_INTEGRATION.md) for the integration story.
+> **Disciplines:** all rules in [`DISCIPLINES.md`](DISCIPLINES.md) apply.
+
 > User idea: "shared pool maybe a ledger (state) so agents can communicate with each other to solve issues that crop up"
 
 The current design eliminates cross-cutting writes (great for safety, eliminates whole classes of conflicts). But it also eliminates agent-to-agent communication entirely — every coordination problem must escalate to the parent orchestrator or get deferred to MERGE. This brainstorm explores adding a thin shared pool to bridge that gap WITHOUT re-introducing race conditions.
