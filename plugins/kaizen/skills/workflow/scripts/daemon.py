@@ -726,41 +726,105 @@ def watch_start(interval: float) -> tuple[bool, int | str]:
     return True, p.pid
 
 
-# ─── systems-check — keep-alive for the 4 runtime systems (2026-05-18) ──
+# ─── systems-check — keep-alive for the runtime systems (2026-05-18) ────
+#
+# Expanded from 4 → 9 systems per audit-heartbeat-daemon-watcher.md
+# (docs/superpowers/2026-05-18-kaizen-md-9f4c8972/). Kinds:
+#   config — config file (hooks.json proxy)
+#   sink   — append-only jsonl (trace/dxm/observer/learning/gold)
+#   pid    — daemon pid file (daemon-watcher)
+#   db     — sqlite file (handoff-db)
+#   meta   — counter / control file (keepalive-meta)
 
 _TRACKED_SYSTEMS = (
-    # name, env_name (None → fall back to default), default segment(s)
-    ("hooks",    None,                    None),
-    ("trace",    "KAIZEN_TRACE_DIR",      ("indexes", "trace")),
-    ("dxm",      "KAIZEN_DXM_DIR",        ("dxm",)),
-    ("observer", "KAIZEN_OBSERVER_DIR",   ("observer",)),
+    # (name, kind, env_name, default_segs, sink_name)
+    # sink_name overrides "events.jsonl" for sinks with non-canonical
+    # filenames (e.g. learning uses log.jsonl). None = use default.
+    ("hooks",          "config", None,                     None,                       None),
+    ("trace",          "sink",   "KAIZEN_TRACE_DIR",       ("indexes", "trace"),       None),
+    ("dxm",            "sink",   "KAIZEN_DXM_DIR",         ("dxm",),                   None),
+    ("observer",       "sink",   "KAIZEN_OBSERVER_DIR",    ("observer",),              None),
+    ("learning",       "sink",   "KAIZEN_LEARNING_DIR",    ("learning",),              "log.jsonl"),
+    ("keepalive-meta", "meta",   "KAIZEN_KEEPALIVE_DIR",   ("keepalive",),             None),
+    ("daemon-watcher", "pid",    "KAIZEN_DAEMON_DIR",      ("data", "daemon"),         None),
+    ("handoff-db",     "db",     "KAIZEN_HANDOFF_DB",      ("data", "handoff.db"),     None),
+    # Skipped (different probe shape):
+    #   gold — per-project at gold/<project-slug>/patterns.jsonl;
+    #          would need a glob walk. Defer to a separate probe kind.
 )
 
 
-def _check_one(name: str, env_name, default_segs) -> dict:
-    """Probe a single runtime system; return state dict."""
-    if name == "hooks":
-        # Hooks aren't a sink — they're a config. Treat hooks.json presence
-        # as the proxy. scripts_dir() = plugin_src/skills/workflow/scripts;
-        # hooks.json lives at plugin_src/hooks/hooks.json — three .parents up.
-        hooks_json = scripts_dir().parent.parent.parent / "hooks" / "hooks.json"
-        st = {"name": name, "kind": "config",
-               "exists": hooks_json.is_file(),
-               "path": str(hooks_json), "count": 0}
-        if hooks_json.is_file():
-            st["size"] = hooks_json.stat().st_size
-            st["last_mtime"] = hooks_json.stat().st_mtime
-        return st
-    # Append-only jsonl sink
+def _resolve_path(env_name, default_segs) -> Path:
+    """Resolve a per-system path: env wins; else ~/.claude/.kaizen / segs."""
     import os as _os
     env_val = _os.environ.get(env_name) if env_name else None
     if env_val:
-        sink_dir = Path(env_val)
-    else:
-        sink_dir = Path.home() / ".claude" / ".kaizen"
-        if default_segs:
-            sink_dir = sink_dir.joinpath(*default_segs)
-    sink = sink_dir / "events.jsonl"
+        return Path(env_val)
+    base = Path.home() / ".claude" / ".kaizen"
+    if default_segs:
+        return base.joinpath(*default_segs)
+    return base
+
+
+def _stat_into(state: dict, path: Path) -> None:
+    """Stamp size + last_mtime onto state dict from path.stat()."""
+    state["size"] = path.stat().st_size
+    state["last_mtime"] = path.stat().st_mtime
+
+
+def _count_jsonl_rows(path: Path) -> int:
+    """Count VALID jsonl rows in path; skip blanks + malformed lines."""
+    cnt = 0
+    try:
+        for line in path.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                json.loads(line)
+                cnt += 1
+            except json.JSONDecodeError:
+                continue
+    except OSError:
+        pass
+    return cnt
+
+
+def _apply_stale(state: dict) -> None:
+    """Set state['stale'] from last_mtime + KAIZEN_KEEPALIVE_STALE_SEC.
+
+    Per drift-resilient-config-read iron-law: re-read env per call. Absent
+    sinks (exists=False) are never stale (nothing to be stale about).
+    Default threshold: 7200s (2h).
+    """
+    import os as _os
+    import time as _time
+    if not state.get("exists") or "last_mtime" not in state:
+        state["stale"] = False
+        return
+    try:
+        threshold = int(_os.environ.get("KAIZEN_KEEPALIVE_STALE_SEC", 7200))
+    except ValueError:
+        threshold = 7200
+    age = _time.time() - state["last_mtime"]
+    state["stale"] = age > threshold
+
+
+def _probe_config_hooks(name: str) -> dict:
+    # hooks.json lives at plugin_src/hooks/hooks.json — three .parents up
+    # from scripts_dir() (plugin_src/skills/workflow/scripts).
+    hooks_json = scripts_dir().parent.parent.parent / "hooks" / "hooks.json"
+    st = {"name": name, "kind": "config",
+          "exists": hooks_json.is_file(),
+          "path": str(hooks_json), "count": 0}
+    if hooks_json.is_file():
+        _stat_into(st, hooks_json)
+    return st
+
+
+def _probe_sink(name: str, env_name, default_segs, sink_name) -> dict:
+    sink_dir = _resolve_path(env_name, default_segs)
+    sink = sink_dir / (sink_name or "events.jsonl")
     state = {"name": name, "kind": "sink",
              "exists": sink.is_file(),
              "path": str(sink), "count": 0}
@@ -772,23 +836,60 @@ def _check_one(name: str, env_name, default_segs) -> dict:
             state["path"] = str(sink)
             state["exists"] = True
     if sink.is_file():
-        state["size"] = sink.stat().st_size
-        state["last_mtime"] = sink.stat().st_mtime
-        # Count VALID jsonl rows
-        cnt = 0
-        try:
-            for line in sink.read_text(encoding="utf-8").splitlines():
-                line = line.strip()
-                if not line:
-                    continue
-                try:
-                    json.loads(line)
-                    cnt += 1
-                except json.JSONDecodeError:
-                    continue
-        except OSError:
-            pass
-        state["count"] = cnt
+        _stat_into(state, sink)
+        state["count"] = _count_jsonl_rows(sink)
+    return state
+
+
+def _probe_pid(name: str, env_name, default_segs, sink_name) -> dict:
+    pid_file = _resolve_path(env_name, default_segs) / "watcher.pid"
+    state = {"name": name, "kind": "pid",
+             "exists": pid_file.is_file(),
+             "path": str(pid_file), "count": 0}
+    if pid_file.is_file():
+        _stat_into(state, pid_file)
+    return state
+
+
+def _probe_db(name: str, env_name, default_segs, sink_name) -> dict:
+    # env_name override carries the FULL file path; default_segs the dir+filename
+    db_path = _resolve_path(env_name, default_segs)
+    state = {"name": name, "kind": "db",
+             "exists": db_path.is_file(),
+             "path": str(db_path), "count": 0}
+    if db_path.is_file():
+        _stat_into(state, db_path)
+    return state
+
+
+def _probe_meta(name: str, env_name, default_segs, sink_name) -> dict:
+    # The keep-alive counter — meta-check (is the periodic hook firing?)
+    counter = _resolve_path(env_name, default_segs) / "counter.txt"
+    state = {"name": name, "kind": "meta",
+             "exists": counter.is_file(),
+             "path": str(counter), "count": 0}
+    if counter.is_file():
+        _stat_into(state, counter)
+    return state
+
+
+_PROBES = {
+    "config": lambda name, env, segs, snk: _probe_config_hooks(name),
+    "sink":   _probe_sink,
+    "pid":    _probe_pid,
+    "db":     _probe_db,
+    "meta":   _probe_meta,
+}
+
+
+def _check_one(name: str, kind: str, env_name, default_segs, sink_name=None) -> dict:
+    """Probe a single runtime system; return state dict with stale flag."""
+    probe = _PROBES.get(kind)
+    if probe is None:
+        return {"name": name, "kind": kind, "exists": False, "count": 0,
+                "stale": False, "error": f"unknown kind {kind!r}"}
+    state = probe(name, env_name, default_segs, sink_name)
+    _apply_stale(state)
     return state
 
 
@@ -800,19 +901,45 @@ def _keepalive_dir() -> Path:
     return Path.home() / ".claude" / ".kaizen" / "keepalive"
 
 
+def _maybe_rotate_heartbeat(hb_path: Path) -> None:
+    """Rotate heartbeat.jsonl → .1 when > KAIZEN_KEEPALIVE_ROTATE_BYTES.
+
+    Single rolling rotation: .1 is overwritten each cycle. Drift-resilient:
+    re-reads env per call. Default threshold 1 MiB.
+    """
+    import os as _os
+    if not hb_path.is_file():
+        return
+    try:
+        threshold = int(_os.environ.get("KAIZEN_KEEPALIVE_ROTATE_BYTES",
+                                          1024 * 1024))
+    except ValueError:
+        threshold = 1024 * 1024
+    if hb_path.stat().st_size < threshold:
+        return
+    rotated = hb_path.parent / (hb_path.name + ".1")
+    try:
+        if rotated.exists():
+            rotated.unlink()
+        hb_path.rename(rotated)
+    except OSError:
+        pass
+
+
 def _cmd_systems_check(args) -> int:
-    import time as _time
-    systems = [_check_one(name, env_name, default_segs)
-                for name, env_name, default_segs in _TRACKED_SYSTEMS]
+    systems = [_check_one(name, kind, env_name, default_segs, sink_name)
+                for name, kind, env_name, default_segs, sink_name in _TRACKED_SYSTEMS]
     heartbeat = {
         "ts": dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "systems": systems,
     }
-    # Append to heartbeat.jsonl via the same shape as kaizen-progress/learn.
+    # Append to heartbeat.jsonl with rotation guard.
     try:
         hb_dir = _keepalive_dir()
         hb_dir.mkdir(parents=True, exist_ok=True)
-        with (hb_dir / "heartbeat.jsonl").open("a", encoding="utf-8") as f:
+        hb_path = hb_dir / "heartbeat.jsonl"
+        _maybe_rotate_heartbeat(hb_path)
+        with hb_path.open("a", encoding="utf-8") as f:
             f.write(json.dumps(heartbeat) + "\n")
     except OSError:
         pass
@@ -822,7 +949,8 @@ def _cmd_systems_check(args) -> int:
         print(f"systems-check {heartbeat['ts']}:")
         for s in systems:
             tag = "ok" if s.get("exists") else "absent"
-            print(f"  {s['name']:<10} {tag:<6} count={s.get('count', 0)}")
+            stale_tag = " [stale]" if s.get("stale") else ""
+            print(f"  {s['name']:<16} {tag:<6} count={s.get('count', 0)}{stale_tag}")
     return 0
 
 
