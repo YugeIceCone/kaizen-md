@@ -61,9 +61,24 @@ class TestShouldRedirect(unittest.TestCase):
         self.assertFalse(br.should_redirect(
             "Read", {"file_path": "/home/u/.claude/.kaizen/brain/brain.db"}))
 
-    def test_read_on_other_path_skips(self):
-        self.assertFalse(br.should_redirect(
+    def test_read_on_project_claude_md_matches(self):
+        # CLAUDE.md is the rulebook — Read should nudge to brain show.
+        # Even short ~5KB CLAUDE.md re-loads waste tokens when only one
+        # section is wanted.
+        self.assertTrue(br.should_redirect(
             "Read", {"file_path": "/home/u/workspace/repo/CLAUDE.md"}))
+
+    def test_read_on_user_global_claude_md_matches(self):
+        self.assertTrue(br.should_redirect(
+            "Read", {"file_path": "/home/u/.claude/CLAUDE.md"}))
+
+    def test_read_on_claude_local_md_matches(self):
+        self.assertTrue(br.should_redirect(
+            "Read", {"file_path": "/home/u/workspace/repo/CLAUDE.local.md"}))
+
+    def test_read_on_unrelated_md_skips(self):
+        self.assertFalse(br.should_redirect(
+            "Read", {"file_path": "/home/u/workspace/repo/README.md"}))
 
     def test_non_read_tool_skips(self):
         self.assertFalse(br.should_redirect(

@@ -28,7 +28,16 @@ _BRAIN_SUFFIX_PARTS = (".kaizen/brain/", "/projects/", "/memory/")
 
 
 def should_redirect(tool_name: str, tool_input: dict) -> bool:
-    """True iff this Read tool call should get a redirect nudge."""
+    """True iff this Read tool call should get a redirect nudge.
+
+    Matches three categories of memory file:
+    1. Brain Notes: anything under ``.kaizen/brain/``
+    2. Auto-memory: anything under ``<home>/projects/<slug>/memory/``
+    3. Rulebooks: ``CLAUDE.md`` + ``CLAUDE.local.md`` at any path
+
+    Rulebooks are matched on basename so both user-global
+    (``~/.claude/CLAUDE.md``) and project (``<repo>/CLAUDE.md``) trigger.
+    """
     if os.environ.get("KAIZEN_BRAIN_REDIRECT_DISABLE") == "1":
         return False
     if tool_name != "Read":
@@ -36,10 +45,15 @@ def should_redirect(tool_name: str, tool_input: dict) -> bool:
     fp = tool_input.get("file_path", "")
     if not isinstance(fp, str) or not fp.endswith(".md"):
         return False
-    # Matches if path is under brain/ OR <project>/memory/
+    # Brain
     if ".kaizen/brain/" in fp:
         return True
+    # Auto-memory
     if "/memory/" in fp and "/projects/" in fp:
+        return True
+    # Rulebooks (CLAUDE.md / CLAUDE.local.md) — basename match
+    basename = fp.rsplit("/", 1)[-1]
+    if basename in ("CLAUDE.md", "CLAUDE.local.md"):
         return True
     return False
 

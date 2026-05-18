@@ -222,5 +222,84 @@ class TestBrainBlocksCLI(unittest.TestCase):
         self.assertNotEqual(r.returncode, 0)
 
 
+class TestShortNameResolution(unittest.TestCase):
+    """`--file Persona.md` → ~/.claude/.kaizen/brain/Persona.md.
+    `--file MEMORY.md` → ~/.claude/projects/<slug>/memory/MEMORY.md.
+    `--file Notes/X.md` → ~/.claude/.kaizen/brain/Notes/X.md.
+    Literal paths (absolute or relative-to-cwd) still work unchanged.
+
+    Sandbox via ``KAIZEN_BRAIN_DIR`` env override.
+    """
+
+    def setUp(self):
+        from pathlib import Path
+        self._tmp = tempfile.TemporaryDirectory()
+        self.tmp = Path(self._tmp.name)
+        # Fake brain root + auto-memory dir
+        self.fake_brain = self.tmp / "brain"
+        self.fake_brain.mkdir()
+        (self.fake_brain / "Persona.md").write_text(
+            _SAMPLE, encoding="utf-8")
+        (self.fake_brain / "Notes").mkdir()
+        (self.fake_brain / "Notes" / "pref-x.md").write_text(
+            _SAMPLE, encoding="utf-8")
+        # Auto-memory dir (use env override KAIZEN_BETTER_MEMORY_DIR)
+        self.fake_memory = self.tmp / "memory"
+        self.fake_memory.mkdir()
+        (self.fake_memory / "MEMORY.md").write_text(
+            _SAMPLE, encoding="utf-8")
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    def _env(self):
+        e = os.environ.copy()
+        e["KAIZEN_BRAIN_DIR"] = str(self.fake_brain)
+        e["KAIZEN_BETTER_MEMORY_DIR"] = str(self.fake_memory)
+        return e
+
+    def _run(self, *args):
+        return subprocess.run(
+            [sys.executable, str(_BRAIN), *args],
+            capture_output=True, text=True, timeout=15, env=self._env(),
+        )
+
+    def test_persona_md_short_name_resolves(self):
+        r = self._run("blocks", "--file", "Persona.md", "--json")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        data = json.loads(r.stdout)
+        self.assertEqual(data["file"],
+                         str(self.fake_brain / "Persona.md"))
+
+    def test_memory_md_short_name_resolves(self):
+        r = self._run("blocks", "--file", "MEMORY.md", "--json")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        data = json.loads(r.stdout)
+        self.assertEqual(data["file"],
+                         str(self.fake_memory / "MEMORY.md"))
+
+    def test_notes_subpath_short_name_resolves(self):
+        r = self._run("blocks", "--file", "Notes/pref-x.md", "--json")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        data = json.loads(r.stdout)
+        self.assertEqual(data["file"],
+                         str(self.fake_brain / "Notes" / "pref-x.md"))
+
+    def test_literal_path_still_wins(self):
+        """When --file is an absolute path that exists, no resolution."""
+        literal = self.tmp / "Literal.md"
+        literal.write_text(_SAMPLE)
+        r = self._run("blocks", "--file", str(literal), "--json")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        data = json.loads(r.stdout)
+        self.assertEqual(data["file"], str(literal))
+
+    def test_unknown_short_name_clear_error(self):
+        r = self._run("blocks", "--file", "DoesNotExist.md")
+        self.assertNotEqual(r.returncode, 0)
+        # Error names the resolution attempts so the user can diagnose
+        self.assertIn("brain", r.stderr.lower() + r.stdout.lower())
+
+
 if __name__ == "__main__":
     unittest.main()

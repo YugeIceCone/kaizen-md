@@ -153,7 +153,10 @@ class TestQuoteIfUnsafeColonRegression(_RepoBase):
         parsed = _yaml.safe_load(body_only)
         self.assertIn("done_this_session", parsed)
         self.assertEqual(len(parsed["done_this_session"]), 1)
-        self.assertIn(sha, parsed["done_this_session"][0]["commits"])
+        # Stringify to handle YAML's int-coercion of all-digit short SHAs
+        # (~5% of random 7-hex-char SHAs are all-decimal → parsed as int).
+        rendered = [str(c) for c in parsed["done_this_session"][0]["commits"]]
+        self.assertIn(sha, rendered)
 
 
 class TestScaffoldJSONLMinedCommits(_RepoBase):

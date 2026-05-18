@@ -546,13 +546,67 @@ def _cmd_status(args) -> int:
 
 # ─── block-level addressing — zero-roundtrip memory edits ────────────
 
+
+def _resolve_memory_file(arg: str) -> "Path":
+    """Resolve a --file arg to a real Markdown file.
+
+    Tries (in order): literal path → brain root → auto-memory dir.
+    First hit wins. Returns the un-resolved literal path if no hit
+    (caller emits the not-found error).
+
+    Short-name examples:
+      ``Persona.md`` → ~/.claude/.kaizen/brain/Persona.md
+      ``MEMORY.md`` → ~/.claude/projects/<slug>/memory/MEMORY.md
+      ``Notes/pref-x.md`` → ~/.claude/.kaizen/brain/Notes/pref-x.md
+    """
+    from pathlib import Path as _P
+    p = _P(arg)
+    if p.is_file():
+        return p
+    # Try brain root
+    try:
+        bp = _brain.brain_root() / arg
+        if bp.is_file():
+            return bp
+    except Exception:
+        pass
+    # Try auto-memory dir (better_memory helper)
+    try:
+        sys.path.insert(0, str(_P(__file__).resolve().parent))
+        import better_memory as _bm
+        mp = _bm._default_memory_dir() / arg
+        if mp.is_file():
+            return mp
+    except Exception:
+        pass
+    return p
+
+
+def _file_not_found_msg(arg: str, verb: str) -> str:
+    """Diagnostic listing the resolution attempts."""
+    from pathlib import Path as _P
+    attempts = [str(_P(arg))]
+    try:
+        attempts.append(str(_brain.brain_root() / arg))
+    except Exception:
+        pass
+    try:
+        sys.path.insert(0, str(_P(__file__).resolve().parent))
+        import better_memory as _bm
+        attempts.append(str(_bm._default_memory_dir() / arg))
+    except Exception:
+        pass
+    return (f"brain {verb}: file not found: {arg}\n"
+            f"  searched (brain root + auto-memory):\n"
+            + "\n".join(f"    - {a}" for a in attempts) + "\n")
+
+
 def _cmd_blocks(args) -> int:
     """List addressable blocks in a Markdown file."""
-    from pathlib import Path as _P
     import _brain_blocks as _bb
-    fp = _P(args.file)
+    fp = _resolve_memory_file(args.file)
     if not fp.is_file():
-        sys.stderr.write(f"brain blocks: file not found: {fp}\n")
+        sys.stderr.write(_file_not_found_msg(args.file, "blocks"))
         return 2
     blocks = _bb.parse_blocks(fp.read_text(encoding="utf-8"))
     if args.json:
@@ -568,11 +622,10 @@ def _cmd_blocks(args) -> int:
 
 def _cmd_show(args) -> int:
     """Extract one block (no whole-file Read)."""
-    from pathlib import Path as _P
     import _brain_blocks as _bb
-    fp = _P(args.file)
+    fp = _resolve_memory_file(args.file)
     if not fp.is_file():
-        sys.stderr.write(f"brain show: file not found: {fp}\n")
+        sys.stderr.write(_file_not_found_msg(args.file, "show"))
         return 2
     text = fp.read_text(encoding="utf-8")
     body = _bb.extract_block(text, args.block)
@@ -589,11 +642,10 @@ def _cmd_show(args) -> int:
 
 def _cmd_edit(args) -> int:
     """Atomic in-place edit of a single block. Replace or append."""
-    from pathlib import Path as _P
     import _brain_blocks as _bb
-    fp = _P(args.file)
+    fp = _resolve_memory_file(args.file)
     if not fp.is_file():
-        sys.stderr.write(f"brain edit: file not found: {fp}\n")
+        sys.stderr.write(_file_not_found_msg(args.file, "edit"))
         return 2
     if not (args.replace or args.append):
         sys.stderr.write("brain edit: --replace OR --append required\n")
