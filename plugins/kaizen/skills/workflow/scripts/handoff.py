@@ -1662,6 +1662,91 @@ def _cmd_append(args) -> int:
     return 0
 
 
+# ─── re-mine — refresh handoff + skill-frame capture ────────────────
+
+def _compute_remine(jsonl_path: Path, existing: list) -> dict:
+    """Re-run mine_session against jsonl; return diff vs `existing` done.
+
+    Combines two original-6 needs (re-mine + skill-frame) since
+    mine_session already returns both completed_tasks and skills_used.
+    Pure-ish — only side effect is reading the jsonl file.
+    """
+    mined = _sj.mine_session(jsonl_path)
+    completed = mined.get("completed_tasks") or []
+    # Normalize `existing` — accept list[str] or list[dict-with-task-key]
+    seen: set[str] = set()
+    for entry in existing or []:
+        if isinstance(entry, str):
+            seen.add(entry)
+        elif isinstance(entry, dict):
+            t = entry.get("task")
+            if t:
+                seen.add(t)
+    new_completed = [t for t in completed if t not in seen]
+    return {
+        "new_completed_tasks": new_completed,
+        "completed_count":     len(completed),
+        "already_in_handoff":  len(completed) - len(new_completed),
+        "skills_used":         sorted(mined.get("skills_used") or set()),
+        "files_touched_count": len(mined.get("files_touched") or set()),
+    }
+
+
+def _cmd_remine(args) -> int:
+    fp = Path(args.file)
+    if not fp.is_file():
+        sys.stderr.write(f"handoff re-mine: file not found: {fp}\n")
+        return 2
+    text = fp.read_text(encoding="utf-8")
+    _, body = _load_raw_handoff(text)
+    meta = body.get("session_meta") or {}
+    jsonl_path_str = meta.get("cc_session_jsonl")
+    if not jsonl_path_str:
+        sys.stderr.write(
+            f"handoff re-mine: no session_meta.cc_session_jsonl in {fp}\n"
+        )
+        return 1
+    jsonl_path = Path(jsonl_path_str)
+    if not jsonl_path.is_file():
+        sys.stderr.write(f"handoff re-mine: jsonl missing: {jsonl_path}\n")
+        return 1
+    existing = body.get("done_this_session") or []
+    result = _compute_remine(jsonl_path, existing)
+    applied = 0
+    if args.apply and result["new_completed_tasks"]:
+        new_text = text
+        for task in result["new_completed_tasks"]:
+            new_text = _append_to_list_section(
+                new_text, "done_this_session", {"task": task, "files": []}
+            )
+            applied += 1
+        tmp = fp.with_suffix(fp.suffix + ".tmp")
+        tmp.write_text(new_text, encoding="utf-8")
+        tmp.replace(fp)
+    out = {"file": str(fp), "jsonl": str(jsonl_path),
+           "applied": applied, **result}
+    if args.json:
+        print(json.dumps(out, indent=2, default=str))
+    else:
+        n_new = len(result["new_completed_tasks"])
+        print(f"handoff re-mine: {fp}")
+        print(f"  jsonl: {jsonl_path}")
+        print(f"  completed in jsonl: {result['completed_count']}")
+        print(f"  already in handoff: {result['already_in_handoff']}")
+        print(f"  new (would-append): {n_new}")
+        for t in result["new_completed_tasks"]:
+            print(f"    + {t[:70]}")
+        if result["skills_used"]:
+            print(f"  skills used ({len(result['skills_used'])}):")
+            for s in result["skills_used"]:
+                print(f"    {s}")
+        if args.apply:
+            print(f"  ✓ appended {applied} new task(s)")
+        elif n_new:
+            print("  (dry run — pass --apply to write)")
+    return 0
+
+
 # ─── tasks — emit TaskCreate-ready JSON per next[] item ──────────────
 
 def _extract_tasks_from_next(text: str) -> list[dict]:
@@ -2259,6 +2344,19 @@ def main(argv: Optional[list[str]] = None) -> int:
                             "Same gating as --why.")
     s_ap.add_argument("--json", action="store_true")
     s_ap.set_defaults(func=_cmd_append)
+
+    s_rm = sub.add_parser(
+        "re-mine",
+        help="re-run scaffold's JSONL mining against the handoff's linked "
+             "session — surface completed_tasks not yet in done_this_session "
+             "PLUS skills_used (skill-frame capture). Dry-run by default; "
+             "pass --apply to append new tasks via the existing append helper."
+    )
+    s_rm.add_argument("--file", required=True, help="path to the handoff YAML")
+    s_rm.add_argument("--apply", action="store_true",
+                       help="actually append new tasks to done_this_session")
+    s_rm.add_argument("--json", action="store_true")
+    s_rm.set_defaults(func=_cmd_remine)
 
     s_tk = sub.add_parser(
         "tasks",
