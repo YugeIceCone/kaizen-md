@@ -1,6 +1,6 @@
 {
   "name": "kaizen-md",
-  "description": "Marketplace wrapping the kaizen plugin (schema-driven workflow / 91 skills / 121 bins / 7 sub-agents / 31 MCP servers / lens-driven handoff / 6-layer observability) plus 12 LSP plugins redistributed from claude-plugins-official under Apache 2.0 with attribution.",
+  "description": "Marketplace wrapping the kaizen plugin (schema-driven workflow / pre-commit gatekeeper / multi-stage routines / lens-driven handoff / layered observability / PARA Second Brain / worktree-isolated sub-agents) plus a family of LSP plugins redistributed from claude-plugins-official under Apache 2.0 with attribution.",
   "owner": {
     "name": "YugeIceCone",
     "url": "https://github.com/YugeIceCone"
@@ -8,7 +8,7 @@
   "plugins": [
     {
       "name": "kaizen",
-      "description": "Schema-driven workflow plugin (v1.39.0). 91 skills + 121 bins + 56 slash commands + 7 sub-agents + 40 hooks + 31 MCP servers behind one FastMCP gateway. 17-routine engine + 16-sub-gate gatekeeper + lens-driven handoff + 6-layer observability (trace / dxm / heartbeat) + PARA brain + chatlog slicer + session bundles.",
+      "description": "Schema-driven workflow plugin. Pre-commit gatekeeper + multi-stage routine engine + lens-driven handoff + layered observability (trace / dxm / heartbeat) + PARA Second Brain + chatlog transcript slicer + worktree-isolated sub-agents + per-domain MCP sub-servers behind one FastMCP gateway. Cross-platform; python3 only hard dep; self-contained.",
       "category": "productivity",
       "source": "./plugins/kaizen",
       "license": "MIT"
