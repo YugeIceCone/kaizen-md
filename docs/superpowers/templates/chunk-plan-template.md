@@ -91,9 +91,50 @@ The orchestrator (parent agent / human) reads this table and dispatches phase-by
 | Create  | `skills/.../foo.py`                   | <one-line responsibility>                     |
 | Modify  | `bar.py:120-145`                      | <what changes>                                |
 | Create  | `tests/test_foo.py`                   | paired test (iron-law bin-coverage)           |
-| Update  | `.claude-plugin/plugin.json`          | perm entry for foo.py + bin/kaizen-foo        |
 | Symlink | `bin/kaizen-foo`                      | → `../skills/.../foo.py`                      |
-| Append  | `.kaizen/workflow/progress.md`        | architecture log row (close-out commit)       |
+| Write   | `.chunks/N/perms.json`                | perm fragment (merged in plan-level merge)    |
+| Write   | `.chunks/N/progress.md`               | arch log fragment (merged in plan-level merge)|
+| Write   | `.chunks/N/backlog.jsonl`             | backlog fragment (merged in plan-level merge) |
+
+
+### Isolation contract
+
+**Owns (exclusive write):**
+- `skills/<feature>/...` paths matching this chunk's scope
+- `tests/test_<this-chunk-only>.py`
+- `bin/kaizen-<this-chunk-only>` (new symlinks only — never edit existing)
+- `.chunks/N/` (this chunk's fragment directory — single-writer guarantee)
+
+**Reads only (NEVER writes):**
+- `.claude-plugin/plugin.json` — perm entries go to `.chunks/N/perms.json` fragment instead
+- `.kaizen/workflow/progress.md` — arch log row goes to `.chunks/N/progress.md` instead
+- `.kaizen/workflow/backlog.json` — backlog items go to `.chunks/N/backlog.jsonl` instead
+- `gateway.py::SUBSERVERS` — MCP-mount entries go to `.chunks/N/mcp-mounts.txt` instead
+- Files owned by other chunks (see their Isolation contract)
+
+**Why fragments-not-direct-edits:** five parallel agents touching the same `plugin.json` would race. The fragment pattern guarantees each chunk's writes are conflict-free regardless of dispatch order; the plan-level **Merge step** (run by parent after all chunks settle) consolidates fragments into the canonical files in a single atomic pass.
+
+**Fragment shapes** (canonical formats):
+
+```json
+// .chunks/N/perms.json — list of plugin.json::permissions.allow entries to merge
+[
+  "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/foo.py:*)",
+  "Bash(${CLAUDE_PLUGIN_ROOT}/bin/kaizen-foo:*)"
+]
+```
+
+```markdown
+<!-- .chunks/N/progress.md — single row destined for the architecture log -->
+| 2026-MM-DD | feat | +X -0 | Chunk N — <title>: <one-line summary>. Refs: docs/.../plan.md::chunk-N |
+```
+
+```jsonl
+// .chunks/N/backlog.jsonl — backlog items destined for `.kaizen/workflow/backlog.json`
+{"title": "...", "probe": "...", "verify": "...", "section": "parked", "ref": "...", "tags": "..."}
+```
+
+**Worktree usage:** when `Isolation: worktree`, the chunk runs in `.claude/worktrees/chunk-N/` and the `.chunks/N/` fragment dir is created INSIDE that worktree. After the chunk's branch merges to master, the fragment becomes visible to the merge step.
 
 
 ### TDD code chunks
@@ -170,6 +211,89 @@ BUDGET: ~{budget} tool calls. If exhausted before finish: commit green items + w
 ```
 
 ---
+
+## Plan-level Merge step (mandatory when ≥2 chunks run in parallel)
+
+After all parallel chunks complete (their branches merged to master OR their commits land in master), the parent runs a single **Merge step** that consolidates per-chunk fragments into the canonical files. This is the ONLY phase allowed to mutate `plugin.json`, `progress.md`, `backlog.json`, or `gateway.py::SUBSERVERS`.
+
+```markdown
+## Merge step (run by parent / orchestrator)
+
+**Trigger:** all chunks declared `Done when` clear AND their commits landed on master.
+
+**Inputs:** `.chunks/*/perms.json`, `.chunks/*/progress.md`, `.chunks/*/backlog.jsonl`, `.chunks/*/mcp-mounts.txt` (where present)
+
+**Actions** (single sequential pass — no concurrency here):
+
+1. **Plugin perms:**
+   ```bash
+   python3 -c "
+   import json
+   from pathlib import Path
+   pj = Path('plugins/kaizen/.claude-plugin/plugin.json')
+   raw = json.loads(pj.read_text())
+   allow = list(raw['permissions']['allow'])
+   for frag in sorted(Path('.chunks').glob('*/perms.json')):
+       allow.extend(e for e in json.loads(frag.read_text()) if e not in allow)
+   raw['permissions']['allow'] = allow
+   pj.write_text(json.dumps(raw, indent=2) + '\\n')
+   "
+   ```
+
+2. **Architecture log:**
+   ```bash
+   for frag in $(ls .chunks/*/progress.md | sort); do
+       cat "$frag" >> .kaizen/workflow/progress.md
+   done
+   ```
+
+3. **Backlog:**
+   ```bash
+   for frag in $(ls .chunks/*/backlog.jsonl | sort); do
+       while IFS= read -r line; do
+           [ -z "$line" ] && continue
+           # Parse line as JSON, dispatch to `kaizen backlog add`
+           python3 -c "import json,subprocess,sys
+   row = json.loads(sys.argv[1])
+   subprocess.run(['kaizen', 'backlog', 'add',
+       '--title', row['title'], '--probe', row['probe'],
+       '--verify', row['verify'], '--section', row.get('section', 'parked'),
+       '--ref', row.get('ref', ''), '--tags', row.get('tags', '')], check=True)" "$line"
+       done < "$frag"
+   done
+   ```
+
+4. **MCP mounts** (if any chunk wrote `.chunks/N/mcp-mounts.txt`): edit `gateway.py::SUBSERVERS` to append, one Edit per mount line.
+
+5. **Cleanup:** `rm -rf .chunks/` (post-consolidation; the per-chunk fragments are now redundant).
+
+6. **Merge commit:** `chore(merge): consolidate fragments from chunks 1-N (Refs: docs/.../plan.md)`
+
+7. **Verification:** `python3 -m unittest discover -s plugins/kaizen/tests -p "test_*.py" | tail -3` — assert 0 regressions on the consolidated state.
+
+**Why this works:** every step in the merge is deterministic and single-writer. No two agents are ever mutating the same canonical file simultaneously. The fragments are conflict-free by construction (each chunk owns its `.chunks/N/`).
+
+**Done when:**
+- [ ] `.chunks/` directory deleted
+- [ ] One merge commit landed
+- [ ] Full suite passes
+```
+
+## Parallelism contract (plan-level)
+
+The **Orchestration table** column `Concurrent with` and the `Deps` column together define a DAG. To guarantee parallel-safe dispatch:
+
+| Constraint                                                              | How the template enforces it                                                                          |
+|-------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------|
+| Two chunks must never write the same file                               | Each chunk's `Plan` table only lists files in its scope; canonical-shared files write to `.chunks/N/` fragments instead |
+| A chunk consuming chunk X's output must declare `Deps: X`               | `Outputs` column in chunk X declares its artifacts; consuming chunks list X in `Deps`                  |
+| Two chunks with no `Deps` between them may run in parallel              | `Concurrent with` column lists which siblings run in the same phase                                    |
+| Cross-project chunks (different repos) are always parallel-safe         | `Project` column scopes the chunk's write surface                                                      |
+| Retrofit / refactor work that touches existing files is NEVER parallel | Such work is its own chunk with `Deps: <all chunks producing the targets>` AND `Concurrent with: —`    |
+
+**Dispatch rule:** parent only sends two chunks in the same message when EITHER:
+- their `Concurrent with` columns name each other, OR
+- they target different `Project` repos AND share no fragment-dir collisions
 
 ## Common pitfalls (apply across all chunks)
 

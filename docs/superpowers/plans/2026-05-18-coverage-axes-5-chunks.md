@@ -6,30 +6,32 @@
 - **Source / brainstorm:** `~/workspace/semantic-search/docs/2026-05-17-coverage-ideas.jsonl` (lines 1-300)
 - **Sibling docs:** `2026-05-18-coverage-checklist.md` (300-row master), `2026-05-18-coverage-loop-implemented.md` (this-run narrative)
 - **Total chunks:** 5
-- **Concurrency:** phase-1 chunks 1+2 parallel; phase-2 chunk 3 sequential; phase-3 chunks 4+5 parallel
-- **Verification cadence:** per-item paired tests + per-chunk full suite + plan-level smoke
-- **Template followed:** `docs/superpowers/templates/chunk-plan-template.md` (4-section per-chunk shape)
+- **Concurrency:** **fully parallel** — all 5 chunks dispatch in one message to 5 separate agents. Zero deps between chunks (by isolation contract). A plan-level **Merge step** runs after to consolidate fragments + perform retrofit.
+- **Verification cadence:** per-item paired tests + per-chunk full suite + plan-level smoke after merge
+- **Template followed:** `docs/superpowers/templates/chunk-plan-template.md` (4-section per-chunk shape + isolation contract + merge step)
 
 ## Orchestration
 
-| Chunk | Title                                       | Deps    | Concurrent with | Subagent           | Project                    | Budget       |
-|-------|---------------------------------------------|---------|-----------------|--------------------|----------------------------|--------------|
-| 1     | Foundation AST audits                       | —       | 2               | kaizen-implementer | kaizen-md                  | ~80 calls    |
-| 2     | Trace-observability deep-dive               | —       | 1               | kaizen-implementer | kaizen-md                  | ~80 calls    |
-| 3     | Generic axis runner (#161) + retrofit       | 1, 2    | —               | kaizen-implementer | kaizen-md                  | ~120 calls   |
-| 4     | Test quality + mutation gating              | 3       | 5               | kaizen-implementer | kaizen-md                  | ~70 calls    |
-| 5     | Cross-project wiring into semantic-search   | 3       | 4               | general-purpose    | semantic-search            | ~50 calls    |
+| Chunk | Title                                          | Deps    | Concurrent with | Subagent           | Project          | Worktree branch     | Budget    |
+|-------|------------------------------------------------|---------|-----------------|--------------------|------------------|---------------------|-----------|
+| 1     | Foundation AST audits                          | —       | 2, 3, 4, 5      | kaizen-implementer | kaizen-md        | `chunk-1-ast`       | ~80 calls |
+| 2     | Trace-observability deep-dive                  | —       | 1, 3, 4, 5      | kaizen-implementer | kaizen-md        | `chunk-2-trace`     | ~80 calls |
+| 3     | Generic axis runner (#161) — build-only        | —       | 1, 2, 4, 5      | kaizen-implementer | kaizen-md        | `chunk-3-runner`    | ~100 calls|
+| 4     | Test quality + mutation gating (standalone)    | —       | 1, 2, 3, 5      | kaizen-implementer | kaizen-md        | `chunk-4-mutation`  | ~70 calls |
+| 5     | Cross-project audit using THE 30 PRE-EXISTING  | —       | 1, 2, 3, 4      | general-purpose    | semantic-search  | n/a (different repo)| ~50 calls |
+| MERGE | Consolidate fragments + retrofit              | 1,2,3,4,5 | —             | parent orchestrator| kaizen-md + ss   | master              | ~40 calls |
 
-Dispatch order:
+**Dispatch order:**
 
 ```python
-# Phase 1 — parallel
-[Agent(chunk-1), Agent(chunk-2)]   # same message
-# Phase 2 — sequential
-Agent(chunk-3)
-# Phase 3 — parallel
-[Agent(chunk-4), Agent(chunk-5)]
+# Single message — all 5 in parallel (no inter-chunk deps)
+[Agent(chunk-1), Agent(chunk-2), Agent(chunk-3),
+ Agent(chunk-4), Agent(chunk-5)]
+
+# After all 5 finish — parent runs MERGE step (this plan's `## Merge step` section)
 ```
+
+**Why this works:** chunks 1-4 each run in their own worktree branch; chunk 5 runs in a different repo. The only files all chunks would normally collide on (`plugin.json`, `progress.md`, `backlog.json`, `gateway.py::SUBSERVERS`) are **fragment-written** to per-chunk `.chunks/N/` dirs. The MERGE step consolidates fragments into the canonical files in a single sequential pass — no concurrent edits ever happen on the canonical files.
 
 ---
 
@@ -85,8 +87,24 @@ Agent(chunk-3)
 | Create  | `plugins/kaizen/skills/workflow/scripts/comment_quality.py`                | comment-vs-code redundancy heuristic           |
 | Create  | `plugins/kaizen/tests/test_<each>.py` (×5)                                 | paired tests                                   |
 | Symlink | `plugins/kaizen/bin/kaizen-<each>` (×5) → `../skills/workflow/scripts/...` | bin wrappers                                   |
-| Modify  | `plugins/kaizen/.claude-plugin/plugin.json`                                | 5 × script perm + 5 × bin perm                 |
-| Append  | `.kaizen/workflow/progress.md`                                             | architecture log row in C1.F                   |
+| Write   | `.chunks/1/perms.json`                                                     | 10 perm entries (5 script + 5 bin) — fragment  |
+| Write   | `.chunks/1/progress.md`                                                    | architecture log row — fragment                |
+
+### Isolation contract
+
+**Owns (exclusive write):**
+- `plugins/kaizen/skills/workflow/scripts/{fn_name_quality,validator_wiring,mock_real_pairing,iron_law_per_feature,comment_quality}.py`
+- `plugins/kaizen/tests/test_{fn_name_quality,validator_wiring,mock_real_pairing,iron_law_per_feature,comment_quality}.py`
+- `plugins/kaizen/bin/kaizen-{fn-name-quality,validator-wiring,mock-real-pairing,iron-law-per-feature,comment-quality}` (5 NEW symlinks)
+- `.chunks/1/` (fragment dir — single-writer)
+
+**Reads only (NEVER writes):**
+- `plugins/kaizen/.claude-plugin/plugin.json` — perm entries → `.chunks/1/perms.json` instead
+- `.kaizen/workflow/progress.md` — arch row → `.chunks/1/progress.md` instead
+- `.kaizen/workflow/backlog.json` — none for this chunk
+- Any file matching chunks 2-4's exclusive list (different script names — no overlap by design)
+
+**Worktree:** runs in `.claude/worktrees/chunk-1-ast/`. Final commit on branch `chunk-1-ast` → merged by orchestrator into master before the MERGE step.
 
 ### TDD code chunks
 
@@ -216,12 +234,15 @@ def test_explanatory_comment_ok(self):
 
 **RED:** `cd plugins/kaizen && python3 -m unittest discover -s tests -p "test_*.py" 2>&1 | tail -3` — expect `OK`, NO failures.
 
-**GREEN:** append row to `.kaizen/workflow/progress.md`:
-```
-| 2026-05-18 | feat | +~X -0 | Chunk 1 — 5 foundation AST axes (fn-name / validator-wiring / mock-real / iron-law-per-feature / comment-quality). Test baseline 3153 → ~3175 (+~22). Refs: docs/superpowers/plans/2026-05-18-coverage-axes-5-chunks.md::chunk-1 |
-```
+**GREEN:**
+1. Write fragment `.chunks/1/perms.json` (10 entries — 5 script + 5 bin perms in `Bash(...)` format).
+2. Write fragment `.chunks/1/progress.md` containing the single arch-log row:
+   ```
+   | 2026-05-18 | feat | +~X -0 | Chunk 1 — 5 foundation AST axes (fn-name / validator-wiring / mock-real / iron-law-per-feature / comment-quality). Test baseline 3153 → ~3175 (+~22). Refs: docs/superpowers/plans/2026-05-18-coverage-axes-5-chunks.md::chunk-1 |
+   ```
+3. Do NOT edit `.claude-plugin/plugin.json` or `.kaizen/workflow/progress.md` — the MERGE step consolidates fragments.
 
-**Commit:** `chore(progress): chunk 1 close-out — 5 foundation AST axes (Refs: docs/.../5-chunks.md::chunk-1)`
+**Commit:** `chore(chunk-1): close-out — 5 foundation AST axes + fragments (Refs: docs/.../5-chunks.md::chunk-1)`
 
 ### Done when:
 
@@ -314,8 +335,24 @@ BUDGET: ~80 tool calls. If exhausted: commit green items + write chunk-1-resume.
 | Create  | `plugins/kaizen/skills/workflow/scripts/append_to_audit.py`       | AST scan for ad-hoc append patterns                |
 | Create  | `plugins/kaizen/tests/test_<each>.py` (×4)                        | paired tests                                       |
 | Symlink | `plugins/kaizen/bin/kaizen-<each>` (×4)                           | bin wrappers                                       |
-| Modify  | `plugins/kaizen/.claude-plugin/plugin.json`                       | 4 × script perm + 4 × bin perm                     |
-| Append  | `.kaizen/workflow/progress.md`                                    | architecture log row (close-out)                   |
+| Write   | `.chunks/2/perms.json`                                            | 8 perm entries — fragment                          |
+| Write   | `.chunks/2/progress.md`                                           | architecture log row — fragment                    |
+
+### Isolation contract
+
+**Owns (exclusive write):**
+- `plugins/kaizen/skills/workflow/scripts/{lifecycle_audit,trace_bloat_join,stream_join,append_to_audit}.py`
+- `plugins/kaizen/tests/test_{lifecycle_audit,trace_bloat_join,stream_join,append_to_audit}.py`
+- `plugins/kaizen/bin/kaizen-{lifecycle-audit,trace-bloat-join,stream-join,append-to-audit}` (4 NEW symlinks)
+- `.chunks/2/` (fragment dir — single-writer)
+
+**Reads only (NEVER writes):**
+- `plugins/kaizen/.claude-plugin/plugin.json` — perms → `.chunks/2/perms.json`
+- `.kaizen/workflow/progress.md` — arch row → `.chunks/2/progress.md`
+- `plugins/kaizen/skills/workflow/scripts/_atomic.py` — audit-only, refactor deferred to MERGE step
+- Any file matching chunks 1, 3, 4's exclusive lists (zero overlap by design)
+
+**Worktree:** runs in `.claude/worktrees/chunk-2-trace/`. Final commit on branch `chunk-2-trace` → orchestrator merges to master before MERGE step.
 
 ### TDD code chunks
 
@@ -436,17 +473,17 @@ BUDGET: ~80 tool calls."""
 
 ---
 
-## Chunk 3: Generic axis runner (#161) + retrofit
+## Chunk 3: Generic axis runner (#161) — build-only (retrofit deferred to MERGE step)
 
 | field        | value                                                                                                |
 |--------------|------------------------------------------------------------------------------------------------------|
-| **Purpose**  | Declarative `axis-as-yaml` + generic runner. Retrofit ≥5 of the 30 shipped axes as YAML-only to prove subsumption; park remaining 25 as `BK-NNN` for incremental migration. |
+| **Purpose**  | Build the declarative `axis-as-yaml` runner + 1 reference YAML axis as proof. **No retrofit of existing axes here** — that's done by the MERGE step after chunks 1+2's axes also land. Keeps chunk 3 fully independent. |
 | **Project**  | `~/workspace/kaizen-md`                                                                              |
-| **Deps**     | Chunks 1, 2 (need all axes existing to extract the common shape)                                     |
-| **Outputs**  | `axis_runner.py` + `axis_runner_mcp.py` + `domain/axes/*.yaml` per converted axis + `axis.schema.json` |
+| **Deps**     | —                                                                                                    |
+| **Outputs**  | `axis_runner.py` + `axis.schema.json` + 1 reference YAML axis + `axis_runner_rules.py` (rule lib for grep / ast-rule / file-coverage dispatch) |
 | **Subagent** | `kaizen-implementer`                                                                                 |
 | **Isolation**| `worktree`                                                                                           |
-| **Budget**   | ~120 tool calls (biggest — design + impl + retrofit)                                                 |
+| **Budget**   | ~100 tool calls                                                                                      |
 
 ### Guide
 
@@ -462,37 +499,61 @@ BUDGET: ~80 tool calls."""
   - Output stays canonical-envelope shape (so all clients still parse the same)
 - **Upstream decisions:**
   - YAML schema design is load-bearing — write `axis.schema.json` FIRST and self-review before any runner code
-  - 5 axes is the minimum proof; rest tracked as parked backlog
+  - Ship 1 reference YAML axis (`reference_demo.yaml`) as proof; **the MERGE step** handles retrofitting any of the 30 already-shipped axes plus chunks 1+2 outputs
 - **What NOT to touch:**
-  - Existing 30 axes (chunks 1+2 included) — they keep working until retrofitted
-  - `gateway.py::SUBSERVERS` (axis_runner can mount its own MCP later)
+  - Any existing `.py` axis (the retrofit is deferred to MERGE)
+  - `gateway.py::SUBSERVERS` — axis_runner_mcp mounting goes via `.chunks/3/mcp-mounts.txt` fragment
+  - Files owned by chunks 1, 2, 4 (different paths — no overlap)
+
+### Isolation contract
+
+**Owns (exclusive write):**
+- `plugins/kaizen/skills/workflow/scripts/{axis_runner,axis_runner_rules,axis_runner_mcp}.py` (3 NEW)
+- `plugins/kaizen/skills/workflow/domain/schemas/axis.schema.json` (NEW)
+- `plugins/kaizen/skills/workflow/domain/axes/reference_demo.yaml` (NEW — proof axis)
+- `plugins/kaizen/tests/test_{axis_runner,axis_runner_rules}.py` (2 NEW)
+- `plugins/kaizen/bin/kaizen-axis-runner` (1 NEW symlink)
+- `.chunks/3/` (fragment dir)
+
+**Reads only (NEVER writes):**
+- `plugins/kaizen/.claude-plugin/plugin.json` — perms → `.chunks/3/perms.json`
+- `.kaizen/workflow/progress.md` — arch row → `.chunks/3/progress.md`
+- `.kaizen/workflow/backlog.json` — `BK-NNN` parking items → `.chunks/3/backlog.jsonl`
+- `gateway.py::SUBSERVERS` — MCP mount → `.chunks/3/mcp-mounts.txt`
+- The 30 already-shipped axes (read for shape extraction, never modified)
+- Files owned by chunks 1, 2, 4 (no overlap)
+
+**Worktree:** `.claude/worktrees/chunk-3-runner/`. Branch `chunk-3-runner` → orchestrator merges to master before MERGE step.
 
 ### Task list (checklist)
 
-- [ ] **C3.A** Design `axis.schema.json` (and self-review against the 30 axes for fit)
+- [ ] **C3.A** Design `axis.schema.json` (and self-review against the 30 already-shipped axes for fit)
 - [ ] **C3.B** RED test: `axis_runner.load(yaml_path) → run() → envelope shape`
 - [ ] **C3.C** GREEN: `axis_runner.py` — dispatches by `scan-spec.type` (grep / ast-rule / file-coverage)
 - [ ] **C3.D** Retrofit `md_whitespace` as YAML; delete the `.py`; suite green
 - [ ] **C3.E** Retrofit 4 more grep-style axes (md_dupes / md_heading_depth / todo_inventory / unused_env)
-- [ ] **C3.F** bin/kaizen-axis-runner + perm + docs page listing all YAML axes
-- [ ] **C3.G** Park BK-NNN for retrofitting the remaining 25 axes
-- [ ] **C3.H** chunk close-out — full suite + arch log row + decision row
+- [ ] **C3.D** Build `axis_runner_rules.py` — the rule lib (grep / ast-rule / file-coverage dispatchers)
+- [ ] **C3.E** Ship 1 reference YAML axis (`reference_demo.yaml`) using grep dispatcher — proof of subsumption
+- [ ] **C3.F** Build `axis_runner_mcp.py` — fragment-write its mount line to `.chunks/3/mcp-mounts.txt` (MERGE step wires SUBSERVERS)
+- [ ] **C3.G** chunk close-out — full suite + fragments (perms.json + progress.md + backlog.jsonl with BK-NNN retrofit-pending parks)
 
 ### Plan
 
-| Action  | Path                                                                | Responsibility                                  |
-|---------|---------------------------------------------------------------------|-------------------------------------------------|
-| Create  | `plugins/kaizen/skills/workflow/domain/schemas/axis.schema.json`    | JSON Schema for axis YAML format                |
-| Create  | `plugins/kaizen/skills/workflow/scripts/axis_runner.py`             | YAML axis loader + dispatcher                   |
-| Create  | `plugins/kaizen/skills/workflow/scripts/axis_runner_mcp.py`         | (optional) MCP wrapper                          |
-| Create  | `plugins/kaizen/skills/<each>/domain/axes/<name>.yaml` (×5)         | declarative axis specs                          |
-| Delete  | `plugins/kaizen/skills/workflow/scripts/{md_whitespace,md_dupes,md_heading_depth,todo_inventory,unused_env}.py` | retrofitted axes (with explicit user authorization via KAIZEN_ALLOW_DELETE=1) |
-| Update  | `plugins/kaizen/bin/kaizen-<each>` (×5) → axis_runner.py            | bin symlinks now point at runner                |
-| Update  | `plugins/kaizen/tests/test_<each>.py` (×5)                          | tests target the runner with their YAML path    |
-| Create  | `plugins/kaizen/tests/test_axis_runner.py`                          | paired test for the runner itself               |
-| Modify  | `plugins/kaizen/.claude-plugin/plugin.json`                         | runner perm + bin perm                          |
-| Append  | `.kaizen/workflow/backlog.json`                                     | BK-NNN parked for remaining 25 retrofits        |
-| Append  | `.kaizen/workflow/progress.md`                                      | architecture log row (close-out)                |
+| Action  | Path                                                                          | Responsibility                                  |
+|---------|-------------------------------------------------------------------------------|-------------------------------------------------|
+| Create  | `plugins/kaizen/skills/workflow/domain/schemas/axis.schema.json`              | JSON Schema for axis YAML                       |
+| Create  | `plugins/kaizen/skills/workflow/scripts/axis_runner.py`                       | YAML loader + dispatcher                        |
+| Create  | `plugins/kaizen/skills/workflow/scripts/axis_runner_rules.py`                 | grep / ast-rule / file-coverage rule lib        |
+| Create  | `plugins/kaizen/skills/workflow/scripts/axis_runner_mcp.py`                   | MCP wrapper (mount via fragment)                |
+| Create  | `plugins/kaizen/skills/workflow/domain/axes/reference_demo.yaml`              | proof-of-subsumption YAML axis                  |
+| Create  | `plugins/kaizen/tests/test_axis_runner.py` + `test_axis_runner_rules.py`      | paired tests                                    |
+| Symlink | `plugins/kaizen/bin/kaizen-axis-runner` → `../skills/.../axis_runner.py`      | bin wrapper (NEW only)                          |
+| Write   | `.chunks/3/perms.json`                                                        | runner perm + bin perm + mcp perm — fragment    |
+| Write   | `.chunks/3/progress.md`                                                       | arch row — fragment                             |
+| Write   | `.chunks/3/backlog.jsonl`                                                     | 25-30 BK-NNN retrofit-pending parks — fragment  |
+| Write   | `.chunks/3/mcp-mounts.txt`                                                    | one line `("axis_runner", "axis_runner_mcp")`   |
+
+**RETROFIT IS NOT IN THIS CHUNK.** It lands in the MERGE step at plan-end, which has visibility to all 30 already-shipped axes + chunk 1 + chunk 2 outputs together.
 
 ### TDD code chunks
 
@@ -556,34 +617,66 @@ Expected: FAIL — `axis_runner` doesn't exist.
 
 **Commit:** `feat(axis-runner): YAML axis loader + 3 scan-spec types (chunk 3 item C)`
 
-#### items C3.D / C3.E — retrofit md_whitespace + 4 more
+#### item C3.D — axis_runner_rules.py (rule lib)
 
-For each retrofit:
-1. Write the YAML axis: `skills/<feature>/domain/axes/<name>.yaml`
-2. Re-target the bin symlink: `bin/kaizen-<name>` → `../skills/workflow/scripts/axis_runner.py` (with axis arg)
-3. Update the paired test to invoke the runner with the YAML path
-4. Delete the now-redundant `.py` (requires `KAIZEN_ALLOW_DELETE=1` — the user has implicitly authorized this consolidation by approving the plan)
+**RED test** (`tests/test_axis_runner_rules.py`):
+```python
+def test_grep_rule_finds_trailing_ws(self):
+    findings = axis_runner_rules.run_grep(pattern=r" $", glob="*.md",
+                                            root=tmpdir_with_trailing_ws)
+    self.assertEqual(len(findings), 1)
+```
 
-**Commit per retrofit:** `refactor(<name>): retrofit as YAML axis (chunk 3 item D)`, etc.
+**GREEN outline:** module exposes `run_grep(pattern, glob, root) -> list[dict]`, `run_ast_rule(rule, glob, root, params) -> list`, `run_file_coverage(expected_glob, actual_glob, root) -> list`. Pure-fn rule library; `axis_runner.py` dispatches into here by `scan_spec.type`.
 
-#### items C3.F / C3.G — bin + backlog parking
+**Commit:** `feat(axis-runner): rule lib for 3 scan-spec types (chunk 3 item D)`
 
-- Add `bin/kaizen-axis-runner` symlink + perm entries
-- File `kaizen backlog add` for remaining 25 retrofit candidates, status=parked
+#### item C3.E — reference_demo.yaml (proof axis)
 
-**Commits:** `feat(axis-runner): bin wrapper + docs (chunk 3 item F)`, `chore(backlog): park BK-NNN for 25 pending axis retrofits (chunk 3 item G)`
+**RED:** axis YAML must validate against `axis.schema.json` AND produce one finding when run against a synthetic input with one trailing-whitespace line.
 
-#### item C3.H — chunk close-out
+**GREEN outline** (`domain/axes/reference_demo.yaml`):
+```yaml
+name: reference-demo-trailing-ws
+description: proof-of-concept YAML axis (subsumed by axis_runner)
+scan_spec:
+  type: grep
+  pattern: " +$"
+  glob: "**/*.md"
+verdict_rule:
+  green_max: 0
+  yellow_max: 10
+```
 
-Same shape: full suite + arch log row + decision row (whether to retrofit-rest-now or defer per parking).
+**Commit:** `feat(axis-runner): reference_demo.yaml proof axis (chunk 3 item E)`
+
+#### item C3.F — axis_runner_mcp.py + mount-fragment
+
+**RED test:** `axis_runner_mcp.list_axes()` returns ≥1 axis entry.
+
+**GREEN outline:** standard FastMCP server pattern (mirror `metrics_mcp.py`); expose `list_axes()`, `run_axis(name)`, `report(name)` tools. Write `("axis_runner", "axis_runner_mcp")` to `.chunks/3/mcp-mounts.txt` so MERGE step appends to `gateway.py::SUBSERVERS`.
+
+**Commit:** `feat(axis-runner): MCP wrapper + mount-fragment (chunk 3 item F)`
+
+#### item C3.G — chunk close-out
+
+**RED:** `cd plugins/kaizen && python3 -m unittest discover -s tests -p "test_*.py" 2>&1 | tail -3` — expect OK, no failures.
+
+**GREEN:**
+1. Write `.chunks/3/perms.json` (3 entries: runner script + bin + mcp script).
+2. Write `.chunks/3/progress.md` (one arch row naming "axis_runner build-only, retrofit deferred to MERGE").
+3. Write `.chunks/3/backlog.jsonl` with BK-NNN entries for each candidate retrofit (30 already-shipped + chunks 1-2 outputs become BK-NNN after MERGE inventory). Each row: `{"title": "Retrofit <axis> to YAML", "section": "parked", "verify": "kaizen-axis-runner run --axis <name> ⇒ same findings as legacy", ...}`.
+
+**Commit:** `chore(chunk-3): close-out — axis_runner shipped + fragments (Refs: docs/.../5-chunks.md::chunk-3)`
 
 ### Done when:
 
-- [ ] `axis_runner.py` + 5+ YAML axes ship
-- [ ] At least 5 shipped axes retrofitted (proof of subsumption — `.py` deleted, YAML drives the runner)
-- [ ] 25 remaining retrofits filed as parked backlog (BK-NNN)
-- [ ] 0 regressions
-- [ ] Architecture log row documents the new declarative pattern
+- [ ] `axis_runner.py` + `axis_runner_rules.py` + `axis_runner_mcp.py` ship green
+- [ ] `axis.schema.json` validates `reference_demo.yaml`
+- [ ] `reference_demo.yaml` runs through the runner and produces expected findings
+- [ ] `.chunks/3/{perms.json, progress.md, backlog.jsonl, mcp-mounts.txt}` all present
+- [ ] **NO retrofit performed** — that's the MERGE step's job
+- [ ] 0 regressions on the prior 3153
 
 ### Dispatch (paste-ready)
 
@@ -606,25 +699,25 @@ SKILLS: kaizen:tdd, kaizen:plugin-development, kaizen:decision-rubric
 
 DESIGN GATE: write axis.schema.json FIRST (item C3.A) and pause to self-review against the 30 shipped axes for fit before any runner code.
 
-EXECUTE: Task list (checklist) C3.A → C3.H. Per-item RED → GREEN → commit. Iron Laws as in chunk 1.
+EXECUTE: Task list (checklist) C3.A → C3.G. Per-item RED → GREEN → commit. Iron Laws as in chunk 1.
 
-DELETIONS: retrofitting requires deleting the now-redundant .py per axis — use KAIZEN_ALLOW_DELETE=1 only for that operation (authorization is implicit in this plan).
+NEVER write to: plugin.json, .kaizen/workflow/progress.md, .kaizen/workflow/backlog.json, or gateway.py::SUBSERVERS. All shared-file mutations go to .chunks/3/ fragments. The MERGE step (run by parent after chunk 3 finishes) consolidates fragments.
 
-BUDGET: ~120 tool calls (biggest chunk — design-heavy).
-DONE WHEN: runner ships, 5+ retrofits prove subsumption, 25 remaining parked as backlog, 0 regressions."""
+BUDGET: ~100 tool calls.
+DONE WHEN: runner + rules lib + mcp + reference yaml all green, .chunks/3/* fragments present, 0 regressions."""
 )
 ```
 
 ---
 
-## Chunk 4: Test quality + mutation gating
+## Chunk 4: Test quality + mutation gating (standalone — no axis-runner dep)
 
 | field        | value                                                                                                |
 |--------------|------------------------------------------------------------------------------------------------------|
-| **Purpose**  | Mutation testing (#24 mutmut) + 3 yaml-declarative test-quality axes (assertion-density, parametrize-coverage, error-path-coverage) |
+| **Purpose**  | Mutation testing (#24 mutmut) + 3 standalone Python test-quality axes (assertion-density, parametrize-coverage, error-path-coverage). Built as classic Python axes for independence — MERGE step retrofits them to YAML alongside the other 30+. |
 | **Project**  | `~/workspace/kaizen-md`                                                                              |
-| **Deps**     | Chunk 3 (use the new axis_runner for the 3 yaml-decl axes)                                           |
-| **Outputs**  | `mutation_gate.py` + 3 axis YAMLs + tests                                                            |
+| **Deps**     | —                                                                                                    |
+| **Outputs**  | `{mutation_gate,assertion_density,parametrize_coverage,error_path_coverage}.py` + tests + bins       |
 | **Subagent** | `kaizen-implementer`                                                                                 |
 | **Isolation**| `worktree`                                                                                           |
 | **Budget**   | ~70 tool calls                                                                                       |
@@ -635,16 +728,33 @@ DONE WHEN: runner ships, 5+ retrofits prove subsumption, 25 remaining parked as 
 - **Skills to load FIRST:** `Skill(kaizen:tdd)`, `Skill(kaizen:plugin-development)`
 - **Files to read FIRST:**
   - `plugins/kaizen/skills/workflow/scripts/dead_code.py` (graceful-skip-when-dep-missing template)
-  - The axis_runner from chunk 3 (`axis_runner.py`)
+  - `plugins/kaizen/skills/workflow/scripts/class_name_quality.py` (AST scan template — same shape as the 3 standalone axes)
 - **Conventions:**
   - mutmut isn't installed by default — same `is_available()` + graceful-fallback shape as `dead_code.py`
-  - YAML axes go to `skills/workflow/domain/axes/` since there's no per-feature owner
+  - Build the 3 quality axes as classic Python (NOT axis_runner YAML) — keeps chunk 4 free of chunk 3 dep
 - **Upstream decisions:**
   - Mutation kill-ratio target: ≥80% on the file(s) under test
   - Don't run mutmut in CI by default — opt-in via `KAIZEN_MUTATION_TEST_LIVE=1`
+  - Convert these 3 axes to YAML form during the MERGE step (after axis_runner from chunk 3 is available)
 - **What NOT to touch:**
   - Existing test files (mutation tests are read-only against tests/)
-  - axis_runner itself (consume, don't modify)
+  - axis_runner / axis_runner_rules (chunk 3's output — DO NOT consume during chunk 4)
+  - Files owned by chunks 1, 2, 3, 5
+
+### Isolation contract
+
+**Owns (exclusive write):**
+- `plugins/kaizen/skills/workflow/scripts/{mutation_gate,assertion_density,parametrize_coverage,error_path_coverage}.py`
+- `plugins/kaizen/tests/test_{mutation_gate,assertion_density,parametrize_coverage,error_path_coverage}.py`
+- `plugins/kaizen/bin/kaizen-{mutation-gate,assertion-density,parametrize-coverage,error-path-coverage}` (4 NEW symlinks)
+- `.chunks/4/` (fragment dir)
+
+**Reads only (NEVER writes):**
+- `plugins/kaizen/.claude-plugin/plugin.json` — perms → `.chunks/4/perms.json`
+- `.kaizen/workflow/progress.md` — arch row → `.chunks/4/progress.md`
+- Files owned by chunks 1, 2, 3, 5
+
+**Worktree:** `.claude/worktrees/chunk-4-mutation/`. Branch `chunk-4-mutation` → orchestrator merges to master before MERGE step.
 
 ### Task list (checklist)
 
@@ -659,15 +769,14 @@ DONE WHEN: runner ships, 5+ retrofits prove subsumption, 25 remaining parked as 
 | Action  | Path                                                                            | Responsibility                                  |
 |---------|---------------------------------------------------------------------------------|-------------------------------------------------|
 | Create  | `plugins/kaizen/skills/workflow/scripts/mutation_gate.py`                       | mutmut wrapper + kill-ratio gate                |
-| Create  | `plugins/kaizen/skills/workflow/domain/axes/assertion_density.yaml`             | yaml axis (consumed by axis_runner)             |
-| Create  | `plugins/kaizen/skills/workflow/domain/axes/parametrize_coverage.yaml`          | yaml axis                                       |
-| Create  | `plugins/kaizen/skills/workflow/domain/axes/error_path_coverage.yaml`           | yaml axis                                       |
-| Create  | `plugins/kaizen/tests/test_mutation_gate.py`                                    | paired test (mocks mutmut output)               |
-| Create  | `plugins/kaizen/tests/test_assertion_density.py`                                | paired test against axis_runner                 |
-| Create  | `plugins/kaizen/tests/test_parametrize_coverage.py`                             | paired test                                     |
-| Create  | `plugins/kaizen/tests/test_error_path_coverage.py`                              | paired test                                     |
-| Symlink | `plugins/kaizen/bin/kaizen-mutation-gate`                                       | bin wrapper                                     |
-| Modify  | `plugins/kaizen/.claude-plugin/plugin.json`                                     | mutation_gate perm + bin perm                   |
+| Create  | `plugins/kaizen/skills/workflow/scripts/assertion_density.py`                   | AST scan — test methods missing assert calls    |
+| Create  | `plugins/kaizen/skills/workflow/scripts/parametrize_coverage.py`                | AST scan — repeated near-identical test bodies  |
+| Create  | `plugins/kaizen/skills/workflow/scripts/error_path_coverage.py`                 | AST scan — raises with no test catching them    |
+| Create  | `plugins/kaizen/tests/test_<each>.py` (×4)                                      | paired tests                                    |
+| Symlink | `plugins/kaizen/bin/kaizen-<each>` (×4) → `../skills/workflow/scripts/...`      | bin wrappers (4 NEW)                            |
+| Write   | `.chunks/4/perms.json`                                                          | 8 perm entries — fragment                       |
+| Write   | `.chunks/4/progress.md`                                                         | arch row — fragment                             |
+| Write   | `.chunks/4/backlog.jsonl`                                                       | 4 BK-NNN entries: "retrofit <axis> to YAML"     |
 
 ### TDD code chunks
 
@@ -701,73 +810,83 @@ def test_kill_ratio_above_threshold_green(self):
 **RED test** (`tests/test_assertion_density.py`):
 ```python
 def test_test_method_no_assert_flagged(self):
-    yaml_path = _KZ / "skills/workflow/domain/axes/assertion_density.yaml"
-    with tempfile.TemporaryDirectory() as td:
-        (Path(td) / "test_a.py").write_text(
-            "class T:\n    def test_x(self): pass\n")
-        result = axis_runner.run_axis(yaml_path, root=Path(td))
-        self.assertGreater(len(result["findings"]), 0)
+    src = "class T:\n    def test_x(self): pass\n"
+    findings = assertion_density.scan_text(src, path="bad.py")
+    self.assertGreater(len(findings), 0)
 ```
 
-**GREEN outline (YAML):**
-```yaml
-name: assertion-density
-description: test methods with body but no self.assert* call
-scan_spec:
-  type: ast-rule
-  rule: function-without-substring
-  glob: "test_*.py"
-  params: {func_prefix: "test_", required_substring: "self.assert"}
-verdict_rule: {green_max: 0, yellow_max: 5}
-```
+**GREEN outline** (`skills/workflow/scripts/assertion_density.py`):
+- AST visit ClassDef → FunctionDef nodes whose name starts with `test_`
+- Walk body for `Call` nodes where `.func` resolves to `self.assert*`
+- Flag test methods with zero matching assert calls
+- Reuses: `_envelope`, stdlib `ast`
 
-(Requires `axis_runner_rules.py::function_without_substring` from chunk 3 — if not present, chunk 4 adds it and notes the dep upgrade.)
-
-**Commit:** `feat(assertion-density): yaml-decl axis (chunk 4 item B)`
+**Commit:** `feat(assertion-density): AST scan for assert-free test methods (chunk 4 item B)`
 
 #### items C4.C / C4.D — parametrize-coverage + error-path-coverage
 
-Same shape as C4.B — YAML axis + paired test that calls `axis_runner.run_axis`.
+Same standalone-Python shape as C4.B (AST scans, `scan_text` pure-fn, `_envelope` emit). Each gets a paired test in `tests/test_<name>.py` and a bin symlink. NO dependency on axis_runner — these are classic Python axes; the MERGE step retrofits them to YAML if/when needed.
 
 #### item C4.E — chunk close-out
 
-Same shape as prior close-outs.
+**RED:** full suite `OK` with no failures.
+
+**GREEN:**
+1. Write `.chunks/4/perms.json` (8 entries — 4 script + 4 bin).
+2. Write `.chunks/4/progress.md` (one arch row).
+3. Write `.chunks/4/backlog.jsonl` with 4 BK-NNN entries: `{"title": "Retrofit <axis> to YAML axis_runner", "section": "parked", "verify": "axis_runner identifies same findings as legacy"}`.
+
+**Commit:** `chore(chunk-4): close-out — 1 graceful-skip + 3 standalone AST axes + fragments`
 
 ### Done when:
 
-- [ ] 1 graceful-skip wrapper + 3 YAML-declarative axes
+- [ ] 1 graceful-skip wrapper + 3 standalone Python axes shipped
+- [ ] All 4 paired tests green
 - [ ] Full suite 0 regressions
-- [ ] Architecture log row
+- [ ] `.chunks/4/{perms,progress,backlog}.{json,md,jsonl}` all present
+- [ ] **NO consumption of axis_runner** (chunk 4 stays independent of chunk 3)
 
 ### Dispatch (paste-ready)
 
 ```python
 Agent(
-    description="Coverage-axes chunk 4 — Test quality + mutation",
+    description="Coverage-axes chunk 4 — Test quality + mutation (standalone)",
     subagent_type="kaizen-implementer",
     isolation="worktree",
-    prompt="""Implement Chunk 4. Parallel with chunk 5. Deps: chunk 3.
+    prompt="""Implement Chunk 4. PARALLEL with chunks 1, 2, 3, 5. NO deps.
 
 WORKING DIR: /home/cherry86/workspace/kaizen-md
-READ: docs/superpowers/plans/2026-05-18-coverage-axes-5-chunks.md::chunk-4
+READ:
+1. docs/superpowers/plans/2026-05-18-coverage-axes-5-chunks.md::chunk-4
+2. docs/superpowers/templates/chunk-plan-template.md (4-section shape + isolation contract)
+3. plugins/kaizen/skills/workflow/scripts/dead_code.py (graceful-skip template)
+4. plugins/kaizen/skills/workflow/scripts/class_name_quality.py (AST scan template)
+
 SKILLS: kaizen:tdd, kaizen:plugin-development
-EXEMPLARS: dead_code.py (graceful-skip), axis_runner.py (chunk-3 output)
+
+ISOLATION CONTRACT (read carefully):
+- DO NOT consume axis_runner from chunk 3 (build as standalone Python — keeps chunk 4 independent)
+- NEVER write to plugin.json, progress.md, backlog.json — all fragments to .chunks/4/
+- Only touch files in your Owns list
+
+EXECUTE: C4.A → C4.E in order. RED → GREEN → commit per item.
+
 BUDGET: ~70 tool calls."""
 )
 ```
 
 ---
 
-## Chunk 5: Cross-project wiring into semantic-search
+## Chunk 5: Cross-project audit using the 30 pre-existing axes (semantic-search only)
 
 | field        | value                                                                                                |
 |--------------|------------------------------------------------------------------------------------------------------|
-| **Purpose**  | Wire shipped kaizen-* coverage surface into semantic-search's CI / pre-commit. Run all 30+ axes against semantic-search; file top-N findings as semantic-search backlog. |
-| **Project**  | `~/workspace/semantic-search` (consumer) + read-only refs to `~/workspace/kaizen-md`                 |
-| **Deps**     | Chunk 3 (the generic runner makes cross-repo dispatch cleaner)                                       |
-| **Outputs**  | `semantic-search/.kaizen.toml` updates + `semantic-search/docs/2026-MM-DD-coverage-findings.md` + ≥10 new backlog items in semantic-search |
-| **Subagent** | `general-purpose` (cross-repo, not pure kaizen-md work)                                              |
-| **Isolation**| none (read-only on kaizen-md, mutating on semantic-search)                                           |
+| **Purpose**  | Run the 30 ALREADY-SHIPPED kaizen-* coverage axes (the ones in master before this plan started) against semantic-search, dump findings, file the top-N as semantic-search backlog, and wire 3 axes into semantic-search's `verify_cmd`. Stays scoped to pre-existing axes to remain independent of chunks 1-4. |
+| **Project**  | `~/workspace/semantic-search` (write surface) + read-only refs to `~/workspace/kaizen-md`            |
+| **Deps**     | —                                                                                                    |
+| **Outputs**  | semantic-search-side: `.kaizen.toml` + `scripts/coverage-gate.sh` + `docs/2026-MM-DD-coverage-findings.md` + backlog items |
+| **Subagent** | `general-purpose` (cross-repo)                                                                       |
+| **Isolation**| none (different repo entirely — naturally isolated from chunks 1-4)                                  |
 | **Budget**   | ~50 tool calls                                                                                       |
 
 ### Guide
@@ -787,7 +906,25 @@ BUDGET: ~70 tool calls."""
   - Pick 3 axes to gate-block (perm-coverage + bin-coverage + heavy-imports — high signal, low noise)
 - **What NOT to touch:**
   - semantic-search source code (audit, don't fix from this chunk)
-  - kaizen-md plugin (read-only here)
+  - kaizen-md plugin (read-only here — different repo)
+  - Any kaizen-md `.chunks/N/` fragment (chunks 1-4's outputs — not visible until MERGE)
+  - Any axis newer than the 30 pre-existing (chunks 1-4 axes get wired in MERGE step's cross-pollination phase)
+
+### Isolation contract
+
+**Owns (exclusive write):**
+- `~/workspace/semantic-search/.kaizen.toml` (single-file edit — no other chunk touches semantic-search)
+- `~/workspace/semantic-search/scripts/coverage-gate.sh` (NEW)
+- `~/workspace/semantic-search/docs/2026-MM-DD-coverage-findings.md` (NEW)
+- `~/workspace/semantic-search/.kaizen/workflow/backlog.json` (via `kaizen backlog add` CLI only — never hand-edit the JSON)
+
+**Reads only (NEVER writes):**
+- `~/workspace/kaizen-md/` (entirely read-only — chunk 5 is a consumer of the already-shipped axes)
+- ANY `~/workspace/kaizen-md/.chunks/N/` fragments (don't exist yet from chunk 5's POV)
+
+**Cross-repo isolation:** chunk 5 runs in a completely different repo than chunks 1-4. There is no possible file collision. Chunk 5 does NOT need a `.chunks/5/` fragment dir on the kaizen-md side — it writes directly into semantic-search since the MERGE step doesn't need to consolidate semantic-search files (different repo, different gate).
+
+**No worktree needed** — semantic-search is a separate repo; chunks 1-4's kaizen-md worktrees are invisible here.
 
 ### Task list (checklist)
 
@@ -907,13 +1044,113 @@ BUDGET: ~50 tool calls."""
 
 ---
 
+## MERGE step (RUN BY PARENT ORCHESTRATOR — never by chunk agents)
+
+**Trigger:** all 5 chunks done (their per-chunk `Done when` gates clear AND their commits merged to master). Chunks 1-4 land via worktree-branch merges; chunk 5 is cross-repo so already committed in semantic-search.
+
+**Inputs (from kaizen-md master post-merge):**
+- `.chunks/1/perms.json`, `.chunks/1/progress.md`
+- `.chunks/2/perms.json`, `.chunks/2/progress.md`
+- `.chunks/3/perms.json`, `.chunks/3/progress.md`, `.chunks/3/backlog.jsonl`, `.chunks/3/mcp-mounts.txt`
+- `.chunks/4/perms.json`, `.chunks/4/progress.md`, `.chunks/4/backlog.jsonl`
+
+(Chunk 5 produces no fragments — its outputs land directly in semantic-search.)
+
+**Actions (single sequential pass — no concurrency):**
+
+1. **Consolidate plugin.json perms:**
+   ```bash
+   python3 -c "
+   import json
+   from pathlib import Path
+   pj = Path('plugins/kaizen/.claude-plugin/plugin.json')
+   raw = json.loads(pj.read_text())
+   allow = list(raw['permissions']['allow'])
+   for frag in sorted(Path('.chunks').glob('*/perms.json')):
+       for entry in json.loads(frag.read_text()):
+           if entry not in allow:
+               allow.append(entry)
+   raw['permissions']['allow'] = allow
+   pj.write_text(json.dumps(raw, indent=2) + '\n')
+   "
+   ```
+
+2. **Consolidate architecture log:**
+   ```bash
+   for frag in $(ls .chunks/*/progress.md | sort); do
+       cat "$frag" >> .kaizen/workflow/progress.md
+   done
+   ```
+
+3. **Consolidate backlog (chunks 3 + 4 only):**
+   ```bash
+   for frag in $(ls .chunks/*/backlog.jsonl 2>/dev/null | sort); do
+       while IFS= read -r line; do
+           [ -z "$line" ] && continue
+           python3 -c "import json,subprocess,sys
+   row = json.loads(sys.argv[1])
+   subprocess.run(['kaizen', 'backlog', 'add',
+       '--title', row['title'], '--probe', row.get('probe', ''),
+       '--verify', row.get('verify', ''),
+       '--section', row.get('section', 'parked'),
+       '--ref', row.get('ref', ''), '--tags', row.get('tags', '')], check=True)" "$line"
+       done < "$frag"
+   done
+   ```
+
+4. **Wire MCP mounts (chunk 3):**
+   - Read `.chunks/3/mcp-mounts.txt` (one tuple per line)
+   - Edit `plugins/kaizen/skills/workflow/scripts/gateway.py::SUBSERVERS` to append each tuple
+   - Single Edit call appending the lines inside the list literal
+
+5. **Cross-pollinate axis_runner with chunks 1+2+4 outputs (the deferred retrofit):**
+   - Now that axis_runner (chunk 3) AND all standalone axes (chunks 1, 2, 4) coexist, retrofit ≥5 simple AST/grep-shaped axes to YAML form
+   - For each retrofitted axis: write `skills/<feature>/domain/axes/<name>.yaml`, re-target `bin/kaizen-<name>` to `axis_runner.py`, update paired test, delete the legacy `.py` (use `KAIZEN_ALLOW_DELETE=1` — authorized by plan)
+   - Remaining axes stay as classic Python until a future retrofit sprint (already parked as `.chunks/3/backlog.jsonl` BK-NNN entries)
+
+6. **Cross-pollinate semantic-search with chunks 1-4 new axes:**
+   - Run each new axis (chunks 1-4) against semantic-search
+   - Append findings to `~/workspace/semantic-search/docs/2026-MM-DD-coverage-findings.md` (the doc chunk 5 created)
+   - File any high-signal findings as additional semantic-search backlog items
+
+7. **Cleanup:** `rm -rf .chunks/` (fragments consolidated — no longer needed)
+
+8. **Single merge commit:**
+   ```
+   chore(merge): consolidate chunks 1-5 fragments + retrofit + cross-pollination
+
+   - plugin.json: +X perm entries
+   - progress.md: +N arch rows
+   - backlog: +M parked items
+   - gateway.py: +1 mcp mount (axis_runner)
+   - retrofitted 5 axes to YAML (chunks 1, 2, 4 outputs)
+   - cross-pollinated chunks 1-4 axes into semantic-search findings
+
+   Refs: docs/superpowers/plans/2026-05-18-coverage-axes-5-chunks.md
+   ```
+
+9. **Final verification:**
+   ```bash
+   cd plugins/kaizen && python3 -m unittest discover -s tests -p "test_*.py" | tail -3
+   bash plugins/kaizen/skills/workflow/scripts/test-pipeline.sh | tail -10
+   ```
+   Expected: 0 regressions on the post-MERGE state.
+
+**Why this works (the isolation guarantee):**
+- During chunks 1-4, no two agents ever write the same file (different script names, different test names, different bin names, different `.chunks/N/` fragment dirs)
+- Chunk 5 is cross-repo, naturally invisible to chunks 1-4
+- Shared files (`plugin.json`, `progress.md`, `backlog.json`, `gateway.py`) are write-protected for chunk agents — they only get touched by the parent during MERGE
+- The MERGE step is single-writer by construction (parent orchestrator, sequential actions)
+- If any chunk fails mid-flight, its worktree branch isn't merged and its `.chunks/N/` fragments are absent — MERGE simply skips them and proceeds with the others
+
 ## Plan-level done when
 
-- [ ] All 5 chunks' per-chunk "Done when" gates clear
-- [ ] Final smoke: `bash plugins/kaizen/skills/workflow/scripts/test-pipeline.sh` green in kaizen-md
+- [ ] All 5 chunks' per-chunk "Done when" gates cleared
+- [ ] All 5 chunk branches merged to master in kaizen-md (chunks 1-4) + cross-repo commits in semantic-search (chunk 5)
+- [ ] MERGE step's 9 actions all completed
+- [ ] `.chunks/` directory deleted
+- [ ] Final smoke: `bash plugins/kaizen/skills/workflow/scripts/test-pipeline.sh` green
 - [ ] Master checklist updated: `2026-05-18-coverage-checklist.md` flips 10-15 more rows to `[x]`
-- [ ] Unified architecture-log row across kaizen-md: "Coverage-axes next-50 — 5-chunk plan complete"
-- [ ] Cross-repo handoff committed in semantic-search referencing this plan path
 
 ## Cross-project hand-off note
 
