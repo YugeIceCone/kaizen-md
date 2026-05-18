@@ -47,6 +47,28 @@ import _envelope  # noqa: E402
 _emit = _envelope.emitter("kaizen-brain-audit", tool_version="1.0.0")
 
 
+def _yaml_safe(text: str, maxlen: int | None = None) -> str:
+    """Collapse arbitrary text into a single-line YAML single-quoted body.
+
+    Captured text may contain newlines (commit-message quotes spanning
+    lines), embedded quotes (' and "), colons (broken nested mapping
+    if unquoted), or leading structural chars (- ? & * # ! that break
+    plain scalars). The result is safe to embed inside single quotes
+    as ``key: '{result}'`` — single quotes are doubled per YAML 1.2.
+
+    Output never contains newlines and is truncated to maxlen if set.
+    """
+    if not text:
+        return ""
+    # Collapse all whitespace runs to a single space, strip ends.
+    flat = " ".join(text.split())
+    if maxlen is not None and len(flat) > maxlen:
+        flat = flat[:maxlen].rstrip()
+    # YAML 1.2: inside single-quoted scalars, only ' needs escaping
+    # (by doubling). Backslashes, double quotes, colons all literal.
+    return flat.replace("'", "''")
+
+
 # ─── Source readers ──────────────────────────────────────────────────
 
 
@@ -305,10 +327,12 @@ class InboxNode(_flow.AsyncNode):
             body_marker = c["text"][:500]
             if any(body_marker in et for et in existing_texts):
                 continue
+            name_safe = _yaml_safe(c["text"], 80)
+            desc_safe = _yaml_safe(c["text"], 200)
             content = (
                 f"---\n"
-                f"name: {c['text'][:80]}\n"
-                f"description: {c['text'][:200]}\n"
+                f"name: '{name_safe}'\n"
+                f"description: '{desc_safe}'\n"
                 f"type: {c['type']}\n"
                 f"source: {c['source']}\n"
                 f"kind: {c['kind']}\n"

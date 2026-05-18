@@ -125,5 +125,83 @@ class TestApplyInbox(unittest.TestCase):
             self.assertEqual(report.get("inbox_writes"), [])
 
 
+class TestYamlSafeWriter(unittest.TestCase):
+    """The Inbox draft writer must emit valid YAML frontmatter for any
+    captured text — newlines, quotes, colons, leading dashes etc. all
+    appear in real captures (commit-message quotes, code snippets,
+    tool output).
+
+    Prior bug: ~6% of Inbox drafts had broken multi-line frontmatter
+    because raw text was inlined as `name: {text[:80]}` — a newline
+    in text broke the field; a colon parsed as nested mapping; an
+    embedded quote silently truncated.
+    """
+
+    def test_yaml_safe_strips_newlines(self):
+        out = ba._yaml_safe("first line\nsecond line\nthird")
+        self.assertNotIn("\n", out)
+
+    def test_yaml_safe_escapes_quotes(self):
+        out = ba._yaml_safe("text with 'single' and \"double\" quotes")
+        # Must be safe to embed inside single-quoted YAML scalar
+        # (single quotes get doubled per YAML 1.2 spec).
+        wrapped = f"key: '{out}'"
+        try:
+            import yaml
+        except ImportError:
+            self.skipTest("PyYAML not installed for round-trip check")
+        parsed = yaml.safe_load(wrapped)
+        # Round-trip preserves content (with single quotes literal)
+        self.assertIn("single", parsed["key"])
+        self.assertIn("double", parsed["key"])
+
+    def test_yaml_safe_handles_leading_special_chars(self):
+        # YAML structural chars at field start break unquoted scalars
+        for s in ("- starts with dash", "? starts with question",
+                  "& anchor", "* alias", "# comment-looking",
+                  "  leading space"):
+            out = ba._yaml_safe(s)
+            wrapped = f"key: '{out}'"
+            try:
+                import yaml
+            except ImportError:
+                self.skipTest("PyYAML not installed")
+            # Must parse without error
+            parsed = yaml.safe_load(wrapped)
+            self.assertEqual(parsed["key"].lstrip(), s.lstrip())
+
+    def test_inbox_draft_frontmatter_parses(self):
+        """End-to-end: write a draft with a hostile text + verify
+        the frontmatter round-trips through a YAML parser cleanly."""
+        try:
+            import yaml
+        except ImportError:
+            self.skipTest("PyYAML not installed")
+        hostile = (
+            "complex quote\nspans multiple lines: 'with' \"both\" types "
+            "and: a colon-space"
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            brain = Path(tmp) / "brain"
+            brain.mkdir()
+            cwd = Path(tmp) / "cwd"
+            cwd.mkdir()
+            pm = _brain.project_memory_root(cwd)
+            pm.mkdir(parents=True, exist_ok=True)
+            (pm / "_draft_x.md").write_text(f'"{hostile}"')
+            ba.audit(cwd=cwd, brain_root=brain, apply=True)
+            drafts = list((brain / "Inbox").glob("draft-*.md"))
+            self.assertTrue(drafts, "no draft was written")
+            for d in drafts:
+                text = d.read_text()
+                parts = text.split("---\n", 2)
+                self.assertEqual(len(parts), 3,
+                                 f"{d.name}: malformed frontmatter")
+                # Must parse without YAMLError
+                fm = yaml.safe_load(parts[1])
+                self.assertIn("name", fm)
+                self.assertIn("description", fm)
+
+
 if __name__ == "__main__":
     unittest.main()
