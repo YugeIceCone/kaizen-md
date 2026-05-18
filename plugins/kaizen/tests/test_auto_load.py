@@ -300,5 +300,74 @@ class TestPinnedBuild(unittest.TestCase):
         self.assertNotIn("## Pinned", out)
 
 
+class TestPerClusterGates(unittest.TestCase):
+    """Tier 3: one gate file per Note marked hard-gate-worthy.
+
+    Writes ~/.claude/.kaizen/gates/<slug>.md (one HARD-GATE block per
+    file). User selectively imports the gates a project needs via
+    @~/.claude/.kaizen/gates/<slug>.md in project CLAUDE.md.
+
+    Why one-per-note (not tag-grouped clusters): grouping by tag would
+    require adding a new `gate:` frontmatter field across ~38 notes
+    (churn). Per-note slugs are derivable from existing data + give
+    the user one toggle per rule (finer-grained than tag clusters).
+    """
+
+    def test_write_cluster_gates_emits_one_file_per_hard_directive(self):
+        import auto_load as al
+        import tempfile
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory() as td:
+            gates_dir = Path(td) / "gates"
+            with patch.dict(os.environ,
+                            {"KAIZEN_GATES_DIR": str(gates_dir)}):
+                written = al.write_cluster_gates(_SAMPLE_PERSONA)
+            # _SAMPLE_PERSONA has 2 hard-gate directives:
+            # - no-deletions (matches "Never")
+            # - onion-architecture-strict (matches "mandatory")
+            self.assertEqual(len(written), 2)
+            self.assertTrue(gates_dir.is_dir())
+            gate_file = gates_dir / "pref-no-deletions.md"
+            self.assertTrue(gate_file.is_file())
+            content = gate_file.read_text()
+            self.assertIn("<HARD-GATE>", content)
+            self.assertIn("</HARD-GATE>", content)
+            self.assertIn("[[Notes/pref-no-deletions]]", content)
+            self.assertTrue(
+                (gates_dir / "pref-onion-architecture-strict.md").is_file())
+
+    def test_write_cluster_gates_idempotent(self):
+        """Second run on same input produces byte-identical files."""
+        import auto_load as al
+        import tempfile
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory() as td:
+            gates_dir = Path(td) / "gates"
+            with patch.dict(os.environ,
+                            {"KAIZEN_GATES_DIR": str(gates_dir)}):
+                first = al.write_cluster_gates(_SAMPLE_PERSONA)
+                content_first = Path(first[0]).read_text()
+                second = al.write_cluster_gates(_SAMPLE_PERSONA)
+                content_second = Path(second[0]).read_text()
+        self.assertEqual(content_first, content_second)
+
+    def test_write_cluster_gates_prunes_obsolete_files(self):
+        """Files for directives no longer in Persona must be removed."""
+        import auto_load as al
+        import tempfile
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory() as td:
+            gates_dir = Path(td) / "gates"
+            gates_dir.mkdir()
+            # Seed an old gate file that's NOT in the current Persona
+            (gates_dir / "pref-obsolete.md").write_text("<HARD-GATE>old</HARD-GATE>")
+            with patch.dict(os.environ,
+                            {"KAIZEN_GATES_DIR": str(gates_dir)}):
+                al.write_cluster_gates(_SAMPLE_PERSONA)
+            remaining = sorted(p.name for p in gates_dir.glob("*.md"))
+        self.assertNotIn("pref-obsolete.md", remaining)
+        self.assertIn("pref-no-deletions.md", remaining)
+
+
 if __name__ == "__main__":
     unittest.main()
