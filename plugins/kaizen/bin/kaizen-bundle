@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Session-folder management for docs/superpowers/.
+# Session-folder management for .kaizen/superpowers/.
 # Convention: <YYYY-MM-DD>-<project>-<short-sid>/multiple-files.md
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

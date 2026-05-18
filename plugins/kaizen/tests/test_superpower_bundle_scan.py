@@ -1,6 +1,6 @@
 """Tests for kaizen-bundle scan — artifact tracker for the superpowers path.
 
-Per user 2026-05-18: scan the assigned artifacts path (docs/superpowers/)
+Per user 2026-05-18: scan the assigned artifacts path (.kaizen/superpowers/)
 for orphan files (not yet inside a bundle folder), report metadata
 (suggested target bundle + content-hash dupe check), optionally create
 a git branch for the bundling pass + apply moves.

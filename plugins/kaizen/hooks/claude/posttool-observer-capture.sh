@@ -2,7 +2,7 @@
 # posttool-observer-capture.sh — captures every PostToolUse event into
 # the observer sink (~/.claude/.kaizen/observer/events.jsonl).
 # Phase 1.5 of the custom-observer build (spec at
-# docs/superpowers/specs/2026-05-18-custom-observer-design.md).
+# .kaizen/superpowers/specs/2026-05-18-custom-observer-design.md).
 #
 # Iron-laws (same family as posttool-roundtrip-detect.sh):
 #   - bypass via KAIZEN_OBSERVER_DISABLE=1

@@ -729,7 +729,7 @@ def watch_start(interval: float) -> tuple[bool, int | str]:
 # ─── systems-check — keep-alive for the runtime systems (2026-05-18) ────
 #
 # Expanded from 4 → 9 systems per audit-heartbeat-daemon-watcher.md
-# (docs/superpowers/2026-05-18-kaizen-md-9f4c8972/). Kinds:
+# (.kaizen/superpowers/2026-05-18-kaizen-md-9f4c8972/). Kinds:
 #   config — config file (hooks.json proxy)
 #   sink   — append-only jsonl (trace/dxm/observer/learning/gold)
 #   pid    — daemon pid file (daemon-watcher)

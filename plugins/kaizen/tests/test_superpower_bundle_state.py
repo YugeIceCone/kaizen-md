@@ -2,11 +2,11 @@
 
 Per user 2026-05-18 sid 32bad1f7 — "work on the new docs system have it
 generate and maintain a state file + task list tracker with metadata
-for /docs/superpowers/".
+for /.kaizen/superpowers/".
 
 Scope (v1):
   - `kaizen-bundle state [--apply] [--json]`
-      scans docs/superpowers/, writes .state.json under root, returns
+      scans .kaizen/superpowers/, writes .state.json under root, returns
       per-bundle + per-file metadata (kind, status, size, mtime).
       Dry-run by default; --apply writes .state.json.
   - `kaizen-bundle tasks [--bundle X] [--status S]`

@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # consolidated-cli-parent: bundle
-"""kaizen-bundle — session-folder management for docs/superpowers/.
+"""kaizen-bundle — session-folder management for .kaizen/superpowers/.
 
 Convention (per user 2026-05-18):
-  docs/superpowers/<YYYY-MM-DD>-<project>-<short-sid>/multiple-files.md
+  .kaizen/superpowers/<YYYY-MM-DD>-<project>-<short-sid>/multiple-files.md
 
 Each session's artifacts (specs, plans, brainstorms, notes) bundle into
 ONE date+project+sid folder. Templates and durable references stay
@@ -44,16 +44,17 @@ class BundleError(ValueError):
 
 
 def _superpowers_dir() -> Path:
-    """Root of docs/superpowers/. Env-overridable for tests.
+    """Root of .kaizen/superpowers/. Env-overridable for tests.
 
-    Note: base defaults to cwd/docs/superpowers (NOT ~/.claude/.kaizen),
-    so we pass an explicit `base=Path.cwd() / "docs" / "superpowers"`
-    to env_overridable_dir.
+    Note: base defaults to cwd/.kaizen/superpowers (per-project, NOT
+    the user-global ~/.claude/.kaizen). We pass an explicit
+    `base=Path.cwd() / ".kaizen" / "superpowers"` to env_overridable_dir
+    so the project-scope semantics are preserved.
     """
     from _paths import env_overridable_dir
     return env_overridable_dir(
         "KAIZEN_SUPERPOWERS_DIR",
-        base=Path.cwd() / "docs" / "superpowers",
+        base=Path.cwd() / ".kaizen" / "superpowers",
     )
 
 
@@ -658,7 +659,7 @@ def _cmd_backup(args) -> int:
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(
         prog="kaizen-bundle",
-        description="Session-folder management for docs/superpowers/.",
+        description="Session-folder management for .kaizen/superpowers/.",
     )
     sub = p.add_subparsers(dest="command")
 
@@ -701,7 +702,7 @@ def main(argv: list[str] | None = None) -> int:
     pb.set_defaults(fn=_cmd_backup)
 
     ps = sub.add_parser("scan",
-                          help="walk docs/superpowers/ for orphan files + "
+                          help="walk .kaizen/superpowers/ for orphan files + "
                                "report metadata + dupe-check vs existing bundles")
     ps.add_argument("--json", action="store_true",
                      help="JSON output (default: human-readable)")
@@ -716,7 +717,7 @@ def main(argv: list[str] | None = None) -> int:
     ps.set_defaults(fn=_cmd_scan)
 
     pst = sub.add_parser("state",
-                          help="scan docs/superpowers/ + emit per-file "
+                          help="scan .kaizen/superpowers/ + emit per-file "
                                "metadata (kind / status / size / mtime). "
                                "--apply writes .state.json under the root.")
     pst.add_argument("--apply", action="store_true",

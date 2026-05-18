@@ -51,7 +51,7 @@ You MUST create a task for each of these items and complete them in order:
 3. **Ask clarifying questions** — one at a time, understand purpose/constraints/success criteria
 4. **Propose 2-3 approaches** — with trade-offs and your recommendation
 5. **Present design** — in sections scaled to their complexity, get user approval after each section
-6. **Write design doc** — save to `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md` and commit
+6. **Write design doc** — save to `.kaizen/superpowers/specs/YYYY-MM-DD-<topic>-design.md` and commit
 7. **Spec self-review** — quick inline check for placeholders, contradictions, ambiguity, scope (see below)
 8. **User reviews written spec** — ask user to review the spec file before proceeding
 9. **Transition to implementation** — invoke writing-plans skill to create implementation plan
@@ -133,7 +133,7 @@ digraph brainstorming {
 
 **Documentation:**
 
-- Write the validated design (spec) to `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md`
+- Write the validated design (spec) to `.kaizen/superpowers/specs/YYYY-MM-DD-<topic>-design.md`
   - (User preferences for spec location override this default)
 - Use elements-of-style:writing-clearly-and-concisely skill if available
 - Commit the design document to git
@@ -191,9 +191,9 @@ These all create **implicit knowledge** that survives only in the parent's sessi
 **Anti-test:** if a fresh subagent reading ONLY the artifact (no parent context, no prior conversation) would have to guess at any value, the artifact has implicit information and needs to be explicit.
 
 **Cross-references** (this discipline appears across the kit):
-- `docs/superpowers/templates/parallel-branches/CHUNKING_FLOOR.md` — floor is explicit numeric value, not vibe
-- `docs/superpowers/templates/parallel-branches/PRE_DISPATCH_AUDIT.md::#2` — prompt generator must surface every owned path, never imply "you know what files you own"
-- `docs/superpowers/templates/chunk-plan-template.md::Guide` section — explicit `conventions: [...]` + `upstream_decisions: [...]` + `do_not_touch: [...]` for the same reason
+- `.kaizen/superpowers/templates/parallel-branches/CHUNKING_FLOOR.md` — floor is explicit numeric value, not vibe
+- `.kaizen/superpowers/templates/parallel-branches/PRE_DISPATCH_AUDIT.md::#2` — prompt generator must surface every owned path, never imply "you know what files you own"
+- `.kaizen/superpowers/templates/chunk-plan-template.md::Guide` section — explicit `conventions: [...]` + `upstream_decisions: [...]` + `do_not_touch: [...]` for the same reason
 
 Brainstorming is the EARLIEST phase to enforce this. A spec that ships implicit knowledge to writing-plans pollutes the plan; a plan that ships implicit knowledge to chunks pollutes the chunks; a chunk that ships implicit knowledge to its subagent burns dispatch tokens on back-and-forth.
 

@@ -3,7 +3,7 @@
 
 After load_plan(path), plan["chunks"] is always a list[dict] and plan["merge"] is always a dict — regardless of how the YAML was authored. Downstream (validator, dispatcher, render) is mode-agnostic.
 
-See docs/superpowers/templates/parallel-branches/ON_DISK_LAYOUT.md for Mode A vs Mode B.
+See .kaizen/superpowers/templates/parallel-branches/ON_DISK_LAYOUT.md for Mode A vs Mode B.
 """
 from __future__ import annotations
 

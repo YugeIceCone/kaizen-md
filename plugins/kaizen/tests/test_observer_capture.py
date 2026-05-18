@@ -1,7 +1,7 @@
 """Tests for posttool-observer-capture — Phase 1.5 of the observer.
 
 The clever-lama-mcp side has ingest_event() that knows the canonical
-event shape (per docs/superpowers/specs/2026-05-18-custom-observer-
+event shape (per .kaizen/superpowers/specs/2026-05-18-custom-observer-
 design.md). This hook lives on the kaizen-md side (hooks belong to the
 plugin per the 13-slot shape) and writes minimally-shaped events to
 the same sink. Standalone — no cross-repo import.

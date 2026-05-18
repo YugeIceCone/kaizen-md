@@ -1,7 +1,7 @@
-"""Tests for kaizen-bundle — session-folder management for docs/superpowers/.
+"""Tests for kaizen-bundle — session-folder management for .kaizen/superpowers/.
 
 Convention (per user 2026-05-18):
-  docs/superpowers/<YYYY-MM-DD>-<project>-<short-sid>/multiple-files.md
+  .kaizen/superpowers/<YYYY-MM-DD>-<project>-<short-sid>/multiple-files.md
 
 Each session's artifacts (specs, plans, brainstorms, notes) bundle into
 ONE date+project+sid folder. Templates and durable references stay

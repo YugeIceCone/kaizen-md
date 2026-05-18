@@ -1,7 +1,7 @@
 """Observer event capture core — kaizen-md side of the Phase 1.5 build.
 
 Reads CC PostToolUse / PreToolUse JSON from stdin, normalizes to the
-canonical observer event shape (matches docs/superpowers/templates/
+canonical observer event shape (matches .kaizen/superpowers/templates/
 observer/event.schema.json), atomic-appends to
 ~/.claude/.kaizen/observer/events.jsonl.
 

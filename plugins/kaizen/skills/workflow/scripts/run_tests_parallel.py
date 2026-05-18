@@ -65,7 +65,15 @@ def _resolve_concurrency(arg_value: int | None) -> int:
 async def _run_one(mod: str, sem: asyncio.Semaphore, cwd: Path
                      ) -> tuple[str, int, str]:
     """Spawn `python3 -m unittest <mod>` under the semaphore.
-    Returns (mod, returncode, combined-stderr-stdout)."""
+
+    When unittest returns rc=5 ("0 tests discovered" — typically a
+    pytest-style file with bare `class TestX:` or module-level
+    `def test_x()` functions), retry under pytest. This lets the
+    same suite contain both unittest.TestCase-based files AND pure-
+    pytest files without the gate flagging the latter as failures.
+
+    Returns (mod, returncode, combined-stderr-stdout).
+    """
     async with sem:
         proc = await asyncio.create_subprocess_exec(
             sys.executable, "-m", "unittest", mod,
@@ -74,8 +82,25 @@ async def _run_one(mod: str, sem: asyncio.Semaphore, cwd: Path
             cwd=str(cwd),
         )
         out, err = await proc.communicate()
-        # unittest writes its summary to stderr; keep both
-        return mod, proc.returncode, (err or b"").decode() + (out or b"").decode()
+        combined = (err or b"").decode() + (out or b"").decode()
+        if proc.returncode == 5:
+            # 0 tests found via unittest — fall through to pytest.
+            # Module name (tests.foo) → file path (tests/foo.py) for pytest.
+            mod_path = mod.replace(".", "/") + ".py"
+            proc2 = await asyncio.create_subprocess_exec(
+                sys.executable, "-m", "pytest", "-q", mod_path,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+                cwd=str(cwd),
+            )
+            out2, err2 = await proc2.communicate()
+            # Pytest exit codes: 0=pass, 1=fail, 5=no-tests. If both
+            # gave rc=5, the file genuinely has no tests — that's a
+            # green ("0 tests" is valid). Treat rc=5 from pytest as 0.
+            rc2 = 0 if proc2.returncode == 5 else proc2.returncode
+            combined2 = (err2 or b"").decode() + (out2 or b"").decode()
+            return mod, rc2, combined + "\n[pytest fallback]\n" + combined2
+        return mod, proc.returncode, combined
 
 
 async def run_parallel(test_modules: list[str], cwd: Path,
