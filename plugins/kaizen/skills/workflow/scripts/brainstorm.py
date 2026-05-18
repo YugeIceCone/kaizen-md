@@ -126,6 +126,42 @@ def score_jsonl(rows: list[dict], rubric_path: Path) -> list[dict]:
     return out
 
 
+# ─── override loop ───────────────────────────────────────────────────
+
+
+def run_override_loop(rows: list[dict],
+                       *, ask_user_question=None) -> list[dict]:
+    """Surface NEEDS_AGENT rows for manual bucketing.
+
+    `ask_user_question` is the injection point — the production code
+    plugs in the actual AskUserQuestion call; tests mock it to a fn
+    that returns a {id_str: bucket_str} dict.
+
+    Scripted runs set KAIZEN_BRAINSTORM_BATCH=1 to skip the prompt
+    — NEEDS_AGENT rows pass through with manual_bucket unset.
+    """
+    if os.environ.get("KAIZEN_BRAINSTORM_BATCH") == "1":
+        needs = sum(1 for r in rows if r.get("auto_bucket") == "NEEDS_AGENT")
+        if needs:
+            sys.stderr.write(
+                f"[kaizen-brainstorm] BATCH=1: {needs} NEEDS_AGENT rows "
+                f"left without manual_bucket\n"
+            )
+        return rows
+    needs_agent = [r for r in rows if r.get("auto_bucket") == "NEEDS_AGENT"]
+    if not needs_agent or ask_user_question is None:
+        return rows
+    picks = ask_user_question(needs_agent) or {}
+    out: list[dict] = []
+    for r in rows:
+        rid = str(r.get("id"))
+        if rid in picks:
+            r = dict(r)
+            r["manual_bucket"] = picks[rid]
+        out.append(r)
+    return out
+
+
 # ─── score subcommand ────────────────────────────────────────────────
 
 
