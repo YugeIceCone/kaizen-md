@@ -52,24 +52,38 @@ _MUST_NOT_TOKENS = ("never", "must not", "no deletions", "must never",
                     "blocks", "hard-gate", "mandatory")
 
 
-def _section(text: str, name: str) -> str:
-    """Return the body of the ``## {name}`` section, or empty."""
-    pat = re.compile(rf"^##\s+{re.escape(name)}\s*\n(.*?)(?=^##\s|\Z)",
-                      re.M | re.S)
-    m = pat.search(text)
-    return m.group(1) if m else ""
+def _block(text: str, heading_path: str) -> str:
+    """Return the body of an addressable block by heading path.
+
+    Composes ``_brain_blocks.extract_block`` so auto_load uses the SAME
+    heading addressing as ``kaizen-brain show / edit`` — one parser,
+    one set of semantics, deterministic by construction.
+
+    Returns empty string when the block isn't found (instead of None)
+    so caller regexes are unaffected.
+    """
+    import _brain_blocks as bb
+    body = bb.extract_block(text, heading_path)
+    return body or ""
 
 
 def parse_persona(text: str) -> dict:
-    """Extract directives + top beliefs from a Persona.md body."""
+    """Extract directives + top beliefs from a Persona.md body.
+
+    Uses ``_brain_blocks.extract_block`` for section addressing
+    (deterministic / reproducible / consistent with kaizen-brain show).
+    Per-line patterns are regex-matched against the extracted block
+    body — the inner regex is concern-specific (directive shape,
+    belief metadata), but the outer block boundary is canonical.
+    """
     directives = []
-    for m in _DIRECTIVE_RE.finditer(_section(text, "Directives")):
+    for m in _DIRECTIVE_RE.finditer(_block(text, "Directives")):
         directives.append({
             "text": m.group("text").strip().rstrip("."),
             "note": m.group("note").strip(),
         })
     top_beliefs = []
-    for m in _BELIEF_RE.finditer(_section(text, "Top Beliefs")):
+    for m in _BELIEF_RE.finditer(_block(text, "Top Beliefs")):
         top_beliefs.append({
             "rank": int(m.group("rank")),
             "note": m.group("note").strip(),

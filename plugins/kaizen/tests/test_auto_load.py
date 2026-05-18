@@ -165,5 +165,58 @@ class TestDaemonJob(unittest.TestCase):
             self.assertIn("pref-no-deletions", content)
 
 
+class TestDeterminismAndConsistency(unittest.TestCase):
+    """Parsing must be deterministic (same input → same output),
+    reproducible (snapshot-stable), and consistent with brain_blocks
+    semantics (the rest of kaizen-brain uses _brain_blocks for heading
+    addressing — auto_load must too).
+    """
+
+    def test_parse_persona_is_byte_deterministic(self):
+        import auto_load as al
+        a = al.parse_persona(_SAMPLE_PERSONA)
+        b = al.parse_persona(_SAMPLE_PERSONA)
+        self.assertEqual(a, b)
+
+    def test_build_auto_load_byte_identical_re_render(self):
+        import auto_load as al
+        a = al.build_auto_load(_SAMPLE_PERSONA, top_n=10, byte_budget=5000)
+        b = al.build_auto_load(_SAMPLE_PERSONA, top_n=10, byte_budget=5000)
+        self.assertEqual(a, b)
+
+    def test_parse_uses_brain_blocks_heading_paths(self):
+        """parse_persona must extract the same Directives / Top Beliefs
+        sections that _brain_blocks.extract_block would return for the
+        same heading-paths."""
+        import auto_load as al
+        import _brain_blocks as bb
+        directives_body = bb.extract_block(_SAMPLE_PERSONA, "Directives")
+        beliefs_body = bb.extract_block(_SAMPLE_PERSONA, "Top Beliefs")
+        self.assertIsNotNone(directives_body)
+        self.assertIsNotNone(beliefs_body)
+        # auto_load.parse_persona's directives must all come from the
+        # Directives block (no spurious hits from Evidence Log or elsewhere).
+        parsed = al.parse_persona(_SAMPLE_PERSONA)
+        for d in parsed["directives"]:
+            self.assertIn(d["text"][:30], directives_body,
+                          f"directive {d['text'][:30]!r} not found in Directives block")
+        for b in parsed["top_beliefs"]:
+            self.assertIn(b["note"], beliefs_body,
+                          f"belief {b['note']!r} not found in Top Beliefs block")
+
+    def test_handles_html_comments_consistently(self):
+        """HTML comments inside frontmatter sections must not produce
+        ghost directives. _brain_blocks treats <!-- --> as inert; so
+        must parse_persona."""
+        import auto_load as al
+        text = _SAMPLE_PERSONA.replace(
+            "## Directives",
+            "## Directives\n\n<!-- - **GHOST RULE** see [[Notes/ghost]]. -->",
+        )
+        parsed = al.parse_persona(text)
+        notes = [d["note"] for d in parsed["directives"]]
+        self.assertNotIn("Notes/ghost", notes)
+
+
 if __name__ == "__main__":
     unittest.main()
