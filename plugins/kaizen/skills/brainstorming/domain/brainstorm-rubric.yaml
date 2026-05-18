@@ -1,0 +1,70 @@
+# Brainstorming idea-classification rubric — data-driven, walked by
+# schema_cli.BucketWalker. The `kaizen-brainstorm score` CLI reads this
+# to assign auto_bucket per idea from mechanical signals computed by
+# brainstorm._compute_idea_signals.
+#
+# Signals computed:
+#   - length_words       int    — len(idea.split())
+#   - has_tool_dep       bool   — tools[] non-empty
+#   - trigger_present    bool   — text matches \bwhen|trigger|→|\bif\b.*\bthen\b
+#   - effort_bucket      str    — draft.effort_estimate or "M"
+#   - yagni_flag         bool   — draft.yagni
+#   - radical_flag       bool   — draft.radical
+#   - llm_confidence     float  — draft.confidence (0.0-1.0), default 0.5
+#   - novelty_score      float  — draft.novelty_score, default 0.5 (Phase 2 default)
+#
+# First-match wins. Order: strictest happy → low-confidence sad →
+# flag-driven edge → effort/topic intermediates → length explicit → fallback.
+
+version: 1
+
+rules:
+  # 1. KEEP — high-confidence, tight, signal-rich, normal effort
+  - bucket: KEEP
+    require_all:
+      - {signal: llm_confidence,  op: ">=", value: 0.85}
+      - {signal: length_words,    op: ">=", value: 8}
+      - {signal: length_words,    op: "<=", value: 80}
+      - {signal: trigger_present, op: "==", value: true}
+      - {signal: effort_bucket,   op: "!=", value: "XL"}
+      - {signal: yagni_flag,      op: "==", value: false}
+      - {signal: radical_flag,    op: "==", value: false}
+
+  # 2. YAGNI — LLM-flagged anti-pattern OR very low LLM confidence
+  - bucket: YAGNI
+    require_any:
+      - {signal: yagni_flag,     op: "==", value: true}
+      - {signal: llm_confidence, op: "<",  value: 0.4}
+
+  # 3. RADICAL — LLM-flagged moonshot
+  - bucket: RADICAL
+    require_all:
+      - {signal: radical_flag, op: "==", value: true}
+      - {signal: length_words, op: ">=", value: 8}
+
+  # 4. PHASE_2 — well-formed but XL effort (defer execution, keep design)
+  - bucket: PHASE_2
+    require_all:
+      - {signal: llm_confidence, op: ">=", value: 0.5}
+      - {signal: length_words,   op: ">=", value: 8}
+      - {signal: effort_bucket,  op: "==", value: "XL"}
+      - {signal: yagni_flag,     op: "==", value: false}
+      - {signal: radical_flag,   op: "==", value: false}
+
+  # 5. RESEARCH — no concrete trigger, needs validation
+  - bucket: RESEARCH
+    require_all:
+      - {signal: llm_confidence,  op: ">=", value: 0.5}
+      - {signal: length_words,    op: ">=", value: 8}
+      - {signal: trigger_present, op: "==", value: false}
+      - {signal: yagni_flag,      op: "==", value: false}
+      - {signal: radical_flag,    op: "==", value: false}
+
+  # 6. NEEDS_AGENT — explicit length boundary trips (not fallback)
+  - bucket: NEEDS_AGENT
+    require_any:
+      - {signal: length_words, op: "<", value: 8}
+      - {signal: length_words, op: ">", value: 120}
+
+confidence_threshold: 0.85
+fallback: NEEDS_AGENT
