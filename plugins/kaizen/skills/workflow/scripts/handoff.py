@@ -1596,6 +1596,69 @@ def _cmd_append(args) -> int:
     return 0
 
 
+# ─── tree — bidirectional commit↔task map (Task #40) ──────────────────
+
+def _build_commit_task_map(entries: list, *, repo: Path, since: str) -> dict:
+    """For each done_this_session entry with files, list commits since `since`
+    that touched any of them. Returns bidirectional map.
+
+    Entries without `files` (or empty list) surface in `skipped_no_files` —
+    can't be tree-mapped without paths. Entries with files but zero
+    matching commits still appear in `by_task` (empty list).
+
+    Pure-ish: only side-effect is `git log` subprocess calls via
+    `_auto_tag_commits`. Drift-resilient — no module-level state.
+    """
+    by_task: dict[str, list[str]] = {}
+    by_commit: dict[str, list[str]] = {}
+    skipped: list[str] = []
+    for entry in entries:
+        if not isinstance(entry, dict):
+            continue
+        task = entry.get("task") or "?"
+        files = entry.get("files") or []
+        if not files:
+            skipped.append(task)
+            continue
+        commits = _auto_tag_commits(repo, files, since=since)
+        by_task[task] = commits
+        for c in commits:
+            by_commit.setdefault(c, []).append(task)
+    return {"by_task": by_task,
+            "by_commit": by_commit,
+            "skipped_no_files": skipped}
+
+
+def _normalize_since(since: str) -> str:
+    """Add `00:00:00` time component when `since` is bare YYYY-MM-DD.
+
+    Git's `--since=2026-05-18` misses same-day commits in some configurations
+    (likely TZ-related parse ambiguity); `--since='2026-05-18 00:00:00'`
+    works reliably. Verified 2026-05-18 against author-dated commits.
+    """
+    import re as _re
+    if _re.fullmatch(r"\d{4}-\d{2}-\d{2}", since.strip()):
+        return f"{since.strip()} 00:00:00"
+    return since
+
+
+def _cmd_tree(args) -> int:
+    fp = Path(args.file)
+    if not fp.is_file():
+        sys.stderr.write(f"handoff tree: file not found: {fp}\n")
+        return 2
+    text = fp.read_text(encoding="utf-8")
+    fm, body = _load_raw_handoff(text)
+    entries = body.get("done_this_session") or []
+    raw_since = args.since or fm.get("date") or "1 week ago"
+    since = _normalize_since(raw_since)
+    repo = Path(args.repo or ".").resolve()
+    result = _build_commit_task_map(entries, repo=repo, since=since)
+    out = {"file": str(fp), "since": since, "repo": str(repo), **result}
+    print(json.dumps(out, indent=2, default=str))
+    return 0
+
+
 def _cmd_get(args) -> int:
     fp = Path(args.file)
     if not fp.is_file():
@@ -1876,6 +1939,19 @@ def main(argv: Optional[list[str]] = None) -> int:
                             "when section is done_this_session")
     s_ap.add_argument("--json", action="store_true")
     s_ap.set_defaults(func=_cmd_append)
+
+    s_tr = sub.add_parser(
+        "tree",
+        help="bidirectional commit↔task map — for each done_this_session "
+             "entry with files, list commits since the handoff date that "
+             "touched them. Emits {by_task, by_commit, skipped_no_files}."
+    )
+    s_tr.add_argument("--file", required=True, help="path to the handoff YAML")
+    s_tr.add_argument("--since", default=None,
+                       help="git log --since cutoff (default: handoff `date:` field)")
+    s_tr.add_argument("--repo", default=None,
+                       help="repo path for git log (default: cwd)")
+    s_tr.set_defaults(func=_cmd_tree)
 
     s_vh = sub.add_parser(
         "verify-hash",
