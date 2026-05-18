@@ -180,6 +180,7 @@
       "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/learning_log.py:*)",
       "Bash(bash ${CLAUDE_PLUGIN_ROOT}/bin/kaizen-learn:*)",
       "Bash(bash ${CLAUDE_PLUGIN_ROOT}/hooks/claude/posttool-roundtrip-detect.sh:*)",
+      "Bash(bash ${CLAUDE_PLUGIN_ROOT}/hooks/claude/posttool-observer-capture.sh:*)",
       "Bash(bash ${CLAUDE_PLUGIN_ROOT}/bin/kaizen-auto-handoff:*)",
       "Bash(bash ${CLAUDE_PLUGIN_ROOT}/bin/kaizen-skill-suggest:*)",
       "Bash(bash ${CLAUDE_PLUGIN_ROOT}/bin/kaizen-context-notifier:*)",
