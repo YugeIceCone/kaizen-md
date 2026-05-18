@@ -10,7 +10,7 @@ _(none)_
 
 ## Next up
 
-_(none)_
+- [ ] **BK-012** Brainstorming skill — add per-idea confidence score + deferral threshold — probe: `/kaizen:brainstorming today produces a flat list of ideas; no quantitative basis for deferral. Should expose a 0.0-1.0 confidence per idea + a configurable threshold for KEEP vs Phase 2 vs YAGNI cutoffs.` — verify: `brainstorming output emits {description, confidence, deferral_bucket} per idea; threshold configurable via skill arg; bucket auto-suggested + user-confirmable`
 
 ## Done (this week)
 
@@ -29,3 +29,5 @@ _(none)_
 - [ ] **BK-009** dxm: retention/rotation via kaizen-dxm clean + daemon hygiene loop — probe: `events-<sid>.jsonl grows append-only forever; no cap or GC` — verify: `kaizen-dxm clean --older-than 7d removes stale per-session files; daemon.py hygiene loop calls it; max-file-size enforces in-session cap`  `[dxm retention hygiene]`
 - [ ] **BK-010** dxm: close handoff integration loops (scaffold→dxm freshness, verify→dxm churn, auto-finalize→dxm link) — probe: `scaffold knows jsonl_lag_seconds but doesn't query dxm when stale; verify ignores dxm tool churn; auto-finalize doesn't record session lineage` — verify: `scaffold mining gains dxm fallback when lag>30s; verify reports last 60s tool churn from dxm; auto-finalize calls 'dxm link --parent --child' as part of indexing`  `[dxm handoff integration]`
 - [ ] **BK-011** dxm: TDD the dxm-event.sh shell hot path — probe: `dxm-event.sh has zero test coverage; regression in grep -oE / sed / printf template would silently break capture` — verify: `tests/test_dxm_hook_sh.py feeds canned event JSON to the hook, asserts the resulting JSONL line shape; covers BSD date %N fallback + KAIZEN_DXM_DISABLE=1 early-exit + missing-session_id no-op`  `[dxm tdd hooks]`
+- [ ] **BK-013** positional-tokens Phase 2: per-slot embeddings (trigger: onboard.db unification) *(design/2026-05-18-positional-token-schema-design.md:38-41,271)* — probe: `grep 'embedding' plugins/kaizen/skills/workflow/scripts/_token_db.py` — verify: `test_token_db tests for embedding column + retrieval green; semantic search returns slot-granular hits`  `[tokens phase-2 yagni-deferred trigger-gated]`
+- [ ] **BK-014** positional-tokens Phase 2: tree-sitter-typescript + tree-sitter-markdown grammars (trigger: first TS/MD user) *(design/2026-05-18-positional-token-schema-design.md:40,268-270)* — probe: `grep -E 'typescript|markdown' plugins/kaizen/skills/workflow/scripts/_token_extractor.py` — verify: `test_token_extractor: TS file slots, MD heading slots extracted; _LANG_BY_EXT covers .ts/.tsx/.md`  `[tokens phase-2 yagni-deferred trigger-gated]`

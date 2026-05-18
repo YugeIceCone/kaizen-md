@@ -3,7 +3,7 @@
   "kind": "kaizen.backlog",
   "metadata": {
     "created": "2026-05-12",
-    "updated": "2026-05-17",
+    "updated": "2026-05-18",
     "active_workflow_ref": null
   },
   "items": [
@@ -212,6 +212,61 @@
         "hooks"
       ],
       "created": "2026-05-17",
+      "started_at": null,
+      "committed": null,
+      "committed_at": null,
+      "parked_reason": null,
+      "probe_output": null
+    },
+    {
+      "id": "BK-012",
+      "section": "next_up",
+      "title": "Brainstorming skill — add per-idea confidence score + deferral threshold",
+      "ref": null,
+      "probe": "/kaizen:brainstorming today produces a flat list of ideas; no quantitative basis for deferral. Should expose a 0.0-1.0 confidence per idea + a configurable threshold for KEEP vs Phase 2 vs YAGNI cutoffs.",
+      "verify": "brainstorming output emits {description, confidence, deferral_bucket} per idea; threshold configurable via skill arg; bucket auto-suggested + user-confirmable",
+      "tags": [],
+      "created": "2026-05-18",
+      "started_at": null,
+      "committed": null,
+      "committed_at": null,
+      "parked_reason": null,
+      "probe_output": null
+    },
+    {
+      "id": "BK-013",
+      "section": "parked",
+      "title": "positional-tokens Phase 2: per-slot embeddings (trigger: onboard.db unification)",
+      "ref": "design/2026-05-18-positional-token-schema-design.md:38-41,271",
+      "probe": "grep 'embedding' plugins/kaizen/skills/workflow/scripts/_token_db.py",
+      "verify": "test_token_db tests for embedding column + retrieval green; semantic search returns slot-granular hits",
+      "tags": [
+        "tokens",
+        "phase-2",
+        "yagni-deferred",
+        "trigger-gated"
+      ],
+      "created": "2026-05-18",
+      "started_at": null,
+      "committed": null,
+      "committed_at": null,
+      "parked_reason": null,
+      "probe_output": null
+    },
+    {
+      "id": "BK-014",
+      "section": "parked",
+      "title": "positional-tokens Phase 2: tree-sitter-typescript + tree-sitter-markdown grammars (trigger: first TS/MD user)",
+      "ref": "design/2026-05-18-positional-token-schema-design.md:40,268-270",
+      "probe": "grep -E 'typescript|markdown' plugins/kaizen/skills/workflow/scripts/_token_extractor.py",
+      "verify": "test_token_extractor: TS file slots, MD heading slots extracted; _LANG_BY_EXT covers .ts/.tsx/.md",
+      "tags": [
+        "tokens",
+        "phase-2",
+        "yagni-deferred",
+        "trigger-gated"
+      ],
+      "created": "2026-05-18",
       "started_at": null,
       "committed": null,
       "committed_at": null,
