@@ -67,7 +67,7 @@ dispatch the same way.
 
 | Command | Does |
 |---|---|
-| `brain` | Schema-driven Second Brain — capture / search / promote / audit / evolve. Replaces |
+| `brain` | Schema-driven Second Brain — capture / search / promote / audit / evolve PLUS zero |
 | `self-improving` | Curate Claude Code's auto-memory into durable project knowledge. `review` flags pr |
 | `gold` | Incidental-discovery + learnings tracker. Capture mid-work patterns + gotchas + hi |
 
