@@ -1378,6 +1378,94 @@ def _cmd_auto_finalize(args) -> int:
     return 0
 
 
+# ─── get — surgical section extraction ────────────────────────────────
+
+_FRONTMATTER_SECTIONS = {
+    "status", "outcome", "outcome_assigned_by", "outcome_justification",
+    "date", "session",
+}
+_BODY_SECTIONS = {
+    "goal", "now", "test",
+    "done_this_session", "blockers", "questions",
+    "decisions", "findings", "worked", "failed",
+    "next", "files", "code_context", "session_meta",
+}
+_ALL_SECTIONS = _FRONTMATTER_SECTIONS | _BODY_SECTIONS
+
+
+def _load_raw_handoff(text: str) -> tuple[dict, dict]:
+    """Return (frontmatter, body) as raw dicts. Lightweight line-parse of
+    frontmatter (matches the rest of handoff.py's approach); PyYAML for body.
+    """
+    fm_text = ""
+    body_text = text
+    if text.startswith("---"):
+        parts = text.split("---", 2)
+        if len(parts) >= 3:
+            fm_text = parts[1]
+            body_text = parts[2]
+
+    fm: dict[str, str] = {}
+    for line in fm_text.splitlines():
+        if ":" in line and not line.lstrip().startswith("#"):
+            k, v = line.split(":", 1)
+            k = k.strip()
+            v = v.strip().strip('"').strip("'")
+            if k:
+                fm[k] = v
+
+    try:
+        import yaml as _yaml
+        body = _yaml.safe_load(body_text) or {}
+    except (ImportError, Exception):  # noqa: BLE001
+        body = {}
+    if not isinstance(body, dict):
+        body = {}
+    return fm, body
+
+
+def _render_section(value, *, as_json: bool) -> str:
+    """Human-readable when --json off; canonical JSON when on."""
+    if as_json:
+        return json.dumps(value, indent=2, default=str)
+    # Human format: scalars → raw; list of strings → one per line;
+    # list of dicts / nested → JSON (else unreadable).
+    if value is None:
+        return ""
+    if isinstance(value, (str, int, float, bool)):
+        return str(value)
+    if isinstance(value, list):
+        if all(isinstance(x, (str, int, float, bool)) for x in value):
+            return "\n".join(str(x) for x in value)
+        return json.dumps(value, indent=2, default=str)
+    if isinstance(value, dict):
+        return json.dumps(value, indent=2, default=str)
+    return str(value)
+
+
+def _cmd_get(args) -> int:
+    fp = Path(args.file)
+    if not fp.is_file():
+        sys.stderr.write(f"handoff get: file not found: {fp}\n")
+        return 2
+    section = args.section
+    if section not in _ALL_SECTIONS:
+        sys.stderr.write(
+            f"handoff get: unknown section {section!r}\n"
+            f"  available frontmatter: {sorted(_FRONTMATTER_SECTIONS)}\n"
+            f"  available body: {sorted(_BODY_SECTIONS)}\n"
+        )
+        return 1
+    text = fp.read_text(encoding="utf-8")
+    fm, body = _load_raw_handoff(text)
+    if section in _FRONTMATTER_SECTIONS:
+        value = fm.get(section, "")
+    else:
+        value = body.get(section)
+    sys.stdout.write(_render_section(value, as_json=args.json) + "\n")
+    return 0
+
+
 def main(argv: Optional[list[str]] = None) -> int:
     p = argparse.ArgumentParser(
         prog="kaizen-handoff",
@@ -1527,6 +1615,24 @@ def main(argv: Optional[list[str]] = None) -> int:
     )
     s_auto.add_argument("--json", action="store_true")
     s_auto.set_defaults(func=_cmd_auto_finalize)
+
+    s_get = sub.add_parser(
+        "get",
+        help="extract one named section from a handoff YAML — surgical "
+             "read for resume agents (avoids the whole-file Read tax). "
+             "Use --json for structured output.",
+    )
+    s_get.add_argument("--file", required=True, help="path to the handoff YAML")
+    s_get.add_argument("--section", required=True,
+                        help="section name — frontmatter (status/outcome/date/"
+                             "session/outcome_assigned_by/outcome_justification) "
+                             "OR body (goal/now/test/done_this_session/blockers/"
+                             "questions/decisions/findings/worked/failed/next/"
+                             "files/code_context/session_meta)")
+    s_get.add_argument("--json", action="store_true",
+                        help="JSON output (default: human-readable — one line "
+                             "per list item, raw scalar for strings)")
+    s_get.set_defaults(func=_cmd_get)
 
     args = p.parse_args(argv)
     if args.cmd is None:
