@@ -131,5 +131,89 @@ class TestRunBrainIndex(unittest.TestCase):
         self.assertEqual(state["brain_notes_hash"], "OLD")
 
 
+class TestRunBrainPromote(unittest.TestCase):
+
+    def test_disabled_via_env_returns_skipped(self):
+        import _daemon_jobs as jobs
+        with patch.dict(os.environ, {"KAIZEN_DAEMON_BRAIN_PROMOTE_DISABLE": "1"}):
+            ok, msg, action = jobs.run_brain_promote(state={})
+        self.assertTrue(ok)
+        self.assertEqual(action, "brain-promote")
+        self.assertIn("disabled", msg.lower())
+
+    def test_throttle_skips_when_recent(self):
+        import _daemon_jobs as jobs
+        import time
+        state = {"last_run_at": {"brain-promote": time.time()}}
+        env_copy = {k: v for k, v in os.environ.items()
+                    if k != "KAIZEN_DAEMON_BRAIN_PROMOTE_DISABLE"}
+        with patch.dict(os.environ, env_copy, clear=True), \
+             patch("subprocess.run") as run:
+            ok, msg, action = jobs.run_brain_promote(state)
+        run.assert_not_called()
+        self.assertTrue(ok)
+        self.assertEqual(action, "brain-promote")
+        self.assertIn("throttled", msg.lower())
+
+    def test_runs_when_throttle_expired(self):
+        import _daemon_jobs as jobs
+        import time
+        state = {"last_run_at": {"brain-promote": time.time() - 86401}}
+
+        def fake_run(cmd, **kw):
+            return _fake_proc()
+
+        env_copy = {k: v for k, v in os.environ.items()
+                    if k != "KAIZEN_DAEMON_BRAIN_PROMOTE_DISABLE"}
+        with patch.dict(os.environ, env_copy, clear=True), \
+             patch("subprocess.run", side_effect=fake_run) as run:
+            ok, msg, _ = jobs.run_brain_promote(state)
+
+        self.assertTrue(ok)
+        called = list(run.call_args[0][0])
+        self.assertIn("brain_promote.py", " ".join(called))
+        self.assertIn("--apply", called)
+        self.assertGreater(state["last_run_at"]["brain-promote"],
+                           time.time() - 5)
+
+    def test_runs_on_first_invocation(self):
+        """No last_run_at entry → run immediately, then stamp."""
+        import _daemon_jobs as jobs
+        import time
+        state = {}
+
+        def fake_run(cmd, **kw):
+            return _fake_proc()
+
+        env_copy = {k: v for k, v in os.environ.items()
+                    if k != "KAIZEN_DAEMON_BRAIN_PROMOTE_DISABLE"}
+        with patch.dict(os.environ, env_copy, clear=True), \
+             patch("subprocess.run", side_effect=fake_run):
+            ok, _, _ = jobs.run_brain_promote(state)
+
+        self.assertTrue(ok)
+        self.assertIn("brain-promote", state["last_run_at"])
+        self.assertGreater(state["last_run_at"]["brain-promote"],
+                           time.time() - 5)
+
+    def test_failed_run_does_not_stamp(self):
+        import _daemon_jobs as jobs
+        state = {}
+
+        def fake_run(cmd, **kw):
+            return _fake_proc(rc=2)
+
+        env_copy = {k: v for k, v in os.environ.items()
+                    if k != "KAIZEN_DAEMON_BRAIN_PROMOTE_DISABLE"}
+        with patch.dict(os.environ, env_copy, clear=True), \
+             patch("subprocess.run", side_effect=fake_run):
+            ok, _, _ = jobs.run_brain_promote(state)
+
+        self.assertFalse(ok)
+        # No stamp on failure → next tick retries.
+        self.assertNotIn("brain-promote",
+                         (state.get("last_run_at") or {}))
+
+
 if __name__ == "__main__":
     unittest.main()

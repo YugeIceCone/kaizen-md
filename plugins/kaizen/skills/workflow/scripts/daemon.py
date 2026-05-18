@@ -399,6 +399,11 @@ def tick() -> dict:
     actions[action] = actions.get(action, 0) + 1
     log_line("INFO" if ok else "ERROR", f"{action}: {msg}")
 
+    # 8. Brain-promote — drain aged Inbox drafts (24h throttle).
+    ok, msg, action = _jobs.run_brain_promote(state)
+    actions[action] = actions.get(action, 0) + 1
+    log_line("INFO" if ok else "ERROR", f"{action}: {msg}")
+
     save_state(state)
     log_line("INFO", "daemon tick complete")
     return state

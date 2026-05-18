@@ -18,9 +18,17 @@ import hashlib
 import os
 import subprocess
 import sys
+import time as _time
 from pathlib import Path
 
 _SCRIPT_DIR = Path(__file__).resolve().parent
+
+# Throttle thresholds (seconds). Tuned per job cost:
+#   brain-promote   — 24h  (cheap-ish, but inbox drains don't need to be hourly)
+#   brain-evolve    — 24h  (LLM-driven, daily calendar gate handles cadence)
+#   gold-promote    —  7d  (durable patterns rarely need re-promotion)
+_PROMOTE_THROTTLE_SEC = 86_400
+_GOLD_THROTTLE_SEC = 7 * 86_400
 
 
 def _disabled(env_var: str) -> bool:
@@ -46,6 +54,17 @@ def run_brain_audit(state: dict) -> tuple[bool, str, str]:
     if not ok and result.stderr:
         msg += f" stderr={result.stderr.strip()[:200]}"
     return ok, msg, action
+
+
+def _throttled(state: dict, key: str, threshold_sec: int) -> bool:
+    """True iff job ``key`` ran within the last ``threshold_sec``."""
+    last = (state.get("last_run_at") or {}).get(key, 0)
+    return (_time.time() - last) < threshold_sec
+
+
+def _stamp_last_run(state: dict, key: str) -> None:
+    """Mark ``key`` as just-run. Mutates state in place."""
+    state.setdefault("last_run_at", {})[key] = _time.time()
 
 
 def _brain_notes_dir() -> Path:
@@ -96,6 +115,31 @@ def run_brain_index(state: dict) -> tuple[bool, str, str]:
     if ok:
         state["brain_notes_hash"] = current
     msg = f"reindex ({prior or 'none'} → {current}) rc={result.returncode}"
+    if not ok and result.stderr:
+        msg += f" stderr={result.stderr.strip()[:200]}"
+    return ok, msg, action
+
+
+def run_brain_promote(state: dict) -> tuple[bool, str, str]:
+    """Promote aged Inbox drafts → typed Notes (24h throttle).
+
+    Drains the un-promoted draft backlog over time without flooding
+    the brain on every tick.
+    """
+    action = "brain-promote"
+    if _disabled("KAIZEN_DAEMON_BRAIN_PROMOTE_DISABLE"):
+        return True, "disabled via env", action
+    if _throttled(state, action, _PROMOTE_THROTTLE_SEC):
+        return True, "throttled (≤24h since last run)", action
+    script = _SCRIPT_DIR / "brain_promote.py"
+    result = subprocess.run(
+        [_python(), str(script), "--apply", "--json"],
+        capture_output=True, text=True, timeout=300,
+    )
+    ok = result.returncode == 0
+    if ok:
+        _stamp_last_run(state, action)
+    msg = f"rc={result.returncode}"
     if not ok and result.stderr:
         msg += f" stderr={result.stderr.strip()[:200]}"
     return ok, msg, action

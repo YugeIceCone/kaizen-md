@@ -33,6 +33,7 @@ class TestDaemonBrainAuditWire(unittest.TestCase):
                 "KAIZEN_DAEMON_STATE": td,
                 "KAIZEN_DAEMON_BRAIN_AUDIT_DISABLE": "1",
                 "KAIZEN_DAEMON_BRAIN_INDEX_DISABLE": "1",
+                "KAIZEN_DAEMON_BRAIN_PROMOTE_DISABLE": "1",
                 "KAIZEN_DAEMON_INDEX_DISABLE": "1",
             }
             with patch.dict(os.environ, env, clear=False):
@@ -49,7 +50,7 @@ class TestDaemonBrainAuditWire(unittest.TestCase):
                     state = d.tick()
 
         actions = state.get("actions", {})
-        for key in ("brain-audit", "brain-index"):
+        for key in ("brain-audit", "brain-index", "brain-promote"):
             self.assertIn(key, actions, f"{key} should be wired into tick()")
             self.assertGreaterEqual(actions[key], 1)
 
