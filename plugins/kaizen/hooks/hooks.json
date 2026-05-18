@@ -48,6 +48,11 @@
             "type": "command",
             "command": "node ${CLAUDE_PLUGIN_ROOT}/scripts/session_start.js",
             "timeout": 5
+          },
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/claude/session-start-systems-check.sh",
+            "timeout": 5
           }
         ]
       }
@@ -179,6 +184,11 @@
             "type": "command",
             "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/claude/posttool-observer-capture.sh",
             "timeout": 3
+          },
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/claude/posttool-keepalive.sh",
+            "timeout": 5
           }
         ]
       }

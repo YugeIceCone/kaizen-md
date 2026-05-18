@@ -726,6 +726,106 @@ def watch_start(interval: float) -> tuple[bool, int | str]:
     return True, p.pid
 
 
+# ─── systems-check — keep-alive for the 4 runtime systems (2026-05-18) ──
+
+_TRACKED_SYSTEMS = (
+    # name, env_name (None → fall back to default), default segment(s)
+    ("hooks",    None,                    None),
+    ("trace",    "KAIZEN_TRACE_DIR",      ("indexes", "trace")),
+    ("dxm",      "KAIZEN_DXM_DIR",        ("dxm",)),
+    ("observer", "KAIZEN_OBSERVER_DIR",   ("observer",)),
+)
+
+
+def _check_one(name: str, env_name, default_segs) -> dict:
+    """Probe a single runtime system; return state dict."""
+    if name == "hooks":
+        # Hooks aren't a sink — they're a config. Treat hooks.json presence
+        # as the proxy. scripts_dir() = plugin_src/skills/workflow/scripts;
+        # hooks.json lives at plugin_src/hooks/hooks.json — three .parents up.
+        hooks_json = scripts_dir().parent.parent.parent / "hooks" / "hooks.json"
+        st = {"name": name, "kind": "config",
+               "exists": hooks_json.is_file(),
+               "path": str(hooks_json), "count": 0}
+        if hooks_json.is_file():
+            st["size"] = hooks_json.stat().st_size
+            st["last_mtime"] = hooks_json.stat().st_mtime
+        return st
+    # Append-only jsonl sink
+    import os as _os
+    env_val = _os.environ.get(env_name) if env_name else None
+    if env_val:
+        sink_dir = Path(env_val)
+    else:
+        sink_dir = Path.home() / ".claude" / ".kaizen"
+        if default_segs:
+            sink_dir = sink_dir.joinpath(*default_segs)
+    sink = sink_dir / "events.jsonl"
+    state = {"name": name, "kind": "sink",
+             "exists": sink.is_file(),
+             "path": str(sink), "count": 0}
+    # DXM stores per-session files (events-<sid>.jsonl), not a single file
+    if name == "dxm" and sink_dir.is_dir():
+        files = sorted(sink_dir.glob("events-*.jsonl"))
+        if files:
+            sink = files[-1]
+            state["path"] = str(sink)
+            state["exists"] = True
+    if sink.is_file():
+        state["size"] = sink.stat().st_size
+        state["last_mtime"] = sink.stat().st_mtime
+        # Count VALID jsonl rows
+        cnt = 0
+        try:
+            for line in sink.read_text(encoding="utf-8").splitlines():
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    json.loads(line)
+                    cnt += 1
+                except json.JSONDecodeError:
+                    continue
+        except OSError:
+            pass
+        state["count"] = cnt
+    return state
+
+
+def _keepalive_dir() -> Path:
+    import os as _os
+    env = _os.environ.get("KAIZEN_KEEPALIVE_DIR")
+    if env:
+        return Path(env)
+    return Path.home() / ".claude" / ".kaizen" / "keepalive"
+
+
+def _cmd_systems_check(args) -> int:
+    import time as _time
+    systems = [_check_one(name, env_name, default_segs)
+                for name, env_name, default_segs in _TRACKED_SYSTEMS]
+    heartbeat = {
+        "ts": dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "systems": systems,
+    }
+    # Append to heartbeat.jsonl via the same shape as kaizen-progress/learn.
+    try:
+        hb_dir = _keepalive_dir()
+        hb_dir.mkdir(parents=True, exist_ok=True)
+        with (hb_dir / "heartbeat.jsonl").open("a", encoding="utf-8") as f:
+            f.write(json.dumps(heartbeat) + "\n")
+    except OSError:
+        pass
+    if args.json:
+        print(json.dumps(heartbeat, indent=2))
+    else:
+        print(f"systems-check {heartbeat['ts']}:")
+        for s in systems:
+            tag = "ok" if s.get("exists") else "absent"
+            print(f"  {s['name']:<10} {tag:<6} count={s.get('count', 0)}")
+    return 0
+
+
 # ─── CLI ─────────────────────────────────────────────────────────────
 
 
@@ -751,8 +851,18 @@ def main() -> None:
     sub.add_parser("watch-status", help="check if watcher is alive")
     sub.add_parser("index-status", help="report plugin-index freshness")
 
+    # systems-check (2026-05-18) — pings 4 systems (hooks/trace/dxm/observer)
+    # + appends heartbeat row. Fired by SessionStart hook + PostToolUse-periodic.
+    sc = sub.add_parser("systems-check",
+                          help="ping the 4 kaizen runtime systems + append heartbeat")
+    sc.add_argument("--json", action="store_true")
+
     args = p.parse_args()
     cmd = args.cmd or "run"
+
+    if cmd == "systems-check":
+        sys.exit(_cmd_systems_check(args))
+    # fall through to existing dispatch below
 
     if cmd == "run":
         state = tick()
