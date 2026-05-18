@@ -33,3 +33,12 @@ chunks: "./chunks/*.yaml"
 
 # Mode B — merge config in a separate file.
 merge: "./merge.yaml"
+
+# Plan-level ledger + checklist (paths relative to plan.yaml). After each
+# chunk's branch merges to master, its .chunks/<id>/ledger.jsonl is copied
+# to ledger/<id>.jsonl here. The MERGE action `render_master_ledger`
+# consolidates into ledger/MASTER.jsonl; `render_checklist` builds
+# CHECKLIST.md from chunks/*.yaml + ledger/MASTER.jsonl. Both are derived
+# state — safe to regenerate at any time via `kaizen-plan-checklist render`.
+ledger_dir: "./ledger/"
+checklist: "./CHECKLIST.md"

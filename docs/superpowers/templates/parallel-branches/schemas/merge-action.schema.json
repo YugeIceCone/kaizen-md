@@ -13,6 +13,8 @@
           "append_progress",
           "dispatch_backlog",
           "wire_mcp_mounts",
+          "render_master_ledger",
+          "render_checklist",
           "cleanup_fragments",
           "merge_commit",
           "final_verify"
@@ -46,6 +48,8 @@
         "append_progress",
         "dispatch_backlog",
         "wire_mcp_mounts",
+        "render_master_ledger",
+        "render_checklist",
         "cleanup_fragments",
         "merge_commit",
         "final_verify"
