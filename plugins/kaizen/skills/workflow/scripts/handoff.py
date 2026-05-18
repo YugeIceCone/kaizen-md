@@ -1466,6 +1466,76 @@ def _cmd_get(args) -> int:
     return 0
 
 
+# ─── verify-hash — finishes the half-built integrity check ────────────
+
+def _cmd_verify_hash(args) -> int:
+    """Re-hash the linked JSONL + compare against the handoff's captured
+    cc_session_sha256. Verdicts: match / drift / missing / no-link.
+
+    Exit codes:
+      0 — match OR no-link (informational)
+      1 — drift / missing JSONL / handoff file missing
+    """
+    import hashlib
+    fp = Path(args.file)
+    if not fp.is_file():
+        msg = {"verdict": "no-handoff",
+                "error": f"handoff file not found: {fp}"}
+        if args.json:
+            print(json.dumps(msg))
+        else:
+            print(f"no-handoff: {fp}")
+        return 1
+
+    fm, body = _load_raw_handoff(fp.read_text(encoding="utf-8"))
+    session_meta = body.get("session_meta") or {}
+    if not isinstance(session_meta, dict):
+        session_meta = {}
+    jsonl_path = session_meta.get("cc_session_jsonl")
+    captured_sha = session_meta.get("cc_session_sha256")
+    if not jsonl_path or not captured_sha:
+        msg = {"verdict": "no-link",
+                "reason": "handoff has no session_meta.cc_session_jsonl/sha256"}
+        if args.json:
+            print(json.dumps(msg))
+        else:
+            print(f"no-link: {msg['reason']}")
+        return 0  # informational
+
+    jp = Path(str(jsonl_path))
+    if not jp.is_file():
+        msg = {"verdict": "missing",
+                "captured_jsonl": str(jp),
+                "captured_sha": captured_sha}
+        if args.json:
+            print(json.dumps(msg))
+        else:
+            print(f"missing: linked JSONL no longer at {jp}")
+        return 1
+
+    current_sha = hashlib.sha256(jp.read_bytes()).hexdigest()
+    if current_sha == captured_sha:
+        msg = {"verdict": "match",
+                "captured_sha": captured_sha,
+                "current_sha": current_sha,
+                "jsonl_path": str(jp)}
+        if args.json:
+            print(json.dumps(msg))
+        else:
+            print(f"match: sha256 {captured_sha[:12]}... — resume mining safe")
+        return 0
+    msg = {"verdict": "drift",
+            "captured_sha": captured_sha,
+            "current_sha": current_sha,
+            "jsonl_path": str(jp)}
+    if args.json:
+        print(json.dumps(msg))
+    else:
+        print(f"drift: JSONL mutated since handoff was written. "
+               f"captured={captured_sha[:12]}... current={current_sha[:12]}...")
+    return 1
+
+
 def main(argv: Optional[list[str]] = None) -> int:
     p = argparse.ArgumentParser(
         prog="kaizen-handoff",
@@ -1633,6 +1703,16 @@ def main(argv: Optional[list[str]] = None) -> int:
                         help="JSON output (default: human-readable — one line "
                              "per list item, raw scalar for strings)")
     s_get.set_defaults(func=_cmd_get)
+
+    s_vh = sub.add_parser(
+        "verify-hash",
+        help="re-hash the linked JSONL + compare against captured sha256 — "
+             "detects mid-flight rotation/truncation (verdict: match | "
+             "drift | missing | no-link)",
+    )
+    s_vh.add_argument("--file", required=True, help="path to the handoff YAML")
+    s_vh.add_argument("--json", action="store_true")
+    s_vh.set_defaults(func=_cmd_verify_hash)
 
     args = p.parse_args(argv)
     if args.cmd is None:
