@@ -1,9 +1,11 @@
 # Path restructure — flatten + categorize (v1.39.0)
 
 ## Status
-- **State:** draft (not yet executing)
+- **State:** SHIPPED — all 5 phases complete (`6c11d2b`). Live migration
+  closed via force-overwrite resolution of 3 manifest/profile conflicts.
 - **Owner:** YugeIceCone + Claude (Opus 4.7)
 - **Started:** 2026-05-17
+- **Completed:** 2026-05-18
 - **Scope:** ~9 _paths.py constants + path_migrate.py + live migration of 8 dirs + 4 files in `~/.claude/.kaizen/`
 
 ## Motivation

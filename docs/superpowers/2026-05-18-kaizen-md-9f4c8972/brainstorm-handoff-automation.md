@@ -1,5 +1,11 @@
 # Brainstorm — Handoff automation (token / context / mental load)
 
+> **Status:** SHIPPED (top 4 by score) — items #1 cost (`86bedeb`) /
+> #2 smart since-cutoff (`d6a5a8e`) / #4 auto-bridge (`d53ace1`) /
+> #5 diff + #6 tasks (`885d565`). #3 already existed via
+> `handoff get --section`. Original 6-item arc closed in `885d565`
+> + `990d965` (structured next[] / re-mine + skill-frame).
+>
 > **Trigger:** user 2026-05-18 sid 32bad1f7 — "brainstorm for handoff:
 > more automation with scripts for token savings and optimizations,
 > context budget, mental load."

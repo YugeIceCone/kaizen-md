@@ -189,13 +189,17 @@ _KIND_PREFIXES = {
 }
 _STATUS_PATTERNS = [
     # Order matters — more specific markers first.
+    # **State:** and **Status:** are both honored (different files use
+    # different conventions; KISS to accept both).
     (re.compile(r"\bSUPERSEDED\b", re.IGNORECASE),         "superseded"),
     (re.compile(r"\bDEFERRED\b", re.IGNORECASE),           "deferred"),
+    (re.compile(r"\bPARKED\b", re.IGNORECASE),             "deferred"),
     (re.compile(r"\b(COMPLETE|SHIPPED|DONE)\b"),           "shipped"),
-    (re.compile(r"\*\*State:\*\*\s*shipped", re.IGNORECASE),  "shipped"),
-    (re.compile(r"\*\*State:\*\*\s*in[- ]progress", re.IGNORECASE), "in-progress"),
-    (re.compile(r"\*\*State:\*\*\s*draft", re.IGNORECASE), "draft"),
-    (re.compile(r"\*\*State:\*\*\s*wip", re.IGNORECASE),   "in-progress"),
+    (re.compile(r"\*\*(State|Status):\*\*\s*shipped", re.IGNORECASE),     "shipped"),
+    (re.compile(r"\*\*(State|Status):\*\*\s*in[- ]progress", re.IGNORECASE), "in-progress"),
+    (re.compile(r"\*\*(State|Status):\*\*\s*draft", re.IGNORECASE),       "draft"),
+    (re.compile(r"\*\*(State|Status):\*\*\s*drafting", re.IGNORECASE),    "draft"),
+    (re.compile(r"\*\*(State|Status):\*\*\s*wip", re.IGNORECASE),         "in-progress"),
 ]
 
 
@@ -221,6 +225,15 @@ def _extract_status(text: str) -> str:
     return "unknown"
 
 
+def _extract_status_for_file(filename: str, text: str) -> str:
+    """Filename-aware wrapper. READMEs are reference docs (folder
+    descriptions, not work items) — always return `reference` regardless
+    of body. Other files use content-based detection."""
+    if filename == "README.md":
+        return "reference"
+    return _extract_status(text)
+
+
 def _scan_state(root: Path) -> dict:
     """Walk root → emit per-bundle + per-file metadata + aggregate totals."""
     bundles: dict[str, dict] = {}
@@ -242,7 +255,7 @@ def _scan_state(root: Path) -> dict:
             kind = _classify_kind(fp.name)
             try:
                 text = fp.read_text(encoding="utf-8", errors="replace")
-                status = _extract_status(text)
+                status = _extract_status_for_file(fp.name, text)
             except OSError:
                 status = "unknown"
             entry = {
@@ -316,7 +329,9 @@ def _cmd_tasks(args) -> int:
     root = _superpowers_dir()
     state = _scan_state(root)
     tasks: list[dict] = []
-    skip_status = "shipped"
+    # Default view hides work-completed (`shipped`) AND non-work-items
+    # (`reference` — typically README folder descriptions).
+    skip_statuses = {"shipped", "reference"}
     for bundle_name, bundle in state["bundles"].items():
         if args.bundle and bundle_name != args.bundle:
             continue
@@ -324,7 +339,7 @@ def _cmd_tasks(args) -> int:
             if args.status:
                 if f["status"] != args.status:
                     continue
-            elif f["status"] == skip_status:
+            elif f["status"] in skip_statuses:
                 continue
             tasks.append({
                 "bundle": bundle_name,

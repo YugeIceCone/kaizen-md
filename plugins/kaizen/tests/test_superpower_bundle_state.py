@@ -89,6 +89,30 @@ class TestExtractStatus(unittest.TestCase):
         text = "intro\n" * 200 + "**COMPLETE**\n"
         self.assertEqual(_sb._extract_status(text), "unknown")
 
+    def test_status_alias_for_state_field(self):
+        # Some plans use **Status:** instead of **State:** — both should match
+        text = "# Title\n\n**Status:** drafting\n"
+        self.assertEqual(_sb._extract_status(text), "draft")
+
+    def test_status_alias_in_progress(self):
+        text = "# Title\n\n**Status:** in-progress\n"
+        self.assertEqual(_sb._extract_status(text), "in-progress")
+
+
+class TestReadmeIsReference(unittest.TestCase):
+    """READMEs are folder-descriptions, not work items. They should
+    classify as `reference` status so they never appear in task lists."""
+
+    def test_readme_filename_with_no_content_is_reference(self):
+        # README.md gets a special pass — no need for explicit Status marker
+        status = _sb._extract_status_for_file("README.md", "# Some folder\n")
+        self.assertEqual(status, "reference")
+
+    def test_other_files_use_content_detection(self):
+        # Non-README files still go through content scan
+        status = _sb._extract_status_for_file("plan-x.md", "# X\n\n**COMPLETE**")
+        self.assertEqual(status, "shipped")
+
 
 # ─── _scan_state — pure-ish (reads filesystem) ────────────────────────
 
@@ -122,10 +146,10 @@ class TestScanState(unittest.TestCase):
     def test_bundle_summary_counts_by_status(self):
         state = _sb._scan_state(self.root)
         b1 = state["bundles"]["2026-05-17-kaizen-md"]
-        # 1 shipped + 1 README (unknown by status detection)
+        # 1 shipped + 1 README (now classified `reference` post-refinement)
         statuses = b1["summary"]["by_status"]
         self.assertEqual(statuses.get("shipped"), 1)
-        self.assertEqual(statuses.get("unknown"), 1)
+        self.assertEqual(statuses.get("reference"), 1)
 
     def test_totals_aggregate(self):
         state = _sb._scan_state(self.root)
@@ -236,6 +260,16 @@ class TestTasksCLI(unittest.TestCase):
         data = json.loads(r.stdout)
         names = [t["name"] for t in data["tasks"]]
         self.assertEqual(names, ["plan-deferred.md"])
+
+    def test_tasks_default_excludes_reference_readmes(self):
+        # Add a README — it must NOT appear in default tasks output
+        (self.root / "2026-05-17-kaizen-md" / "README.md").write_text(
+            "# Bundle README\n")
+        r = self._run("tasks", "--json")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        data = json.loads(r.stdout)
+        names = [t["name"] for t in data["tasks"]]
+        self.assertNotIn("README.md", names)
 
     def test_tasks_human_output(self):
         r = self._run("tasks")

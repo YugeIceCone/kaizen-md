@@ -4,6 +4,8 @@
 > 2 sessions (cron `tick()`, persistent `watch-start`, new SessionStart/PostToolUse
 > `systems-check`). Map cadences, find coverage gaps, propose improvements.
 
+**Status:** SHIPPED — top 3 audit recommendations landed in `afd1c89`
+(systems-check expansion 4→8 + staleness flag + heartbeat rotation).
 **Date:** 2026-05-18 (sid 9f4c8972, post-restart)
 **Triggered by:** user — "trace kaizen daemon watcher heartbeat systems" +
 "audit heartbeat system surface".
