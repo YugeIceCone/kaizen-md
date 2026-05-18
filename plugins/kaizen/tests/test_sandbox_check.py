@@ -14,7 +14,7 @@ from pathlib import Path
 _KZ = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_KZ / "skills/workflow/scripts"))
 
-import test_isolation  # noqa: E402
+import sandbox_check  # noqa: E402
 
 
 class TestTestIsolation(unittest.TestCase):
@@ -26,26 +26,26 @@ class T(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td:
             pass
 '''
-        findings = test_isolation.scan_text(src, path="clean.py")
+        findings = sandbox_check.scan_text(src, path="clean.py")
         self.assertEqual(findings, [])
 
     def test_hardcoded_home_flagged(self):
         src = 'p = "/home/cherry86/somefile"\n'
-        findings = test_isolation.scan_text(src, path="bad.py")
+        findings = sandbox_check.scan_text(src, path="bad.py")
         self.assertTrue(any(f["rule"] == "hardcoded-home" for f in findings))
 
     def test_expanduser_claude_flagged(self):
         src = 'from pathlib import Path\np = Path("~/.claude/.kaizen/x").expanduser()\n'
-        findings = test_isolation.scan_text(src, path="bad.py")
+        findings = sandbox_check.scan_text(src, path="bad.py")
         self.assertTrue(any(f["rule"] == "expanduser-claude" for f in findings))
 
     def test_env_mutation_flagged(self):
         src = 'import os\nos.environ["KAIZEN_FOO"] = "bar"\n'
-        findings = test_isolation.scan_text(src, path="bad.py")
+        findings = sandbox_check.scan_text(src, path="bad.py")
         self.assertTrue(any(f["rule"] == "env-mutation" for f in findings))
 
     def test_real_dir_scan_returns_shape(self):
-        rep = test_isolation.scan(tests_dir=_KZ / "tests")
+        rep = sandbox_check.scan(tests_dir=_KZ / "tests")
         for k in ("tests_total", "findings", "violation_count"):
             self.assertIn(k, rep)
 

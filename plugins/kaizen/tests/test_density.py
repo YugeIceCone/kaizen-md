@@ -9,17 +9,17 @@ from pathlib import Path
 _KZ = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_KZ / "skills/workflow/scripts"))
 
-import test_density  # noqa: E402
+import density  # noqa: E402
 
 
 class TestTestDensity(unittest.TestCase):
     def test_count_public_functions(self):
         src = "def pub_one(): pass\ndef _priv(): pass\ndef pub_two(): pass\n"
-        self.assertEqual(test_density._public_funcs(src), 2)
+        self.assertEqual(density._public_funcs(src), 2)
 
     def test_count_test_methods(self):
         src = "class T:\n    def test_a(self): pass\n    def test_b(self): pass\n    def helper(self): pass\n"
-        self.assertEqual(test_density._test_methods(src), 2)
+        self.assertEqual(density._test_methods(src), 2)
 
     def test_synthetic_density(self):
         with tempfile.TemporaryDirectory() as td:
@@ -30,7 +30,7 @@ class TestTestDensity(unittest.TestCase):
                 "def a(): pass\ndef b(): pass\ndef c(): pass\n")
             (root / "tests/test_foo.py").write_text(
                 "class T:\n    def test_a(self): pass\n")
-            rep = test_density.scan(plugin_root=root)
+            rep = density.scan(plugin_root=root)
             self.assertEqual(rep["per_script"][0]["script"], "foo.py")
             self.assertEqual(rep["per_script"][0]["public_funcs"], 3)
             self.assertEqual(rep["per_script"][0]["test_methods"], 1)
