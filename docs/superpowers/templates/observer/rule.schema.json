@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kaizen-md/templates/observer/rule.schema.json",
+  "title": "Observer rule",
+  "description": "One entry in rules.yaml::rules[]. Re-read from disk on every evaluation — no caching, drift-resilient.",
+  "type": "object",
+  "required": ["id", "when", "verdict"],
+  "properties": {
+    "id":          { "type": "string", "pattern": "^[a-z0-9-]+$" },
+    "description": { "type": "string" },
+    "when": {
+      "type": "object",
+      "description": "Event-shape filter; all conditions AND-ed",
+      "properties": {
+        "event_kind": { "type": "string" },
+        "source":     { "type": "string" },
+        "tool":       { "type": "string" },
+        "subagent_type": { "type": "string" }
+      }
+    },
+    "match_params": {
+      "type": "object",
+      "description": "Regex/equality against the event's params blob",
+      "properties": {
+        "command_regex":   { "type": "string" },
+        "path_regex":      { "type": "string" },
+        "any_regex":       { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "aggregate": {
+      "type": "object",
+      "description": "Sliding-window count rules",
+      "required": ["window_seconds"],
+      "properties": {
+        "window_seconds": { "type": "integer", "minimum": 1 },
+        "count_gt":       { "type": "integer", "minimum": 0 },
+        "count_lt":       { "type": "integer", "minimum": 0 },
+        "group_by":       { "type": "string", "description": "Field name to group counts by" }
+      }
+    },
+    "requires_prior": {
+      "type": "object",
+      "description": "Temporal cross-event correlation",
+      "required": ["event_kind", "within_seconds"],
+      "properties": {
+        "event_kind":          { "type": "string" },
+        "within_seconds":      { "type": "integer", "minimum": 1 },
+        "result_summary_regex": { "type": "string" }
+      }
+    },
+    "match_meta": {
+      "type": "object",
+      "description": "kaizen-introspected booleans (cached_tools_hash_mismatch, etc.)",
+      "additionalProperties": true
+    },
+    "verdict":  { "enum": ["allow", "warn", "deny", "info"] },
+    "reason":   { "type": "string" }
+  },
+  "additionalProperties": false
+}
