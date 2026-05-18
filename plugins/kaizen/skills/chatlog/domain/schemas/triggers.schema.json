@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kaizen-md/chatlog/triggers.schema.json",
+  "title": "Chatlog rules file",
+  "description": "Top-level rules: list. Each rule has id (output filename), trigger (kind + params), and capture (window size).",
+  "type": "object",
+  "required": ["rules"],
+  "properties": {
+    "rules": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "trigger"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9_-]*$",
+            "description": "Output filename (id.jsonl) — kebab/snake-case"
+          },
+          "trigger": {
+            "oneOf": [
+              {
+                "type": "object",
+                "required": ["type", "event_type"],
+                "properties": {
+                  "type": {"const": "event_type"},
+                  "event_type": {"type": "string"}
+                },
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "required": ["type", "pattern"],
+                "properties": {
+                  "type": {"const": "user_keyword"},
+                  "pattern": {"type": "string", "description": "Python regex (re.IGNORECASE applied)"}
+                },
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "required": ["type", "tool_name"],
+                "properties": {
+                  "type": {"const": "assistant_tool_use"},
+                  "tool_name": {"type": "string"}
+                },
+                "additionalProperties": false
+              }
+            ]
+          },
+          "capture": {
+            "type": "object",
+            "properties": {
+              "before": {"type": "integer", "minimum": 0, "default": 0},
+              "after":  {"type": "integer", "minimum": 0, "default": 0}
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

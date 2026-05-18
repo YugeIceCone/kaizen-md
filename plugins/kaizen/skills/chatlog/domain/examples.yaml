@@ -1,0 +1,30 @@
+# Example chatlog rules — copy + tweak.
+# Validates against schemas/triggers.schema.json.
+
+rules:
+  # Find every time the user mentioned a gate failure.
+  - id: gate_failures
+    trigger:
+      type: user_keyword
+      pattern: "gate.*fail|gate.*block|gate.*denied"
+    capture:
+      before: 1   # 1 prior event for context
+      after: 5    # 5 following events (the fix flow)
+
+  # Every handoff call the assistant made.
+  - id: handoff_calls
+    trigger:
+      type: assistant_tool_use
+      tool_name: handoff
+    capture:
+      before: 0
+      after: 1   # the result line that follows the tool_use
+
+  # Every SessionStart / SessionEnd / PreCompact attachment.
+  - id: session_boundary_events
+    trigger:
+      type: event_type
+      event_type: attachment
+    capture:
+      before: 0
+      after: 0
