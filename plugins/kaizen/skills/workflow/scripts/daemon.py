@@ -59,6 +59,7 @@ UV = shutil.which("uv") or "uv"
 # v1.22.0+: state lives at ~/.claude/.kaizen/data/daemon/. KAIZEN_DAEMON_STATE still wins.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import _paths as _p  # noqa: E402
+import _daemon_jobs as _jobs  # noqa: E402
 
 STATE_DIR = Path(os.environ.get("KAIZEN_DAEMON_STATE", _p.DAEMON_DIR))
 STATE_FILE = STATE_DIR / "state.json"
@@ -387,6 +388,11 @@ def tick() -> dict:
         ok, out = _run_index_refresh()
         actions["index"] = actions.get("index", 0) + 1
         log_line("INFO", f"index-refresh: {out}")
+
+    # 6. Brain-audit — mine recent activity → Inbox drafts (cheap).
+    ok, msg, action = _jobs.run_brain_audit(state)
+    actions[action] = actions.get(action, 0) + 1
+    log_line("INFO" if ok else "ERROR", f"{action}: {msg}")
 
     save_state(state)
     log_line("INFO", "daemon tick complete")
