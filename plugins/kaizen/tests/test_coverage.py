@@ -21,7 +21,7 @@ from pathlib import Path
 
 
 _KZ_DIR = Path(__file__).resolve().parent.parent
-_SCRIPT = _KZ_DIR / "skills/workflow/scripts/coverage.py"
+_SCRIPT = _KZ_DIR / "scripts/quality/coverage.py"
 
 
 def _run(*args, root: Path | None = None) -> subprocess.CompletedProcess:

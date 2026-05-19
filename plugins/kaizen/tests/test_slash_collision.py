@@ -14,7 +14,7 @@ import unittest
 from pathlib import Path
 
 _REPO_ROOT = Path(__file__).resolve().parents[3]
-_SCRIPT = _REPO_ROOT / "plugins/kaizen/skills/workflow/scripts/slash_collision.py"
+_SCRIPT = _REPO_ROOT / "plugins/kaizen/scripts/quality/slash_collision.py"
 
 
 def _load():

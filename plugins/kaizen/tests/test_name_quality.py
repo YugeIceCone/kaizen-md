@@ -11,7 +11,7 @@ import unittest
 from pathlib import Path
 
 _KZ_DIR = Path(__file__).resolve().parent.parent
-_SCRIPT = _KZ_DIR / "skills/workflow/scripts/name_quality.py"
+_SCRIPT = _KZ_DIR / "scripts/quality/name_quality.py"
 
 
 def _run(*args) -> subprocess.CompletedProcess:
@@ -24,6 +24,7 @@ def _run(*args) -> subprocess.CompletedProcess:
 class TestTokenizers(unittest.TestCase):
     def setUp(self):
         sys.path.insert(0, str(_KZ_DIR / "skills/workflow/scripts"))
+        sys.path.insert(0, str(_KZ_DIR / "scripts/quality"))
         if "name_quality" in sys.modules:
             del sys.modules["name_quality"]
         import name_quality as nq
@@ -58,6 +59,7 @@ class TestTokenizers(unittest.TestCase):
 class TestScoreFile(unittest.TestCase):
     def setUp(self):
         sys.path.insert(0, str(_KZ_DIR / "skills/workflow/scripts"))
+        sys.path.insert(0, str(_KZ_DIR / "scripts/quality"))
         if "name_quality" in sys.modules:
             del sys.modules["name_quality"]
         import name_quality as nq
@@ -116,7 +118,7 @@ class TestRealPluginReport(unittest.TestCase):
                 self.assertIn(k, entry)
 
     def test_score_subcommand_on_real_file(self):
-        target = _KZ_DIR / "skills/workflow/scripts/coverage.py"
+        target = _KZ_DIR / "scripts/quality/coverage.py"
         r = _run("score", str(target), "--json")
         self.assertEqual(r.returncode, 0)
         data = json.loads(r.stdout)
