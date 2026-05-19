@@ -58,6 +58,8 @@ UV = shutil.which("uv") or "uv"
 
 # v1.22.0+: state lives at ~/.claude/.kaizen/data/daemon/. KAIZEN_DAEMON_STATE still wins.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+# MIGRATION BRIDGE — _paths still at skills/workflow/scripts/
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "skills" / "workflow" / "scripts"))
 import _paths as _p  # noqa: E402
 import _daemon_jobs as _jobs  # noqa: E402
 

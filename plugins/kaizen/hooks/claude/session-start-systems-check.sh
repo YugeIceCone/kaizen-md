@@ -17,7 +17,7 @@ _HOOK_DIR="$(cd "$(dirname "$_SCRIPT_REAL")" && pwd)"
 _PLUGIN_ROOT="$(cd "$_HOOK_DIR/../.." && pwd)"
 
 # Run as one-shot; daemon's systems-check appends a heartbeat row.
-uv run --script "$_PLUGIN_ROOT/skills/workflow/scripts/daemon.py" systems-check >/dev/null 2>&1 || true
+uv run --script "$_PLUGIN_ROOT/scripts/daemon/daemon.py" systems-check >/dev/null 2>&1 || true
 
 "$_HOOK_DIR/_trace.sh" "SessionStart-systems-check" "${CLAUDE_SESSION_ID:-}" 2>/dev/null || true
 

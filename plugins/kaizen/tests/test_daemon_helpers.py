@@ -22,6 +22,7 @@ from unittest import mock
 
 PLUGIN_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PLUGIN_ROOT / "skills" / "workflow" / "scripts"))
+sys.path.insert(0, str(PLUGIN_ROOT / "scripts" / "daemon"))
 
 import daemon  # noqa: E402
 

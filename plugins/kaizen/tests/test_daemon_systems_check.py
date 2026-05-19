@@ -34,7 +34,7 @@ import unittest
 from pathlib import Path
 
 _KZ = Path(__file__).resolve().parent.parent
-_DAEMON = _KZ / "skills/workflow/scripts/daemon.py"
+_DAEMON = _KZ / "scripts/daemon/daemon.py"
 
 
 class _SysCheckBase(unittest.TestCase):

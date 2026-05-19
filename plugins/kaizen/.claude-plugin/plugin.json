@@ -246,7 +246,7 @@
       "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/plugin-development/scripts/intake.py:*)",
       "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/*.py:*)",
       "Bash(uv run --script ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/*.py:*)",
-      "Bash(uv run --script ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/daemon.py:*)",
+      "Bash(uv run --script ${CLAUDE_PLUGIN_ROOT}/scripts/daemon/daemon.py:*)",
       "Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/*.sh:*)",
       "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/config.py:*)",
       "Bash(bash ${CLAUDE_PLUGIN_ROOT}/hooks/*.sh:*)",

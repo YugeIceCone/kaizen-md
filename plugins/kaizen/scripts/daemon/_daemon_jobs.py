@@ -24,6 +24,10 @@ from pathlib import Path
 
 _SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(_SCRIPT_DIR))
+# MIGRATION BRIDGE — legacy helpers + relocated domains
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "skills" / "workflow" / "scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts" / "brain"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts" / "indexers"))
 
 import _index_kit  # noqa: E402 — shared indexer primitives (drift-gated job factory)
 

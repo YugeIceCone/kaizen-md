@@ -549,6 +549,8 @@ def _check_indexer_stale() -> list[GateFinding]:
     state_file = state_dir / "indexer-state.json"
     try:
         sys.path.insert(0, str(_PLUGIN_ROOT / "skills" / "workflow" / "scripts"))
+        # Post-DOMAIN-6: _index_kit moved to scripts/daemon/
+        sys.path.insert(0, str(_PLUGIN_ROOT / "scripts" / "daemon"))
         import _index_kit as _ik  # type: ignore
     except ImportError:
         return []
