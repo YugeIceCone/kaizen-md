@@ -201,6 +201,67 @@ class TestAssessFileNotFound(HandoffAssessBase):
         self.assertNotEqual(r.returncode, 0)
 
 
+# ─── Parse-error resilience — silent FAILED guard (regression cover) ─
+
+
+_BROKEN_YAML = """---
+session: x
+date: 2026-05-19
+status: partial
+outcome: IN_PROGRESS
+---
+
+goal: x
+now: x
+test: noop
+
+done_this_session:
+  - task: real work that landed
+    files: []
+failed:
+  - 'Slash bodies need `!`bash -c 'exec ${BIN}'`` not `!`bash ${BIN}``.'
+blockers: []
+next: []
+questions: []
+decisions: []
+findings: []
+worked: []
+"""
+
+
+class TestAssessParseError(HandoffAssessBase):
+    """A YAML parse failure must NOT silently produce FAILED via
+    empty-signals. It must surface as bucket=NEEDS_AGENT,
+    method=parse_error, with a clear rationale — so the agent knows
+    the YAML is malformed, not the work."""
+
+    def test_broken_yaml_returns_needs_agent_not_failed(self):
+        p = self._write(_BROKEN_YAML)
+        r = self._run("--file", str(p), "--json")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        env = json.loads(r.stdout)
+        self.assertEqual(env["data"]["bucket"], "NEEDS_AGENT",
+                         f"silent FAILED on parse error: {env['data']}")
+        self.assertEqual(env["data"]["method"], "parse_error")
+        self.assertIn("parse", env["data"]["rationale"].lower())
+
+
+class TestParserSurfacesError(unittest.TestCase):
+    """Unit-level: _parse_handoff_yaml must record the failure, not
+    silently return an empty body."""
+
+    def test_parse_error_field_present_on_failure(self):
+        from handoff import _parse_handoff_yaml
+        parsed = _parse_handoff_yaml(_BROKEN_YAML)
+        self.assertIn("_parse_error", parsed)
+        self.assertTrue(parsed["_parse_error"])
+
+    def test_parse_error_absent_on_clean_yaml(self):
+        from handoff import _parse_handoff_yaml
+        parsed = _parse_handoff_yaml(_yaml_with(done=["x"]))
+        self.assertNotIn("_parse_error", parsed)
+
+
 class TestAssessHelp(unittest.TestCase):
     def test_help_works(self):
         r = subprocess.run(

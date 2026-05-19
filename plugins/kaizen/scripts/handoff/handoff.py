@@ -211,13 +211,16 @@ def _parse_handoff_yaml(text: str) -> dict:
             fm_date = line.split(":", 1)[1].strip()
             break
 
+    parse_error: str | None = None
     try:
         import yaml as _yaml
         body = _yaml.safe_load(body_text) or {}
-    except ImportError:
+    except ImportError as exc:
         body = {}
-    except Exception:
+        parse_error = f"pyyaml unavailable: {exc}"
+    except Exception as exc:
         body = {}
+        parse_error = f"{type(exc).__name__}: {exc}"
 
     if not isinstance(body, dict):
         body = {}
@@ -233,7 +236,7 @@ def _parse_handoff_yaml(text: str) -> dict:
         raw = body.get(key) or []
         return [str(x) for x in raw if isinstance(x, (str, int, float))]
 
-    return {
+    out: dict = {
         "date": fm_date or str(body.get("date", "")),
         "done_files": list(dict.fromkeys(done_files)),  # dedupe, preserve order
         "done_items": body.get("done_this_session") or [],  # raw list-of-dicts
@@ -245,6 +248,9 @@ def _parse_handoff_yaml(text: str) -> dict:
         "decisions": body.get("decisions") or [],
         "findings":  body.get("findings")  or [],
     }
+    if parse_error:
+        out["_parse_error"] = parse_error
+    return out
 
 
 def _compute_assessment_signals(parsed: dict) -> dict:
@@ -452,6 +458,13 @@ def _cmd_verify(args) -> int:
     qualitative    = _qualitative_residue(parsed)
     verdict        = _rollup_verdict(file_checks, pattern_checks)
 
+    parse_error = parsed.get("_parse_error")
+    if parse_error:
+        # Parser failure leaves every check empty (file_checks=[],
+        # pattern_checks=[]) which would silently roll up as `clean`.
+        # Force `regression` so the agent investigates the YAML itself.
+        verdict = "regression"
+
     data = {
         "verdict": verdict,
         "handoff_file": str(fp.resolve()),
@@ -461,6 +474,8 @@ def _cmd_verify(args) -> int:
         "commit_delta": commit_delta,
         "qualitative_residue": qualitative,
     }
+    if parse_error:
+        data["parse_error"] = parse_error
     # BK-010: when caller passes --dxm-session, surface live tool churn
     # from the last 60s of dxm capture. Optional field.
     if args.dxm_session:
@@ -1268,27 +1283,42 @@ def _cmd_assess(args) -> int:
     parsed["test_delta"] = int(getattr(args, "test_delta", 0) or 0)
     signals = _compute_assessment_signals(parsed)
 
-    result = _OUTCOME_RUBRIC.evaluate(signals)
-    data = {
-        "bucket":      result.bucket,
-        "method":      result.method,
-        "confidence":  float(result.confidence),
-        "handoff_file": str(fp.resolve()),
-        "signals":     signals,
-        "rationale":   result.rationale,
-    }
+    parse_error = parsed.get("_parse_error")
+    if parse_error:
+        # Silent-FAILED guard: parser failure leaves every signal at 0,
+        # which the rubric reads as `completed_ratio < 0.2 → FAILED`.
+        # Surface as NEEDS_AGENT so the agent investigates the YAML
+        # itself before trusting the outcome.
+        data = {
+            "bucket":      "NEEDS_AGENT",
+            "method":      "parse_error",
+            "confidence":  1.0,
+            "handoff_file": str(fp.resolve()),
+            "signals":     signals,
+            "rationale":   f"YAML parse failed; signals unreliable. {parse_error}",
+        }
+    else:
+        result = _OUTCOME_RUBRIC.evaluate(signals)
+        data = {
+            "bucket":      result.bucket,
+            "method":      result.method,
+            "confidence":  float(result.confidence),
+            "handoff_file": str(fp.resolve()),
+            "signals":     signals,
+            "rationale":   result.rationale,
+        }
 
     _dxm_emit.emit_subcommand_complete(
         "handoff", "assess",
-        {"bucket": result.bucket, "method": result.method,
-         "confidence": result.confidence},
+        {"bucket": data["bucket"], "method": data["method"],
+         "confidence": data["confidence"]},
     )
 
     if args.json:
         try:
             verdict = (
-                "green" if result.bucket == "SUCCEEDED" else
-                "red"   if result.bucket == "FAILED" else
+                "green" if data["bucket"] == "SUCCEEDED" else
+                "red"   if data["bucket"] == "FAILED" else
                 "yellow"
             )
             schema_cli.lens_emit(
@@ -1301,9 +1331,9 @@ def _cmd_assess(args) -> int:
             return 2
     else:
         print(f"[kaizen-handoff assess] {fp.resolve()}")
-        print(f"  bucket:    {result.bucket}")
-        print(f"  method:    {result.method}  (confidence {result.confidence:.2f})")
-        print(f"  rationale: {result.rationale}")
+        print(f"  bucket:    {data['bucket']}")
+        print(f"  method:    {data['method']}  (confidence {data['confidence']:.2f})")
+        print(f"  rationale: {data['rationale']}")
         print(f"  signals:   {signals}")
     return 0
 

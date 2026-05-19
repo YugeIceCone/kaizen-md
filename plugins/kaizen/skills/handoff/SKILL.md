@@ -113,6 +113,14 @@ Open the scaffolded YAML at `yaml_path` and Edit each field in
   as a nested mapping and the body fails to parse. Use ` — ` or
   `;`, or quote the value. `file.rs:222` is fine (no space after
   the colon).
+- **Double every inner `'` when emitting single-quoted scalars.** YAML
+  single-quoted strings escape an embedded apostrophe by doubling it
+  (`'don''t'`), not by backslash. The hand-written `failed:` entry
+  `'... `bash -c 'exec ${BIN}'` ...'` silently broke the 2026-05-19
+  handoff because the inner `'` closed the scalar prematurely. The
+  parser now flags this as `bucket=NEEDS_AGENT, method=parse_error`
+  rather than silent FAILED, but the safer fix is at write-time: use
+  the `>-` folded scalar or double the apostrophes.
 - Prefer file-path-with-line references (`crates/core/src/x.rs:222`)
   over inline code blocks.
 

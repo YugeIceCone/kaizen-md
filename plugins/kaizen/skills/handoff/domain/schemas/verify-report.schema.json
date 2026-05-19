@@ -74,6 +74,10 @@
       "type": "object",
       "description": "BK-010: when --dxm-session is set, surfaces last-60s per-tool counts from dxm. Empty object when dxm is empty or unavailable.",
       "additionalProperties": { "type": "integer", "minimum": 0 }
+    },
+    "parse_error": {
+      "type": "string",
+      "description": "Set when _parse_handoff_yaml failed to load the YAML body. Forces verdict=regression — the YAML itself is malformed, so file/pattern checks ran on an empty body and cannot be trusted."
     }
   },
   "$defs": {

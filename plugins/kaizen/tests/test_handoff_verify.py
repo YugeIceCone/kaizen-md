@@ -321,6 +321,40 @@ class TestVerifyMissingFileArg(HandoffVerifyBase):
         self.assertNotEqual(result.returncode, 0)
 
 
+_BROKEN_YAML = """---
+session: x
+date: 2026-05-19
+status: partial
+outcome: IN_PROGRESS
+---
+
+goal: x
+now: x
+
+done_this_session:
+  - task: real work that landed
+    files: []
+failed:
+  - 'Slash bodies need `!`bash -c 'exec ${BIN}'`` not `!`bash ${BIN}``.'
+worked: []
+"""
+
+
+class TestVerifyParseError(HandoffVerifyBase):
+    """A YAML parse failure must NOT silently produce verdict=clean
+    via an empty body. It must flag the parse failure so the agent
+    knows the YAML is malformed, not the codebase."""
+
+    def test_broken_yaml_does_not_report_clean(self):
+        p = self._write_handoff(_BROKEN_YAML)
+        result = self._run("--file", str(p), "--json")
+        env = json.loads(result.stdout)
+        self.assertNotEqual(env["data"]["verdict"], "clean",
+                            f"silent CLEAN on parse error: {env['data']}")
+        self.assertIn("parse_error", env["data"],
+                      "verify envelope must surface parse_error field")
+
+
 class TestVerifyHelp(unittest.TestCase):
     def test_help_works(self):
         result = subprocess.run(

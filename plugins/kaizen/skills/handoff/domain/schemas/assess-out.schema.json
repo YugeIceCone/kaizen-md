@@ -10,7 +10,7 @@
     "bucket": {
       "enum": ["SUCCEEDED", "PARTIAL_PLUS", "PARTIAL_MINUS", "FAILED", "NEEDS_AGENT"]
     },
-    "method":  { "enum": ["deterministic", "fallback"] },
+    "method":  { "enum": ["deterministic", "fallback", "parse_error"] },
     "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
     "handoff_file": { "type": "string" },
     "signals": {
