@@ -196,7 +196,7 @@ intents:
       confidence: 0.85
 
   - id: self-improving-curate
-    description: User wants to curate auto-memory — suggest /kaizen:self-improving.
+    description: User wants to curate auto-memory — daemon runs this on tick; suggest the bin for on-demand invocation.
     triggers:
       - { kind: phrase, pattern: "(what (has|have) (claude|i|we) learned)", case_insensitive: true }
       - { kind: phrase, pattern: "(promote|graduate) (this|that) (learning|pattern|rule)", case_insensitive: true }
@@ -205,7 +205,7 @@ intents:
       - { kind: phrase, pattern: "(extract|distill) (a )?skill from", case_insensitive: true }
       - { kind: phrase, pattern: "self.?improv(e|ing)", case_insensitive: true }
     action:
-      suggest: "/kaizen:self-improving  # review | promote | extract | health"
+      suggest: "kaizen-self-improving  # review | promote | extract | health (bin form; daemon runs on tick)"
       subcommand: self-improving
       confidence: 0.75
 

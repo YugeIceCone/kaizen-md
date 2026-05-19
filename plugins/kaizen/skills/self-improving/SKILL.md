@@ -29,7 +29,7 @@ The brain / memory stack already has:
 Where things live, in priority order:
 
 - **`~/.claude/CLAUDE.md`** — global preferences. You write. Full-file load every session.
-- **`./CLAUDE.md`** (project root) — project rules. You + `/kaizen:self-improving promote` write. Full-file load every session.
+- **`./CLAUDE.md`** (project root) — project rules. You + `kaizen-self-improving promote` write. Full-file load every session.
 - **`~/.claude/.kaizen/brain/Persona.md`** — load-bearing directives + Top Beliefs. Loaded every session via SessionStart hook.
 - **`~/.claude/.kaizen/brain/Notes/pref-*.md`** — beliefs with `confidence` + `sources_count` + `freshness`. Linked from Persona.md `## Top Beliefs`.
 - **`~/.claude/projects/<slug>/memory/MEMORY.md`** — project learnings. Claude (auto) writes. First 200 lines loaded.

@@ -7,7 +7,7 @@ allowed-tools: ["AskUserQuestion", "Bash(${CLAUDE_PLUGIN_ROOT}/bin/kaizen-help-g
 
 # /kaizen:help
 
-Static taxonomy of all 44 `/kaizen:*` commands. **One screen, zero bash
+Static taxonomy of all 43 `/kaizen:*` commands. **One screen, zero bash
 execution.** For full per-command docs use `kaizen help <name>`. Auto-
 generated from `commands/*.md` frontmatter via `kaizen-help-gen`.
 
@@ -23,7 +23,7 @@ the wizard and emit the corresponding slice directly.
 - `audit/quality` (8)
 - `workflow` (5)
 - `observability` (5)
-- `brain/memory` (3)
+- `brain/memory` (2)
 - Other (overflow: plugin-meta / discovery/search / intent/session / dev-aids)
 
 After the user picks, dispatch:
@@ -57,12 +57,11 @@ dispatch the same way.
 | `context` | CC context-window state report - tokens used, percentage, zone (green/yellow/red), |
 | `statusline` | Install or inspect the kaizen statusline - one-line status bar (context-window % + |
 
-## brain/memory (3)
+## brain/memory (2)
 
 | Command | Does |
 |---|---|
 | `brain` | Second Brain - capture / search / promote / audit / evolve + zero-roundtrip block- |
-| `self-improving` | Curate Claude Code auto-memory into durable project knowledge. `review` flags prom |
 | `gold` | Incidental-discovery + learnings tracker. Captures mid-work "ha!" moments before t |
 
 ## workflow (5)
