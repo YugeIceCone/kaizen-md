@@ -10,13 +10,13 @@ _(none)_
 
 ## Next up
 
-- [ ] **BK-018** kaizen:debug — code-checker + linter for Python + JSON Schema + YAML + JSONL — probe: `kaizen-debug check --all on a clean tree returns green` — verify: `Integration test injects breakage per axis (bad py syntax / schema-invalid yaml / malformed jsonl / unescaped-quote yaml — the case that silently broke handoff assess on 2026-05-19) and confirms each axis fails independently`  `[debug lint schema yaml jsonl]`
 - [ ] **BK-019** kaizen:backlog — debug + fix + improve + optimize pass — probe: `kaizen-backlog list/add/start/tick/park/done all return canonical envelopes; JSON↔MD generation is byte-stable across N round-trips; no orphaned BK-N IDs after rebases; verbs interactive when args omitted (AskUserQuestion)` — verify: `Audit existing surface for: (a) shapes/regressions — orphan IDs, status transitions, edge cases in JSON parse; (b) UX — argparse error messages, missing-arg hints, default sections; (c) performance — N=500 backlog items list time, regen time; (d) optimization — schema validation, atomic write, hook integration. Ship targeted fixes + benchmarks. Integration test exercises every verb end-to-end against a sandboxed .kaizen/`  `[backlog quality audit]`
 - [ ] **BK-020** kaizen:karpathy-check — automation upgrades — probe: `/kaizen:karpathy-check fires automatically on commit-msg / pre-commit boundaries (opt-in); CI workflow runs it on PRs; threshold + scope configurable via .kaizen.toml` — verify: `Wire as opt-in pre-commit hook (KAIZEN_KARPATHY_AUTOCHECK=1) firing on staged diff; add gha workflow step; surface findings in gatekeeper-style envelope; integration test: commit with deliberate over-nesting fails the autocheck when knob is set, passes when off. Also: structured JSON output mode for CI gating, severity thresholds (warn-only vs block), and per-axis disable knobs`  `[karpathy automation gate ci]`
 
 ## Done (this week)
 
 - [x] **BK-012** Brainstorming skill — add per-idea confidence score + deferral threshold — probe: `/kaizen:brainstorming today produces a flat list of ideas; no quantitative basis for deferral. Should expose a 0.0-1.0 confidence per idea + a configurable threshold for KEEP vs Phase 2 vs YAGNI cutoffs.` — verify: `brainstorming output emits {description, confidence, deferral_bucket} per idea; threshold configurable via skill arg; bucket auto-suggested + user-confirmable`
+- [x] **BK-018** kaizen:debug — code-checker + linter for Python + JSON Schema + YAML + JSONL — probe: `kaizen-debug check --all on a clean tree returns green` — verify: `Integration test injects breakage per axis (bad py syntax / schema-invalid yaml / malformed jsonl / unescaped-quote yaml — the case that silently broke handoff assess on 2026-05-19) and confirms each axis fails independently`  `[debug lint schema yaml jsonl]`
 
 ## Parked / deferred
 
