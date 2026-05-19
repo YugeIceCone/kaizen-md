@@ -3,7 +3,7 @@
 Pure, side-effect-light primitives consumed by ``metrics.py`` (CLI)
 and ``metrics_mcp.py`` (MCP server). Carved out of the original
 single-file ``metrics.py`` so the feature matches the canonical
-11-slot shape (``_<feature>.py`` core + ``<feature>.py`` public CLI).
+feature shape (``_<feature>.py`` core + ``<feature>.py`` public CLI).
 
 What lives here:
 

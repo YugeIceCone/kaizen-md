@@ -97,8 +97,9 @@ artifacts:
     template: null
     requires: [refactor]
     description: |
-      Stage 7 — run `kaizen-gatekeeper check --staged` (9 sub-gates
-      aggregated) and `validate.py --feature <name>`. Both must be
+      Stage 7 — run `kaizen-gatekeeper check --staged` (aggregates
+      every registered sub-gate; live list via `kaizen-gatekeeper
+      list`) and `validate.py --feature <name>`. Both must be
       green/yellow before proceeding. Red blocks the commit.
 
   - id: document

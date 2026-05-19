@@ -84,4 +84,4 @@ output (current default).
 ## See also
 
 - `/kaizen:audit` — whole-repo comprehensive audit (different mode)
-- `/kaizen:gatekeeper check --all` — aggregated verdict across 9 sub-gates (including these 5)
+- `kaizen-gatekeeper check --all` — aggregated verdict across every registered sub-gate (including these 5 axes); `kaizen-gatekeeper list` shows the live registry

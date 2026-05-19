@@ -1,10 +1,10 @@
 """kaizen metrics — rollup + never-used + skip-detection CLI.
 
 Public CLI surface over the trace log. Core primitives live in
-``_metrics.py`` (carved out 2026-05-14 so the feature matches the
-canonical 11-slot shape — ``_<feature>.py`` core + ``<feature>.py``
-public CLI). This module is argparse + the ``_cmd_*`` handlers;
-all the actual logic is imported from ``_metrics``.
+``_metrics.py`` so the feature matches the canonical feature shape
+(``_<feature>.py`` core + ``<feature>.py`` public CLI). This module
+is argparse + the ``_cmd_*`` handlers; all the actual logic is
+imported from ``_metrics``.
 
 ## Subcommands
 
