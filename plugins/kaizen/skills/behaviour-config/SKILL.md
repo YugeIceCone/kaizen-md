@@ -117,15 +117,15 @@ Examples:
 ## Authoring workflow
 
 ```
-1. /kaizen:rules template deletion-allow > /tmp/new-rule.md
+1. kaizen-rules template deletion-allow > /tmp/new-rule.md
    (then edit /tmp/new-rule.md to taste)
 
 2. cp /tmp/new-rule.md ~/.claude/.kaizen/brain/Notes/kaizen-<name>.md
 
-3. /kaizen:rules validate
+3. kaizen-rules validate
    → ✓ all N rules valid
 
-4. /kaizen:rules list
+4. kaizen-rules list
    → see your new rule alongside the others
 
 5. (next commit) the gate consults the rule automatically
@@ -146,7 +146,7 @@ The plugin's rule scanner skips `.disabled` files. Reverse the rename to re-enab
 ## Schema validation
 
 ```bash
-/kaizen:rules validate
+kaizen-rules validate
 ```
 
 Catches:

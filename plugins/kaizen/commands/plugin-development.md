@@ -182,3 +182,16 @@ bins (`kaizen-gatekeeper`, `kaizen-iron-laws`, `kaizen-rubric`,
 `kaizen-surface`, the validator script path, the workflow runner
 path, the help.md location), agents + users dispatch through one
 verb.
+
+## Folded surface (formerly separate slashes)
+
+Two slashes folded here in the cat-2 consolidation — bins stay reachable:
+
+| Concern | Bin (direct) | Use case |
+|---|---|---|
+| Brain-sourced rule inspection | `kaizen-rules` / `kaizen-iron-laws` | `list | show <name> | validate | template` — was `/kaizen:rules` |
+| Workflow-schema inspection | `python3 scripts/workflow/workflow_runner.py {list|show|branches|validate}` | declarative DAG inspection — was `/kaizen:schema` |
+
+Reach via this hub's `rules` verb (already wired) or the bins
+directly. Both schemas + rules continue to drive the
+behaviour-config / iron-laws / workflow surfaces.
