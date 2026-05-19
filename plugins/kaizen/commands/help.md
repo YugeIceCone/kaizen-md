@@ -130,7 +130,7 @@ dispatch the same way.
 
 | Command | Does |
 |---|---|
-| `debug` | Universal error-locator + bin-smoke surface. Verbs - scan | parse | replay | lint  |
+| `debug` | Universal error-locator + bin-smoke + parse-validity surface. Verbs - scan | parse |
 | `test-suite` | Run plugin test SUITE via kaizen-tests harness (unittest+pytest+bash, parallel). D |
 
 ## Drill-down (single CLI roundtrip)

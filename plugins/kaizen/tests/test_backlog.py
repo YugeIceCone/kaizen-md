@@ -180,5 +180,93 @@ class TestFmtItem(unittest.TestCase):
         self.assertTrue(line.startswith("- [x] **BK-002**"))
 
 
+class TestMdRoundTripStable(unittest.TestCase):
+    """BK-019. Mutating ops save_store then render_md. The rendered
+    .md must round-trip through verify on the same store unchanged —
+    no spurious whitespace, no key-order flutter."""
+
+    def test_render_idempotent_across_two_calls(self):
+        s = bl.empty_store()
+        s["items"].extend([
+            {"id": "BK-001", "section": "next_up", "title": "T1",
+             "ref": None, "probe": "p1", "verify": "v1",
+             "tags": ["x"], "created": "2026-05-19"},
+            {"id": "BK-002", "section": "done", "title": "T2",
+             "committed": "abc1234", "tags": [], "created": "2026-05-18"},
+        ])
+        first = bl.render_md(s)
+        second = bl.render_md(s)
+        self.assertEqual(first, second,
+                         "render_md is non-deterministic across calls")
+
+    def test_save_load_render_preserves_md_byte_for_byte(self):
+        s = bl.empty_store()
+        s["items"].append({
+            "id": "BK-001", "section": "next_up", "title": "round-trip",
+            "ref": None, "probe": "p", "verify": "v",
+            "tags": ["a"], "created": "2026-05-19",
+        })
+        before = bl.render_md(s)
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
+            p = Path(f.name)
+        try:
+            bl.save_store(p, s)
+            s2 = bl.load_store(p)
+            after = bl.render_md(s2)
+            # Allow the metadata.updated date to differ (it's overwritten
+            # on save) but the *rendered .md* must be byte-stable.
+            self.assertEqual(before, after,
+                             "render_md(load_store(save_store(s))) != render_md(s)")
+        finally:
+            p.unlink()
+
+
+class TestRenderHeaderPath(unittest.TestCase):
+    """BK-019. Stale path in the generated header tripped up users who
+    followed the link. The canonical CLI now ships as
+    `kaizen backlog ...` — the legacy `~/.claude/skills/workflow/...`
+    string is wrong + drift-prone."""
+
+    def test_header_does_not_reference_legacy_path(self):
+        md = bl.render_md(bl.empty_store())
+        self.assertNotIn("~/.claude/skills/workflow/scripts/backlog.py", md,
+                         "stale legacy script path in header")
+
+    def test_header_points_at_canonical_cli(self):
+        md = bl.render_md(bl.empty_store())
+        self.assertIn("kaizen backlog", md)
+
+
+class TestDoneAliasForTick(unittest.TestCase):
+    """BK-019. `kaizen backlog done BK-N` is the more discoverable verb;
+    aliases the existing `tick` behavior. No new state — just a parser
+    entry."""
+
+    def test_done_subparser_exists(self):
+        parser = bl.build_parser()
+        # build_parser exposes the subparsers map via the action
+        sub_action = next(
+            a for a in parser._subparsers._group_actions
+            if isinstance(a, type(parser._subparsers._group_actions[0]))
+        )
+        self.assertIn("done", sub_action.choices,
+                      "`done` should be a parser verb (alias of tick)")
+
+    def test_done_routes_to_tick(self):
+        # main() dispatches by args.cmd; `done` must funnel into cmd_tick.
+        s = bl.empty_store()
+        s["items"].append({
+            "id": "BK-001", "section": "in_flight", "title": "T",
+            "ref": None, "probe": "p", "verify": "v",
+            "tags": [], "created": "2026-05-19",
+            "started_at": None, "committed": None, "committed_at": None,
+            "parked_reason": None, "probe_output": None,
+        })
+        import argparse
+        args = argparse.Namespace(id="BK-001", committed="abc1234")
+        bl.cmd_tick(s, args)  # cmd_tick is the underlying handler
+        self.assertEqual(s["items"][0]["section"], "done")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

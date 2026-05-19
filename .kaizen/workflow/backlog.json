@@ -389,6 +389,46 @@
       "committed_at": null,
       "parked_reason": null,
       "probe_output": null
+    },
+    {
+      "id": "BK-021",
+      "section": "next_up",
+      "title": "kaizen:handoff — verify gains freshness signal (age + commit-delta thresholds)",
+      "ref": null,
+      "probe": "kaizen-handoff verify on a stale handoff returns verdict=drift with freshness reason; on a current handoff returns clean; thresholds configurable via .kaizen.toml",
+      "verify": "Add age signal (days since handoff date) and commit-delta signal (count from handoff HEAD to current HEAD). Roll into verify-rules.yaml::verdict_rollup. Thresholds: stale=>30 days OR >100 commits = drift; >90 days OR >500 commits = regression. Integration test: synthesize handoff dated 60 days ago + 200 commits later, assert verdict='drift' with freshness in qualitative_residue or new freshness:{age_days, commit_delta, verdict} envelope field. Wire schema extension. SKILL.md note about the threshold knobs",
+      "tags": [
+        "handoff",
+        "verify",
+        "freshness",
+        "staleness"
+      ],
+      "created": "2026-05-19",
+      "started_at": null,
+      "committed": null,
+      "committed_at": null,
+      "parked_reason": null,
+      "probe_output": null
+    },
+    {
+      "id": "BK-022",
+      "section": "next_up",
+      "title": "kaizen:backlog → Claude Code TaskList auto-sync (no roundtrip)",
+      "ref": null,
+      "probe": "kaizen-backlog add/start/tick/park automatically reflects into the active CC TaskList (subject/description/status), so the agent doesn't need separate TaskCreate calls",
+      "verify": "Hook layer that bridges backlog state changes to the CC task surface. Two directions: (a) on 'kaizen-backlog add', emit a TaskCreate equivalent via a SessionState-aware mechanism (file watcher or daemon tick) so the next agent prompt picks it up; (b) on 'kaizen-backlog tick/done', emit TaskUpdate completed. Constraints: CC TaskList lives in-harness, not on disk — so the bridge needs either a CC SDK hook OR a marker file the agent loads on next prompt. Likely shape: write to .kaizen/inbox/backlog-task-events.jsonl, then UserPromptSubmit hook surfaces unprocessed events as 'pending task suggestions' for the agent to ack with TaskCreate calls. Integration test asserts add-then-prompt surfaces the suggestion.",
+      "tags": [
+        "backlog",
+        "task-list",
+        "automation",
+        "bridge"
+      ],
+      "created": "2026-05-19",
+      "started_at": null,
+      "committed": null,
+      "committed_at": null,
+      "parked_reason": null,
+      "probe_output": null
     }
   ],
   "decisions": []
