@@ -23,7 +23,7 @@ from pathlib import Path
 
 _KZ_DIR = Path(__file__).resolve().parent.parent
 _SCRIPTS = _KZ_DIR / "skills/workflow/scripts"
-_HANDOFF_PY = _SCRIPTS / "handoff.py"
+_HANDOFF_PY = _KZ_DIR / "scripts/handoff/handoff.py"
 _INTENT_PY = _SCRIPTS / "intent.py"
 
 

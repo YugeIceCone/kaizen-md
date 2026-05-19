@@ -15,6 +15,8 @@ import unittest
 from pathlib import Path
 
 _KZ_DIR = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(_KZ_DIR / "scripts/handoff"))
+# legacy sibling helpers (_atomic, _dxm_emit etc.)
 sys.path.insert(0, str(_KZ_DIR / "skills/workflow/scripts"))
 sys.path.insert(0, str(_KZ_DIR / "scripts/rules"))
 sys.path.insert(0, str(_KZ_DIR / "scripts/brain"))
@@ -272,7 +274,7 @@ class TestBridge(unittest.TestCase):
 
 class TestCli(SandboxBase):
     def _run(self, *args):
-        script = _KZ_DIR / "skills/workflow/scripts/handoff.py"
+        script = _KZ_DIR / "scripts/handoff/handoff.py"
         return subprocess.run(
             ["python3", str(script), *args],
             capture_output=True, text=True, timeout=30,
