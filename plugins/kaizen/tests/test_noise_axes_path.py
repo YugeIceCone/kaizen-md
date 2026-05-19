@@ -6,7 +6,7 @@ path_migrate path), not via the hardcoded legacy `~/.claude/.kaizen/
 trace/events.jsonl` default that pre-dates the v1.39 path restructure.
 
 Why it matters - the noise axes report "0 events / log not found"
-when they look at the legacy path post-migration. /kaizen:metrics
+when they look at the legacy path post-migration. kaizen-metrics
 noise rolls up green not because the log is clean but because the
 axes can't find it. False-green is worse than yellow.
 """

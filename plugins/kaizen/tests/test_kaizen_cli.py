@@ -154,7 +154,10 @@ class TestSlashCommandInventory(unittest.TestCase):
 
     def test_inventory_returns_list_of_dicts(self):
         cmds = self.cli._list_slash_commands()
-        self.assertGreater(len(cmds), 30, "expected many slash commands")
+        # Post consolidate-2 D4 the menu shrinks toward 9 (8 roots +
+        # audit:axis sub-namespace). Threshold relaxed so the assertion
+        # continues to make sense through D5-D7 without re-touching.
+        self.assertGreater(len(cmds), 8, "expected a populated slash menu")
         for c in cmds:
             self.assertIsInstance(c, dict)
             self.assertIn("name", c)

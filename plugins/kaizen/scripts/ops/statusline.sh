@@ -8,7 +8,7 @@
 #     "command": "bash ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/statusline.sh"
 #   }
 #
-# Or use /kaizen:statusline install for guided setup.
+# Or use kaizen-statusline install for guided setup.
 #
 # Reads JSON event from stdin (Claude Code statusline schema). Writes
 # one line to stdout. Designed to render in <50 ms.

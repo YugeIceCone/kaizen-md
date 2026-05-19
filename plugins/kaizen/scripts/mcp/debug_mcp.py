@@ -14,7 +14,7 @@ Deferred (not exposed via MCP):
   scan / parse / tail       interactive or streaming — agent-unfriendly
   replay                    runs arbitrary commands — too broad surface
 
-Wraps scripts/debug.py — same logic /kaizen:debug runs.
+Wraps scripts/debug.py — same logic kaizen-debug runs.
 """
 from __future__ import annotations
 

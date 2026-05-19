@@ -1,4 +1,4 @@
-"""TDD — context_mcp.py exposes /kaizen:context as an MCP tool.
+"""TDD — context_mcp.py exposes kaizen-context as an MCP tool.
 
 Agents query context-window state every few turns to decide compaction
 + auto-handoff timing. Subprocess-via-Bash adds overhead; MCP gives
@@ -56,7 +56,7 @@ class TestContextMcp(unittest.TestCase):
             import json
             result = json.loads(result)
         self.assertIsInstance(result, dict)
-        # Must carry at least these keys (per /kaizen:context contract)
+        # Must carry at least these keys (per kaizen-context contract)
         for key in ("zone", "recommendation"):
             self.assertIn(key, result,
                            f"context_status missing key {key!r}; got {result}")

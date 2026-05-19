@@ -70,7 +70,7 @@ try:
 except ImportError as e:
     sys.stderr.write(
         f"kaizen-trace-search-mcp: missing dep: {e}\n"
-        "Run: /kaizen:trace-search install\n"
+        "Run: kaizen-trace-search install\n"
     )
     sys.exit(1)
 

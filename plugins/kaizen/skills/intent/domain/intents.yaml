@@ -367,7 +367,7 @@ intents:
       - { kind: phrase, pattern: "(my |the )?inbox", case_insensitive: true }
       - { kind: phrase, pattern: "(draft|pending) (memory|review)", case_insensitive: true }
     action:
-      suggest: "/kaizen:inbox list  # peek / drain / clear"
+      suggest: "kaizen-inbox list  # peek / drain / clear"
       subcommand: inbox
       confidence: 0.7
 
@@ -378,7 +378,7 @@ intents:
       - { kind: phrase, pattern: "(adoption|never.used) (metric|stat)", case_insensitive: true }
       - { kind: phrase, pattern: "(session )?metrics", case_insensitive: true }
     action:
-      suggest: "/kaizen:metrics skips  # also: lifetime | never-used | graveyard"
+      suggest: "kaizen-metrics skips  # also: lifetime | never-used | graveyard"
       subcommand: metrics
       confidence: 0.8
 

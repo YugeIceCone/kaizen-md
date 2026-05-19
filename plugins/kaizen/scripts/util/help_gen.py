@@ -231,7 +231,7 @@ def render_body(commands: list[dict]) -> str:
         "- `kaizen help <name>` — full per-command docstring",
         "- `kaizen list --json` — machine-readable inventory",
         "- `kaizen <bin> --help` — per-bin usage",
-        "- `/kaizen:status` — kaizen install health snapshot",
+        "- `kaizen-status` — kaizen install health snapshot",
         "",
         "## Zero-token-cost view (for user, not agent)",
         "",

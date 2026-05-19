@@ -23,7 +23,7 @@ test -L .kaizen/hooks/pre-commit                                  # gate active
 git config --get core.hooksPath | grep -q '\.kaizen/hooks'        # local hooksPath set
 ```
 
-You're in a kaizen-installed session if `kaizen:*` commands appear in your skill catalog (look for `/kaizen:backlog`, `/kaizen:precommit`, `/kaizen:trace`).
+You're in a kaizen-installed session if `kaizen:*` commands appear in your skill catalog (look for `/kaizen:backlog`, `/kaizen:precommit`, `kaizen-trace`).
 
 If neither: this skill doesn't apply — kaizen isn't here.
 

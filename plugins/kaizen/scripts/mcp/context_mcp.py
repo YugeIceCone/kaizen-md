@@ -7,7 +7,7 @@
 
 Wraps the per-call `context.py` helpers so agents can query the current
 context-window state structurally (vs subprocess-via-Bash with stdout
-parsing). Sister to `/kaizen:context` slash.
+parsing). Sister to `kaizen-context` slash.
 
 Tools:
   context_status() → {tokens, limit, pct, zone, recommendation}

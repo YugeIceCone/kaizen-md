@@ -164,7 +164,7 @@ async def state_inbox_peek(n: int = 5) -> list[dict]:
 
     Returns up to N pending {ts, sid, text, drained, ...}. Use this
     to see what the user typed during a busy tool sequence. Drain
-    via the slash command (`/kaizen:inbox drain`) — that's mutating
+    via the slash command (`kaizen-inbox drain`) — that's mutating
     and stays user-driven."""
     import inbox as ix  # type: ignore
     msgs = ix.list_messages(pending_only=True)

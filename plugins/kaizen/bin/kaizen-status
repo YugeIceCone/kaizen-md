@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# kaizen-status — CLI shortcut for /kaizen:status (read-only diagnostic).
+# kaizen-status — CLI shortcut for kaizen-status (read-only diagnostic).
 # Strict-name wrapper required by iron-law `bin-wrapper-per-cli`.
 
 set -euo pipefail

@@ -58,7 +58,7 @@ class TestBodyContent(unittest.TestCase):
 
     def test_includes_drill_down_pointers(self):
         for pointer in ("kaizen commands", "kaizen help", "kaizen list",
-                         "/kaizen:status"):
+                         "kaizen-status"):
             self.assertIn(pointer, self.body, f"missing pointer: {pointer}")
 
     def test_under_165_lines(self):

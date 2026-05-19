@@ -1,6 +1,6 @@
 ---
 name: self-rag
-description: Self-RAG retrieval discipline — when to retrieve, when to skip, when to trust what was retrieved. Adapted from Asai et al. 2023 (Self-Reflective Retrieval-Augmented Generation). Triggers on "self-rag", "rag discipline", "should I retrieve", "do I need context", "before answering", "is what I retrieved relevant", "verify retrieval", "knowledge search". Pairs with `/kaizen:knowledge` (corpus) and `/kaizen:trace-search` (event log).
+description: Self-RAG retrieval discipline — when to retrieve, when to skip, when to trust what was retrieved. Adapted from Asai et al. 2023 (Self-Reflective Retrieval-Augmented Generation). Triggers on "self-rag", "rag discipline", "should I retrieve", "do I need context", "before answering", "is what I retrieved relevant", "verify retrieval", "knowledge search". Pairs with `/kaizen:knowledge` (corpus) and `kaizen-trace-search` (event log).
 ---
 
 # Self-RAG — retrieval discipline
@@ -11,7 +11,7 @@ The core mistake of vanilla RAG: **always retrieve**, then **always trust** what
 2. **After retrieval** — is what I got actually relevant?
 3. **After answering** — did the retrieved evidence actually support my response, and did I miss anything?
 
-This skill encodes those three checks against kaizen's two corpora: `/kaizen:knowledge` (brain notes, plans, backlog, schemas, persona) and `/kaizen:trace-search` (trace events). Apply BEFORE invoking either retrieval surface.
+This skill encodes those three checks against kaizen's two corpora: `/kaizen:knowledge` (brain notes, plans, backlog, schemas, persona) and `kaizen-trace-search` (trace events). Apply BEFORE invoking either retrieval surface.
 
 ## The three decisions
 
@@ -33,7 +33,7 @@ This skill encodes those three checks against kaizen's two corpora: `/kaizen:kno
 
 ### Decision 2 — Is what came back relevant?
 
-After running `/kaizen:knowledge search "<query>"` or `/kaizen:trace-search search "<query>"`:
+After running `/kaizen:knowledge search "<query>"` or `kaizen-trace-search search "<query>"`:
 
 For each top-K result, ask:
 
@@ -65,7 +65,7 @@ After drafting the response with retrieved context, do one final pass:
 /kaizen:knowledge search "<broader query>" --top-k 10
 
 # 4. (Optional) Also check trace history for recent activity in this area:
-/kaizen:trace-search search "<adjacent query>" --top-k 5
+kaizen-trace-search search "<adjacent query>" --top-k 5
 
 # 5. Draft the response citing the retained items by source_path.
 #    Use this format: "(per brain note pref-X)" or "(per plan
@@ -78,7 +78,7 @@ After drafting the response with retrieved context, do one final pass:
 
 - Mid-implementation, with no question to answer — you're writing code, not retrieving context.
 - Inside an Agent / subagent — the subagent already has the corpus context; you've stepped into a different cognitive scope.
-- For trace queries that are about *finding a specific past event* (e.g. "find the last cargo-test run"), use `/kaizen:trace-search` directly without the self-rag overhead.
+- For trace queries that are about *finding a specific past event* (e.g. "find the last cargo-test run"), use `kaizen-trace-search` directly without the self-rag overhead.
 
 ## Iron Laws
 
@@ -90,7 +90,7 @@ After drafting the response with retrieved context, do one final pass:
 ## Related skills
 
 - `/kaizen:knowledge` — the corpus + search surface this skill governs.
-- `/kaizen:trace-search` — semantic search over trace events.
+- `kaizen-trace-search` — semantic search over trace events.
 - `/kaizen:vibe-check` — pre-commit AI-coding discipline (the answering-side analog).
 - `kaizen:memory-state` — how to decide what to persist vs recall.
 - `kaizen:remember` — capture-side counterpart (what goes into the corpus in the first place).

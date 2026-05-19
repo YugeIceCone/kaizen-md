@@ -194,7 +194,7 @@ Slash command `${ARGUMENTS:-default}` template only bash-evaluates the `:-defaul
 
 **Detect:** commands/<feature>.md contains `${ARGUMENTS:-<default with spaces>}`
 
-**Why:** Hit on /kaizen:metrics — user ran `top --kind skill`, slash dispatched `lifetime --since 7d` (the bash default fell through because CC's template substitution + bash interaction couldn't handle the space). Fixed by giving metrics.py a no-arg default (runs 7d lifetime) and changing slash to bare `$ARGUMENTS`. See onboard.md / trace-search.md for short-default examples that work.
+**Why:** Hit on kaizen-metrics — user ran `top --kind skill`, slash dispatched `lifetime --since 7d` (the bash default fell through because CC's template substitution + bash interaction couldn't handle the space). Fixed by giving metrics.py a no-arg default (runs 7d lifetime) and changing slash to bare `$ARGUMENTS`. See onboard.md / trace-search.md for short-default examples that work.
 
 ### `hooks-json-additive-event-multi-command` (soft · auto)
 

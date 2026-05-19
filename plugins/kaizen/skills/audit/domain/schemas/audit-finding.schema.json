@@ -66,7 +66,7 @@
         "missing-test",
         "other"
       ],
-      "description": "Classification matches audit/SKILL.md 'Good Candidate Classes' + the onion-ddd-workflow violation matrix. Used by /kaizen:metrics to track distribution."
+      "description": "Classification matches audit/SKILL.md 'Good Candidate Classes' + the onion-ddd-workflow violation matrix. Used by kaizen-metrics to track distribution."
     },
     "proof_status": {
       "enum": ["proved", "unproved", "speculative"],

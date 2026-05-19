@@ -64,7 +64,7 @@ Four layers:
    with `kaizen:` frontmatter. Surfaces via the kaizen gate's
    custom-pattern check when commits touch `plugins/kaizen/`.
 
-4. **`/kaizen:metrics skips`** (v1.34+) — runtime skip-detection.
+4. **`kaizen-metrics skips`** (v1.34+) — runtime skip-detection.
    The SessionEnd hook auto-fires `metrics-session-end.sh` which
    runs `metrics.py skips` and writes draft Inbox entries when
    files were touched without the matching skill being loaded.
@@ -902,7 +902,7 @@ literally even when the user passes args.
 
     python3 .../metrics.py ${ARGUMENTS:-lifetime --since 7d}
 
-    # User runs: /kaizen:metrics top --kind skill
+    # User runs: kaizen-metrics top --kind skill
     # Result:     runs "lifetime --since 7d" (default fired
     #             despite ARGUMENTS being set)
 

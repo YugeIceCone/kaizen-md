@@ -107,7 +107,7 @@ actual work.
 - `kaizen commands` — slash-command listing (57)
 - `kaizen list --json` — machine-readable inventory
 - `/kaizen:help` — interactive cluster wizard
-- `/kaizen:status` — current install state
+- `kaizen-status` — current install state
 
 ## Pairing with siblings
 

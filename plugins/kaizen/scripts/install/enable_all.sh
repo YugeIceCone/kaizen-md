@@ -331,12 +331,12 @@ fi
 
 echo ""
 echo "${DIM}Next:${RESET}"
-echo "  /kaizen:status              confirm everything green"
+echo "  kaizen-status              confirm everything green"
 echo "  /kaizen:help                full command reference (interactive)"
 if [ "$WITH_INDEX" -eq 0 ]; then
   echo "  ${DIM}(indexers skipped — run /kaizen:setup --enable-all --with-index when you${RESET}"
   echo "  ${DIM} have a few minutes; or /kaizen:onboard index / /kaizen:knowledge${RESET}"
-  echo "  ${DIM} index / /kaizen:trace-search index individually.)${RESET}"
+  echo "  ${DIM} index / kaizen-trace-search index individually.)${RESET}"
 elif [ "$IS_GIT_REPO" -eq 1 ] && [ "$SKIP_PROJECT" -eq 0 ]; then
   echo "  /kaizen:onboard search ...  query the new project index"
 fi

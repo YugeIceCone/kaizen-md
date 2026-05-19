@@ -16,3 +16,20 @@ Programmatic access via the `kaizen-state` MCP server (read-only subset):
 - `state_observe_drill(sid)` — cross-layer drill report for one session
 
 Mutating ops (`snapshot`, `compare`) stay slash-only.
+
+## Folded surface (formerly separate slashes)
+
+Eight observability slashes absorbed in consolidate-2 D4; bins remain reachable:
+
+| Concern | Bin (direct) | Use case |
+|---|---|---|
+| Unified event log | `kaizen-trace` | tail / query / stats / event / search / index — was `/kaizen:trace` |
+| Adoption + dead-feature | `kaizen-metrics` | session / lifetime / never-used / skips / noise — was `/kaizen:metrics` |
+| Context-window state | `kaizen-context` | tokens used + zone + recommendation — was `/kaizen:context` |
+| Statusline install + inspect | `kaizen-statusline` | one-line status bar — was `/kaizen:statusline` |
+| Message inbox | `kaizen-inbox` | list / peek / drain / clear / stats — was `/kaizen:inbox` |
+| Per-session chatlog | `kaizen-chatlog` | per-session markdown transcript — was `/kaizen:chatlog` |
+| Error-locator + parse-validity | `kaizen-debug` | scan / parse / replay / lint / tail / smoke / check — was `/kaizen:debug` |
+| Install state at-a-glance | `kaizen-status` | config + gate + backlog + workflow summary — was `/kaizen:status` |
+
+All eight read runtime state across kaizen's six data-stream layers (L1 stderr → L6 plugin state). The observe umbrella above routes by layer + drill verb; the bins are the direct-invocation form.
