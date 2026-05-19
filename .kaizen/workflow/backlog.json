@@ -530,6 +530,27 @@
       "committed_at": null,
       "parked_reason": null,
       "probe_output": null
+    },
+    {
+      "id": "BK-028",
+      "section": "next_up",
+      "title": "Semantic score matrix for decision-making / uncertainty (start: brainstorm scoring)",
+      "ref": null,
+      "probe": "kaizen-score matrix --input <ideas.jsonl> --axes feasibility,leverage,uncertainty,fit returns a typed envelope ranking each input on each axis with confidence. v1 targets brainstorm/idea-pile jobs; v2 fans out across the plugin (handoff outcome rubric extension, backlog probe scoring, gold→brain promotion candidates, agent dispatch fit).",
+      "verify": "(a) Define scoring axes catalog in domain/score-axes.yaml: feasibility / leverage / uncertainty / fit / novelty / cost / urgency — each with definition + signal sources. (b) Bridge to embeddings or LLM scoring (Ollama-backed, free local first per kaizen:models pattern). (c) Output: structured matrix CSV / jsonl + markdown summary. (d) Integration: 'kaizen-score brainstorm <file.jsonl>' adds {axis_scores: {feasibility: 0.x, leverage: 0.y, ...}, uncertainty: 0.z} to each entry. (e) Fan-out targets after v1: kaizen-handoff (extend outcome rubric); kaizen-backlog (probe-quality score); kaizen-gold (promote-readiness); kaizen-agent dispatch (fit score for the work-type). (f) TDD: golden-output fixtures for known idea piles.",
+      "tags": [
+        "scoring",
+        "decision",
+        "uncertainty",
+        "brainstorm",
+        "plugin-wide"
+      ],
+      "created": "2026-05-19",
+      "started_at": null,
+      "committed": null,
+      "committed_at": null,
+      "parked_reason": null,
+      "probe_output": null
     }
   ],
   "decisions": []
