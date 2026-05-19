@@ -44,6 +44,8 @@ class SymbolChunk:
     chunk_idx: int
     symbol_name: str
     kind: str
+    line_start: int = 0   # 1-indexed, inclusive. 0 = unknown (pre-Phase-1 callers).
+    line_end: int = 0     # 1-indexed, inclusive. 0 = unknown.
 
 
 def chunk_python_by_symbol(source: str, max_chars: int = 2000) -> list[SymbolChunk]:
@@ -90,6 +92,8 @@ def chunk_python_by_symbol(source: str, max_chars: int = 2000) -> list[SymbolChu
                 text=prologue_text,
                 char_start=prologue_start, char_end=prologue_end,
                 chunk_idx=chunk_idx, symbol_name="<module>", kind="module",
+                line_start=first.lineno,
+                line_end=getattr(last, "end_lineno", last.lineno) or last.lineno,
             ))
             chunk_idx += 1
 
@@ -113,6 +117,8 @@ def chunk_python_by_symbol(source: str, max_chars: int = 2000) -> list[SymbolChu
                 chunks.append(SymbolChunk(
                     text=text, char_start=start, char_end=end,
                     chunk_idx=chunk_idx, symbol_name="<module>", kind="block",
+                    line_start=node.lineno,
+                    line_end=getattr(node, "end_lineno", node.lineno) or node.lineno,
                 ))
                 chunk_idx += 1
     return chunks
@@ -138,6 +144,8 @@ def _chunk_function(
               "method" if parent else
               "async-function" if is_async else
               "function"),
+        line_start=node.lineno,
+        line_end=getattr(node, "end_lineno", node.lineno) or node.lineno,
     )]
 
 
@@ -157,6 +165,8 @@ def _chunk_class(
         return [SymbolChunk(
             text=full_text, char_start=cstart, char_end=cend,
             chunk_idx=chunk_idx, symbol_name=node.name, kind="class",
+            line_start=node.lineno,
+            line_end=getattr(node, "end_lineno", node.lineno) or node.lineno,
         )]
     # Large class — emit header chunk + one per method
     out: list[SymbolChunk] = []
@@ -176,9 +186,17 @@ def _chunk_class(
         header_end = cend
     header_text = src_bytes[cstart:header_end].decode("utf-8", errors="replace")
     if header_text.strip():
+        # Header line range: class line through the line before the first method.
+        if first_method_idx < len(node.body):
+            first_method = node.body[first_method_idx]
+            header_line_end = max(node.lineno, first_method.lineno - 1)
+        else:
+            header_line_end = getattr(node, "end_lineno", node.lineno) or node.lineno
         out.append(SymbolChunk(
             text=header_text, char_start=cstart, char_end=header_end,
             chunk_idx=chunk_idx, symbol_name=node.name, kind="class",
+            line_start=node.lineno,
+            line_end=header_line_end,
         ))
     # Each method
     for i, child in enumerate(node.body[first_method_idx:]):
