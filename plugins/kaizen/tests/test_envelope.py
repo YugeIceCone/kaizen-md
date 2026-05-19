@@ -65,7 +65,7 @@ _RETROFIT_TOOLS = [
         str(_REPO_ROOT / "plugins/kaizen/skills/plugin-development/scripts/validate.py"),
         "--feature", "kaizen", "--json",
     ]),
-    ("loop_state status",   [str(_SCRIPTS / "loop_state.py"), "status", "--json"]),
+    ("loop_state status",   [str(_REPO_ROOT / "plugins/kaizen/scripts/state/loop_state.py"), "status", "--json"]),
     ("self_audit_agent path", [str(_REPO_ROOT / "plugins/kaizen/scripts/iron-laws/self_audit_agent.py"), "path"]),
     # scrape_index search needs numpy (skipped via _has_numpy)
     # trace_index search / knowledge_index search — also numpy

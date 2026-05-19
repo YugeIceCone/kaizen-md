@@ -435,7 +435,7 @@ if __name__ == "__main__":
 class TestStructuredLedger(unittest.TestCase):
     """JSON-body ledger with hook-owned verify gate (cheat-proof)."""
 
-    LEDGER_HELPER = PLUGIN_ROOT / "skills" / "workflow" / "scripts" / "loop_ledger.py"
+    LEDGER_HELPER = PLUGIN_ROOT / "scripts" / "state" / "loop_ledger.py"
 
     def _run_hook_with_body(self, hook: Path, body_json: dict, last_msg: str = "") -> tuple[str, int, dict | None]:
         """Run a Stop hook with a JSON-bodied ledger. Returns (stdout, rc, updated_ledger_or_None)."""

@@ -46,7 +46,7 @@
       "Bash(${CLAUDE_PLUGIN_ROOT}/bin/kaizen-detect-stack:*)",
       "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/detect_stack.py:*)",
       "Bash(${CLAUDE_PLUGIN_ROOT}/bin/kaizen-state:*)",
-      "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/state.py:*)",
+      "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/scripts/state/state.py:*)",
       "Bash(${CLAUDE_PLUGIN_ROOT}/bin/kaizen-yaml:*)",
       "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/kaizen_yaml.py:*)",
       "Bash(${CLAUDE_PLUGIN_ROOT}/bin/kaizen:*)",

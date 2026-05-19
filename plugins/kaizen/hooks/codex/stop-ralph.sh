@@ -4,7 +4,7 @@
 # Continues the session with the original prompt while loop state is active.
 # Reads .kaizen/loop.state.md (shared with the CC variant at
 # hooks/claude/stop-ralph.sh) and delegates structured-ledger transitions to
-# skills/workflow/scripts/loop_ledger.py (the cheat-proof verify gate).
+# scripts/state/loop_ledger.py (the cheat-proof verify gate).
 #
 # CC and Codex Stop-hook JSON contracts are identical (`decision:"block",
 # reason, systemMessage`); this variant inspects CODEX_SESSION_ID, the CC
@@ -16,7 +16,7 @@ PLUGIN_ROOT="${CODEX_PLUGIN_ROOT:-${KAIZEN_PLUGIN_ROOT:-}}"
 if [[ -z "$PLUGIN_ROOT" ]]; then
   PLUGIN_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 fi
-LEDGER_HELPER="$PLUGIN_ROOT/skills/workflow/scripts/loop_ledger.py"
+LEDGER_HELPER="$PLUGIN_ROOT/scripts/state/loop_ledger.py"
 
 HOOK_INPUT=$(cat)
 

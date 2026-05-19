@@ -127,7 +127,7 @@ class TestHasUnsafePromiseMention(unittest.TestCase):
 
 
 class TestPromiseCheckCLI(unittest.TestCase):
-    HELPER = PLUGIN_ROOT / "skills" / "workflow" / "scripts" / "loop_ledger.py"
+    HELPER = PLUGIN_ROOT / "scripts" / "state" / "loop_ledger.py"
 
     def _run(self, body: str, phrase: str) -> int:
         with tempfile.NamedTemporaryFile("w", delete=False, suffix=".txt") as fh:
@@ -214,7 +214,7 @@ class TestEmitPromise(_CwdMixin, unittest.TestCase):
 
 
 class TestEmitPromiseCLI(_CwdMixin, unittest.TestCase):
-    HELPER = PLUGIN_ROOT / "skills" / "workflow" / "scripts" / "loop_state.py"
+    HELPER = PLUGIN_ROOT / "scripts" / "state" / "loop_state.py"
 
     def test_promise_subcommand_writes_field(self):
         _init_loop(self.tmp, promise="DONE", its=5)

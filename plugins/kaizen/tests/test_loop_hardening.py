@@ -259,7 +259,7 @@ class TestTldr(_CwdMixin, unittest.TestCase):
 
 
 class TestCliAccessors(_CwdMixin, unittest.TestCase):
-    HELPER = PLUGIN_ROOT / "skills" / "workflow" / "scripts" / "loop_state.py"
+    HELPER = PLUGIN_ROOT / "scripts" / "state" / "loop_state.py"
 
     def test_cli_next_returns_first_item(self):
         _init_ledger_loop(self.tmp, ["Implement A", "Implement B"])
