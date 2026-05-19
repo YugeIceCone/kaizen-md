@@ -329,11 +329,17 @@ class InboxNode(_flow.AsyncNode):
                 continue
             name_safe = _yaml_safe(c["text"], 80)
             desc_safe = _yaml_safe(c["text"], 200)
+            # Coerce unknown types to "draft" (schema-conformant default)
+            # so the validator + downstream consumers don't choke.
+            entry_type = c['type'] if c['type'] in (
+                "world-fact", "belief", "observation", "experience",
+                "feedback", "preference", "draft", "decision",
+            ) else "draft"
             content = (
                 f"---\n"
                 f"name: '{name_safe}'\n"
                 f"description: '{desc_safe}'\n"
-                f"type: {c['type']}\n"
+                f"type: {entry_type}\n"
                 f"source: {c['source']}\n"
                 f"kind: {c['kind']}\n"
                 f"created: {today}\n"

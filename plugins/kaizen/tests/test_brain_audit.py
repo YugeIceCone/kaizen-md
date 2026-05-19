@@ -203,5 +203,34 @@ class TestYamlSafeWriter(unittest.TestCase):
                 self.assertIn("description", fm)
 
 
+class TestSchemaConformance(unittest.TestCase):
+    """Every Inbox draft brain_audit writes must pass the memory-entry
+    schema validator. Closes the loop between _yaml_safe (write-time)
+    and memory_schema (validate-time)."""
+
+    def test_apply_writes_schema_conformant_drafts(self):
+        try:
+            import yaml  # noqa: F401
+        except ImportError:
+            self.skipTest("PyYAML not installed (schema validator uses fallback)")
+        import memory_schema
+        with tempfile.TemporaryDirectory() as tmp:
+            brain = Path(tmp) / "brain"
+            brain.mkdir()
+            cwd = Path(tmp) / "cwd"
+            cwd.mkdir()
+            pm = _brain.project_memory_root(cwd)
+            pm.mkdir(parents=True, exist_ok=True)
+            (pm / "_draft_x.md").write_text(
+                '"some decision worth capturing for later reference"'
+            )
+            ba.audit(cwd=cwd, brain_root=brain, apply=True)
+            for draft in (brain / "Inbox").glob("draft-*.md"):
+                text = draft.read_text(encoding="utf-8")
+                errors = memory_schema.validate_text(text)
+                self.assertEqual(errors, [],
+                    f"{draft.name}: schema violations {errors}")
+
+
 if __name__ == "__main__":
     unittest.main()
