@@ -76,7 +76,7 @@ dispatch the same way.
 | `handoff` | Session handoff doc. `create` wraps the current session into YAML + indexes it; `r |
 | `loop` | Self-correcting Ralph loop - cross-CLI. No-args 2-question wizard (iteration budge |
 | `flow` | Async Node+Flow demo pipeline over the current workspace. 4 nodes (ReadBacklog → D |
-| `workflow` | Workflow-shape config — default scope × run-mode × disciplines × threshold. Folds  |
+| `workflow` | Workflow-shape config — default scope × run-mode × disciplines × threshold. Three  |
 | `migrate` | Migrate from loose skills / separate plugins / non-canonical layouts to canonical  |
 
 ## plugin-meta (12)

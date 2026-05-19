@@ -1,6 +1,6 @@
 ---
 name: trace
-description: "Unified event log across kaizen hooks/agents/LLM/tool/user actions. JSONL, auto-rotated. Verbs - tail | query | stats | event | clear | path | search | index. (search folded from /kaizen:trace-search.)"
+description: "Unified event log across kaizen hooks/agents/LLM/tool/user actions. JSONL, auto-rotated. Verbs - tail | query | stats | event | search | index | clear | path."
 argument-hint: "[tail [--n N] [--src S] [--evt E]|query|stats|event ...|clear|path|search \"<query>\"|index|reindex|get <id>]"
 ---
 

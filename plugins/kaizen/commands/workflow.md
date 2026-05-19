@@ -1,6 +1,6 @@
 ---
 name: workflow
-description: "Workflow-shape config — default scope × run-mode × disciplines × threshold. Folds the retired /kaizen:session-mode slash (session-mode is now the ephemeral scope). 4-question wizard or direct dispatch. Triggers - \"set session mode\", \"start loop/workflow\", \"choose disciplines\"."
+description: "Workflow-shape config — default scope × run-mode × disciplines × threshold. Three scopes - session-mode (ephemeral), project, user-global. 4-question wizard or direct dispatch. Triggers - \"set session mode\", \"start loop/workflow\", \"choose disciplines\"."
 argument-hint: "(empty = interactive 4-Q wizard) | [set|get|show|path|reset ...]"
 allowed-tools: ["AskUserQuestion", "Bash(${CLAUDE_PLUGIN_ROOT}/bin/kaizen-workflow-config:*)", "Bash(${CLAUDE_PLUGIN_ROOT}/bin/kaizen-session-mode:*)", "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/scripts/workflow/workflow_config.py:*)"]
 ---
