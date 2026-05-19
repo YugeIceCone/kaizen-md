@@ -353,7 +353,7 @@
     },
     {
       "id": "BK-019",
-      "section": "next_up",
+      "section": "done",
       "title": "kaizen:backlog — debug + fix + improve + optimize pass",
       "ref": null,
       "probe": "kaizen-backlog list/add/start/tick/park/done all return canonical envelopes; JSON↔MD generation is byte-stable across N round-trips; no orphaned BK-N IDs after rebases; verbs interactive when args omitted (AskUserQuestion)",
@@ -365,8 +365,8 @@
       ],
       "created": "2026-05-19",
       "started_at": null,
-      "committed": null,
-      "committed_at": null,
+      "committed": "d3140e7",
+      "committed_at": "2026-05-19T21:05:12Z",
       "parked_reason": null,
       "probe_output": null
     },
