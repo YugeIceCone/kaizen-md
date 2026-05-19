@@ -103,8 +103,8 @@ actual work.
 - `_intent_userprompt.py`, `_observer_capture.py`, etc. — hook handlers
 
 ### discovery / inventory cluster
-- `kaizen` CLI — categorized listing (126 subcommands)
-- `kaizen commands` — slash-command listing (57)
+- `kaizen` CLI — categorized listing (self-prints current count on every invocation)
+- `kaizen commands` — slash-command listing (self-prints current count)
 - `kaizen list --json` — machine-readable inventory
 - `/kaizen:help` — interactive cluster wizard
 - `kaizen-status` — current install state
