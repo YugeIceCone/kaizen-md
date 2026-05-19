@@ -165,7 +165,7 @@ fi
 
 # Auto-load file-path-as-prompt. When the bare PROMPT is a single token
 # that happens to be an existing readable file path (e.g.
-#   /kaizen:loop handoff.md --its 30
+#   kaizen-loop handoff.md --its 30
 # ), expand it to the file's contents. This prevents the 2026-05-14 mistake
 # where the literal string "handoff.md" became the iteration prompt.
 if [[ -n "$PROMPT" ]] && [[ ${#PROMPT_PARTS[@]} -eq 1 ]] \

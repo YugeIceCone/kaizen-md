@@ -24,7 +24,7 @@ slash command + bin wrapper surface.
 | **workflow / TDD** | "implement feature", "fix bug", "refactor", "run workflow", "build with TDD" | `Skill(workflow)` + `/kaizen:workflow` |
 | **quality / coverage** | "audit code", "check coverage", "find dead code", "lint markdown" | `/kaizen:audit` + the per-axis bins (`kaizen-coverage`, `kaizen-complexity`, etc.) |
 | **plugin-dev (kaizen-md itself)** | "add a kaizen feature", "build new MCP server", "validate staged diff" | `Skill(plugin-development)` + `/kaizen:plugin-development` |
-| **automation / hooks** | "automate when X", "set up trigger", "phrase pattern", "event automation" | `Skill(intent)` + `/kaizen:intent` |
+| **automation / hooks** | "automate when X", "set up trigger", "phrase pattern", "event automation" | `Skill(intent)` + `kaizen-intent` |
 | **discovery / inventory** | "what kaizen commands exist", "list skills", "show me kaizen surface" | `kaizen` CLI (categorized listing) + `/kaizen:help` |
 
 ## Dispatch contract

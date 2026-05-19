@@ -283,7 +283,7 @@ shared .kaizen/loop.state.md. Same prompt re-fed each iteration; the
 agent observes prior work in files + git history. Stops on exact
 <promise>PHRASE</promise> match or --max-iterations limit.
 
-Invoke via `/kaizen:loop "<prompt>" --max-iterations N --completion-promise "PHRASE"`
+Invoke via `kaizen-loop "<prompt>" --max-iterations N --completion-promise "PHRASE"`
 or `/workflow schema=ralph-loop` for workflow-stage composition. The
 Stop hook lives at hooks/{claude,codex}/stop-ralph.sh; it's a silent
 no-op when .kaizen/loop.state.md is absent.

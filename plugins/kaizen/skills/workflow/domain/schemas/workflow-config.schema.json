@@ -58,7 +58,7 @@
         "max_iterations": {
           "type": "integer",
           "minimum": 1,
-          "description": "Default --its value for /kaizen:loop."
+          "description": "Default --its value for kaizen-loop."
         },
         "stop_conditions": {
           "type": "array",

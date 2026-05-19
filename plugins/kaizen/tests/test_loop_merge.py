@@ -4,7 +4,9 @@ Verifies that:
 1. setup-ralph-loop.sh writes state to .kaizen/loop.state.md (not .codex/)
 2. Both Stop hooks (CC + Codex) read the same state file shape
 3. The ralph-loop routine schema parses and registers correctly
-4. The /kaizen:loop command file exists and is well-formed
+4. The kaizen-loop bin + workflow.md Folded surface wire the loop concern
+   (the /kaizen:loop slash was folded into /kaizen:workflow in
+   consolidate-2 D1; the bin is the canonical invocation point).
 
 Run:
     python3 -m unittest tests.test_loop_merge -v
@@ -27,7 +29,8 @@ sys.path.insert(0, str(SKILL_SCRIPTS))
 SETUP_SCRIPT = PLUGIN_ROOT / "skills" / "loop" / "scripts" / "setup-ralph-loop.sh"
 HOOK_CC = PLUGIN_ROOT / "hooks" / "claude" / "stop-ralph.sh"
 HOOK_CODEX = PLUGIN_ROOT / "hooks" / "codex" / "stop-ralph.sh"
-LOOP_COMMAND = PLUGIN_ROOT / "commands" / "loop.md"
+LOOP_BIN = PLUGIN_ROOT / "bin" / "kaizen-loop"
+WORKFLOW_COMMAND = PLUGIN_ROOT / "commands" / "workflow.md"
 RALPH_SCHEMA = PLUGIN_ROOT / "schemas" / "ralph-loop" / "schema.yaml"
 ROUTINES_YAML = PLUGIN_ROOT / "skills" / "workflow" / "domain" / "routines.yaml"
 HOOKS_JSON = PLUGIN_ROOT / "hooks" / "hooks.json"
@@ -281,21 +284,26 @@ class TestRoutineRegistration(unittest.TestCase):
 
 
 class TestCommandWiring(unittest.TestCase):
-    """The /kaizen:loop command file exists and follows the expected shape."""
+    """The kaizen-loop bin + /kaizen:workflow Folded surface wire the loop concern.
 
-    def test_loop_command_exists(self):
-        self.assertTrue(LOOP_COMMAND.is_file(), f"missing {LOOP_COMMAND}")
+    Post consolidate-2 D1, the /kaizen:loop slash is folded into
+    /kaizen:workflow; the bin (kaizen-loop) is the canonical invocation
+    point. setup-ralph-loop.sh still owns the state-path migration.
+    """
 
-    def test_loop_command_references_new_state_path(self):
-        text = LOOP_COMMAND.read_text()
+    def test_loop_bin_exists(self):
+        self.assertTrue(LOOP_BIN.is_file(), f"missing {LOOP_BIN}")
+
+    def test_setup_script_writes_new_state_path(self):
+        text = SETUP_SCRIPT.read_text()
         self.assertIn(".kaizen/loop.state.md", text)
         self.assertNotIn(".codex/ralph-loop.local.md", text)
 
-    def test_loop_command_has_frontmatter(self):
-        text = LOOP_COMMAND.read_text()
-        self.assertTrue(text.startswith("---\n"), "loop.md must have frontmatter")
-        self.assertIn("description:", text)
-        self.assertIn("argument-hint:", text)
+    def test_workflow_command_has_folded_loop_row(self):
+        text = WORKFLOW_COMMAND.read_text()
+        self.assertIn("Folded surface", text)
+        self.assertIn("kaizen-loop", text)
+        self.assertIn("/kaizen:loop", text)  # documented in the "was" column
 
 
 class TestHooksJson(unittest.TestCase):

@@ -71,13 +71,13 @@ options:
   - label: "Routine (multi-stage)"
     description: "/workflow runs a curated routine (build-feature, fix-bug, refactor, etc.). Stage gates between steps."
   - label: "Loop (Ralph)"
-    description: "/kaizen:loop runs a self-correcting iteration loop. Continues until ledger empty or completion-promise emitted."
+    description: "kaizen-loop runs a self-correcting iteration loop. Continues until ledger empty or completion-promise emitted."
   - label: "Schema (declarative DAG)"
     description: "/workflow runs a schema (onion-tdd-strict / mcp-build / spec-driven). Each artifact has a gate."
 ```
 
-When Q2 picks **Loop**, also follow the **`/kaizen:loop`** wizard
-(P3 — see `commands/loop.md`) to set iteration budget + stop-conditions.
+When Q2 picks **Loop**, also follow the **`kaizen-loop`** wizard
+(P3 — see the Folded surface section below) to set iteration budget + stop-conditions.
 The 2 extra questions can run in a second AskUserQuestion call after
 this one resolves; persist the answers via `--loop-its` + `--loop-stop`
 flags on the same `kaizen-workflow-config set` call.
@@ -151,7 +151,7 @@ kaizen-workflow-config set \
     --run-mode <Q2>                 # routine | loop | schema
     --disciplines <expanded Q3>     # comma-sep
     --threshold <Q4>                # 25 | 50 | 75 | 85 | disabled
-    [--loop-its <N>]                # when Q2=Loop, from /kaizen:loop wizard
+    [--loop-its <N>]                # when Q2=Loop, from kaizen-loop wizard
     [--loop-stop <conds>]           # when Q2=Loop, comma-sep
     [--routine <name>]              # when Q2=Routine, optional default routine
     [--schema <name>]               # when Q2=Schema, optional default schema
@@ -202,3 +202,16 @@ the durable files.
 JSON Schema: `skills/workflow/domain/schemas/workflow-config.schema.json`
 (version 1). Required field: `version`. All others optional — partial
 configs are valid (set only what you want to override).
+
+## Folded surface (formerly separate slashes)
+
+Two slashes absorbed in the post-cat2 consolidation — bins/skills remain reachable:
+
+| Concern | Bin (direct) | Use case |
+|---|---|---|
+| Self-correcting Ralph loop | `kaizen-loop` | Iteration budget + stop-conditions wizard — was `/kaizen:loop` |
+| Intent system | `kaizen-intent` | Inspect / match / hits / path — was `/kaizen:intent` |
+
+Reach loop via `/kaizen:workflow` Q2 = "Loop" (the wizard already
+handles iteration budget + stop-conditions). Reach intent via the
+bin directly when debugging triggers.
