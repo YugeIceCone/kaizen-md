@@ -24,8 +24,8 @@ from pathlib import Path
 from unittest.mock import patch
 
 _KZ_DIR = Path(__file__).resolve().parent.parent
-_GOLD = _KZ_DIR / "skills/workflow/scripts/gold.py"
-_MINE = _KZ_DIR / "skills/workflow/scripts/gold_mine.py"
+_GOLD = _KZ_DIR / "scripts/gold/gold.py"
+_MINE = _KZ_DIR / "scripts/gold/gold_mine.py"
 _HOOK = _KZ_DIR / "hooks/claude/gold-sessionend-mine.sh"
 
 # Skip the whole module until the implementer subagent's worktree merges.

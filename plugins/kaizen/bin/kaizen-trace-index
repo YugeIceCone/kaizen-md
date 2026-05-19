@@ -13,7 +13,7 @@ set -uo pipefail
 
 SCRIPT=$(python3 -c "import os, sys; print(os.path.realpath(sys.argv[1]))" "${BASH_SOURCE[0]}")
 PLUGIN_ROOT=$(cd "$(dirname "$SCRIPT")/.." && pwd)
-SCRIPTS_DIR="$PLUGIN_ROOT/skills/workflow/scripts"
+SCRIPTS_DIR="$PLUGIN_ROOT/scripts/indexers"
 
 # Pick CPU or GPU variant based on env
 if [ "${KAIZEN_TRACE_GPU:-0}" = "1" ]; then

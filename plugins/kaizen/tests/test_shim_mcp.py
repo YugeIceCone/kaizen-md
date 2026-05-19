@@ -20,6 +20,7 @@ from pathlib import Path
 
 PLUGIN_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PLUGIN_ROOT / "skills" / "workflow" / "scripts"))
+sys.path.insert(0, str(PLUGIN_ROOT / "scripts" / "mcp"))
 
 
 def _init_git_repo(path: Path) -> None:

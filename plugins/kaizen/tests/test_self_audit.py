@@ -191,7 +191,7 @@ class TestEndToEndAudit(unittest.TestCase):
 
 class TestCli(unittest.TestCase):
     def _run(self, *args):
-        script = _KZ_DIR / "skills/workflow/scripts/self_audit.py"
+        script = _KZ_DIR / "scripts/iron-laws/self_audit.py"
         return subprocess.run(
             ["python3", str(script), *args],
             capture_output=True, text=True, timeout=60,

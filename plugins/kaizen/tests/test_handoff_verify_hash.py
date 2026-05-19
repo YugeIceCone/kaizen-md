@@ -23,7 +23,7 @@ import unittest
 from pathlib import Path
 
 _KZ_DIR = Path(__file__).resolve().parent.parent
-_HANDOFF_PY = _KZ_DIR / "skills/workflow/scripts/handoff.py"
+_HANDOFF_PY = _KZ_DIR / "scripts/handoff/handoff.py"
 
 
 def _sha256(text: str) -> str:

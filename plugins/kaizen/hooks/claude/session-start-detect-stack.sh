@@ -21,7 +21,7 @@ EVENT=$(cat 2>/dev/null || echo '{}')
 printf '%s' "$EVENT" | bash "$PLUGIN_ROOT/hooks/claude/_trace.sh" \
     SessionStart-detect-stack 2>/dev/null || true
 
-DETECT="$PLUGIN_ROOT/skills/workflow/scripts/detect_stack.py"
+DETECT="$PLUGIN_ROOT/scripts/util/detect_stack.py"
 
 # Resolve repo root (where .agents/ lives). Skip silently if we're
 # not inside a project (no git, no manifest).

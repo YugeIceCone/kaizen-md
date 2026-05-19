@@ -8,7 +8,7 @@ argument-hint: [list|peek|drain|clear|stats]
 
 User-message inbox — captures every UserPromptSubmit; Claude sees them on each PostToolUse boundary.
 
-!`python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/inbox.py ${ARGUMENTS:-stats}`
+!`python3 ${CLAUDE_PLUGIN_ROOT}/scripts/intent/inbox.py ${ARGUMENTS:-stats}`
 
 Programmatic access via the `kaizen-state` MCP server (read-only subset):
 

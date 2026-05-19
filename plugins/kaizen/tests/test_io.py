@@ -11,7 +11,7 @@ import unittest
 from pathlib import Path
 
 _KZ_DIR = Path(__file__).resolve().parent.parent
-_SCRIPT = _KZ_DIR / "skills/workflow/scripts/io.py"
+_SCRIPT = _KZ_DIR / "scripts/io/io.py"
 
 
 def _run(*args, stdin: str = "") -> subprocess.CompletedProcess:

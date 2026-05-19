@@ -6,7 +6,7 @@ import unittest
 from pathlib import Path
 
 PLUGIN = Path(__file__).resolve().parent.parent
-CI_GATE = PLUGIN / "skills" / "workflow" / "scripts" / "ci-gate.sh"
+CI_GATE = PLUGIN / "scripts" / "ops" / "ci-gate.sh"
 REPO = PLUGIN.parent.parent  # ~/workspace/kaizen-md
 
 

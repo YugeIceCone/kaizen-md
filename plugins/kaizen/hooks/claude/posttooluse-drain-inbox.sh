@@ -36,7 +36,7 @@ if ! grep -q '"drained": false' "$KAIZEN_INBOX_DIR"/*.json 2>/dev/null; then
     exit 0
 fi
 
-DRAINED=$(python3 "$PLUGIN_ROOT/skills/workflow/scripts/inbox.py" drain 2>/dev/null || echo "")
+DRAINED=$(python3 "$PLUGIN_ROOT/scripts/intent/inbox.py" drain 2>/dev/null || echo "")
 
 if [ -n "${DRAINED:-}" ]; then
     # Pass via env to avoid shell-quoting hazards in the prompt text

@@ -2,7 +2,7 @@
 name: workflow
 description: "Unified workflow-shape config — scope / run-mode / disciplines / auto-handoff threshold. Persistent (project / user-global) or ephemeral (this-session-only). Folds the retired /kaizen:session-mode slash into a single tool: session = ephemeral per session; project = persistent in repo; global = persistent across all projects. No-args → 4-question AskUserQuestion wizard. With-args → direct dispatch. Triggers on \"set session mode\", \"start loop\", \"start workflow\", \"choose disciplines\", \"set workflow defaults\", \"configure workflow\", \"workflow shape\", \"persistent disciplines\", \"workflow menu\"."
 argument-hint: "(empty = interactive 4-Q wizard) | [set|get|show|path|reset ...]"
-allowed-tools: ["AskUserQuestion", "Bash(${CLAUDE_PLUGIN_ROOT}/bin/kaizen-workflow-config:*)", "Bash(${CLAUDE_PLUGIN_ROOT}/bin/kaizen-session-mode:*)", "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/workflow_config.py:*)"]
+allowed-tools: ["AskUserQuestion", "Bash(${CLAUDE_PLUGIN_ROOT}/bin/kaizen-workflow-config:*)", "Bash(${CLAUDE_PLUGIN_ROOT}/bin/kaizen-session-mode:*)", "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/scripts/workflow/workflow_config.py:*)"]
 ---
 
 # /kaizen:workflow — persistent workflow-shape defaults
@@ -13,7 +13,7 @@ globally — wants future sessions to start from. Read by
 (auto-handoff, skill-suggest) can also consult these defaults when no
 explicit session-mode is set.
 
-!`bash -c '${CLAUDE_PLUGIN_ROOT}/bin/kaizen-workflow-config ${ARGUMENTS:-show}; [ -z "${ARGUMENTS:-}" ] && [ -f .kaizen/workflow.json ] && python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/_workflow_prefill.py --from .kaizen/workflow.json; true'`
+!`bash -c '${CLAUDE_PLUGIN_ROOT}/bin/kaizen-workflow-config ${ARGUMENTS:-show}; [ -z "${ARGUMENTS:-}" ] && [ -f .kaizen/workflow.json ] && python3 ${CLAUDE_PLUGIN_ROOT}/scripts/workflow/_workflow_prefill.py --from .kaizen/workflow.json; true'`
 
 ## Interactive wizard (when `$ARGUMENTS` is empty)
 

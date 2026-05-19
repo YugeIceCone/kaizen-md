@@ -28,6 +28,7 @@ from pathlib import Path
 
 _KZ_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_KZ_DIR / "skills/workflow/scripts"))
+sys.path.insert(0, str(_KZ_DIR / "scripts/brain"))
 
 
 def _craft_traversal_tar(tar_path: Path, escape_filename: str,

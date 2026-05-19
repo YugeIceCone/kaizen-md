@@ -3,4 +3,4 @@
 set -uo pipefail
 SCRIPT=$(python3 -c "import os, sys; print(os.path.realpath(sys.argv[1]))" "${BASH_SOURCE[0]}")
 PLUGIN_ROOT=$(cd "$(dirname "$SCRIPT")/.." && pwd)
-exec python3 "$PLUGIN_ROOT/skills/workflow/scripts/schema_coverage.py" "$@"
+exec python3 "$PLUGIN_ROOT/scripts/quality/schema_coverage.py" "$@"

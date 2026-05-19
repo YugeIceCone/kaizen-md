@@ -25,7 +25,7 @@ import unittest
 from pathlib import Path
 
 _KZ = Path(__file__).resolve().parents[1]
-_BRAIN = _KZ / "skills/workflow/scripts/brain.py"
+_BRAIN = _KZ / "scripts/brain/brain.py"
 
 
 _SAMPLE_PERSONA = """---

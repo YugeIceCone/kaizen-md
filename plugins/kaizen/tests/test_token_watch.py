@@ -25,7 +25,7 @@ from pathlib import Path
 
 SCRIPT = (
     Path(__file__).resolve().parent.parent
-    / "skills" / "workflow" / "scripts" / "_token_watch.py"
+    / "scripts" / "index" / "_token_watch.py"
 )
 
 # In-process import of TokenDB + the watcher entry point. The watcher

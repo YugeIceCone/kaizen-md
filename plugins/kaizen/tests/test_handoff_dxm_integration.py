@@ -22,9 +22,9 @@ import unittest
 from pathlib import Path
 
 _KZ_DIR = Path(__file__).resolve().parent.parent
-_SCRIPTS = _KZ_DIR / "skills/workflow/scripts"
+_SCRIPTS = _KZ_DIR / "scripts/handoff"
 _HANDOFF_PY = _SCRIPTS / "handoff.py"
-_DXM_PY = _SCRIPTS / "dxm.py"
+_DXM_PY = _KZ_DIR / "scripts/observe/dxm.py"  # DOMAIN-16 deferred at legacy
 
 
 class IntegrationBase(unittest.TestCase):

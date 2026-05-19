@@ -345,7 +345,7 @@ The handoff feature is the reference consumer:
 - Manifest: `skills/handoff/domain/handoff.yaml` (v2)
 - Schemas: `skills/handoff/domain/schemas/*.schema.json`
 - Rule yaml: `skills/handoff/domain/outcome-rubric.yaml`
-- CLI: `skills/workflow/scripts/handoff.py`
+- CLI: `scripts/handoff/handoff.py`
 
 Read those four files end-to-end after this skill before applying the
 pattern to your own feature.

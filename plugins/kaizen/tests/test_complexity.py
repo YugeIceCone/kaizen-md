@@ -7,6 +7,7 @@ from pathlib import Path
 
 _KZ = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_KZ / "skills/workflow/scripts"))
+sys.path.insert(0, str(_KZ / "scripts/quality"))
 
 import complexity  # noqa: E402
 
@@ -18,14 +19,14 @@ class TestComplexity(unittest.TestCase):
     def test_scan_unavailable_graceful(self):
         if complexity.is_available():
             self.skipTest("radon installed; can't test fallback")
-        rep = complexity.scan(target=_KZ / "skills/workflow/scripts/brainstorm.py")
+        rep = complexity.scan(target=_KZ / "scripts/util/brainstorm.py")
         self.assertFalse(rep["available"])
         self.assertEqual(rep["findings"], [])
 
     def test_scan_when_available(self):
         if not complexity.is_available():
             self.skipTest("radon not installed")
-        rep = complexity.scan(target=_KZ / "skills/workflow/scripts/brainstorm.py")
+        rep = complexity.scan(target=_KZ / "scripts/util/brainstorm.py")
         self.assertTrue(rep["available"])
         self.assertIsInstance(rep["findings"], list)
 

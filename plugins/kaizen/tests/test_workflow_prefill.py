@@ -20,7 +20,7 @@ import unittest
 from pathlib import Path
 
 PLUGIN_ROOT = Path(__file__).resolve().parent.parent
-SCRIPT = PLUGIN_ROOT / "skills" / "workflow" / "scripts" / "_workflow_prefill.py"
+SCRIPT = PLUGIN_ROOT / "scripts" / "workflow" / "_workflow_prefill.py"
 
 
 def _run(workflow_json: dict | None) -> subprocess.CompletedProcess:

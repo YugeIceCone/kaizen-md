@@ -24,11 +24,12 @@ import unittest
 from pathlib import Path
 
 _KZ_DIR = Path(__file__).resolve().parent.parent
-_SCRIPTS = _KZ_DIR / "skills/workflow/scripts"
+_SCRIPTS = _KZ_DIR / "scripts/handoff"
 _HANDOFF_PY = _SCRIPTS / "handoff.py"
 _DOMAIN = _KZ_DIR / "skills/handoff/domain"
 
 sys.path.insert(0, str(_SCRIPTS))
+sys.path.insert(0, str(_KZ_DIR / "scripts/rules"))
 
 
 # ─── A small fixture for handoff YAMLs ───────────────────────────────

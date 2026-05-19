@@ -60,7 +60,7 @@ VERDICT=$(cd "$REPO" && RESOLVED="$RESOLVED" python3 -c "
 import json, os, subprocess
 r = json.loads(os.environ['RESOLVED'])
 cmd = [
-    'python3', '${PLUGIN_ROOT}/skills/workflow/scripts/workflow_config.py',
+    'python3', '${PLUGIN_ROOT}/scripts/workflow/workflow_config.py',
     'dry-run', '--schema', r['schema'], '--prompt', r['prompt'], '--json',
 ]
 res = subprocess.run(cmd, capture_output=True, text=True, timeout=8)

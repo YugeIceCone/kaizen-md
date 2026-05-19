@@ -16,6 +16,7 @@ from pathlib import Path
 
 PLUGIN_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PLUGIN_ROOT / "skills" / "workflow" / "scripts"))
+sys.path.insert(0, str(PLUGIN_ROOT / "scripts" / "mcp"))
 
 import roadmap_status as rs  # noqa: E402
 
@@ -198,7 +199,7 @@ class TestRender(unittest.TestCase):
 
 
 class TestCli(_CwdMixin, unittest.TestCase):
-    HELPER = PLUGIN_ROOT / "skills" / "workflow" / "scripts" / "roadmap_status.py"
+    HELPER = PLUGIN_ROOT / "scripts" / "util" / "roadmap_status.py"
 
     def test_progress_subcommand_text(self):
         _write_handoff(self.tmp)

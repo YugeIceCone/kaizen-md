@@ -17,7 +17,7 @@ import unittest
 from pathlib import Path
 
 _KZ = Path(__file__).resolve().parent.parent
-_HANDOFF = _KZ / "skills/workflow/scripts/handoff.py"
+_HANDOFF = _KZ / "scripts/handoff/handoff.py"
 
 
 _YAML = """---

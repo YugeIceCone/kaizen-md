@@ -5,7 +5,7 @@
 #   - skills/workflow/scripts/workflow.sh::routine_stages() (via _loader.py)
 #   - skills/workflow/scripts/workflow.sh::verb_matched_explicitly() (trigger_words)
 #   - skills/workflow/application/codegen.py (regenerates references/routines.md)
-#   - skills/workflow/scripts/workflow_mcp.py (workflow_list_schemas tool)
+#   - scripts/mcp/workflow_mcp.py (workflow_list_schemas tool)
 #
 # DO NOT hand-edit the regenerated references/routines.md. Edit this yaml,
 # then run `application/codegen.py` (or refresh-cache.sh, which calls it).

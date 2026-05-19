@@ -86,7 +86,7 @@ class TestRetiredAliasesAreGone(unittest.TestCase):
         no longer maps 1:1 to a bin of the same name (only the parent bin
         kaizen-agent-self-audit exists)."""
         script = (
-            PLUGIN_ROOT / "skills" / "workflow" / "scripts" / "self_audit_agent.py"
+            PLUGIN_ROOT / "scripts" / "iron-laws" / "self_audit_agent.py"
         )
         content = script.read_text(encoding="utf-8")
         self.assertIn(

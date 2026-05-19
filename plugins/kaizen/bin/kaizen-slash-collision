@@ -2,7 +2,7 @@
 # kaizen-slash-collision — surface tab-completion-ambiguous slash pairs.
 #
 # Subcommands: check
-# See skills/workflow/scripts/slash_collision.py for the implementation.
+# See scripts/quality/slash_collision.py for the implementation.
 
 set -euo pipefail
 
@@ -15,4 +15,4 @@ PLUGIN_ROOT="$(kaizen_plugin_root)" || {
     exit 1
 }
 
-exec python3 "$PLUGIN_ROOT/skills/workflow/scripts/slash_collision.py" "$@"
+exec python3 "$PLUGIN_ROOT/scripts/quality/slash_collision.py" "$@"

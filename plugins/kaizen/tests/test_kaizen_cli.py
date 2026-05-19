@@ -1,4 +1,4 @@
-"""Tests for skills/workflow/scripts/_kaizen_dispatcher.py — unified dispatcher."""
+"""Tests for scripts/io/_kaizen_dispatcher.py — unified dispatcher."""
 from __future__ import annotations
 
 import importlib.util
@@ -9,7 +9,7 @@ import unittest
 from pathlib import Path
 
 _REPO_ROOT = Path(__file__).resolve().parents[3]
-_KAIZEN_CLI = _REPO_ROOT / "plugins/kaizen/skills/workflow/scripts/_kaizen_dispatcher.py"
+_KAIZEN_CLI = _REPO_ROOT / "plugins/kaizen/scripts/io/_kaizen_dispatcher.py"
 _BIN_KAIZEN = _REPO_ROOT / "plugins/kaizen/bin/kaizen"
 
 

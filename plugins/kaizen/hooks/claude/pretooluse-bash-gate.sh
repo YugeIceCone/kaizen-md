@@ -29,5 +29,5 @@ printf '%s' "$EVENT" | bash "$PLUGIN_ROOT/hooks/claude/_trace.sh" PreToolUse-bas
 # Single python3: extract command + destructive-op match + discipline scan
 # + emit decision. Falls back to no-opinion if the script itself errors —
 # the gate must never block the host hook flow.
-printf '%s' "$EVENT" | python3 "$PLUGIN_ROOT/hooks/claude/_bash_gate.py" 2>/dev/null || echo '{}'
+printf '%s' "$EVENT" | python3 "$PLUGIN_ROOT/scripts/handlers/_bash_gate.py" 2>/dev/null || echo '{}'
 exit 0

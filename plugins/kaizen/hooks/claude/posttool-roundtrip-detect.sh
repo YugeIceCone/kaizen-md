@@ -26,12 +26,15 @@ mkdir -p "$STATE_DIR" 2>/dev/null || true
 STATE_PATH="$STATE_DIR/detect-state.json"
 WINDOW_SECONDS="${KAIZEN_LEARNING_DETECT_WINDOW:-30}"
 
+# _HOOK_DIR = plugins/kaizen/hooks/claude → ../../ = plugins/kaizen → scripts/handlers
+_HANDLERS_DIR="$_HOOK_DIR/../../scripts/handlers"
+
 # Stream stdin straight to python via subprocess. No string escaping —
 # python reads stdin itself.
 python3 -c "
 import json, sys
 from pathlib import Path
-sys.path.insert(0, '$_HOOK_DIR')
+sys.path.insert(0, '$_HANDLERS_DIR')
 from _roundtrip_detect import run_hook
 stdin_text = sys.stdin.read()
 out, _ = run_hook(stdin_text, state_path=Path('$STATE_PATH'),

@@ -24,4 +24,4 @@ printf '%s' "$EVENT_JSON" | bash "$PLUGIN_ROOT/hooks/claude/_trace.sh" PostToolU
 # early-exits if not `git commit`, then matches in_flight backlog
 # items against the latest commit message. Was 4 spawns + shell-side
 # grep+sed of .kaizen.toml.
-printf '%s' "$EVENT_JSON" | python3 "$PLUGIN_ROOT/skills/workflow/scripts/posttooluse_bash_commit.py"
+printf '%s' "$EVENT_JSON" | python3 "$PLUGIN_ROOT/scripts/handlers/posttooluse_bash_commit.py"

@@ -10,7 +10,7 @@ import unittest
 from pathlib import Path
 
 _KZ = Path(__file__).resolve().parent.parent
-_rules = _KZ / "skills/workflow/scripts/rules.py"
+_rules = _KZ / "scripts/rules/rules.py"
 
 
 class TestScriptRules(unittest.TestCase):

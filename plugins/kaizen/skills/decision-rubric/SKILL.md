@@ -50,7 +50,7 @@ schemas + envelope).
 The handoff outcome assessor is the reference consumer:
 
 - Rule yaml: `skills/handoff/domain/outcome-rubric.yaml`
-- Signal computer: `skills/workflow/scripts/handoff.py::_compute_assessment_signals`
+- Signal computer: `scripts/handoff/handoff.py::_compute_assessment_signals`
 - Consumer CLI: `kaizen-handoff assess` (`_cmd_assess` in same file)
 - Tests: `tests/test_handoff_assess.py`
 

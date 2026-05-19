@@ -12,7 +12,7 @@ from pathlib import Path
 
 _KZ_DIR = Path(__file__).resolve().parent.parent
 _HOOK_SH = _KZ_DIR / "hooks/claude/pretooluse-write-atomic.sh"
-_HOOK_PY = _KZ_DIR / "hooks/claude/_write_atomic.py"
+_HOOK_PY = _KZ_DIR / "scripts/handlers/_write_atomic.py"
 
 
 def _fire_py(event: dict, env: dict | None = None) -> subprocess.CompletedProcess:

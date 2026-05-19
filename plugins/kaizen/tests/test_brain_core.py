@@ -20,6 +20,7 @@ from pathlib import Path
 
 _KZ_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_KZ_DIR / "skills/workflow/scripts"))
+sys.path.insert(0, str(_KZ_DIR / "scripts/brain"))
 
 import _brain  # noqa: E402
 
@@ -325,7 +326,7 @@ class TestSlugify(unittest.TestCase):
 class TestCli(unittest.TestCase):
     def test_cli_shows_paths(self):
         import subprocess
-        script = _KZ_DIR / "skills/workflow/scripts/_brain.py"
+        script = _KZ_DIR / "scripts/brain/_brain.py"
         result = subprocess.run(
             ["python3", str(script)],
             capture_output=True, text=True,

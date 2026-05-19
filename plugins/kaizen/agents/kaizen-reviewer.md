@@ -36,7 +36,7 @@ You are spawned with `isolation: "worktree"` so you read an isolated copy of the
 1. `git diff --cached --stat` — files staged
 2. `git diff --cached` — full staged diff
 3. `${REPO_ROOT}/.kaizen.toml` — project config (`compile_check_cmd`, `verify_cmd`, `architecture_log`, `backlog_path`)
-4. `python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/rules.py list` — active brain-sourced rules
+4. `python3 ${CLAUDE_PLUGIN_ROOT}/scripts/rules/rules.py list` — active brain-sourced rules
 5. `git log -1 --format=%s%n%b HEAD` — recent commit style for Conventional Commits regex match
 6. `${REPO_ROOT}/.kaizen/cache/agent-reviewer-<diff-sha1>.json` — if cached, read and return immediately
 

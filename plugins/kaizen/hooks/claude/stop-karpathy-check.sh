@@ -18,5 +18,5 @@ PLUGIN_ROOT="$(kaizen_plugin_root 2>/dev/null)" || { echo '{}'; exit 0; }
 EVENT_JSON="$(cat 2>/dev/null || echo '{}')"
 printf '%s' "$EVENT_JSON" | bash "$PLUGIN_ROOT/hooks/claude/_trace.sh" Stop-karpathy-check 2>/dev/null || true
 
-python3 "$PLUGIN_ROOT/skills/workflow/scripts/stop_karpathy_check.py" check 2>/dev/null \
+python3 "$PLUGIN_ROOT/scripts/handlers/stop_karpathy_check.py" check 2>/dev/null \
     || echo '{}'

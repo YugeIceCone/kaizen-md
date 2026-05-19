@@ -6,4 +6,4 @@ argument-hint: [session|lifetime|never-used|top|skips|graveyard|smoke|path]
 
 # /kaizen:metrics
 
-!`python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/metrics.py $ARGUMENTS`
+!`python3 ${CLAUDE_PLUGIN_ROOT}/scripts/observe/metrics.py $ARGUMENTS`

@@ -23,7 +23,7 @@ from pathlib import Path
 PLUGIN_ROOT = Path(__file__).resolve().parent.parent
 SCHEMA_PATH = PLUGIN_ROOT / "assets" / "schemas" / "kaizen-config.schema.json"
 TAPLO_PATH  = PLUGIN_ROOT / "taplo.toml"
-SETUP_SH    = PLUGIN_ROOT / "skills" / "workflow" / "scripts" / "setup.sh"
+SETUP_SH    = PLUGIN_ROOT / "scripts" / "install" / "setup.sh"
 
 
 # ─── Schema file exists + parseable ────────────────────────────────────

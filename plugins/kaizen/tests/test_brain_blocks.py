@@ -23,9 +23,10 @@ import unittest
 from pathlib import Path
 
 _KZ = Path(__file__).resolve().parent.parent
-_BRAIN = _KZ / "skills/workflow/scripts/brain.py"
+_BRAIN = _KZ / "scripts/brain/brain.py"
 
 sys.path.insert(0, str(_KZ / "skills/workflow/scripts"))
+sys.path.insert(0, str(_KZ / "scripts/brain"))
 import _brain_blocks as _bb  # noqa: E402
 
 

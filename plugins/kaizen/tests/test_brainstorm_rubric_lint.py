@@ -12,7 +12,7 @@ from pathlib import Path
 
 _KZ = Path(__file__).resolve().parent.parent
 _RUBRIC = _KZ / "skills/brainstorming/domain/brainstorm-rubric.yaml"
-_RUBRIC_CLI = _KZ / "skills/workflow/scripts/rubric.py"
+_RUBRIC_CLI = _KZ / "scripts/rules/rubric.py"
 
 
 class TestBrainstormRubricLint(unittest.TestCase):

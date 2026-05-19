@@ -538,7 +538,7 @@ pattern, bash-gate behavior, env-var index), see
 ## Part 4 — Node+Flow design rules
 
 Every operation is a `flow.AsyncNode` graph. The runtime sits at
-`skills/workflow/scripts/flow.py`. See its module docstring for the
+`scripts/workflow/flow.py`. See its module docstring for the
 full primitive set — this skill describes how to USE them, not what
 they are.
 

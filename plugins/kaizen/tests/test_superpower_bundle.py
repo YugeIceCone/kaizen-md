@@ -31,7 +31,7 @@ import unittest
 from pathlib import Path
 
 _KZ_DIR = Path(__file__).resolve().parent.parent
-_BUNDLE_PY = _KZ_DIR / "skills/workflow/scripts/superpower_bundle.py"
+_BUNDLE_PY = _KZ_DIR / "scripts/util/superpower_bundle.py"
 
 
 class _BundleBase(unittest.TestCase):

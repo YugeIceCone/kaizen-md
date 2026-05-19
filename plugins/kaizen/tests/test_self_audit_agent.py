@@ -54,7 +54,7 @@ class SandboxBase(unittest.TestCase):
 
 class TestModuleAndConfig(unittest.TestCase):
     def test_module_parses(self):
-        path = _KZ_DIR / "skills/workflow/scripts/self_audit_agent.py"
+        path = _KZ_DIR / "scripts/iron-laws/self_audit_agent.py"
         compile(path.read_text(encoding="utf-8"), str(path), "exec")
 
     def test_dispatch_config_loads(self):
@@ -350,7 +350,7 @@ class TestDispatchPlanIntegration(SandboxBase):
 
 class TestCli(SandboxBase):
     def _run(self, *args):
-        script = _KZ_DIR / "skills/workflow/scripts/self_audit_agent.py"
+        script = _KZ_DIR / "scripts/iron-laws/self_audit_agent.py"
         return subprocess.run(
             ["python3", str(script), *args],
             capture_output=True, text=True, timeout=90,

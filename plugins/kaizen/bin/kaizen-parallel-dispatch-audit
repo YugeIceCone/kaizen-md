@@ -12,4 +12,4 @@ PLUGIN_ROOT="$(kaizen_plugin_root)" || {
     echo "kaizen-parallel-dispatch-audit: plugin root unresolved" >&2
     exit 1
 }
-exec python3 "$PLUGIN_ROOT/skills/workflow/scripts/parallel_dispatch_audit.py" "$@"
+exec python3 "$PLUGIN_ROOT/scripts/util/parallel_dispatch_audit.py" "$@"

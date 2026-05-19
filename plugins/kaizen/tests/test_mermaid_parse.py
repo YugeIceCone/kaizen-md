@@ -246,7 +246,7 @@ class TestCLI(unittest.TestCase):
         import tempfile
 
         script = (Path(__file__).resolve().parent.parent
-                   / "skills" / "workflow" / "scripts" / "mermaid.py")
+                   / "scripts" / "util" / "mermaid.py")
         with tempfile.NamedTemporaryFile("w", suffix=".mmd", delete=False) as f:
             f.write("flowchart TD\n  A[hi] --> B")
             tmp = f.name

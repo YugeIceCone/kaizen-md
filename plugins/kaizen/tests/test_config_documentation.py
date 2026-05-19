@@ -15,7 +15,7 @@ from pathlib import Path
 
 _KZ_DIR = Path(__file__).resolve().parent.parent
 _REPO_CLAUDE_MD = _KZ_DIR.parent.parent / "CLAUDE.md"
-_CONFIG_PY = _KZ_DIR / "skills/workflow/scripts/config.py"
+_CONFIG_PY = _KZ_DIR / "scripts/util/config.py"
 _PATHS_PY = _KZ_DIR / "skills/workflow/scripts/_paths.py"
 _PATHS_SH = _KZ_DIR / "skills/workflow/scripts/_paths.sh"
 

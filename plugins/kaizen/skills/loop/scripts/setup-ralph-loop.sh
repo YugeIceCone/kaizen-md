@@ -147,7 +147,7 @@ fi
 # resolve the workflow_config.py path relative to THIS script.
 if [[ "$MAX_ITERATIONS" -eq 0 ]]; then
   _SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-  WC_PY="$_SCRIPT_DIR/../../workflow/scripts/workflow_config.py"
+  WC_PY="$_SCRIPT_DIR/../../../scripts/workflow/workflow_config.py"
   if [[ -f "$WC_PY" ]] && command -v python3 >/dev/null 2>&1; then
     DEFAULT_ITS=$(python3 "$WC_PY" get-key loop.max_iterations 2>/dev/null)
     if [[ -n "$DEFAULT_ITS" ]] && [[ "$DEFAULT_ITS" =~ ^[0-9]+$ ]] \

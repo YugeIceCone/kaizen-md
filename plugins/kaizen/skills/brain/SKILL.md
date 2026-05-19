@@ -100,7 +100,7 @@ or add a new entity type, edit yaml — no code changes.
 
 ## Node+Flow engine
 
-Every operation is a PocketFlow AsyncNode graph (`skills/workflow/scripts/flow.py::AsyncNode`).
+Every operation is a PocketFlow AsyncNode graph (`scripts/workflow/flow.py::AsyncNode`).
 The flows are linear today but the engine supports action-key
 branching when needed:
 

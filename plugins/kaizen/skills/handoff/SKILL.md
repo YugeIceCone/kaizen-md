@@ -20,7 +20,7 @@ If the user's intent is ambiguous, ask which one.
 
 Every subcommand declares its input + output schemas in
 `skills/handoff/domain/handoff.yaml` (v2 manifest). The runtime
-(`skills/workflow/scripts/schema_cli.py`, the "lens") validates I/O
+(`scripts/rules/schema_cli.py`, the "lens") validates I/O
 before each call. Agents discover the contract by reading the manifest:
 
 | Subcommand        | Role | Input schema | Output schema |
@@ -56,7 +56,7 @@ manual token cost by pre-filling everything mechanical.
 #### Step 1 — scaffold the YAML
 
 ```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/handoff.py scaffold \
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/handoff/handoff.py scaffold \
     --session "$(git rev-parse --show-toplevel 2>/dev/null | xargs -r basename)" \
     --goal  "one line — what this session accomplished. Shown in statusline." \
     --now   "one line — what the next session should do first. Shown in statusline." \
@@ -119,7 +119,7 @@ Open the scaffolded YAML at `yaml_path` and Edit each field in
 #### Step 3 — get an outcome recommendation via `assess`
 
 ```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/handoff.py assess \
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/handoff/handoff.py assess \
     --file <yaml_path> \
     --test-delta <tests-after - tests-before, default 0> \
     --json
@@ -145,7 +145,7 @@ See the **`decision-rubric`** skill for the rubric pattern in detail.
 #### Step 4 — auto-finalize
 
 ```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/handoff.py auto-finalize \
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/handoff/handoff.py auto-finalize \
     --file <yaml_path> \
     --outcome <SUCCEEDED|PARTIAL_PLUS|PARTIAL_MINUS|FAILED> \
     --justification "one line — links outcome to evidence (test counts, task ratios, blocker shape)" \
@@ -192,7 +192,7 @@ echo '{
   "failed":   ["approach that failed and why"],
   "next":     ["first next step", "second"],
   "files":    {"created": ["..."], "modified": ["..."]}
-}' | python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/handoff.py create --stdin --json
+}' | python3 ${CLAUDE_PLUGIN_ROOT}/scripts/handoff/handoff.py create --stdin --json
 ```
 
 The `create` subcommand validates the payload against
@@ -213,7 +213,7 @@ wants. The session-ephemeral sections (`goal` / `now` /
 bridged.
 
 ```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/handoff.py bridge \
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/handoff/handoff.py bridge \
     --file <yaml_path>
 ```
 
@@ -265,7 +265,7 @@ ls -t ~/.claude/handoff/{TICKET}/ 2>/dev/null
 **Mode C — No args:** Query the store for the most recent entry:
 
 ```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/handoff.py latest --json
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/handoff/handoff.py latest --json
 ```
 
 - `data.handoff.file_path` → read in Step 2.
@@ -288,7 +288,7 @@ returns a typed verification report (~1K tokens) instead of running
 3–5 sub-agents (25–100K tokens):
 
 ```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/handoff.py verify \
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/handoff/handoff.py verify \
     --file <yaml_path> \
     --json
 ```

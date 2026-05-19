@@ -15,7 +15,7 @@ import unittest
 from pathlib import Path
 
 _KZ = Path(__file__).resolve().parent.parent
-_SCRIPT = _KZ / "skills/workflow/scripts/brainstorm.py"
+_SCRIPT = _KZ / "scripts/util/brainstorm.py"
 _RUBRIC = _KZ / "skills/brainstorming/domain/brainstorm-rubric.yaml"
 
 

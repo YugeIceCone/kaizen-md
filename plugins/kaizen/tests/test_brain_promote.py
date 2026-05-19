@@ -9,6 +9,7 @@ from pathlib import Path
 
 _KZ_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_KZ_DIR / "skills/workflow/scripts"))
+sys.path.insert(0, str(_KZ_DIR / "scripts/brain"))
 
 import _brain  # noqa: E402
 import brain_promote as bp  # noqa: E402

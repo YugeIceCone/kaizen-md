@@ -4,7 +4,7 @@
 # Continues the session with the original prompt while loop state is active.
 # Reads .kaizen/loop.state.md (shared with the Codex variant at
 # hooks/codex/stop-ralph.sh) and delegates structured-ledger transitions to
-# skills/workflow/scripts/loop_ledger.py (the cheat-proof verify gate).
+# scripts/state/loop_ledger.py (the cheat-proof verify gate).
 #
 # CC and Codex Stop-hook JSON contracts are identical (`decision:"block",
 # reason, systemMessage`); this variant inspects CLAUDE_SESSION_ID, the
@@ -23,7 +23,7 @@ if [[ -z "$PLUGIN_ROOT" ]]; then
   # Resolve from this script's location: hooks/claude/stop-ralph.sh → plugin/
   PLUGIN_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 fi
-LEDGER_HELPER="$PLUGIN_ROOT/skills/workflow/scripts/loop_ledger.py"
+LEDGER_HELPER="$PLUGIN_ROOT/scripts/state/loop_ledger.py"
 
 HOOK_INPUT=$(cat)
 
@@ -200,7 +200,7 @@ case "$ACTION" in
     # `completed` come from the post-loop_ledger.py body. Best-effort:
     # any failure is swallowed so tracing never breaks the loop.
     if command -v python3 >/dev/null 2>&1 \
-            && [ -f "$PLUGIN_ROOT/skills/workflow/scripts/trace.py" ]; then
+            && [ -f "$PLUGIN_ROOT/scripts/observe/trace.py" ]; then
         python3 - "$RALPH_STATE_FILE" "$ITERATION" \
                    "$PLUGIN_ROOT" "$HOOK_SESSION" <<'PY' 2>/dev/null || true
 import json, os, subprocess, sys
@@ -224,7 +224,7 @@ data = json.dumps({
     "pending": pending,
     "completed": completed,
 })
-trace_py = os.path.join(plugin_root, "skills/workflow/scripts/trace.py")
+trace_py = os.path.join(plugin_root, "scripts/observe/trace.py")
 cmd = [sys.executable, trace_py, "event", "--src", "hook",
        "--evt", "Stop-ralph-iteration", "--data", data]
 if sid:

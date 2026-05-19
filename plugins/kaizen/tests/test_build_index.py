@@ -17,6 +17,7 @@ from pathlib import Path
 
 _KZ_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_KZ_DIR / "skills/workflow/scripts"))
+sys.path.insert(0, str(_KZ_DIR / "scripts/indexers"))
 
 import build_index as bi  # noqa: E402
 
@@ -199,7 +200,7 @@ class TestPath(unittest.TestCase):
 class TestCli(BrainIndexBase):
     def test_index_then_stats_cli(self):
         import subprocess
-        script = _KZ_DIR / "skills/workflow/scripts/build_index.py"
+        script = _KZ_DIR / "scripts/indexers/build_index.py"
         env = os.environ.copy()
         r1 = subprocess.run(
             ["python3", str(script), "index"],

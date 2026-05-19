@@ -1,4 +1,4 @@
-"""Tests for hooks/claude/_bash_gate.py — the unified PreToolUse Bash gate.
+"""Tests for scripts/handlers/_bash_gate.py — the unified PreToolUse Bash gate.
 
 _bash_gate.py collapses the old multi-python3 pretooluse-bash-gate.sh into
 one process: command extraction + destructive-op match + bash-discipline
@@ -16,10 +16,11 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-HOOKS_DIR = Path(__file__).resolve().parent.parent / "hooks" / "claude"
+HOOKS_DIR = Path(__file__).resolve().parent.parent / "scripts" / "handlers"
 
 import sys
 sys.path.insert(0, str(HOOKS_DIR))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts" / "handlers"))
 import _bash_gate  # noqa: E402
 
 
@@ -400,7 +401,7 @@ class TestLongFormNudge(unittest.TestCase):
         self.assertIn("kaizen gatekeeper", r["systemMessage"])
 
     def test_script_long_form_caught(self):
-        cmd = "python3 plugins/kaizen/skills/workflow/scripts/gatekeeper.py check --all"
+        cmd = "python3 plugins/kaizen/scripts/iron-laws/gatekeeper.py check --all"
         r = _bash_gate.decide(cmd)
         self.assertIn("kaizen-cli nudge", r.get("systemMessage", ""))
         self.assertIn("kaizen gatekeeper", r["systemMessage"])
@@ -408,7 +409,7 @@ class TestLongFormNudge(unittest.TestCase):
     def test_mcp_module_not_nudged(self):
         # *_mcp.py modules aren't aliased — they're for the MCP gateway,
         # not direct CLI invocation.
-        cmd = "uv run --script plugins/kaizen/skills/workflow/scripts/gatekeeper_mcp.py"
+        cmd = "uv run --script plugins/kaizen/scripts/mcp/gatekeeper_mcp.py"
         r = _bash_gate.decide(cmd)
         self.assertNotIn("kaizen-cli nudge", r.get("systemMessage", ""))
 

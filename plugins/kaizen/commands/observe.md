@@ -8,7 +8,7 @@ argument-hint: [layers|query|stats|drill <sid>|snapshot [name]|compare <a> <b>|s
 
 Cross-layer observability — 6 data streams from CC stderr up to plugin global state.
 
-!`python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/observe.py ${ARGUMENTS:-layers}`
+!`python3 ${CLAUDE_PLUGIN_ROOT}/scripts/observe/observe.py ${ARGUMENTS:-layers}`
 
 Programmatic access via the `kaizen-state` MCP server (read-only subset):
 

@@ -30,7 +30,7 @@ printf '%s' "$INPUT" | bash "$PLUGIN_ROOT/hooks/claude/_trace.sh" UserPromptSubm
 # inbox.set_turn_starter directly. Was 4 spawns (extract prompt +
 # extract session + capture + set-turn-starter) per UserPromptSubmit.
 printf '%s' "$INPUT" | python3 \
-    "$PLUGIN_ROOT/skills/workflow/scripts/userprompt_inbox.py" \
+    "$PLUGIN_ROOT/scripts/handlers/userprompt_inbox.py" \
     >/dev/null 2>&1 || true
 
 exit 0

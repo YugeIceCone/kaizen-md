@@ -6,4 +6,4 @@ argument-hint: [list|show <name>|branches <name> <artifact>|validate <name>]
 
 # kaizen schema
 
-!`python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/workflow_runner.py ${ARGUMENTS:-list}`
+!`python3 ${CLAUDE_PLUGIN_ROOT}/scripts/workflow/workflow_runner.py ${ARGUMENTS:-list}`

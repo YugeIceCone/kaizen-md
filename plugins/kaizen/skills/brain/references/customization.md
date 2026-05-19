@@ -67,7 +67,7 @@ and their detection rules.
 
 ## 5. Promotion — project-memory → brain
 
-`skills/workflow/scripts/brain_promote.py::should_promote()` is the gate.
+`scripts/brain/brain_promote.py::should_promote()` is the gate.
 
 Default criteria:
 - `sources_count >= 2` (belief survived re-derivation), OR
@@ -86,7 +86,7 @@ CLI: `kaizen-brain promote` (dry-run) / `--apply`. MCP tools: `brain_promote_pre
 
 ## 6. Audit — end-of-session discovery
 
-`skills/workflow/scripts/brain_audit.py` mines the session JSONL transcripts for capture-candidates and drafts them to `<BRAIN_DIR>/Inbox/draft-<today>-<slug>.md`.
+`scripts/brain/brain_audit.py` mines the session JSONL transcripts for capture-candidates and drafts them to `<BRAIN_DIR>/Inbox/draft-<today>-<slug>.md`.
 
 | Want to change | Edit |
 |---|---|
@@ -101,7 +101,7 @@ CLI: `kaizen-brain audit` (dry-run) / `--apply`. MCP: `brain_audit`.
 
 ## 7. Evolve — consolidation + freshness + Persona promotion
 
-`skills/workflow/scripts/brain_evolve.py` is the periodic consolidation
+`scripts/brain/brain_evolve.py` is the periodic consolidation
 flow. Detects dupes, ages stale notes, and promotes high-confidence
 notes into `Persona.md ## Top Beliefs`.
 
@@ -118,7 +118,7 @@ CLI: `kaizen-brain evolve`. MCP: `brain_evolve`.
 
 ## 8. Capture flow — what triggers an auto-save
 
-The capture pipeline is in `skills/workflow/scripts/brain.py`. Triggered
+The capture pipeline is in `scripts/brain/brain.py`. Triggered
 by:
 - Explicit: `/kaizen:brain capture <text>` slash command
 - MCP: `brain_capture(text, type_hint?, confidence?, tier_hint?, subject?)`
@@ -139,7 +139,7 @@ Bypass any brain hook: `KAIZEN_BRAIN_DISABLE=1`.
 
 ## 9. Search + index
 
-`skills/workflow/scripts/build_index.py` is the SQLite + sentence-transformers index over Notes / Projects / People / Areas.
+`scripts/indexers/build_index.py` is the SQLite + sentence-transformers index over Notes / Projects / People / Areas.
 
 | Want to change | Edit |
 |---|---|
@@ -154,7 +154,7 @@ CLI: `kaizen-brain index <subcommand>` (subcommand ∈ `index|search|stats|get|p
 
 ## 10. Kaizen-rule notes — gate behavior
 
-The pre-commit gate consumes brain notes that carry a `kaizen:` block in their frontmatter (rule notes). Surface: `skills/workflow/scripts/rules.py`.
+The pre-commit gate consumes brain notes that carry a `kaizen:` block in their frontmatter (rule notes). Surface: `scripts/rules/rules.py`.
 
 | Want to change | Edit |
 |---|---|
@@ -194,7 +194,7 @@ $EDITOR plugins/kaizen/skills/brain/domain/entity-types.yaml
 # → types[0].triggers: append your phrase
 
 # Tighten promotion (require 3 sources, not 2)
-$EDITOR plugins/kaizen/skills/workflow/scripts/brain_promote.py
+$EDITOR plugins/kaizen/scripts/brain/brain_promote.py
 # → search for `sources_count >= 2`
 
 # Disable the brain SessionEnd audit
@@ -202,11 +202,11 @@ $EDITOR ~/.claude/settings.json   # or shell rc
 # → env: KAIZEN_BRAIN_DISABLE=1
 
 # Add a new rule type for the gate
-$EDITOR plugins/kaizen/skills/workflow/scripts/rules.py
+$EDITOR plugins/kaizen/scripts/rules/rules.py
 # → VALID_RULE_TYPES + the dispatcher
 
 # Customize Persona Top Beliefs promotion criteria
-$EDITOR plugins/kaizen/skills/workflow/scripts/brain_evolve.py
+$EDITOR plugins/kaizen/scripts/brain/brain_evolve.py
 # → reflect() function
 ```
 

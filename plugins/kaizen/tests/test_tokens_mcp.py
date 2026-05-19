@@ -14,7 +14,7 @@ import unittest
 from pathlib import Path
 
 PLUGIN_ROOT = Path(__file__).resolve().parent.parent
-SCRIPT = PLUGIN_ROOT / "skills/workflow/scripts/tokens_mcp.py"
+SCRIPT = PLUGIN_ROOT / "scripts/mcp/tokens_mcp.py"
 
 
 def _self_test() -> dict:

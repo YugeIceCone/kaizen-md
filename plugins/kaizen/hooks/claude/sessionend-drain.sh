@@ -28,7 +28,7 @@ printf '%s' "$EVENT" | bash "$PLUGIN_ROOT/hooks/claude/_trace.sh" SessionEnd
 
 # Final inbox drain — surface anything captured mid-session that
 # didn't get a PostToolUse boundary to land on.
-INBOX="$PLUGIN_ROOT/skills/workflow/scripts/inbox.py"
+INBOX="$PLUGIN_ROOT/scripts/intent/inbox.py"
 if [ -f "$INBOX" ]; then
     python3 "$INBOX" drain >/dev/null 2>&1 || true
     # Clear the turn-starter sentinel too; next session starts fresh.
@@ -55,7 +55,7 @@ except Exception:
     print(0)
 " 2>/dev/null)
             if [ "${INFLIGHT:-0}" != "0" ]; then
-                python3 "$PLUGIN_ROOT/skills/workflow/scripts/trace.py" event \
+                python3 "$PLUGIN_ROOT/scripts/observe/trace.py" event \
                     --src hook --evt SessionEnd-inflight \
                     --data "{\"in_flight\":$INFLIGHT}" \
                     >/dev/null 2>&1 || true

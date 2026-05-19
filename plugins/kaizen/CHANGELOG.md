@@ -104,7 +104,7 @@ Includes the regen script (one-line walk that rebuilds the table). Roadmap secti
 - `skills/workflow/scripts/metrics.py` — inline `_emit` → `emitter()` (DRY)
 - `skills/workflow/scripts/roadmap_status.py` — same DRY
 - `skills/workflow/scripts/trace.py` — retrofitted `cmd_stats`
-- `skills/workflow/scripts/loc_index.py` — retrofitted 3 sites
+- `scripts/indexers/loc_index.py` — retrofitted 3 sites
 - `tests/test_envelope.py` — `_RETROFIT_TOOLS` extended 8 → 10 + new `TestEmitterFactory` (3 tests)
 - `skills/efficient-tool-use/references/envelope-retrofit.md` — NEW inventory doc
 
@@ -457,7 +457,7 @@ Surface dimensions surfaced: 22 MCP sub-servers, 146 tools, 18 hook registration
 
 Closes audit-finding F-001 (gatekeeper existed but had no MCP wrapper, forcing shell-invocations) + F-004 (CURATED_CORE was stale, missing new tools).
 
-- **`skills/workflow/scripts/gatekeeper_mcp.py`** — FastMCP wrapper exposing `gatekeeper_check(scope, only=None)` + `gatekeeper_list()`. Uses explicit `importlib.util.spec_from_file_location` to load `gatekeeper.py` without `sys.path` pollution (gatekeeper internally uses the same pattern for its sub-gates).
+- **`scripts/mcp/gatekeeper_mcp.py`** — FastMCP wrapper exposing `gatekeeper_check(scope, only=None)` + `gatekeeper_list()`. Uses explicit `importlib.util.spec_from_file_location` to load `gatekeeper.py` without `sys.path` pollution (gatekeeper internally uses the same pattern for its sub-gates).
 - **`skills/workflow/scripts/gateway.py::SUBSERVERS`** — adds `("gatekeeper", "gatekeeper_mcp")`. The kaizen gateway now mounts **22 sub-servers / 146 tools**.
 - **`skills/workflow/scripts/gateway.py::CURATED_CORE`** rebalanced:
   - Added: `gatekeeper_check`, `auto_fix_lint`
@@ -618,13 +618,13 @@ tests). No regressions in the existing 1360.
 
 Follow-up to the `auto_fix_lint` ship (below). Three additions:
 
-- **`skills/workflow/scripts/lint_fix_prefs.py`** — atomic per-repo
+- **`scripts/lint/lint_fix_prefs.py`** — atomic per-repo
   persistence at `.kaizen/lint_dispatch_prefs.json`. The user picks
   subagent vs local_llm once, the rest of the session honors it.
   `load_prefs(repo)` / `save_prefs(repo, data)` / `get_strategy(repo,
   default='subagent')` / `set_strategy(repo, strategy)`. Schema
   v1 + `updated_at` stamp. 10 tests.
-- **`skills/workflow/scripts/lint_fix_setup.py`** — local-LLM
+- **`scripts/lint/lint_fix_setup.py`** — local-LLM
   detection + install-script generator (no auto-execute, returns
   bash for `ollama` or `llama-server`). `detect_servers()` sweeps
   `LLM_BASE_URL` env + ollama:11434 + llama-server:8080 via a TCP
@@ -667,7 +667,7 @@ are the errors". TDD-built (21 unit + integration + contract +
 regression tests via `tests/test_lint_fix_dispatch.py`; full plugin
 suite of 1324 tests stays green).
 
-- **`skills/workflow/scripts/lint_fix_dispatch.py`** — two strategies
+- **`scripts/lint/lint_fix_dispatch.py`** — two strategies
   sharing the lint-finding shape `_normalize_ruff` / `_parse_ty_concise`
   already produce:
   - `strategy="subagent"` — emits structured task specs (`file`,
@@ -943,7 +943,7 @@ Each routine in `routines.yaml` declares which of the 8 coding-skills principles
 
 ### Added — `kaizen-workflow` MCP server (9 tools)
 
-`plugins/kaizen/skills/workflow/scripts/workflow_mcp.py`. Wraps `workflow.sh` +
+`plugins/kaizen/scripts/mcp/workflow_mcp.py`. Wraps `workflow.sh` +
 `workflow_runner.py` so Claude can drive a multi-stage workflow without
 slash-command typing.
 
@@ -957,7 +957,7 @@ No embed-model dependency; pure stdlib + `mcp>=1.0`.
 
 ### Added — `kaizen-lint` MCP server (7 tools)
 
-`plugins/kaizen/skills/workflow/scripts/lint_mcp.py`. Wraps ruff (lint +
+`plugins/kaizen/scripts/mcp/lint_mcp.py`. Wraps ruff (lint +
 format) and ty (typecheck + explain) so linters run mid-conversation
 without slash commands.
 
@@ -1282,7 +1282,7 @@ Plugin unit-test count: 121 → 137. Pipeline: 30/30.
 ### Files
 
 ```
-skills/workflow/scripts/scrape_index.py    (+135 LOC: recommendations + smart picker + recommend subcommand)
+scripts/indexers/scrape_index.py    (+135 LOC: recommendations + smart picker + recommend subcommand)
 bin/kaizen-scrape                         (recommend added to stdlib-only fast path)
 commands/scrape.md                        (subcommand table)
 tests/test_scrape_recommend.py            (new, 16 tests)
@@ -1781,7 +1781,7 @@ Three kaizen patterns composed into one command:
 2. **[ScrapeGraphAI](https://github.com/scrapegraphai/scrapegraph-ai)** — `SmartScraperGraph(prompt, source, config).run()` for LLM-driven extraction.
 3. **Kaizen indexer** — same SQLite + `sentence-transformers` (`all-MiniLM-L6-v2`, 384-dim) shape as trace / knowledge / onboard.
 
-**Pipeline** (`skills/workflow/scripts/scrape_index.py`, ~530 LOC):
+**Pipeline** (`scripts/indexers/scrape_index.py`, ~530 LOC):
 
 ```
 FetchURLs → ScrapeFanOut → Synthesize → EmbedAndPersist
@@ -1856,7 +1856,7 @@ Single-edit principle preserved — change the model in one place to retune ever
 ### Surface — new files
 
 - `commands/scrape.md` — slash command + LLM provider docs + pipeline diagram.
-- `skills/workflow/scripts/scrape_index.py` — pipeline + indexer (530 LOC, PEP 723 inline metadata).
+- `scripts/indexers/scrape_index.py` — pipeline + indexer (530 LOC, PEP 723 inline metadata).
 - `bin/kaizen-scrape` — shell shim (count 25 → 26).
 - `assets/schemas/scrape-item.schema.json` — JSON Schema mirror.
 
@@ -2112,7 +2112,7 @@ embedding BLOB (384 f32) | sha (16-hex) | updated_at
 
 ### Added — `kaizen-onboard-search` MCP server
 
-`skills/workflow/scripts/onboard_mcp.py` — FastMCP server exposing 5 tools:
+`scripts/mcp/onboard_mcp.py` — FastMCP server exposing 5 tools:
 
 - `onboard_search(query, top_k, language)` — semantic search with optional language filter.
 - `onboard_index_status()` — total files / sloc / bytes / model / counts by language.
@@ -2247,7 +2247,7 @@ Closes the three v1.16.x follow-ups in one release: (1) MCP wrapper for `knowled
 
 ### Added — `kaizen-knowledge-search` MCP server
 
-`skills/workflow/scripts/knowledge_mcp.py` — FastMCP server exposing 5 tools that wrap `knowledge_index.do_*` helpers (parallel to `trace_mcp.py`'s wrapping of `trace_index`):
+`scripts/mcp/knowledge_mcp.py` — FastMCP server exposing 5 tools that wrap `knowledge_index.do_*` helpers (parallel to `trace_mcp.py`'s wrapping of `trace_index`):
 
 - `knowledge_search(query, top_k, source)` — cosine-similarity search; optional source filter.
 - `knowledge_index_status()` — totals, model, dim, last-indexed-ts, counts by source.
@@ -2292,7 +2292,7 @@ E2E smoke-tested:
 
 ### Permissions
 
-`plugin.json` allowlists `uv run --script ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/knowledge_mcp.py:*` for the new MCP spawn path.
+`plugin.json` allowlists `uv run --script ${CLAUDE_PLUGIN_ROOT}/scripts/mcp/knowledge_mcp.py:*` for the new MCP spawn path.
 
 ### Why minor (1.16.0 → 1.17.0)
 
@@ -2308,7 +2308,7 @@ Knowledge RAG over the non-trace corpus + Self-RAG retrieval discipline skill. S
 
 ### Added — `knowledge_index.py` (semantic search over brain / plans / backlog / schemas / persona)
 
-`skills/workflow/scripts/knowledge_index.py` — sibling of `trace_index.py`. Same architecture (SQLite + sentence-transformers + 384-dim cosine), same model (`all-MiniLM-L6-v2`), same privacy defaults (signature embedding only; body opt-in via `--embed-body`). PEP 723 inline metadata pins CPU torch, mirroring the v1.12.0 trace-index pattern — uv-managed venv, no system-pip pollution.
+`scripts/indexers/knowledge_index.py` — sibling of `trace_index.py`. Same architecture (SQLite + sentence-transformers + 384-dim cosine), same model (`all-MiniLM-L6-v2`), same privacy defaults (signature embedding only; body opt-in via `--embed-body`). PEP 723 inline metadata pins CPU torch, mirroring the v1.12.0 trace-index pattern — uv-managed venv, no system-pip pollution.
 
 **Five source iterators:**
 
@@ -2349,7 +2349,7 @@ Iron Laws: never retrieve and then ignore; never claim a convention you didn't v
 
 ### Permissions
 
-`plugin.json` allows `python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/knowledge_index.py:*` for the slash command's embedded `!` invocation.
+`plugin.json` allows `python3 ${CLAUDE_PLUGIN_ROOT}/scripts/indexers/knowledge_index.py:*` for the slash command's embedded `!` invocation.
 
 ### First-time setup
 
@@ -2481,7 +2481,7 @@ New runtime surface (workflow_runner.py + `schema=` flag + `/kaizen:schema` comm
 
 Closes the v1.13.0 follow-up. Vibe-check's orphan-import check (Rust `use` not in any `Cargo.toml`) now consults brain-sourced `dependency-allowlist` rules and demotes listed crates from `! orphan` to `∘ allowlisted` — advisory only, no behaviour change for unlisted crates.
 
-**`skills/workflow/scripts/rules.py`** — fourth rule_type added:
+**`scripts/rules/rules.py`** — fourth rule_type added:
 
 - `VALID_RULE_TYPES` extended with `dependency-allowlist`.
 - `dependency_allowed(name) -> (bool, rule_name)` — union lookup across all loaded rules; first hit wins.
@@ -2495,7 +2495,7 @@ Closes the v1.13.0 follow-up. Vibe-check's orphan-import check (Rust `use` not i
 
 ```bash
 # 1. Get a template:
-python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/rules.py template dependency-allowlist > ~/.claude/brain/Notes/kaizen-allow-core-deps.md
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/rules/rules.py template dependency-allowlist > ~/.claude/brain/Notes/kaizen-allow-core-deps.md
 # 2. Edit the allowlist line in the YAML frontmatter:
 #    allowlist: "serde,tokio,my-internal-crate,..."
 # 3. Validate:

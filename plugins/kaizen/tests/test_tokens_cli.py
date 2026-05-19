@@ -26,7 +26,7 @@ import unittest
 from pathlib import Path
 
 PLUGIN_ROOT = Path(__file__).resolve().parent.parent
-SCRIPT = PLUGIN_ROOT / "skills" / "workflow" / "scripts" / "tokens.py"
+SCRIPT = PLUGIN_ROOT / "scripts" / "index" / "tokens.py"
 
 
 def _run(*args: str, project_root: Path) -> subprocess.CompletedProcess:

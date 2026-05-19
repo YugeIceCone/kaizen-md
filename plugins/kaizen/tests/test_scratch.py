@@ -23,7 +23,7 @@ from pathlib import Path
 
 _KZ_DIR = Path(__file__).resolve().parent.parent
 _SCRIPTS = _KZ_DIR / "skills/workflow/scripts"
-_SCRATCH = _SCRIPTS / "scratch.py"
+_SCRATCH = _KZ_DIR / "scripts/util" / "scratch.py"
 
 
 def _run(*args: str) -> subprocess.CompletedProcess:

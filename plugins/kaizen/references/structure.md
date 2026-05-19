@@ -280,7 +280,7 @@ counter_evidence: []          # populated by /remember:evolve when contradiction
 last_consolidated: 2026-05-04 # for type=observation only
 ```
 
-Helpers in `scripts/schema.js`:
+Helpers in `skills/workflow/scripts/memory_schema.py`:
 - `detectType(text)` — heuristic classification
 - `validateFrontmatter(meta)` — checks required fields and ranges
 - `TYPES`, `FRESHNESS`, `DEFAULT_THRESHOLDS` — constants

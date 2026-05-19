@@ -16,8 +16,9 @@ from pathlib import Path
 _PLUGIN_ROOT = Path(__file__).resolve().parent.parent
 _APP = _PLUGIN_ROOT / "skills" / "iron-laws" / "application"
 _SCRIPTS = _PLUGIN_ROOT / "skills" / "workflow" / "scripts"
+_MCP = _PLUGIN_ROOT / "scripts" / "mcp"
 _DOMAIN = _PLUGIN_ROOT / "skills" / "iron-laws" / "domain"
-for _p in (_APP, _SCRIPTS):
+for _p in (_APP, _SCRIPTS, _MCP):
     if str(_p) not in sys.path:
         sys.path.insert(0, str(_p))
 
@@ -328,7 +329,7 @@ class TestRegistryIntegrity(unittest.TestCase):
 
 
 class TestCLI(unittest.TestCase):
-    CLI = _SCRIPTS / "iron_laws.py"
+    CLI = _PLUGIN_ROOT / "scripts" / "iron-laws" / "iron_laws.py"
 
     def _run(self, *args):
         return subprocess.run(

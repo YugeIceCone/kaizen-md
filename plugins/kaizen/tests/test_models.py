@@ -10,7 +10,7 @@ import unittest
 from pathlib import Path
 
 _KZ = Path(__file__).resolve().parent.parent
-_models = _KZ / "skills/workflow/scripts/models.py"
+_models = _KZ / "scripts/util/models.py"
 
 
 class TestScriptModels(unittest.TestCase):

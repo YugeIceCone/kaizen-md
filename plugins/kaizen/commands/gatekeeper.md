@@ -55,7 +55,7 @@ The gatekeeper is the "every Python gate, one command" view. Pre-commit (`pre-co
 
 ## Behind the scenes
 
-`skills/workflow/scripts/gatekeeper.py` is the entry point. Each sub-gate is a function that:
+`scripts/iron-laws/gatekeeper.py` is the entry point. Each sub-gate is a function that:
 
 1. Lazy-loads its source module via explicit `importlib.spec_from_file_location` (avoids the `_loader.py` name-collision when iron-laws and efficient-tool-use both ship one).
 2. Returns a list of normalized `GateFinding(gate, severity, rule_id, message, file, line)` records.

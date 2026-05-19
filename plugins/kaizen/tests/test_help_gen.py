@@ -10,7 +10,7 @@ import unittest
 from pathlib import Path
 
 _KZ_DIR = Path(__file__).resolve().parent.parent
-_SCRIPT = _KZ_DIR / "skills/workflow/scripts/help_gen.py"
+_SCRIPT = _KZ_DIR / "scripts/util/help_gen.py"
 
 
 def _run(*args) -> subprocess.CompletedProcess:

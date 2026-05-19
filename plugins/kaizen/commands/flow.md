@@ -6,4 +6,4 @@ argument-hint: [<workspace-dir>]
 
 # kaizen flow
 
-!`python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/flow.py "${ARGUMENTS:-.}"`
+!`python3 ${CLAUDE_PLUGIN_ROOT}/scripts/workflow/flow.py "${ARGUMENTS:-.}"`

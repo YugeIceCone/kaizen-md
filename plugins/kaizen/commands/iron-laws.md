@@ -6,4 +6,4 @@ argument-hint: [list|show <id>|check [--all|--law <id>]|render]
 
 # /kaizen:iron-laws
 
-!`python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/iron_laws.py $ARGUMENTS`
+!`python3 ${CLAUDE_PLUGIN_ROOT}/scripts/iron-laws/iron_laws.py $ARGUMENTS`

@@ -10,7 +10,7 @@ import unittest
 from pathlib import Path
 
 _KZ = Path(__file__).resolve().parent.parent
-_trace = _KZ / "skills/workflow/scripts/trace.py"
+_trace = _KZ / "scripts/observe/trace.py"
 
 
 class TestScriptTrace(unittest.TestCase):

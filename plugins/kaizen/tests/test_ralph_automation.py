@@ -24,7 +24,7 @@ import unittest
 from pathlib import Path
 
 _KZ_DIR = Path(__file__).resolve().parent.parent
-_LEDGER = _KZ_DIR / "skills/workflow/scripts/loop_ledger.py"
+_LEDGER = _KZ_DIR / "scripts/state/loop_ledger.py"
 _HOOK = _KZ_DIR / "hooks/claude/stop-ralph.sh"
 
 

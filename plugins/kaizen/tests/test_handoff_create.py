@@ -17,7 +17,7 @@ import unittest
 from pathlib import Path
 
 _KZ_DIR = Path(__file__).resolve().parent.parent
-_SCRIPTS = _KZ_DIR / "skills/workflow/scripts"
+_SCRIPTS = _KZ_DIR / "scripts/handoff"
 _HANDOFF_PY = _SCRIPTS / "handoff.py"
 _DOMAIN = _KZ_DIR / "skills/handoff/domain"
 
@@ -107,6 +107,7 @@ class TestCreateSchemaValidation(CreateBase):
     def test_output_validates_against_schema(self):
         import sys as _sys
         _sys.path.insert(0, str(_SCRIPTS))
+        _sys.path.insert(0, str(_KZ_DIR / "scripts/rules"))
         import schema_cli
         r = self._run(_SAMPLE)
         env = json.loads(r.stdout)

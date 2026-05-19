@@ -20,7 +20,7 @@ from pathlib import Path
 
 SCRIPT = (
     Path(__file__).resolve().parent.parent
-    / "skills" / "workflow" / "scripts" / "_prune_bin_symlinks.py"
+    / "scripts" / "util" / "_prune_bin_symlinks.py"
 )
 
 

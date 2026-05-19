@@ -1,4 +1,4 @@
-"""Tests for skills/workflow/scripts/surface.py — unified MCP+hooks registry."""
+"""Tests for scripts/iron-laws/surface.py — unified MCP+hooks registry."""
 from __future__ import annotations
 
 import importlib.util
@@ -7,7 +7,7 @@ import unittest
 from pathlib import Path
 
 _REPO_ROOT = Path(__file__).resolve().parents[3]
-_SURFACE = _REPO_ROOT / "plugins/kaizen/skills/workflow/scripts/surface.py"
+_SURFACE = _REPO_ROOT / "plugins/kaizen/scripts/iron-laws/surface.py"
 
 
 def _load(name: str, path: Path):

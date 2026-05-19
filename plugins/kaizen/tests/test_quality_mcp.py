@@ -14,7 +14,7 @@ import unittest
 from pathlib import Path
 
 _KZ_DIR = Path(__file__).resolve().parent.parent
-_SCRIPT = _KZ_DIR / "skills/workflow/scripts/quality_mcp.py"
+_SCRIPT = _KZ_DIR / "scripts/mcp/quality_mcp.py"
 
 
 def _load():

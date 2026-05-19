@@ -8,7 +8,7 @@ argument-hint: [tail [--n N] [--src S] [--evt E]|query|stats|event ...|clear|pat
 
 Raw event log — every kaizen hook/agent/LLM/tool action. JSONL, auto-rotated.
 
-!`python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/trace.py ${ARGUMENTS:-tail}`
+!`python3 ${CLAUDE_PLUGIN_ROOT}/scripts/observe/trace.py ${ARGUMENTS:-tail}`
 
 Programmatic access via the `kaizen-state` MCP server (read-only subset):
 

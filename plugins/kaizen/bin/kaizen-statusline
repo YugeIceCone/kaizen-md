@@ -19,8 +19,8 @@ SUB="${1:-}"
 shift || true
 
 case "$SUB" in
-  dxm)    exec python3 "$PLUGIN_ROOT/skills/workflow/scripts/statusline_dxm.py"    "$@" ;;
-  intent) exec python3 "$PLUGIN_ROOT/skills/workflow/scripts/statusline_intent.py" "$@" ;;
+  dxm)    exec python3 "$PLUGIN_ROOT/scripts/handlers/statusline_dxm.py"    "$@" ;;
+  intent) exec python3 "$PLUGIN_ROOT/scripts/handlers/statusline_intent.py" "$@" ;;
   ""|-h|--help)
     cat <<EOF
 kaizen-statusline — emit one statusline segment.

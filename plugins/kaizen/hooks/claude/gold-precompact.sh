@@ -29,7 +29,7 @@ printf '%s' "$EVENT" | bash "$PLUGIN_ROOT/hooks/claude/_trace.sh" \
     PreCompact-gold 2>/dev/null || true
 
 # Count un-promoted entries. Best-effort: any failure → silent exit.
-COUNT=$(python3 "$PLUGIN_ROOT/skills/workflow/scripts/gold.py" \
+COUNT=$(python3 "$PLUGIN_ROOT/scripts/gold/gold.py" \
     list --unpromoted --json 2>/dev/null \
     | python3 -c 'import json,sys; print(len(json.load(sys.stdin)))' \
     2>/dev/null || echo "0")

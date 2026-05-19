@@ -1,47 +1,31 @@
-"""kaizen JSONL helpers — shared read utilities for event-log style files.
+"""MIGRATION BRIDGE — _jsonl moved to scripts/io/_jsonl.py.
 
-Used by trace_index, observe, and any consumer that needs to iterate
-JSON-per-line files, optionally gzip-compressed (rotated event logs).
+Bare ``import _jsonl`` still resolves here when callers have only
+``skills/workflow/scripts/`` on ``sys.path``. This stub loads the
+canonical module from ``scripts/io/_jsonl.py`` and aliases
+``sys.modules["_jsonl"]`` to it, so the caller observes the real
+module — not an empty stub namespace. Both legacy and canonical
+imports return the SAME module object (no duplicate-module pitfall).
 
-Single source of `iter_jsonl` extracted in the M4 hygiene pass (was
-duplicated byte-identical in trace_index.py + observe.py).
-
-## API
-
-    from _jsonl import iter_jsonl
-
-    for record in iter_jsonl(Path("events.jsonl")):
-        ...
-
-Generator: yields one parsed dict per non-empty line. Skips invalid
-JSON, OSError on the file open. Returns silently if the file doesn't
-exist (common when an indexer hits a not-yet-rotated path).
+Remove once every consumer adopts its own
+``sys.path.insert(<plugin>/scripts/io)`` bridge.
 """
 from __future__ import annotations
 
-import gzip
-import json
+import importlib.util
+import sys
 from pathlib import Path
-from typing import Iterator
 
+_PLUGIN_ROOT = Path(__file__).resolve().parents[3]
+_IO_DIR = _PLUGIN_ROOT / "scripts" / "io"
+_LEGACY_DIR = _PLUGIN_ROOT / "skills" / "workflow" / "scripts"
+_CANONICAL = _IO_DIR / "_jsonl.py"
 
-def iter_jsonl(path: Path) -> Iterator[dict]:
-    """Yield each JSON record from a .jsonl or .jsonl.gz file.
+for _p in (_LEGACY_DIR, _IO_DIR):
+    if str(_p) not in sys.path:
+        sys.path.insert(0, str(_p))
 
-    Silent on: missing file, OSError, JSONDecodeError per-line, empty lines.
-    Use this when you don't want a malformed line to abort the whole pass."""
-    if not path.exists():
-        return
-    opener = gzip.open if path.suffix == ".gz" else open
-    try:
-        with opener(path, "rt") as fp:
-            for line in fp:
-                line = line.strip()
-                if not line:
-                    continue
-                try:
-                    yield json.loads(line)
-                except json.JSONDecodeError:
-                    continue
-    except OSError:
-        return
+_spec = importlib.util.spec_from_file_location("_jsonl", _CANONICAL)
+_mod = importlib.util.module_from_spec(_spec)
+sys.modules["_jsonl"] = _mod
+_spec.loader.exec_module(_mod)

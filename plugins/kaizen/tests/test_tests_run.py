@@ -28,9 +28,9 @@ import unittest
 from pathlib import Path
 
 _KZ = Path(__file__).resolve().parent.parent
-_RUNNER = _KZ / "skills/workflow/scripts/tests_run.py"
+_RUNNER = _KZ / "scripts/tests/tests_run.py"
 
-sys.path.insert(0, str(_KZ / "skills/workflow/scripts"))
+sys.path.insert(0, str(_KZ / "scripts/tests"))
 import _tests_run as _tr  # noqa: E402
 
 

@@ -10,7 +10,7 @@ import unittest
 from pathlib import Path
 
 _KZ = Path(__file__).resolve().parent.parent
-_trace_index_gpu = _KZ / "skills/workflow/scripts/trace_index_gpu.py"
+_trace_index_gpu = _KZ / "scripts/indexers/trace_index_gpu.py"
 
 
 class TestScriptTraceIndexGpu(unittest.TestCase):

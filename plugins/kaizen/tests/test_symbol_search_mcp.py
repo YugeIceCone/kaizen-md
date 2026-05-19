@@ -16,6 +16,8 @@ from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "skills" / "workflow" / "scripts"))
+sys.path.insert(0, str(ROOT / "scripts" / "mcp"))
+sys.path.insert(0, str(ROOT / "scripts" / "indexers"))
 
 
 def _seed_onboard_db(root: Path) -> None:

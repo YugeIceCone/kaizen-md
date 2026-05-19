@@ -20,7 +20,7 @@ Three phases:
 
 Recommended cadence: `/loop 7d kaizen-brain evolve` (weekly) or `/loop 30d kaizen-brain evolve` (monthly). Idempotent — safe to run any time.
 
-After each Phase that writes (Phase 1 entity re-synthesis, Phase 2 belief frontmatter updates, Phase 3 Persona.md update via `promote.js`), call `node ${CLAUDE_PLUGIN_ROOT}/scripts/schema.js validate <filepath>` on the touched files. Surface its `warnings` (e.g. *"confidence defaulted to 0.5 — review"*) in your final report.
+After each Phase that writes (Phase 1 entity re-synthesis, Phase 2 belief frontmatter updates, Phase 3 Persona.md update via `promote.js`), call `python3 ${CLAUDE_PLUGIN_ROOT}/scripts/workflow/memory_schema.py validate <filepath>` on the touched files. Surface its `warnings` (e.g. *"confidence defaulted to 0.5 — review"*) in your final report.
 
 ---
 
@@ -41,7 +41,7 @@ If no flag → run all three phases in order.
 
 1. Read `$KAIZEN_BRAIN_DIR` (fallback `~/.claude/.kaizen/brain`). Call this `{brain}`.
 2. If missing → tell user to run `/kaizen:init` and stop.
-3. Run: `node ${CLAUDE_PLUGIN_ROOT}/scripts/build-index.js --compact` to get the brain index. Use throughout to resolve entities and prevent duplicates.
+3. Run: `python3 ${CLAUDE_PLUGIN_ROOT}/scripts/indexers/build_index.py --compact` to get the brain index. Use throughout to resolve entities and prevent duplicates.
 4. Load thresholds + auto_promote flag:
    ```bash
    node -e "const {loadEvolutionConfig} = require('${CLAUDE_PLUGIN_ROOT}/scripts/config'); console.log(JSON.stringify(loadEvolutionConfig()));"
@@ -79,7 +79,7 @@ For each candidate file:
 4. Update frontmatter: `last_consolidated: {today}`, `sources_count: {touches}`, `freshness: stable`.
 5. Append to evolution log:
    ```bash
-   node ${CLAUDE_PLUGIN_ROOT}/scripts/evolution-log.js CONSOLIDATE "{path} touches=+{n}"
+   python3 ${CLAUDE_PLUGIN_ROOT}/scripts/evolution_log.py CONSOLIDATE "{path} touches=+{n}"
    ```
 
 **Never overwrite history sections** (`## Interactions`, `## Log`, `## Meetings`). Only refresh synthesized sections.
@@ -122,7 +122,7 @@ For each belief file:
    - Update frontmatter via `Edit` tool (surgical)
    - Append:
      ```bash
-     node ${CLAUDE_PLUGIN_ROOT}/scripts/evolution-log.js REFLECT "{path} conf {old}→{new} freshness={new_freshness}"
+     python3 ${CLAUDE_PLUGIN_ROOT}/scripts/evolution_log.py REFLECT "{path} conf {old}→{new} freshness={new_freshness}"
      ```
    - For state transitions: also log `STALE`, `CONTRADICT` events as appropriate.
 
@@ -142,12 +142,12 @@ Goal: pin top beliefs into `Persona.md ## Top Beliefs` based on thresholds. Pure
 
 If `--dry-run`:
 ```bash
-node ${CLAUDE_PLUGIN_ROOT}/scripts/promote.js --dry-run
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/brain/brain_promote.py --dry-run
 ```
 
 Otherwise:
 ```bash
-node ${CLAUDE_PLUGIN_ROOT}/scripts/promote.js
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/brain/brain_promote.py
 ```
 
 The script:

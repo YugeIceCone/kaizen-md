@@ -23,7 +23,7 @@ import unittest
 from pathlib import Path
 
 _KZ = Path(__file__).resolve().parent.parent
-_BUNDLE = _KZ / "skills/workflow/scripts/superpower_bundle.py"
+_BUNDLE = _KZ / "scripts/util/superpower_bundle.py"
 
 sys.path.insert(0, str(_KZ / "skills/workflow/scripts"))
 import superpower_bundle as _sb  # noqa: E402

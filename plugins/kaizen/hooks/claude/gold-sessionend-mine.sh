@@ -33,7 +33,7 @@ echo '{}' | bash "$PLUGIN_ROOT/hooks/claude/_trace.sh" \
 
 # Run the mine. Suppress stdout (hook output is noisy in the terminal);
 # best-effort: never block on errors.
-python3 "$PLUGIN_ROOT/skills/workflow/scripts/gold.py" mine \
+python3 "$PLUGIN_ROOT/scripts/gold/gold.py" mine \
     >/dev/null 2>&1 || true
 
 exit 0

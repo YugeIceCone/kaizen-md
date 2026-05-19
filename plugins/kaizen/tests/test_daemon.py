@@ -10,17 +10,23 @@ from unittest import mock
 
 SCRIPTS = Path(__file__).resolve().parent.parent / "skills" / "workflow" / "scripts"
 sys.path.insert(0, str(SCRIPTS))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts" / "daemon"))
 import daemon  # noqa: E402
 
 
 class TestScriptsDir(unittest.TestCase):
     def test_scripts_dir_exists_and_holds_daemon(self):
+        # Post-DOMAIN-6 migration: scripts_dir() returns legacy
+        # skills/workflow/scripts/ for hygiene + refresh-cache (still
+        # there). daemon.py moved to scripts/daemon/ — check separately.
         d = daemon.scripts_dir()
         self.assertTrue(d.is_dir(), f"{d} should exist")
-        self.assertTrue((d / "daemon.py").is_file(),
-                        f"{d} should contain daemon.py")
         self.assertTrue((d / "hygiene.py").is_file())
         self.assertTrue((d / "refresh-cache.sh").is_file())
+        # daemon.py is now under scripts/daemon/ (post-DOMAIN-6).
+        plugin_root = daemon.plugin_src()
+        self.assertTrue((plugin_root / "scripts" / "daemon" / "daemon.py").is_file(),
+                        "daemon.py should live at scripts/daemon/ after DOMAIN-6")
 
 
 class TestIndexRefresh(unittest.TestCase):
@@ -90,12 +96,12 @@ class TestWatchBackendSelect(unittest.TestCase):
 
 class TestDaemonUvScript(unittest.TestCase):
     def test_daemon_is_a_uv_run_script(self):
-        lines = (SCRIPTS / "daemon.py").read_text().splitlines()
+        lines = (Path(__file__).resolve().parent.parent / "scripts" / "daemon" / "daemon.py").read_text().splitlines()
         self.assertIn("uv run --script", lines[0],
                       "daemon.py shebang must invoke uv run --script")
 
     def test_daemon_declares_watchdog_dependency(self):
-        text = (SCRIPTS / "daemon.py").read_text()
+        text = (Path(__file__).resolve().parent.parent / "scripts" / "daemon" / "daemon.py").read_text()
         self.assertRegex(text, r"#\s*dependencies\s*=.*watchdog",
                          "watchdog must be declared in the # /// script block")
 

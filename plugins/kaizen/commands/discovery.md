@@ -2,7 +2,7 @@
 name: discovery
 description: "Unified entry point for kaizen's 4 semantic indexes — codebase (onboard) / knowledge base (knowledge) / Claude docs (claude-docs) / web scrapes (scrape). No-args → 2-question wizard (which surfaces × which action) then dispatches the matching underlying slash. Triggers on \"semantic search\", \"index this\", \"search knowledge\", \"discovery menu\", \"what to index\", \"reindex\", \"build index\"."
 argument-hint: "(empty = 2-Q wizard) | <surface> <action> [args]"
-allowed-tools: ["AskUserQuestion", "Bash(uv run --script ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/onboard_index.py:*)", "Bash(uv run --script ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/knowledge_index.py:*)", "Bash(uv run --script ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/claude_docs_index.py:*)", "Bash(${CLAUDE_PLUGIN_ROOT}/bin/kaizen-scrape:*)"]
+allowed-tools: ["AskUserQuestion", "Bash(uv run --script ${CLAUDE_PLUGIN_ROOT}/scripts/indexers/onboard_index.py:*)", "Bash(uv run --script ${CLAUDE_PLUGIN_ROOT}/scripts/indexers/knowledge_index.py:*)", "Bash(uv run --script ${CLAUDE_PLUGIN_ROOT}/scripts/indexers/claude_docs_index.py:*)", "Bash(${CLAUDE_PLUGIN_ROOT}/bin/kaizen-scrape:*)"]
 ---
 
 # /kaizen:discovery — unified semantic-search entry point

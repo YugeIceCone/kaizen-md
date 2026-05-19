@@ -23,9 +23,11 @@ import unittest
 from pathlib import Path
 
 _KZ = Path(__file__).resolve().parent.parent
-_HOOK = _KZ / "hooks/claude/_brain_redirect.py"
+_HOOK = _KZ / "scripts/handlers/_brain_redirect.py"
 
 sys.path.insert(0, str(_KZ / "hooks/claude"))
+sys.path.insert(0, str(_KZ / "scripts/handlers"))
+sys.path.insert(0, str(_KZ / "scripts/brain"))
 import _brain_redirect as br  # noqa: E402
 
 

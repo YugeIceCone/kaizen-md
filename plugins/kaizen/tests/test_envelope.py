@@ -17,7 +17,7 @@ from pathlib import Path
 _REPO_ROOT = Path(__file__).resolve().parents[3]
 _SCRIPTS = _REPO_ROOT / "plugins/kaizen/skills/workflow/scripts"
 _SCHEMA = _REPO_ROOT / "plugins/kaizen/assets/schemas/tool-output.schema.json"
-_ENVELOPE = _SCRIPTS / "_envelope.py"
+_ENVELOPE = _REPO_ROOT / "plugins/kaizen/scripts/io/_envelope.py"
 
 
 def _load(name: str, path: Path):
@@ -39,34 +39,34 @@ except ImportError:
 # `verdict=None` means "any verdict is fine" — the schema validates
 # the SHAPE, not the value. Args run from REPO_ROOT.
 _RETROFIT_TOOLS = [
-    ("gatekeeper",      [str(_SCRIPTS / "gatekeeper.py"), "check", "--staged", "--json"]),
-    ("surface validate", [str(_SCRIPTS / "surface.py"), "validate", "--json"]),
-    ("surface list",    [str(_SCRIPTS / "surface.py"), "list", "--json"]),
-    ("iron-laws check", [str(_SCRIPTS / "iron_laws.py"), "check", "--staged", "--json"]),
-    ("iron-laws list",  [str(_SCRIPTS / "iron_laws.py"), "list", "--json"]),
-    ("metrics session", [str(_SCRIPTS / "metrics.py"), "session", "--json"]),
-    ("metrics top",     [str(_SCRIPTS / "metrics.py"), "top", "--json"]),
-    ("metrics path",    [str(_SCRIPTS / "metrics.py"), "path"]),
-    ("trace stats",     [str(_SCRIPTS / "trace.py"), "stats"]),
-    ("loc-index report", [str(_SCRIPTS / "loc_index.py"), "report", "--json"]),
+    ("gatekeeper",      [str(_REPO_ROOT / "plugins/kaizen/scripts/iron-laws/gatekeeper.py"), "check", "--staged", "--json"]),
+    ("surface validate", [str(_REPO_ROOT / "plugins/kaizen/scripts/iron-laws/surface.py"), "validate", "--json"]),
+    ("surface list",    [str(_REPO_ROOT / "plugins/kaizen/scripts/iron-laws/surface.py"), "list", "--json"]),
+    ("iron-laws check", [str(_REPO_ROOT / "plugins/kaizen/scripts/iron-laws/iron_laws.py"), "check", "--staged", "--json"]),
+    ("iron-laws list",  [str(_REPO_ROOT / "plugins/kaizen/scripts/iron-laws/iron_laws.py"), "list", "--json"]),
+    ("metrics session", [str(_REPO_ROOT / "plugins/kaizen/scripts/observe/metrics.py"), "session", "--json"]),
+    ("metrics top",     [str(_REPO_ROOT / "plugins/kaizen/scripts/observe/metrics.py"), "top", "--json"]),
+    ("metrics path",    [str(_REPO_ROOT / "plugins/kaizen/scripts/observe/metrics.py"), "path"]),
+    ("trace stats",     [str(_REPO_ROOT / "plugins/kaizen/scripts/observe/trace.py"), "stats"]),
+    ("loc-index report", [str(_REPO_ROOT / "plugins/kaizen/scripts/indexers/loc_index.py"), "report", "--json"]),
     # Phase D — observe / scrape / manifests / handoff / drift / config / docs_flow
-    ("observe layers",   [str(_SCRIPTS / "observe.py"), "layers"]),
-    ("observe stats",    [str(_SCRIPTS / "observe.py"), "stats"]),
-    ("manifests audit",  [str(_SCRIPTS / "manifests_cli.py"), "audit", "--json"]),
-    ("manifests unused", [str(_SCRIPTS / "manifests_cli.py"), "unused", "--json"]),
-    ("handoff latest",   [str(_SCRIPTS / "handoff.py"), "latest", "--json"]),
-    ("handoff path",     [str(_SCRIPTS / "handoff.py"), "path"]),
-    ("config defaults",  [str(_SCRIPTS / "config.py"), "--defaults"]),
-    ("config validate",  [str(_SCRIPTS / "config.py"), "--validate"]),
-    ("config json",      [str(_SCRIPTS / "config.py"), "--json"]),
+    ("observe layers",   [str(_REPO_ROOT / "plugins/kaizen/scripts/observe/observe.py"), "layers"]),
+    ("observe stats",    [str(_REPO_ROOT / "plugins/kaizen/scripts/observe/observe.py"), "stats"]),
+    ("manifests audit",  [str(_REPO_ROOT / "plugins/kaizen/scripts/workflow/manifests_cli.py"), "audit", "--json"]),
+    ("manifests unused", [str(_REPO_ROOT / "plugins/kaizen/scripts/workflow/manifests_cli.py"), "unused", "--json"]),
+    ("handoff latest",   [str(_REPO_ROOT / "plugins/kaizen/scripts/handoff/handoff.py"), "latest", "--json"]),
+    ("handoff path",     [str(_REPO_ROOT / "plugins/kaizen/scripts/handoff/handoff.py"), "path"]),
+    ("config defaults",  [str(_REPO_ROOT / "plugins/kaizen/scripts/util/config.py"), "--defaults"]),
+    ("config validate",  [str(_REPO_ROOT / "plugins/kaizen/scripts/util/config.py"), "--validate"]),
+    ("config json",      [str(_REPO_ROOT / "plugins/kaizen/scripts/util/config.py"), "--json"]),
     # Phase D2 — trace_index / knowledge_index / validate / index_flow /
     # loop_state / models / self_audit_agent
     ("validate feature", [
         str(_REPO_ROOT / "plugins/kaizen/skills/plugin-development/scripts/validate.py"),
         "--feature", "kaizen", "--json",
     ]),
-    ("loop_state status",   [str(_SCRIPTS / "loop_state.py"), "status", "--json"]),
-    ("self_audit_agent path", [str(_SCRIPTS / "self_audit_agent.py"), "path"]),
+    ("loop_state status",   [str(_REPO_ROOT / "plugins/kaizen/scripts/state/loop_state.py"), "status", "--json"]),
+    ("self_audit_agent path", [str(_REPO_ROOT / "plugins/kaizen/scripts/iron-laws/self_audit_agent.py"), "path"]),
     # scrape_index search needs numpy (skipped via _has_numpy)
     # trace_index search / knowledge_index search — also numpy
     # models list — needs ollama package
@@ -207,7 +207,7 @@ class TestReproducibility(unittest.TestCase):
     auto-timestamp in non-time fields, no random ids)."""
 
     def test_gatekeeper_json_byte_identical(self):
-        cmd = [sys.executable, str(_SCRIPTS / "gatekeeper.py"),
+        cmd = [sys.executable, str(_REPO_ROOT / "plugins/kaizen/scripts/iron-laws/gatekeeper.py"),
                "check", "--staged", "--json"]
         # Two consecutive runs must agree
         r1 = subprocess.run(cmd, cwd=_REPO_ROOT, capture_output=True, text=True, timeout=15)

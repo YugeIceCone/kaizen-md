@@ -7,7 +7,7 @@ description: Inspect, validate, or generate templates for brain-sourced kaizen r
 
 Inspect / validate / generate brain-sourced kaizen rules. Rules let you customize gate behaviour without touching plugin code: deletion allowlists, check-severity overrides, custom-pattern detectors.
 
-!`python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/rules.py ${ARGUMENTS:-list}`
+!`python3 ${CLAUDE_PLUGIN_ROOT}/scripts/rules/rules.py ${ARGUMENTS:-list}`
 
 ## Subcommands
 

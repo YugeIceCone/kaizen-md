@@ -19,7 +19,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 _REPO_ROOT = Path(__file__).resolve().parents[3]
-_GATEKEEPER = _REPO_ROOT / "plugins/kaizen/skills/workflow/scripts/gatekeeper.py"
+_GATEKEEPER = _REPO_ROOT / "plugins/kaizen/scripts/iron-laws/gatekeeper.py"
 
 
 def _load(name: str, path: Path):

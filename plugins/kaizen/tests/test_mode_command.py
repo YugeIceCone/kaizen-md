@@ -69,7 +69,7 @@ class TestBackingInfrastructureKept(unittest.TestCase):
                          f"backing bin removed: {bin_path}")
 
     def test_session_mode_py_present(self):
-        py_path = _KZ_DIR / "skills/workflow/scripts/session_mode.py"
+        py_path = _KZ_DIR / "scripts/workflow/session_mode.py"
         self.assertTrue(py_path.is_file(),
                          f"backing module removed: {py_path}")
 

@@ -18,7 +18,7 @@ import unittest
 from pathlib import Path
 
 _KZ_DIR = Path(__file__).resolve().parent.parent
-_SCRIPTS = _KZ_DIR / "skills/workflow/scripts"
+_SCRIPTS = _KZ_DIR / "scripts/handoff"
 _HANDOFF_PY = _SCRIPTS / "handoff.py"
 _DOMAIN = _KZ_DIR / "skills/handoff/domain"
 
@@ -154,6 +154,7 @@ class TestScaffoldEnvelopeShape(ScaffoldBase):
     def test_envelope_validates_against_schema(self):
         import sys as _sys
         _sys.path.insert(0, str(_SCRIPTS))
+        _sys.path.insert(0, str(_KZ_DIR / "scripts/rules"))
         import schema_cli
         self._commit("a", "1")
         r = self._run("--session", "s", "--goal", "g", "--now", "n",
