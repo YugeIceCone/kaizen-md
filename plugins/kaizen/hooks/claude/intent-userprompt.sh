@@ -24,6 +24,6 @@ PLUGIN_ROOT="$(kaizen_plugin_root 2>/dev/null)" || { echo '{}'; exit 0; }
 # prompt, runs the suggest matching logic in-process, emits the
 # hook-decision JSON. Was 3 spawns (extract prompt + intent.py
 # subprocess + format hook JSON).
-python3 "$PLUGIN_ROOT/skills/workflow/scripts/intent_userprompt.py"
+python3 "$PLUGIN_ROOT/scripts/intent/intent_userprompt.py"
 
 exit 0

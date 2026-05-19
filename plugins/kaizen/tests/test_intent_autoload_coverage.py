@@ -12,7 +12,7 @@ import unittest
 from pathlib import Path
 
 _KZ_DIR = Path(__file__).resolve().parent.parent
-_INTENT = _KZ_DIR / "skills/workflow/scripts/intent.py"
+_INTENT = _KZ_DIR / "scripts/intent/intent.py"
 _INTENTS_YAML = _KZ_DIR / "skills/intent/domain/intents.yaml"
 
 

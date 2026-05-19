@@ -15,7 +15,7 @@ import unittest
 from pathlib import Path
 
 _KZ_DIR = Path(__file__).resolve().parent.parent
-_INTENT_PY = _KZ_DIR / "skills/workflow/scripts/intent.py"
+_INTENT_PY = _KZ_DIR / "scripts/intent/intent.py"
 
 
 class _MatchBase(unittest.TestCase):
