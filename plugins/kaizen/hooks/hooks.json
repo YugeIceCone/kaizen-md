@@ -376,6 +376,18 @@
           }
         ]
       }
+    ],
+    "CwdChanged": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/claude/cwdchanged-memory-sync.sh",
+            "timeout": 3
+          }
+        ]
+      }
     ]
   }
 }
