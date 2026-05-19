@@ -18,7 +18,7 @@ import unittest
 from pathlib import Path
 
 PLUGIN_ROOT = Path(__file__).resolve().parent.parent
-SETUP_SH = PLUGIN_ROOT / "skills" / "workflow" / "scripts" / "setup.sh"
+SETUP_SH = PLUGIN_ROOT / "scripts" / "install" / "setup.sh"
 ENABLE_ALL_SH = PLUGIN_ROOT / "skills" / "workflow" / "scripts" / "enable_all.sh"
 
 
