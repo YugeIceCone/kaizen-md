@@ -13,10 +13,10 @@ this when you want one of them and don't want to memorize four slashes.
 
 | Surface | Underlying slash | Stores | Indexes |
 |---|---|---|---|
-| Codebase | `/kaizen:onboard` | `<repo>/.kaizen/onboard.db` | Source files (extension allowlist, comments stripped) |
-| Knowledge base | `/kaizen:knowledge` | `~/.claude/.kaizen/knowledge.db` | Brain notes, plans, backlog, schemas, persona beliefs |
-| Claude docs | `/kaizen:claude-docs` | `~/.claude/.kaizen/claude-docs.db` | Local Claude API/Code/SDK docs mirror |
-| Web scrapes | `/kaizen:scrape` | `~/.claude/.kaizen/scrape/index.db` | Pages scraped via PocketFlow + ScrapeGraphAI |
+| Codebase | `kaizen-onboard` | `<repo>/.kaizen/onboard.db` | Source files (extension allowlist, comments stripped) |
+| Knowledge base | `kaizen-knowledge` | `~/.claude/.kaizen/knowledge.db` | Brain notes, plans, backlog, schemas, persona beliefs |
+| Claude docs | `kaizen-claude-docs` | `~/.claude/.kaizen/claude-docs.db` | Local Claude API/Code/SDK docs mirror |
+| Web scrapes | `kaizen-scrape` | `~/.claude/.kaizen/scrape/index.db` | Pages scraped via PocketFlow + ScrapeGraphAI |
 
 ## Interactive wizard (when `$ARGUMENTS` is empty)
 
@@ -31,13 +31,13 @@ header:      "Surfaces"
 multiSelect: true
 options:
   - label: "Codebase (onboard)"
-    description: "Source files in this repo. Extension-allowlisted, comments stripped per-language. Dispatches /kaizen:onboard."
+    description: "Source files in this repo. Extension-allowlisted, comments stripped per-language. Dispatches kaizen-onboard."
   - label: "Knowledge base (knowledge)"
-    description: "Brain notes, project plans, backlog items, workflow schemas, persona beliefs. Dispatches /kaizen:knowledge."
+    description: "Brain notes, project plans, backlog items, workflow schemas, persona beliefs. Dispatches kaizen-knowledge."
   - label: "Claude docs (claude-docs)"
-    description: "Local mirror of Claude API/Code/SDK docs. Dispatches /kaizen:claude-docs."
+    description: "Local mirror of Claude API/Code/SDK docs. Dispatches kaizen-claude-docs."
   - label: "Web scrapes (scrape)"
-    description: "Pages previously scraped via PocketFlow + ScrapeGraphAI. Dispatches /kaizen:scrape."
+    description: "Pages previously scraped via PocketFlow + ScrapeGraphAI. Dispatches kaizen-scrape."
 ```
 
 ### Question 2 — action
@@ -109,10 +109,10 @@ Per-surface dispatch slash + verb mapping:
 
 | Q1 pick | Slash | Search verb | Index verb | Stats verb |
 |---|---|---|---|---|
-| Codebase | `/kaizen:onboard` | `search "<q>"` | `index` | `stats` |
-| Knowledge base | `/kaizen:knowledge` | `search "<q>"` | `index` | `stats` |
-| Claude docs | `/kaizen:claude-docs` | `search "<q>"` | `index` (run `bootstrap` first if never indexed) | `stats` |
-| Web scrapes | `/kaizen:scrape` | `search "<q>"` | `<url>` to add a new page (this one is URL-driven, not bulk-index) | `stats` |
+| Codebase | `kaizen-onboard` | `search "<q>"` | `index` | `stats` |
+| Knowledge base | `kaizen-knowledge` | `search "<q>"` | `index` | `stats` |
+| Claude docs | `kaizen-claude-docs` | `search "<q>"` | `index` (run `bootstrap` first if never indexed) | `stats` |
+| Web scrapes | `kaizen-scrape` | `search "<q>"` | `<url>` to add a new page (this one is URL-driven, not bulk-index) | `stats` |
 
 **Edge cases the wizard handles:**
 
@@ -128,19 +128,25 @@ and pass through to the matching underlying slash. Surface aliases:
 
 | Alias | Resolves to |
 |---|---|
-| `code` / `onboard` | `/kaizen:onboard` |
-| `kb` / `knowledge` | `/kaizen:knowledge` |
-| `docs` / `claude-docs` | `/kaizen:claude-docs` |
-| `web` / `scrape` | `/kaizen:scrape` |
+| `code` / `onboard` | `kaizen-onboard` |
+| `kb` / `knowledge` | `kaizen-knowledge` |
+| `docs` / `claude-docs` | `kaizen-claude-docs` |
+| `web` / `scrape` | `kaizen-scrape` |
 
 Example: `/kaizen:discovery code search "async semaphore"` →
-`/kaizen:onboard search "async semaphore"`.
+`kaizen-onboard search "async semaphore"`.
 
-## Folded surface
+## Folded surface (formerly separate slashes)
 
-`/kaizen:discovery` is **additive** — the 4 underlying slashes
-(`/kaizen:onboard`, `/kaizen:knowledge`, `/kaizen:claude-docs`,
-`/kaizen:scrape`) stay as direct entry points for power users.
+Five search/index bins are reachable directly as power-user entry points:
+
+| Concern | Bin (direct) | Use case |
+|---|---|---|
+| Codebase semantic index | `kaizen-onboard` | SQLite + sentence-transformers; project DB at `<repo>/.kaizen/onboard.db` — was `/kaizen:onboard` |
+| Brain notes + plans + backlog semantic search | `kaizen-knowledge` | index / search / stats — was `/kaizen:knowledge` |
+| Claude API/Code/SDK doc semantic search | `kaizen-claude-docs` | bootstrap / update / index / search / stats — was `/kaizen:claude-docs` |
+| Web content semantic scrape | `kaizen-scrape` | PocketFlow async pipeline + Ollama default — was `/kaizen:scrape` |
+| Per-package doc generator | `kaizen-docs` | Rust / JS-TS / Go / Python stdlib-only generator — was `/kaizen:docs` |
 
 ## MCP surface (agent-callable)
 

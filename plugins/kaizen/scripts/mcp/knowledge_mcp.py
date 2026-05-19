@@ -76,7 +76,7 @@ try:
 except ImportError as e:
     sys.stderr.write(
         f"kaizen-knowledge-search-mcp: missing dep: {e}\n"
-        "Run: /kaizen:knowledge index (first run auto-installs deps via uv)\n"
+        "Run: kaizen-knowledge index (first run auto-installs deps via uv)\n"
     )
     sys.exit(1)
 

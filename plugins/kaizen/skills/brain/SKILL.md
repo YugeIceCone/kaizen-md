@@ -200,7 +200,7 @@ B5+ adds a `legacy-` rename pass; until then, BOTH stacks coexist.
 
 - Single-file edit-and-go work without learnings to capture.
 - Code-pattern questions ("how does X work in this codebase?") —
-  use `/kaizen:onboard` semantic search instead.
+  use `kaizen-onboard` semantic search instead.
 - Project-specific config / paths / commands — those live in CLAUDE.md,
   not the brain.
 

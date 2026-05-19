@@ -234,7 +234,7 @@ flow.add_successor(fetch, "fallback", fallback_node)
 | Module | Pipeline | Status |
 |---|---|---|
 | `flow.py` | ReadBacklog → DetectPackages → GenerateDocs → WriteReport | reference example (canonical) |
-| `scrape_index.py` | FetchURLs → ScrapeFanOut → Synthesize → Embed → Persist | live, used by `/kaizen:scrape` |
+| `scrape_index.py` | FetchURLs → ScrapeFanOut → Synthesize → Embed → Persist | live, used by `kaizen-scrape` |
 | `search_flow.py` (planned, v1.31.0+) | EmbedQuery → DenseSearch / BM25 (parallel) → Fusion → Rerank → Citation | porting onboard semantic-search to this shape |
 
 ---

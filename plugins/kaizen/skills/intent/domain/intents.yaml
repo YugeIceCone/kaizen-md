@@ -389,7 +389,7 @@ intents:
       - { kind: phrase, pattern: "semantic (search|index) (over|of)", case_insensitive: true }
       - { kind: phrase, pattern: "(code )?tour", case_insensitive: true }
     action:
-      suggest: "/kaizen:onboard <repo>  # semantic SQLite index; pair with Skill(kaizen:code-tour) for a narrated walkthrough"
+      suggest: "kaizen-onboard <repo>  # semantic SQLite index; pair with Skill(kaizen:code-tour) for a narrated walkthrough"
       subcommand: onboard
       confidence: 0.8
 
@@ -399,6 +399,6 @@ intents:
       - { kind: phrase, pattern: "claude (api|code) (docs|reference|guide)", case_insensitive: true }
       - { kind: phrase, pattern: "(how does|how do i) (claude|cc) (api|hook|mcp|tool)", case_insensitive: true }
     action:
-      suggest: "/kaizen:claude-docs <query>  # local semantic search over the docs mirror"
+      suggest: "kaizen-claude-docs <query>  # local semantic search over the docs mirror"
       subcommand: claude-docs
       confidence: 0.75

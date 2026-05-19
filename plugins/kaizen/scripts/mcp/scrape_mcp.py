@@ -44,7 +44,7 @@ try:
 except ImportError as e:
     sys.stderr.write(
         f"kaizen-scrape-mcp: missing dep: {e}\n"
-        "Run: /kaizen:scrape <url> (first run auto-installs deps via uv)\n"
+        "Run: kaizen-scrape <url> (first run auto-installs deps via uv)\n"
     )
     sys.exit(1)
 

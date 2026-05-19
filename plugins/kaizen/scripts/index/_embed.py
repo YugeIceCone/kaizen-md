@@ -74,7 +74,7 @@ EMBEDDING_NAME_PATTERNS = [
 def is_embedding_model_name(name: str) -> bool:
     """Heuristic: does this model name look like an embedding model?
 
-    Used by both /kaizen:scrape (to refuse picking an embed model as
+    Used by both kaizen-scrape (to refuse picking an embed model as
     the chat backend) and the embedding backend resolver (to find
     candidates on a multi-model llama-server)."""
     return any(p.search(name or "") for p in EMBEDDING_NAME_PATTERNS)

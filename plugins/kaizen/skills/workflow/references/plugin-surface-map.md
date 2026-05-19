@@ -8,7 +8,7 @@ graph (see `node-flow.md` for the primitives).
 
 | Surface | Count | Examples | Node+Flow status |
 |---|---|---|---|
-| Slash commands | 40 | `/kaizen:onboard`, `/kaizen:knowledge`, `/kaizen:search`, `/kaizen:scrape` | command files are thin shells; the pipelines they invoke ARE the flow targets |
+| Slash commands | 40 | `kaizen-onboard`, `kaizen-knowledge`, `/kaizen:search`, `kaizen-scrape` | command files are thin shells; the pipelines they invoke ARE the flow targets |
 | MCP tool calls | 9 servers × ~5–10 tools each | `onboard_search`, `knowledge_search`, `workflow_advance` | servers wrap `do_*` helpers; Node+Flow lives one layer below |
 | Hook events | 10 | PreToolUse, PostToolUse, UserPromptSubmit, Stop, SubagentStop, … | hook handlers are imperative shell/Python; flow ceremony adds no value |
 | Pre-commit gate | 1 | `pre-commit.sh` iterating `domain/git-discipline.yaml::pre_commit_gates` | already declarative (yaml-driven); flow shape would be redundant |

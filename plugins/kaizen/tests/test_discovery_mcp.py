@@ -60,10 +60,16 @@ class TestSurfacesCatalog(unittest.TestCase):
         self.assertEqual(set(self.dm.SURFACES.keys()),
                           {"codebase", "knowledge", "claude-docs", "scrape"})
 
-    def test_each_surface_has_slash_and_module(self):
+    def test_each_surface_has_entry_and_module(self):
+        """The catalog's 'slash' field now holds the bin form
+        (consolidate-2 D6: per-surface slashes retired into
+        /kaizen:discovery). The field name is preserved for back-compat
+        with existing consumers; semantic content is the bin name."""
         for name, meta in self.dm.SURFACES.items():
-            self.assertIn("slash", meta, f"surface {name} missing slash")
-            self.assertTrue(meta["slash"].startswith("/kaizen:"))
+            self.assertIn("slash", meta, f"surface {name} missing slash/entry")
+            self.assertTrue(meta["slash"].startswith("kaizen-"),
+                            f"surface {name} entry should be a kaizen-* bin "
+                            f"post-D6, got {meta['slash']!r}")
             self.assertIn("index_module", meta)
             self.assertIn("desc", meta)
 

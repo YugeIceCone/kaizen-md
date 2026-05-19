@@ -47,7 +47,7 @@ Every verb becomes a silent no-op.
 
 ## Folded surface (formerly separate slashes)
 
-Four memory + continuity slashes absorbed in consolidate-2 D5; bins / skills / databases remain reachable and continue to be the canonical capture/inspect verbs. **This is a menu-UX collapse, not a behaviour change — handoff store, brain DB, gold log, and backlog json all stay intact:**
+Four memory + continuity bins are the canonical capture/inspect verbs. Bins, skills, and databases are intact — handoff store, brain DB, gold log, and backlog json all stay reachable:
 
 | Concern | Bin (direct) | Use case |
 |---|---|---|

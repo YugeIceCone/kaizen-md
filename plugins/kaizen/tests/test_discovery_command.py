@@ -76,8 +76,8 @@ class TestBodyContract(unittest.TestCase):
         # The 4 underlying slash names must be referenced (already
         # covered by test_q1_multiselect, but pinning here as the
         # arg-assembly contract).
-        for slash in ("/kaizen:onboard", "/kaizen:knowledge",
-                       "/kaizen:claude-docs", "/kaizen:scrape"):
+        for slash in ("kaizen-onboard", "kaizen-knowledge",
+                       "kaizen-claude-docs", "kaizen-scrape"):
             self.assertIn(slash, self.body, f"arg-assembly missing: {slash}")
 
     def test_q3_embed_model_picker_always_fires(self):

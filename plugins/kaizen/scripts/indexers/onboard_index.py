@@ -99,13 +99,13 @@ to `.gitignore` if it isn't already (the kaizen install hook does this).
 ## Pairing with /init
 
 `/init` (Claude Code's built-in) writes a `CLAUDE.md` orientation doc
-to the project — describes the codebase in prose. `/kaizen:onboard`
+to the project — describes the codebase in prose. `kaizen-onboard`
 indexes the code itself for semantic retrieval. Recommended onboarding
 flow:
 
     /init                         # writes CLAUDE.md from Claude's read-pass
-    /kaizen:onboard index         # indexes the code into .kaizen/onboard.db
-    /kaizen:onboard search "..."  # query for grounded answers
+    kaizen-onboard index         # indexes the code into .kaizen/onboard.db
+    kaizen-onboard search "..."  # query for grounded answers
 
 ## Env
 

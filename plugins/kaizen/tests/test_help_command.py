@@ -75,7 +75,7 @@ class TestBodyContent(unittest.TestCase):
         Fixture uses only permanent roots — slashes that survive the
         consolidate-2 D1-D7 fold."""
         for cmd in ("audit", "audit:axis", "memory-ledger",
-                     "setup", "onboard", "observe"):
+                     "setup", "discovery", "observe"):
             # row format: `cmd` | <description>
             self.assertRegex(self.body, rf"`{cmd}`\s*\|",
                               f"missing per-command row for {cmd}")

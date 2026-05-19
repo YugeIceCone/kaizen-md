@@ -12,7 +12,7 @@
 #   --with-index        run knowledge + trace + onboard indexers (slow on
 #                       first run — pulls uv deps + sentence-transformers
 #                       model + walks the codebase; can exceed CC's bash
-#                       timeout. Run /kaizen:onboard index etc. manually
+#                       timeout. Run kaizen-onboard index etc. manually
 #                       if you skip this and need the indexes later.)
 #   --with-browser      Playwright + Chromium (~200MB download)
 #   --with-daemon       crontab entry for hygiene + cache-refresh
@@ -335,10 +335,10 @@ echo "  kaizen-status              confirm everything green"
 echo "  /kaizen:help                full command reference (interactive)"
 if [ "$WITH_INDEX" -eq 0 ]; then
   echo "  ${DIM}(indexers skipped — run /kaizen:setup --enable-all --with-index when you${RESET}"
-  echo "  ${DIM} have a few minutes; or /kaizen:onboard index / /kaizen:knowledge${RESET}"
+  echo "  ${DIM} have a few minutes; or kaizen-onboard index / kaizen-knowledge${RESET}"
   echo "  ${DIM} index / kaizen-trace-search index individually.)${RESET}"
 elif [ "$IS_GIT_REPO" -eq 1 ] && [ "$SKIP_PROJECT" -eq 0 ]; then
-  echo "  /kaizen:onboard search ...  query the new project index"
+  echo "  kaizen-onboard search ...  query the new project index"
 fi
 
 [ "$FAIL_COUNT" -gt 0 ] && exit 1

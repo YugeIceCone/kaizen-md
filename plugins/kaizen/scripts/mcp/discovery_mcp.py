@@ -58,22 +58,22 @@ mcp = FastMCP("discovery")
 # the aggregator's import (e.g., a fresh install with no scrape index).
 SURFACES: dict[str, dict[str, str]] = {
     "codebase": {
-        "slash": "/kaizen:onboard",
+        "slash": "kaizen-onboard",
         "index_module": "onboard_index",
         "desc": "Source files in this repo (extension allowlist, comments stripped)",
     },
     "knowledge": {
-        "slash": "/kaizen:knowledge",
+        "slash": "kaizen-knowledge",
         "index_module": "knowledge_index",
         "desc": "Brain notes, plans, backlog, schemas, persona beliefs",
     },
     "claude-docs": {
-        "slash": "/kaizen:claude-docs",
+        "slash": "kaizen-claude-docs",
         "index_module": "claude_docs_index",
         "desc": "Local Claude API/Code/SDK docs mirror",
     },
     "scrape": {
-        "slash": "/kaizen:scrape",
+        "slash": "kaizen-scrape",
         "index_module": "scrape_index",
         "desc": "Pages scraped via PocketFlow + ScrapeGraphAI",
     },

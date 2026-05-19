@@ -7,7 +7,7 @@ allowed-tools: ["AskUserQuestion", "Bash(${CLAUDE_PLUGIN_ROOT}/bin/kaizen-help-g
 
 # /kaizen:help
 
-Static taxonomy of all 22 `/kaizen:*` commands. **One screen, zero bash
+Static taxonomy of all 17 `/kaizen:*` commands. **One screen, zero bash
 execution.** For full per-command docs use `kaizen help <name>`. Auto-
 generated from `commands/*.md` frontmatter via `kaizen-help-gen`.
 
@@ -72,18 +72,13 @@ dispatch the same way.
 | `health` | Diagnostic health check - broken symlinks, missing scripts, schema mismatch, hook  |
 | `plugin-development` | Hub for kaizen plugin-dev work. Verbs - intake | workflow | validate | rules | dis |
 
-## discovery/search (8)
+## discovery/search (3)
 
 | Command | Does |
 |---|---|
 | `discovery` | Umbrella over kaizen 4 semantic indexes - codebase (onboard) / knowledge / Claude- |
-| `onboard` | Semantic index for codebase search. SQLite + sentence-transformers. Project-scoped |
-| `knowledge` | Semantic search over brain notes + plans + backlog + workflow schemas. SQLite + se |
-| `claude-docs` | Semantic search over local Claude API/Code/SDK docs mirror. Verbs - bootstrap | up |
-| `scrape` | Scrape + synthesize web content into a semantic SQLite index. PocketFlow async pip |
 | `models` | Ollama-backed local model management. list | pull | show | delete | copy + embed/c |
 | `browser` | Manage Playwright-backed MCP browser server (navigate/click/type/screenshot/extrac |
-| `docs` | Per-package doc generator. Rust (Cargo.toml) / JS-TS (package.json) / Go (go.mod)  |
 
 ## dev-aids (1)
 

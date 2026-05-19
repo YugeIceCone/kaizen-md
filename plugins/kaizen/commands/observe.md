@@ -19,7 +19,7 @@ Mutating ops (`snapshot`, `compare`) stay slash-only.
 
 ## Folded surface (formerly separate slashes)
 
-Eight observability slashes absorbed in consolidate-2 D4; bins remain reachable:
+Eight observability bins are reachable directly:
 
 | Concern | Bin (direct) | Use case |
 |---|---|---|

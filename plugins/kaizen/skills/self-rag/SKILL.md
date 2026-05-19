@@ -1,6 +1,6 @@
 ---
 name: self-rag
-description: Self-RAG retrieval discipline — when to retrieve, when to skip, when to trust what was retrieved. Adapted from Asai et al. 2023 (Self-Reflective Retrieval-Augmented Generation). Triggers on "self-rag", "rag discipline", "should I retrieve", "do I need context", "before answering", "is what I retrieved relevant", "verify retrieval", "knowledge search". Pairs with `/kaizen:knowledge` (corpus) and `kaizen-trace-search` (event log).
+description: Self-RAG retrieval discipline — when to retrieve, when to skip, when to trust what was retrieved. Adapted from Asai et al. 2023 (Self-Reflective Retrieval-Augmented Generation). Triggers on "self-rag", "rag discipline", "should I retrieve", "do I need context", "before answering", "is what I retrieved relevant", "verify retrieval", "knowledge search". Pairs with `kaizen-knowledge` (corpus) and `kaizen-trace-search` (event log).
 ---
 
 # Self-RAG — retrieval discipline
@@ -11,7 +11,7 @@ The core mistake of vanilla RAG: **always retrieve**, then **always trust** what
 2. **After retrieval** — is what I got actually relevant?
 3. **After answering** — did the retrieved evidence actually support my response, and did I miss anything?
 
-This skill encodes those three checks against kaizen's two corpora: `/kaizen:knowledge` (brain notes, plans, backlog, schemas, persona) and `kaizen-trace-search` (trace events). Apply BEFORE invoking either retrieval surface.
+This skill encodes those three checks against kaizen's two corpora: `kaizen-knowledge` (brain notes, plans, backlog, schemas, persona) and `kaizen-trace-search` (trace events). Apply BEFORE invoking either retrieval surface.
 
 ## The three decisions
 
@@ -33,7 +33,7 @@ This skill encodes those three checks against kaizen's two corpora: `/kaizen:kno
 
 ### Decision 2 — Is what came back relevant?
 
-After running `/kaizen:knowledge search "<query>"` or `kaizen-trace-search search "<query>"`:
+After running `kaizen-knowledge search "<query>"` or `kaizen-trace-search search "<query>"`:
 
 For each top-K result, ask:
 
@@ -58,11 +58,11 @@ After drafting the response with retrieved context, do one final pass:
 #    If "retrieve" is the answer:
 
 # 2. Retrieve from the knowledge corpus:
-/kaizen:knowledge search "<focused query>" --top-k 5
+kaizen-knowledge search "<focused query>" --top-k 5
 
 # 3. Filter top results through the three Decision-2 checks. Discard
 #    misses. If nothing survives, widen:
-/kaizen:knowledge search "<broader query>" --top-k 10
+kaizen-knowledge search "<broader query>" --top-k 10
 
 # 4. (Optional) Also check trace history for recent activity in this area:
 kaizen-trace-search search "<adjacent query>" --top-k 5
@@ -84,12 +84,12 @@ kaizen-trace-search search "<adjacent query>" --top-k 5
 
 1. **Never retrieve and then ignore.** If you ran the search, the top results MUST be acknowledged — either used as citations or explicitly dismissed with a reason.
 2. **Never claim a project convention you didn't verify.** "Kaizen uses X" requires a brain note or schema or plan citing X. Otherwise it's "I'd recommend X" (your opinion, not the project's).
-3. **Never embed PII / secrets in queries.** The query string passes through the embedding model. Treat it as you would a search URL. The `/kaizen:knowledge` corpus is privacy-safe by default (signature-only embeddings), but your queries are still text.
+3. **Never embed PII / secrets in queries.** The query string passes through the embedding model. Treat it as you would a search URL. The `kaizen-knowledge` corpus is privacy-safe by default (signature-only embeddings), but your queries are still text.
 4. **Stale beliefs decay.** If a brain note's `updated_at` is > 6 months old AND the note doesn't carry `freshness: stable`, treat it as advisory, not load-bearing. Surface the staleness to the user and ask whether to refresh.
 
 ## Related skills
 
-- `/kaizen:knowledge` — the corpus + search surface this skill governs.
+- `kaizen-knowledge` — the corpus + search surface this skill governs.
 - `kaizen-trace-search` — semantic search over trace events.
 - `/kaizen:vibe-check` — pre-commit AI-coding discipline (the answering-side analog).
 - `kaizen:memory-state` — how to decide what to persist vs recall.

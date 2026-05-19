@@ -18,7 +18,7 @@ items, dep deltas, LOC swings, test-count swings.
       "deps": ["dep_a", "dep_b"]
     }
 
-Produced by `/kaizen:docs --json` (any language; the indexer writes the
+Produced by `kaizen-docs --json` (any language; the indexer writes the
 above shape). The current-dir default is `<repo>/docs/crates/` (kept
 the Rust name for compatibility; consumers can override).
 
