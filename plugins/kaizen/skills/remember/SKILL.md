@@ -76,7 +76,7 @@ Heuristics (apply in order; first match wins):
 
 When creating or editing a file, write/preserve the frontmatter `type:` field accordingly. For beliefs, `confidence` is REQUIRED (use your best estimate 0.0–1.0).
 
-The same rules live in `skills/workflow/scripts/memory_schema.py` (`detectType`); use that as canonical reference if uncertain.
+The same rules live in `scripts/workflow/memory_schema.py` (`detectType`); use that as canonical reference if uncertain.
 
 ### Step 3: Build Resolution Map
 
@@ -221,7 +221,7 @@ If the auto-promote step skipped writing (e.g. `auto_promote: false` in user's c
 After every `Write` or `Edit` on a brain file (Notes/, People/, Projects/, Areas/, Journal/, or Persona.md), run the validator:
 
 ```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/memory_schema.py validate <filepath>
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/workflow/memory_schema.py validate <filepath>
 ```
 
 The output is JSON: `{changed, addedFields, addedSections, warnings}`.

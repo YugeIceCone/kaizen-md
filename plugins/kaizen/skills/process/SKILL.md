@@ -94,7 +94,7 @@ This skill does NOT trigger consolidation, reflection, or promotion. Those are t
 After every Write/Edit on a brain file in this skill (steps 4c/4d), run:
 
 ```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/memory_schema.py validate <filepath>
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/workflow/memory_schema.py validate <filepath>
 ```
 
 Output `{changed, addedFields, addedSections, warnings}`. Surface any `warnings` in the final report. Skip on Inbox/Tasks/Archive (validator returns passthrough). Aim to emit complete frontmatter on first write so the validator is a no-op.

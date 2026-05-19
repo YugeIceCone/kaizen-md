@@ -20,7 +20,7 @@ Three phases:
 
 Recommended cadence: `/loop 7d kaizen-brain evolve` (weekly) or `/loop 30d kaizen-brain evolve` (monthly). Idempotent — safe to run any time.
 
-After each Phase that writes (Phase 1 entity re-synthesis, Phase 2 belief frontmatter updates, Phase 3 Persona.md update via `promote.js`), call `python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/memory_schema.py validate <filepath>` on the touched files. Surface its `warnings` (e.g. *"confidence defaulted to 0.5 — review"*) in your final report.
+After each Phase that writes (Phase 1 entity re-synthesis, Phase 2 belief frontmatter updates, Phase 3 Persona.md update via `promote.js`), call `python3 ${CLAUDE_PLUGIN_ROOT}/scripts/workflow/memory_schema.py validate <filepath>` on the touched files. Surface its `warnings` (e.g. *"confidence defaulted to 0.5 — review"*) in your final report.
 
 ---
 
