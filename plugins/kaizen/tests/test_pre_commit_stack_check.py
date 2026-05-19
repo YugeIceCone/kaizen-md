@@ -16,7 +16,7 @@ import unittest
 from pathlib import Path
 
 _KZ = Path(__file__).resolve().parent.parent
-_HOOK = _KZ / "skills/workflow/scripts/pre-commit.sh"
+_HOOK = _KZ / "scripts/git-hooks/pre-commit.sh"
 
 
 def _have_git() -> bool:

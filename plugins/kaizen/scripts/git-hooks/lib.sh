@@ -71,8 +71,11 @@ find_sibling() {
     if ! type kaizen_plugin_root >/dev/null 2>&1; then
         local _lib_dir
         _lib_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+        # _plugin_root.sh still lives in the legacy skills/workflow/scripts/
+        # dir (deferred — see DOMAIN-shells audit). Reach back from
+        # scripts/git-hooks/.
         # shellcheck source=/dev/null
-        source "$_lib_dir/_plugin_root.sh"
+        source "$_lib_dir/../../skills/workflow/scripts/_plugin_root.sh"
     fi
 
     local plugin_root

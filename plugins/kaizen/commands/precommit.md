@@ -12,7 +12,7 @@ If nothing is staged, the gate exits cleanly with a "nothing staged" note.
 
 Run:
 
-!`bash ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/pre-commit.sh`
+!`bash ${CLAUDE_PLUGIN_ROOT}/scripts/git-hooks/pre-commit.sh`
 
 ## Checks (in order)
 

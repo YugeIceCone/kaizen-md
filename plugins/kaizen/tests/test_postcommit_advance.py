@@ -17,7 +17,7 @@ import unittest
 from pathlib import Path
 
 PLUGIN_ROOT = Path(__file__).resolve().parent.parent
-HOOK = PLUGIN_ROOT / "skills" / "workflow" / "scripts" / "post-commit.sh"
+HOOK = PLUGIN_ROOT / "scripts" / "git-hooks" / "post-commit.sh"
 
 
 _SCHEMA = """\

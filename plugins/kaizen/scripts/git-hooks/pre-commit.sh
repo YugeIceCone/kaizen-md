@@ -551,8 +551,10 @@ fi
 # the .kaizen/workflow/ canonical → .workflow/ legacy fallback once, in one place).
 if ! command -v kaizen_resolve_workflow_dir >/dev/null 2>&1; then
     # pre-commit.sh runs under git's CWD; source _paths.sh if not already loaded.
+    # _paths.sh still lives at skills/workflow/scripts/ (deferred — see
+    # DOMAIN-shells audit). Reach back from scripts/git-hooks/.
     _PC_REAL_DIR="$(cd "$(dirname "$(python3 -c "import os,sys; print(os.path.realpath(sys.argv[1]))" "${BASH_SOURCE[0]}")")" && pwd)"
-    source "$_PC_REAL_DIR/_paths.sh"
+    source "$_PC_REAL_DIR/../../skills/workflow/scripts/_paths.sh"
 fi
 WORKFLOW_STATE_FILE="$(kaizen_resolve_workflow_dir)/state.json"
 # Re-resolve relative to repo root if helper returned absolute path.
@@ -698,7 +700,8 @@ if [ -z "${KAIZEN_DETECT_STACK_PRECOMMIT_DISABLE:-}" ] \
     _MANIFEST_PATTERN='(^|/)(Cargo\.toml|package\.json|go\.mod|pyproject\.toml|requirements\.txt|Gemfile|Package\.swift|mix\.exs|build\.gradle(\.kts)?|pom\.xml|composer\.json|CMakeLists\.txt|rust-toolchain(\.toml)?|\.python-version|\.nvmrc|\.ruby-version|\.tool-versions|mise\.toml|Dockerfile|docker-compose\.ya?ml|pnpm-workspace\.yaml|lerna\.json|nx\.json|turbo\.json|\.pre-commit-config\.yaml)$'
     MANIFEST_HITS=$(echo "$STAGED" | grep -E "$_MANIFEST_PATTERN" || true)
     if [ -n "$MANIFEST_HITS" ]; then
-        DETECT_PY="$_SCRIPT_REAL_DIR/detect_stack.py"
+        # detect_stack.py still lives at skills/workflow/scripts/ (DOMAIN-24 util cluster).
+        DETECT_PY="$_SCRIPT_REAL_DIR/../../skills/workflow/scripts/detect_stack.py"
         if [ -f "$DETECT_PY" ]; then
             if python3 "$DETECT_PY" scan --force >/tmp/kaizen-stack-ctx.log 2>&1; then
                 STACK_JSON="$REPO_ROOT/.agents/stack-context.json"

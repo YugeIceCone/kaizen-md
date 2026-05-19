@@ -21,7 +21,9 @@ set -uo pipefail
 _SCRIPT_REAL="$(readlink -f "${BASH_SOURCE[0]}" 2>/dev/null \
   || python3 -c 'import os,sys; print(os.path.realpath(sys.argv[1]))' "${BASH_SOURCE[0]}")"
 _SCRIPTS_DIR="$(cd "$(dirname "$_SCRIPT_REAL")" && pwd)"
-PLUGIN_ROOT="$(cd "$_SCRIPTS_DIR/../../.." && pwd)"
+# Depth was ../../../ when this lived at skills/workflow/scripts/.
+# After move to scripts/git-hooks/, plugin root is ../../ up.
+PLUGIN_ROOT="$(cd "$_SCRIPTS_DIR/../.." && pwd)"
 
 # Resolve repo root — env override wins (for tests / arbitrary cwd);
 # else git rev-parse (real post-commit invocation).

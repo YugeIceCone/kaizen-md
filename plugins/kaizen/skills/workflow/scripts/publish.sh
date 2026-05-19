@@ -21,7 +21,8 @@ set -uo pipefail
 
 # ─── Sibling lib ─────────────────────────────────────────────────────
 _SCRIPT_REAL_DIR="$(cd "$(dirname "$(python3 -c "import os,sys; print(os.path.realpath(sys.argv[1]))" "${BASH_SOURCE[0]}")")" && pwd)"
-[ -f "$_SCRIPT_REAL_DIR/lib.sh" ] && . "$_SCRIPT_REAL_DIR/lib.sh" || {
+_LIBSH="$_SCRIPT_REAL_DIR/../../../scripts/git-hooks/lib.sh"  # moved DOMAIN-shells Wave A
+[ -f "$_LIBSH" ] && . "$_LIBSH" || {
     realpath_f() { python3 -c "import os, sys; print(os.path.realpath(sys.argv[1]))" "$1"; }
     repo_root()  { git rev-parse --show-toplevel 2>/dev/null || true; }
     color_init() { if [ -t 2 ]; then BOLD=$'\e[1m'; DIM=$'\e[2m'; RED=$'\e[31m'; YELLOW=$'\e[33m'; GREEN=$'\e[32m'; RESET=$'\e[0m'; else BOLD="" DIM="" RED="" YELLOW="" GREEN="" RESET=""; fi; }

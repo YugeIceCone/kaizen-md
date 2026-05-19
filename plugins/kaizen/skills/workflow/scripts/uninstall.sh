@@ -7,7 +7,8 @@
 set -uo pipefail
 
 _LIB_DIR="$(cd "$(dirname "$(python3 -c "import os,sys; print(os.path.realpath(sys.argv[1]))" "${BASH_SOURCE[0]}")")" && pwd)"
-. "$_LIB_DIR/lib.sh"
+# lib.sh moved to scripts/git-hooks/ in DOMAIN-shells Wave A.
+. "$_LIB_DIR/../../../scripts/git-hooks/lib.sh"
 color_init
 
 REPO=$(repo_root)
