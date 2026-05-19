@@ -42,3 +42,17 @@ sentence-transformers). First invocation auto-installs the venv.
 `kaizen-state` MCP server (read-only subset):
 - `state_trace_tail(n=20, src="", evt="")` — most recent events as dicts
 - `state_trace_stats()` — counts per src + evt
+
+## Folded surface (LLM trace proxy)
+
+The HTTP proxy that wraps CC → api.anthropic.com (logs every LLM
+request/response, auth-scrubbed) is reachable via the `kaizen-trace-proxy`
+bin directly:
+
+```bash
+kaizen-trace-proxy {start|stop|status|log|fg}
+```
+
+Previously surfaced as `/kaizen:trace-proxy`; the slash was retired
+in the observability-domain consolidation. The bin stays — same
+verbs, same behaviour. Wire-up via `setup --with-trace-proxy`.

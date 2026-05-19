@@ -7,7 +7,7 @@ allowed-tools: ["AskUserQuestion", "Bash(${CLAUDE_PLUGIN_ROOT}/bin/kaizen-help-g
 
 # /kaizen:help
 
-Static taxonomy of all 45 `/kaizen:*` commands. **One screen, zero bash
+Static taxonomy of all 44 `/kaizen:*` commands. **One screen, zero bash
 execution.** For full per-command docs use `kaizen help <name>`. Auto-
 generated from `commands/*.md` frontmatter via `kaizen-help-gen`.
 
@@ -22,7 +22,7 @@ the wizard and emit the corresponding slice directly.
 
 - `audit/quality` (8)
 - `workflow` (5)
-- `observability` (6)
+- `observability` (5)
 - `brain/memory` (3)
 - Other (overflow: plugin-meta / discovery/search / intent/session / dev-aids)
 
@@ -47,12 +47,11 @@ dispatch the same way.
 | `vibe-check` | Vibe-coding discipline checklist on staged diff. Combines /kaizen:precommit dry-ru |
 | `ci-gate` | Local CI-equivalent merge gate. bash/python/json/SKILL.md syntax + iron-laws codeg |
 
-## observability (6)
+## observability (5)
 
 | Command | Does |
 |---|---|
 | `trace` | Unified event log across kaizen hooks/agents/LLM/tool/user actions. JSONL, auto-ro |
-| `trace-proxy` | Logging HTTP proxy wrapping CC → api.anthropic.com. Every LLM request/response (au |
 | `metrics` | Adoption + dead-feature + noise surface over the trace log. Verbs - session | life |
 | `observe` | Unified observability across kaizen 6 data-stream layers (L1 stderr → L6 plugin st |
 | `context` | CC context-window state report - tokens used, percentage, zone (green/yellow/red), |
