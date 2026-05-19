@@ -747,6 +747,199 @@ def cmd_smoke(args) -> int:
     return 0 if failed == 0 else 2
 
 
+# ─── Check — parse-validity per axis (BK-018) ───────────────────────
+
+
+@dataclass
+class CheckFinding:
+    axis: str          # python | yaml | jsonl | schema
+    file: str
+    line: int | None
+    kind: str          # syntax-error | parse-error | invalid-schema
+    detail: str
+
+
+def _walk(root: Path, suffixes: tuple[str, ...]) -> Iterator[Path]:
+    """Walk files under `root` matching any of `suffixes`, skipping
+    __pycache__ / .git noise."""
+    for p in root.rglob("*"):
+        if not p.is_file():
+            continue
+        if any(part in ("__pycache__", ".git") for part in p.parts):
+            continue
+        name = p.name
+        if any(name.endswith(s) for s in suffixes):
+            yield p
+
+
+def check_python(root: Path) -> list[CheckFinding]:
+    import ast
+    out: list[CheckFinding] = []
+    for p in _walk(root, (".py",)):
+        try:
+            ast.parse(p.read_text(encoding="utf-8"), filename=str(p))
+        except SyntaxError as e:
+            out.append(CheckFinding(
+                axis="python", file=str(p), line=e.lineno,
+                kind="syntax-error", detail=f"{e.msg}",
+            ))
+        except OSError as e:
+            out.append(CheckFinding(
+                axis="python", file=str(p), line=None,
+                kind="read-error", detail=str(e),
+            ))
+    return out
+
+
+def check_yaml(root: Path) -> list[CheckFinding]:
+    try:
+        import yaml as _yaml
+    except ImportError:
+        return [CheckFinding(axis="yaml", file="", line=None,
+                              kind="pyyaml-missing",
+                              detail="pip install pyyaml")]
+    out: list[CheckFinding] = []
+    for p in _walk(root, (".yaml", ".yml")):
+        try:
+            # safe_load_all handles both single-doc and frontmatter
+            # (handoffs use `---\nfm\n---\nbody`). Draining the generator
+            # forces a full parse of every doc.
+            list(_yaml.safe_load_all(p.read_text(encoding="utf-8")))
+        except _yaml.YAMLError as e:
+            mark = getattr(e, "problem_mark", None)
+            line = mark.line + 1 if mark else None
+            out.append(CheckFinding(
+                axis="yaml", file=str(p), line=line,
+                kind="parse-error", detail=str(e).splitlines()[0],
+            ))
+        except OSError as e:
+            out.append(CheckFinding(
+                axis="yaml", file=str(p), line=None,
+                kind="read-error", detail=str(e),
+            ))
+    return out
+
+
+def check_jsonl(root: Path) -> list[CheckFinding]:
+    out: list[CheckFinding] = []
+    for p in _walk(root, (".jsonl",)):
+        try:
+            text = p.read_text(encoding="utf-8")
+        except OSError as e:
+            out.append(CheckFinding(
+                axis="jsonl", file=str(p), line=None,
+                kind="read-error", detail=str(e),
+            ))
+            continue
+        for i, raw in enumerate(text.splitlines(), 1):
+            if not raw.strip():
+                continue
+            try:
+                json.loads(raw)
+            except json.JSONDecodeError as e:
+                out.append(CheckFinding(
+                    axis="jsonl", file=str(p), line=i,
+                    kind="parse-error", detail=e.msg,
+                ))
+                break  # one finding per file is enough — repair restores
+    return out
+
+
+def check_schema(root: Path) -> list[CheckFinding]:
+    try:
+        import jsonschema as _js
+    except ImportError:
+        return [CheckFinding(axis="schema", file="", line=None,
+                              kind="jsonschema-missing",
+                              detail="pip install jsonschema")]
+    out: list[CheckFinding] = []
+    for p in _walk(root, (".schema.json",)):
+        try:
+            data = json.loads(p.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as e:
+            out.append(CheckFinding(
+                axis="schema", file=str(p), line=e.lineno,
+                kind="parse-error", detail=e.msg,
+            ))
+            continue
+        except OSError as e:
+            out.append(CheckFinding(
+                axis="schema", file=str(p), line=None,
+                kind="read-error", detail=str(e),
+            ))
+            continue
+        try:
+            _js.Draft202012Validator.check_schema(data)
+        except _js.SchemaError as e:
+            out.append(CheckFinding(
+                axis="schema", file=str(p), line=None,
+                kind="invalid-schema", detail=e.message.splitlines()[0],
+            ))
+    return out
+
+
+_AXIS_FUNCS = {
+    "python": check_python,
+    "yaml":   check_yaml,
+    "jsonl":  check_jsonl,
+    "schema": check_schema,
+}
+
+
+def cmd_check(args) -> int:
+    """Parse-validity check across 4 axes. Per-axis breakage is independent;
+    --all (default) runs every axis."""
+    plugin_root = Path(__file__).resolve().parents[1]
+    root = Path(args.path).expanduser().resolve() if args.path else plugin_root
+
+    selected = [a for a in ("python", "yaml", "jsonl", "schema")
+                if getattr(args, a, False)]
+    if not selected:
+        selected = list(_AXIS_FUNCS.keys())
+
+    all_findings: list[CheckFinding] = []
+    files_with_findings: set[str] = set()
+    files_scanned: set[str] = set()
+    for axis in selected:
+        for p in _walk(root, _AXIS_SUFFIXES[axis]):
+            files_scanned.add(str(p))
+        findings = _AXIS_FUNCS[axis](root)
+        for f in findings:
+            files_with_findings.add(f.file)
+        all_findings.extend(findings)
+
+    passed = len(files_scanned - files_with_findings)
+    failed = len(files_with_findings)
+    envelope = {
+        "passed":  passed,
+        "failed":  failed,
+        "axes":    selected,
+        "results": [
+            {"axis": f.axis, "file": f.file, "line": f.line,
+             "kind": f.kind, "detail": f.detail}
+            for f in all_findings
+        ],
+    }
+    if args.json:
+        print(json.dumps(envelope, indent=2))
+        return 0 if failed == 0 else 2
+    print(f"\n[kaizen-debug check] passed={passed}  failed={failed}  "
+          f"axes={','.join(selected)}")
+    for f in all_findings:
+        loc = f"{f.file}:{f.line}" if f.line else f.file
+        print(f"  ✗ [{f.axis}/{f.kind}] {loc}")
+        print(f"      {f.detail}")
+    return 0 if failed == 0 else 2
+
+
+_AXIS_SUFFIXES = {
+    "python": (".py",),
+    "yaml":   (".yaml", ".yml"),
+    "jsonl":  (".jsonl",),
+    "schema": (".schema.json",),
+}
+
+
 # ─── CLI ─────────────────────────────────────────────────────────────
 
 
@@ -793,6 +986,23 @@ def main(argv: list[str] | None = None) -> int:
     )
     p_smoke.add_argument("--json", action="store_true")
     p_smoke.set_defaults(func=cmd_smoke)
+
+    p_check = sub.add_parser(
+        "check",
+        help="parse-validity per axis (python / yaml / jsonl / schema)",
+    )
+    p_check.add_argument("--python", action="store_true",
+                          help="ast.parse every .py")
+    p_check.add_argument("--yaml", action="store_true",
+                          help="yaml.safe_load every .yaml/.yml")
+    p_check.add_argument("--jsonl", action="store_true",
+                          help="every line of every .jsonl is a JSON object")
+    p_check.add_argument("--schema", action="store_true",
+                          help="every .schema.json is a valid JSON Schema")
+    p_check.add_argument("--path",
+                          help="scan root (default: plugin root)")
+    p_check.add_argument("--json", action="store_true")
+    p_check.set_defaults(func=cmd_check)
 
     args = p.parse_args(argv)
     return args.func(args)

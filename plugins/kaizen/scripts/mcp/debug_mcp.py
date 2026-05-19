@@ -8,6 +8,7 @@
 Tools (read-only / safe verbs only):
   debug_smoke()             exercise every kaizen-* bin with --help
   debug_lint(paths=[...])   static-scan for common bug patterns
+  debug_check(axes, path)   parse-validity across python/yaml/jsonl/schema
 
 Deferred (not exposed via MCP):
   scan / parse / tail       interactive or streaming — agent-unfriendly
@@ -65,6 +66,27 @@ async def debug_lint(paths: list[str] | None = None) -> dict:
     Returns {findings: [{file, line, kind, hint}, ...], counts}."""
     extra = tuple(paths) if paths else ()
     return await asyncio.to_thread(_run, "lint", *extra)
+
+
+@mcp.tool()
+async def debug_check(
+    axes: list[str] | None = None,
+    path: str | None = None,
+) -> dict:
+    """Parse-validity check per axis. `axes` is any subset of
+    ['python', 'yaml', 'jsonl', 'schema'] (default: all four). `path`
+    is the scan root (default: plugin root). Returns
+    {passed, failed, axes, results: [{axis, file, line, kind, detail}]}.
+
+    Catches bugs like the un-escaped `'` inside a single-quoted YAML
+    scalar that silently broke the 2026-05-19 handoff assess."""
+    extra: list[str] = []
+    for a in (axes or []):
+        if a in ("python", "yaml", "jsonl", "schema"):
+            extra.append(f"--{a}")
+    if path:
+        extra.extend(["--path", path])
+    return await asyncio.to_thread(_run, "check", *extra)
 
 
 if __name__ == "__main__":
