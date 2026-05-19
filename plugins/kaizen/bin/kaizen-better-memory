@@ -2,7 +2,7 @@
 # kaizen-better-memory — auto-memory MEMORY.md index management.
 # Symlinked to ~/.local/bin/kaizen-better-memory by /kaizen:install.
 #
-# Backed by ${PLUGIN_ROOT}/skills/workflow/scripts/better_memory.py.
+# Backed by ${PLUGIN_ROOT}/scripts/util/better_memory.py.
 # Subcommands:
 #   regen [--dir PATH] [--json]   — rebuild MEMORY.md from sibling *.md files
 #   path  [--dir PATH]            — print the resolved auto-memory dir
@@ -25,4 +25,4 @@ PLUGIN_ROOT="$(kaizen_plugin_root)" || {
     exit 1
 }
 
-exec python3 "$PLUGIN_ROOT/skills/workflow/scripts/better_memory.py" "$@"
+exec python3 "$PLUGIN_ROOT/scripts/util/better_memory.py" "$@"

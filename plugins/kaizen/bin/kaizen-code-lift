@@ -2,7 +2,7 @@
 # kaizen-code-lift — code-lift engine with import rewrites (Phase 4 X4).
 # Symlinked to ~/.local/bin/kaizen-code-lift by /kaizen:setup.
 #
-# Backed by ${PLUGIN_ROOT}/skills/workflow/scripts/code_lift.py. See
+# Backed by ${PLUGIN_ROOT}/scripts/util/code_lift.py. See
 # `kaizen-code-lift --help` for subcommands (audit / preview / deps-gap /
 # lift / path).
 #
@@ -26,4 +26,4 @@ PLUGIN_ROOT="$(kaizen_plugin_root)" || {
     exit 1
 }
 
-exec python3 "$PLUGIN_ROOT/skills/workflow/scripts/code_lift.py" "$@"
+exec python3 "$PLUGIN_ROOT/scripts/util/code_lift.py" "$@"

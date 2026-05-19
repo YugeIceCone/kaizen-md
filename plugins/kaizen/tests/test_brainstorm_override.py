@@ -16,7 +16,7 @@ sys.path.insert(0, str(_KZ / "skills/workflow/scripts"))
 
 import brainstorm  # noqa: E402
 
-_SCRIPT = _KZ / "skills/workflow/scripts/brainstorm.py"
+_SCRIPT = _KZ / "scripts/util/brainstorm.py"
 _RUBRIC = _KZ / "skills/brainstorming/domain/brainstorm-rubric.yaml"
 
 

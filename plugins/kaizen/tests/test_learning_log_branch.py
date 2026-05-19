@@ -14,7 +14,7 @@ import unittest
 from pathlib import Path
 
 _KZ_DIR = Path(__file__).resolve().parent.parent
-_LEARN_PY = _KZ_DIR / "skills/workflow/scripts/learning_log.py"
+_LEARN_PY = _KZ_DIR / "scripts/util/learning_log.py"
 
 
 class _BranchBase(unittest.TestCase):

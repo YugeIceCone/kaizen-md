@@ -135,7 +135,7 @@ class TestIntakeChecklistSchema(unittest.TestCase):
 
 class TestHelpGenClusterIncludesIt(unittest.TestCase):
     def test_plugin_development_in_clusters(self):
-        helpgen_py = _KZ_DIR / "skills/workflow/scripts/help_gen.py"
+        helpgen_py = _KZ_DIR / "scripts/util/help_gen.py"
         text = helpgen_py.read_text()
         self.assertIn("plugin-development", text,
                        "help_gen.py CLUSTERS must list plugin-development")

@@ -374,7 +374,7 @@ class TestStatuslineLineSubcommand(unittest.TestCase):
         if env_extra:
             env.update(env_extra)
         script = (Path(__file__).resolve().parent.parent
-                   / "skills" / "workflow" / "scripts" / "context.py")
+                   / "scripts" / "util" / "context.py")
         return subprocess.run(
             ["python3", str(script), "line"],
             input=stdin_text, capture_output=True, text=True,

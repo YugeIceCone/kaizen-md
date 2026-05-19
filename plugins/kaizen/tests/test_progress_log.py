@@ -28,7 +28,7 @@ import unittest
 from pathlib import Path
 
 _KZ_DIR = Path(__file__).resolve().parent.parent
-_PROGRESS_LOG_PY = _KZ_DIR / "skills/workflow/scripts/progress_log.py"
+_PROGRESS_LOG_PY = _KZ_DIR / "scripts/util/progress_log.py"
 
 
 class _AppendBase(unittest.TestCase):

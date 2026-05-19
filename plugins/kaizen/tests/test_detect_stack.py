@@ -16,7 +16,7 @@ import unittest
 from pathlib import Path
 
 _KZ_DIR = Path(__file__).resolve().parent.parent
-_SCRIPT = _KZ_DIR / "skills/workflow/scripts/detect_stack.py"
+_SCRIPT = _KZ_DIR / "scripts/util/detect_stack.py"
 _HOOK = _KZ_DIR / "hooks/claude/session-start-detect-stack.sh"
 
 

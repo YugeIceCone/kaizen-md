@@ -22,7 +22,7 @@ from pathlib import Path
 _KZ_DIR = Path(__file__).resolve().parent.parent
 _SCRIPTS = _KZ_DIR / "skills/workflow/scripts"
 sys.path.insert(0, str(_KZ_DIR / "scripts/handlers"))
-_CONTEXT_PY = _SCRIPTS / "context.py"
+_CONTEXT_PY = _KZ_DIR / "scripts/util" / "context.py"
 _NOTIFIER_PY = _KZ_DIR / "scripts/handlers/context_notifier.py"
 
 

@@ -4,4 +4,4 @@
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PLUGIN_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-exec python3 "$PLUGIN_ROOT/skills/workflow/scripts/superpower_bundle.py" "$@"
+exec python3 "$PLUGIN_ROOT/scripts/util/superpower_bundle.py" "$@"

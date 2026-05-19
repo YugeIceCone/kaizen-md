@@ -2,7 +2,7 @@
 # kaizen-scratch — tight specialized sandbox for one-off debug ops.
 # Avoids the "cd /tmp && rm -rf .git" gate-trip pattern by always
 # operating under /tmp/kaizen-scratch/ (matches _RM_RF_SAFE).
-# See skills/workflow/scripts/scratch.py for the full docstring.
+# See scripts/util/scratch.py for the full docstring.
 
 set -euo pipefail
 
@@ -16,4 +16,4 @@ PLUGIN_ROOT="$(kaizen_plugin_root)" || {
     exit 1
 }
 
-exec python3 "$PLUGIN_ROOT/skills/workflow/scripts/scratch.py" "$@"
+exec python3 "$PLUGIN_ROOT/scripts/util/scratch.py" "$@"

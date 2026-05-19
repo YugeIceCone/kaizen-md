@@ -56,9 +56,9 @@ _RETROFIT_TOOLS = [
     ("manifests unused", [str(_REPO_ROOT / "plugins/kaizen/scripts/workflow/manifests_cli.py"), "unused", "--json"]),
     ("handoff latest",   [str(_REPO_ROOT / "plugins/kaizen/scripts/handoff/handoff.py"), "latest", "--json"]),
     ("handoff path",     [str(_REPO_ROOT / "plugins/kaizen/scripts/handoff/handoff.py"), "path"]),
-    ("config defaults",  [str(_SCRIPTS / "config.py"), "--defaults"]),
-    ("config validate",  [str(_SCRIPTS / "config.py"), "--validate"]),
-    ("config json",      [str(_SCRIPTS / "config.py"), "--json"]),
+    ("config defaults",  [str(_REPO_ROOT / "plugins/kaizen/scripts/util/config.py"), "--defaults"]),
+    ("config validate",  [str(_REPO_ROOT / "plugins/kaizen/scripts/util/config.py"), "--validate"]),
+    ("config json",      [str(_REPO_ROOT / "plugins/kaizen/scripts/util/config.py"), "--json"]),
     # Phase D2 — trace_index / knowledge_index / validate / index_flow /
     # loop_state / models / self_audit_agent
     ("validate feature", [

@@ -701,7 +701,7 @@ if [ -z "${KAIZEN_DETECT_STACK_PRECOMMIT_DISABLE:-}" ] \
     MANIFEST_HITS=$(echo "$STAGED" | grep -E "$_MANIFEST_PATTERN" || true)
     if [ -n "$MANIFEST_HITS" ]; then
         # detect_stack.py still lives at skills/workflow/scripts/ (DOMAIN-24 util cluster).
-        DETECT_PY="$_SCRIPT_REAL_DIR/../../skills/workflow/scripts/detect_stack.py"
+        DETECT_PY="$_SCRIPT_REAL_DIR/../../scripts/util/detect_stack.py"
         if [ -f "$DETECT_PY" ]; then
             if python3 "$DETECT_PY" scan --force >/tmp/kaizen-stack-ctx.log 2>&1; then
                 STACK_JSON="$REPO_ROOT/.agents/stack-context.json"

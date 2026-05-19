@@ -237,7 +237,7 @@ fi
   add "low" "documentation" "no CLAUDE.md — agents lack durable orientation context; run /init to bootstrap"
 
 # Architecture log presence
-ARCH_LOG="$(python3 "$_SCRIPT_REAL_DIR/../../skills/workflow/scripts/config.py" architecture_log 2>/dev/null || echo "")"
+ARCH_LOG="$(python3 "$_SCRIPT_REAL_DIR/../../scripts/util/config.py" architecture_log 2>/dev/null || echo "")"
 [ -n "$ARCH_LOG" ] && [ ! -f "$REPO_ROOT/$ARCH_LOG" ] && \
   add "low" "documentation" "architecture_log configured ($ARCH_LOG) but file missing"
 

@@ -16,7 +16,7 @@ import unittest
 from pathlib import Path
 
 _KZ_DIR = Path(__file__).resolve().parent.parent
-_SCRIPT = _KZ_DIR / "skills/workflow/scripts/skill_suggest.py"
+_SCRIPT = _KZ_DIR / "scripts/util/skill_suggest.py"
 
 
 class _Sandbox(unittest.TestCase):

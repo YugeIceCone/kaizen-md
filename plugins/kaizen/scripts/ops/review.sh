@@ -143,7 +143,7 @@ if [ "$FILE_COUNT" -gt 15 ]; then
 fi
 
 # Check 7 — Compile barrier dry-run (delegates to kaizen:precommit if compile_check_cmd set)
-COMPILE_CMD="$(python3 "$_SCRIPT_REAL_DIR/../../skills/workflow/scripts/config.py" compile_check_cmd 2>/dev/null || echo "")"
+COMPILE_CMD="$(python3 "$_SCRIPT_REAL_DIR/../../scripts/util/config.py" compile_check_cmd 2>/dev/null || echo "")"
 if [ -n "$COMPILE_CMD" ]; then
   add_finding "info" "compile barrier configured: \`$COMPILE_CMD\` — run /kaizen:precommit to verify" ""
 fi

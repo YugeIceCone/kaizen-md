@@ -8,6 +8,6 @@ argument-hint: [show|json]
 
 Context-window state — tokens, pct, zone, recommendation.
 
-!`python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/context.py ${ARGUMENTS:-show}`
+!`python3 ${CLAUDE_PLUGIN_ROOT}/scripts/util/context.py ${ARGUMENTS:-show}`
 
 Programmatic access via the `kaizen-state` MCP server: `state_context()` returns `{tokens, limit, pct, zone, recommendation}` as a dict.

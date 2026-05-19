@@ -199,7 +199,7 @@ class TestRender(unittest.TestCase):
 
 
 class TestCli(_CwdMixin, unittest.TestCase):
-    HELPER = PLUGIN_ROOT / "skills" / "workflow" / "scripts" / "roadmap_status.py"
+    HELPER = PLUGIN_ROOT / "scripts" / "util" / "roadmap_status.py"
 
     def test_progress_subcommand_text(self):
         _write_handoff(self.tmp)

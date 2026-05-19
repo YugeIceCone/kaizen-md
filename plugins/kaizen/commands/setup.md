@@ -2,7 +2,7 @@
 name: setup
 description: "Unified kaizen setup. No-args → interactive QA super-menu (master action picker → branched install / uninstall / health / maintenance flows). With-args → direct dispatch (install / uninstall / cache + --enable-all / --with-* / --no-*). Triggers on \"install kaizen\", \"setup the plugin\", \"enable kaizen\", \"uninstall kaizen\", \"kaizen cache\", \"setup menu\", \"reconfigure kaizen\", \"kaizen maintenance\", \"first-time setup\"."
 argument-hint: "(empty = interactive super-menu) | [install|uninstall|cache ...] [--enable-all] [--with-index] [--with-browser] [--with-daemon] [--with-trace-proxy] [--no-globals] [--no-project] [--dry-run]"
-allowed-tools: ["AskUserQuestion", "Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/setup.sh:*)", "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/detect_stack.py:*)", "Bash(kaizen-detect-stack:*)"]
+allowed-tools: ["AskUserQuestion", "Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/setup.sh:*)", "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/scripts/util/detect_stack.py:*)", "Bash(kaizen-detect-stack:*)"]
 ---
 
 # kaizen setup
@@ -149,7 +149,7 @@ project's stack signals BEFORE asking the confirm question. Two paths:
 1. **Existing `.agents/stack-context.md`** (preferred — already mined):
    read it; map signals → flags per the table below.
 2. **Fresh detect** (if no artifact): run
-   `python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/detect_stack.py scan --force`
+   `python3 ${CLAUDE_PLUGIN_ROOT}/scripts/util/detect_stack.py scan --force`
    (writes `.agents/stack-context.md`), then read it.
 
 Signal → flag mapping:

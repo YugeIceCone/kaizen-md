@@ -52,7 +52,7 @@ case "${1:-}" in
     ;;
   cache)
     shift
-    exec python3 "$_SCRIPT_DIR/../../skills/workflow/scripts/cache.py" "$@"
+    exec python3 "$_SCRIPT_DIR/../../scripts/util/cache.py" "$@"
     ;;
   install)
     shift  # explicit subcommand — continue into the install path
@@ -385,7 +385,7 @@ fi
 # healthy; non-fatal.
 echo ""
 echo "Cache check (.kaizen/cache/ — manage via /kaizen:setup cache):"
-(cd "$REPO_ROOT" && python3 "$_SCRIPT_DIR/../../skills/workflow/scripts/cache.py" stats 2>/dev/null | sed 's/^/  /') \
+(cd "$REPO_ROOT" && python3 "$_SCRIPT_DIR/../../scripts/util/cache.py" stats 2>/dev/null | sed 's/^/  /') \
     || echo "  (cache check skipped)"
 
 cat <<EOF
