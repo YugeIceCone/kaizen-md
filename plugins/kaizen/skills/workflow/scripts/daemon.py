@@ -424,6 +424,11 @@ def tick() -> dict:
     except ImportError:
         log_line("WARN", "auto-load: module not importable (skip)")
 
+    # 12. Memory-sync — drift-gated auto-memory MEMORY.md regen.
+    ok, msg, action = _jobs.run_memory_sync(state)
+    actions[action] = actions.get(action, 0) + 1
+    log_line("INFO" if ok else "ERROR", f"{action}: {msg}")
+
     save_state(state)
     log_line("INFO", "daemon tick complete")
     return state

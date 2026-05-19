@@ -121,6 +121,54 @@ def run_brain_index(state: dict) -> tuple[bool, str, str]:
     return ok, msg, action
 
 
+def _memory_dir_hash() -> str:
+    """Cheap drift signal for the project's auto-memory dir.
+
+    Hashes filename + size + int(mtime) per *.md sibling (excluding
+    MEMORY.md itself — the index changes whenever we regen it, would
+    cause infinite re-trigger). Returns "" when dir absent.
+    """
+    sys.path.insert(0, str(_SCRIPT_DIR))
+    import better_memory as _bm
+    d = _bm._default_memory_dir()
+    if not d.is_dir():
+        return ""
+    h = hashlib.sha256()
+    for p in sorted(d.glob("*.md")):
+        if p.name == "MEMORY.md":
+            continue
+        try:
+            st = p.stat()
+        except OSError:
+            continue
+        h.update(f"{p.name}:{st.st_size}:{int(st.st_mtime)}\n".encode())
+    return h.hexdigest()[:16]
+
+
+def run_memory_sync(state: dict) -> tuple[bool, str, str]:
+    """Drift-gated auto-memory MEMORY.md regen.
+
+    Hashes sibling *.md files in the project auto-memory dir; calls
+    better_memory.regen_index when the hash differs from prior tick.
+    Failure leaves the old hash so next tick retries.
+    """
+    action = "memory-sync"
+    if _disabled("KAIZEN_DAEMON_MEMORY_SYNC_DISABLE"):
+        return True, "disabled via env", action
+    sys.path.insert(0, str(_SCRIPT_DIR))
+    import better_memory as _bm
+    current = _memory_dir_hash()
+    prior = state.get("memory_dir_hash", "")
+    if current and current == prior:
+        return True, f"no drift (hash={current})", action
+    try:
+        n = _bm.regen_index(_bm._default_memory_dir())
+    except OSError as e:
+        return False, f"regen failed: {e}", action
+    state["memory_dir_hash"] = current
+    return True, f"regen indexed {n} entries (hash {prior or 'none'} → {current})", action
+
+
 def run_gold_mine(state: dict) -> tuple[bool, str, str]:
     """Weekly trace-mining pass — gold.py mine wraps gold_mine.run_mine.
 

@@ -333,5 +333,71 @@ class TestRunGoldMine(unittest.TestCase):
                            time.time() - 5)
 
 
+class TestRunMemorySync(unittest.TestCase):
+    """Phase B: drift-gated MEMORY.md auto-sync. Same shape as
+    brain-index — hash siblings, only regen when drift detected.
+    Sandbox via KAIZEN_BETTER_MEMORY_DIR.
+    """
+
+    def test_disabled_via_env_returns_skipped(self):
+        import _daemon_jobs as jobs
+        with patch.dict(os.environ,
+                        {"KAIZEN_DAEMON_MEMORY_SYNC_DISABLE": "1"}):
+            ok, msg, action = jobs.run_memory_sync(state={})
+        self.assertTrue(ok)
+        self.assertEqual(action, "memory-sync")
+        self.assertIn("disabled", msg.lower())
+
+    def test_no_drift_skips_regen(self):
+        import _daemon_jobs as jobs
+        import tempfile
+        with tempfile.TemporaryDirectory() as td:
+            from pathlib import Path
+            mem = Path(td)
+            (mem / "MEMORY.md").write_text("stale\n")
+            state = {}
+            env_copy = {k: v for k, v in os.environ.items()
+                        if k not in ("KAIZEN_DAEMON_MEMORY_SYNC_DISABLE",
+                                     "KAIZEN_BETTER_MEMORY_DIR")}
+            env_copy["KAIZEN_BETTER_MEMORY_DIR"] = str(mem)
+            with patch.dict(os.environ, env_copy, clear=True):
+                # First call: drift (no prior hash) → runs regen + stamps
+                ok1, msg1, _ = jobs.run_memory_sync(state)
+                # Second call: same hash → no-op
+                ok2, msg2, _ = jobs.run_memory_sync(state)
+            self.assertTrue(ok1)
+            self.assertTrue(ok2)
+            self.assertIn("no drift", msg2.lower())
+
+    def test_drift_triggers_regen(self):
+        import _daemon_jobs as jobs
+        import tempfile
+        import time as _t
+        with tempfile.TemporaryDirectory() as td:
+            from pathlib import Path
+            mem = Path(td)
+            (mem / "project_a.md").write_text(
+                "---\nname: A\ndescription: A entry\n---\n")
+            state = {}
+            env_copy = {k: v for k, v in os.environ.items()
+                        if k not in ("KAIZEN_DAEMON_MEMORY_SYNC_DISABLE",
+                                     "KAIZEN_BETTER_MEMORY_DIR")}
+            env_copy["KAIZEN_BETTER_MEMORY_DIR"] = str(mem)
+            with patch.dict(os.environ, env_copy, clear=True):
+                ok1, _, _ = jobs.run_memory_sync(state)
+                # Add another file → drift → regen
+                _t.sleep(0.01)
+                (mem / "project_b.md").write_text(
+                    "---\nname: B\ndescription: B entry\n---\n")
+                ok2, msg2, _ = jobs.run_memory_sync(state)
+            self.assertTrue(ok1)
+            self.assertTrue(ok2)
+            self.assertNotIn("no drift", msg2.lower())
+            # MEMORY.md should now reference both files
+            text = (mem / "MEMORY.md").read_text()
+            self.assertIn("project_a.md", text)
+            self.assertIn("project_b.md", text)
+
+
 if __name__ == "__main__":
     unittest.main()
