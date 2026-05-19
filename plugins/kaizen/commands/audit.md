@@ -20,6 +20,12 @@ rather than separate slashes:
 | Plugin self-audit pipeline | `kaizen-self-audit` | Mechanical validator + metrics-coverage + skip-detection cascade — was `/kaizen:self-audit` |
 | Code-to-test coverage gaps | `kaizen-coverage gaps` | 1:1 mapping check — was `/kaizen:coverage` |
 | Hygiene + auto-cleanups | `kaizen-hygiene` | Prune cache / backups / inbox TTL / logs — was `/kaizen:hygiene` (daemon also runs this on schedule) |
+| Karpathy 4-principle review | `kaizen-karpathy-check` | Staged diff or `--last-commit` — was `/kaizen:karpathy-check` |
+| Fast diff review | `kaizen-review` | HEAD-vs-base findings — was `/kaizen:review` |
+| Vibe-coding discipline check | `kaizen-vibe-check` | Precommit + karpathy + intent triggers — was `/kaizen:vibe-check` |
+| Dry-run pre-commit gate | `bash plugins/kaizen/scripts/git-hooks/pre-commit.sh` | Surface blocks/warns/skips on staged diff — was `/kaizen:precommit`. Equivalent staged-Python view: `kaizen-gatekeeper check --staged`. |
+| Local CI-equivalent merge gate | `kaizen-ci-gate` | syntax + iron-laws + optional test suite — was `/kaizen:ci-gate` |
+| Unified kaizen gate | `kaizen-gatekeeper` | Aggregates iron-laws + etu + karpathy + plugin-dev validate — was `/kaizen:gatekeeper` |
 
 Surfaces for **MCP+hooks registry drift** moved into `/kaizen:health`
 (both are install-state diagnostics — see that command).

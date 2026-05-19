@@ -38,7 +38,7 @@ class TestRender(unittest.TestCase):
 
     def test_print_includes_known_commands(self):
         r = _run("print")
-        for cmd in ("audit", "gatekeeper", "brain", "backlog", "help"):
+        for cmd in ("audit", "audit:axis", "brain", "backlog", "help"):
             self.assertIn(f"`{cmd}`", r.stdout)
 
     def test_render_then_check_passes(self):
@@ -110,9 +110,11 @@ class TestClusterSubcommand(unittest.TestCase):
     def test_cluster_includes_member_commands(self):
         r = _run("cluster", "audit/quality")
         self.assertEqual(r.returncode, 0, r.stderr)
-        # audit/quality cluster includes audit, gatekeeper, ci-gate
+        # audit/quality cluster includes audit + audit:axis (the only
+        # surviving roots post-consolidate-2 D3 fold of karpathy /
+        # review / vibe-check / precommit / ci-gate / gatekeeper).
         self.assertIn("`audit`", r.stdout)
-        self.assertIn("`gatekeeper`", r.stdout)
+        self.assertIn("`audit:axis`", r.stdout)
 
     def test_cluster_unknown_exits_nonzero(self):
         r = _run("cluster", "nonexistent-cluster")

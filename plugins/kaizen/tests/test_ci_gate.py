@@ -219,27 +219,43 @@ class TestPolishKiss(unittest.TestCase):
         )
 
 
+_FOLDED_REASON = (
+    "consolidate-2 D3: /kaizen:ci-gate slash retired into "
+    "/kaizen:audit Folded surface table. Frontmatter polish no longer "
+    "applies — bin (kaizen-ci-gate) is preserved and exercised below."
+)
+
+
+@unittest.skip(_FOLDED_REASON)
 class TestPolishBoyScout(unittest.TestCase):
     """boy-scout — commands/ci-gate.md was touched; while we're here
     its frontmatter description should have ≥3 quoted trigger phrases
-    (per the frontmatter-coverage axis I shipped earlier)."""
+    (per the frontmatter-coverage axis I shipped earlier).
+
+    SKIPPED: commands/ci-gate.md retired in consolidate-2 D3; see
+    _FOLDED_REASON above. The folded-surface row is asserted by
+    TestPostFoldCiGateWiring below.
+    """
 
     def test_command_description_has_three_quoted_triggers(self):
-        cmd = PLUGIN / "commands" / "ci-gate.md"
-        text = cmd.read_text()
-        import re as _re
-        # Match `description:` line (multi-line until next ^key:)
-        m = _re.search(r"^description:\s*(.+?)(?=^\w+:|^---)",
-                        text, _re.MULTILINE | _re.DOTALL)
-        desc = m.group(1) if m else ""
-        # Count quoted phrases (single or double quotes, ≥2 chars)
-        quoted = _re.findall(r'"[^"\n]{2,}"|\'[^\'\n]{2,}\'', desc)
-        self.assertGreaterEqual(
-            len(quoted), 3,
-            f"boy-scout: commands/ci-gate.md description has {len(quoted)} "
-            "quoted trigger phrases (<3 = weak-routing per frontmatter axis). "
-            f"Found: {quoted}",
-        )
+        pass
+
+
+class TestPostFoldCiGateWiring(unittest.TestCase):
+    """Post-fold (consolidate-2 D3): the ci-gate feature is preserved
+    via the bin and the Folded surface row in commands/audit.md."""
+
+    def test_bin_exists(self):
+        bin_path = PLUGIN / "bin" / "kaizen-ci-gate"
+        self.assertTrue(bin_path.exists(), f"kaizen-ci-gate bin missing at {bin_path}")
+        self.assertTrue(bin_path.is_file() or bin_path.is_symlink())
+
+    def test_audit_folded_surface_advertises_ci_gate(self):
+        audit_md = (PLUGIN / "commands" / "audit.md").read_text()
+        self.assertIn("kaizen-ci-gate", audit_md,
+                      "audit.md Folded surface must reference kaizen-ci-gate bin")
+        self.assertIn("was `/kaizen:ci-gate`", audit_md,
+                      "audit.md Folded surface row must mark the retired slash")
 
 
 class TestPolishDry(unittest.TestCase):

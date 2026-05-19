@@ -51,35 +51,28 @@ def _plugin_root() -> Path:
 # into "uncategorized" — gen flags them so the human adds the mapping.
 CLUSTERS: list[tuple[str, list[str]]] = [
     ("audit/quality", [
-        "audit", "audit:axis", "gatekeeper", "gate", "precommit", "review",
-        "coverage", "iron-laws", "karpathy-check", "vibe-check",
-        "self-audit", "agent-self-audit", "ci-gate",
+        "audit", "audit:axis",
     ]),
     ("observability", [
-        "trace", "trace-search", "trace-proxy", "metrics", "observe",
-        "context", "statusline",
+        "trace", "metrics", "observe", "context", "statusline",
+        "debug", "chatlog",
     ]),
     ("brain/memory", [
-        "brain", "self-improving", "gold",
+        "brain", "gold", "memory-ledger",
     ]),
     ("workflow", [
-        "backlog", "handoff", "loop", "flow", "workflow", "mode",
-        "session-mode", "migrate", "migrate-paths",
+        "backlog", "handoff", "workflow", "migrate",
     ]),
     ("plugin-meta", [
-        "setup", "bootstrap", "update", "refresh-cache", "daemon",
-        "hygiene", "backup", "publish", "env", "health", "status",
-        "surface", "disable-dupes", "plugin-development",
+        "setup", "update", "daemon", "backup", "publish",
+        "health", "status", "plugin-development",
     ]),
     ("discovery/search", [
-        "discovery", "onboard", "knowledge", "claude-docs", "code-tour",
+        "discovery", "onboard", "knowledge", "claude-docs",
         "scrape", "models", "browser", "docs",
     ]),
-    ("intent/session", [
-        "intent", "session-mode", "skill-suggest",
-    ]),
     ("dev-aids", [
-        "rule", "rules", "schema", "inbox", "test", "help",
+        "inbox", "help",
     ]),
 ]
 

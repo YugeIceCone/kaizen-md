@@ -71,8 +71,10 @@ class TestBodyContent(unittest.TestCase):
 
     def test_each_command_has_description(self):
         """Per-command row format: `command` | description.
-        Spot-check a few clusters to ensure descriptions are present."""
-        for cmd in ("audit", "gatekeeper", "brain", "backlog",
+        Spot-check a few clusters to ensure descriptions are present.
+        Fixture uses only permanent roots — slashes that survive the
+        consolidate-2 D1-D7 fold."""
+        for cmd in ("audit", "audit:axis", "memory-ledger", "backlog",
                      "setup", "onboard", "handoff"):
             # row format: `cmd` | <description>
             self.assertRegex(self.body, rf"`{cmd}`\s*\|",

@@ -115,9 +115,9 @@ class TestDispatcherCommands(unittest.TestCase):
                            capture_output=True, text=True, timeout=5)
         self.assertEqual(r.returncode, 0)
         self.assertIn("slash commands", r.stdout)
-        # Canonical entries we know exist
-        self.assertIn("gatekeeper", r.stdout)
+        # Canonical entries we know exist (post-consolidate-2 D3)
         self.assertIn("audit", r.stdout)
+        self.assertIn("setup", r.stdout)
 
     def test_commands_list_json_is_valid(self):
         r = subprocess.run([str(_BIN_KAIZEN), "commands", "list", "--json"],
@@ -131,11 +131,11 @@ class TestDispatcherCommands(unittest.TestCase):
                 self.assertIn(k, entry, f"missing key {k} in {entry}")
 
     def test_commands_show_prints_body(self):
-        r = subprocess.run([str(_BIN_KAIZEN), "commands", "show", "gatekeeper"],
+        r = subprocess.run([str(_BIN_KAIZEN), "commands", "show", "audit"],
                            capture_output=True, text=True, timeout=5)
         self.assertEqual(r.returncode, 0)
         self.assertIn("---", r.stdout)  # frontmatter delimiter
-        self.assertIn("name: gatekeeper", r.stdout)
+        self.assertIn("name: audit", r.stdout)
 
     def test_commands_show_unknown_exits_2(self):
         r = subprocess.run([str(_BIN_KAIZEN), "commands", "show", "nonexistent"],
@@ -168,8 +168,6 @@ class TestSlashCommandInventory(unittest.TestCase):
 
     def test_bash_body_detection(self):
         cmds = self.cli._list_slash_commands()
-        # gatekeeper has a `!`-prefix bash body
-        gk = next(c for c in cmds if c["slug"] == "gatekeeper")
         # audit.md is the canonical example of a bash-bodied command
         audit = next(c for c in cmds if c["slug"] == "audit")
         self.assertEqual(audit["has_bash_body"], "true")
