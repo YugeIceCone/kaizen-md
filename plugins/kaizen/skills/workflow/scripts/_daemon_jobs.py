@@ -153,28 +153,26 @@ def _memory_dir_hash() -> str:
     return h.hexdigest()[:16]
 
 
-def run_memory_sync(state: dict) -> tuple[bool, str, str]:
-    """Drift-gated auto-memory MEMORY.md regen.
-
-    Hashes sibling *.md files in the project auto-memory dir; calls
-    better_memory.regen_index when the hash differs from prior tick.
-    Failure leaves the old hash so next tick retries.
-    """
-    action = "memory-sync"
-    if _disabled("KAIZEN_DAEMON_MEMORY_SYNC_DISABLE"):
-        return True, "disabled via env", action
+def _regen_memory_sync() -> None:
+    """In-process MEMORY.md regen — raises so the drift-job factory
+    leaves the state hash un-stamped on failure (next tick retries)."""
     sys.path.insert(0, str(_SCRIPT_DIR))
     import better_memory as _bm
-    current = _memory_dir_hash()
-    prior = state.get("memory_dir_hash", "")
-    if current and current == prior:
-        return True, f"no drift (hash={current})", action
-    try:
-        n = _bm.regen_index(_bm._default_memory_dir())
-    except OSError as e:
-        return False, f"regen failed: {e}", action
-    state["memory_dir_hash"] = current
-    return True, f"regen indexed {n} entries (hash {prior or 'none'} → {current})", action
+    _bm.regen_index(_bm._default_memory_dir())
+
+
+# Composed via ``_index_kit.daemon_drift_job`` — preserves the
+# ``memory_dir_hash`` state key (not the factory default
+# ``memory_sync_hash``) so existing daemon state files round-trip.
+# Lambdas late-bind ``_memory_dir_hash`` / ``_regen_memory_sync``
+# so test monkey-patches against the module attribute still apply.
+run_memory_sync = _index_kit.daemon_drift_job(
+    action_key="memory-sync",
+    disable_env="KAIZEN_DAEMON_MEMORY_SYNC_DISABLE",
+    hash_fn=lambda: _memory_dir_hash(),
+    regen_fn=lambda: _regen_memory_sync(),
+    state_hash_key="memory_dir_hash",
+)
 
 
 def run_gold_mine(state: dict) -> tuple[bool, str, str]:
