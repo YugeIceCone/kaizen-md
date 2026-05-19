@@ -214,7 +214,7 @@ echo ""
 # → <repo>/.kaizen/workflow/ if applicable. Idempotent.
 echo "${BOLD}path migration (v1.22.0+)${RESET}"
 step "migrate legacy paths" \
-  "bash '$PLUGIN_ROOT/skills/workflow/scripts/migrate_paths.sh'"
+  "bash '$PLUGIN_ROOT/scripts/migrate/migrate_paths.sh'"
 echo ""
 
 # ─── 1. Globals (default stack) ──────────────────────────────────────
