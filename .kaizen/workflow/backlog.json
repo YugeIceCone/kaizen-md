@@ -852,6 +852,46 @@
       "committed_at": null,
       "parked_reason": null,
       "probe_output": null
+    },
+    {
+      "id": "BK-045",
+      "section": "next_up",
+      "title": "kaizen:intent — deep dig + analyze the intent system",
+      "ref": null,
+      "probe": "Audit covers: every intent rule in skills/intent/domain/intents.yaml — trigger quality (false-positive rate), action shape (suggest vs subcommand), confidence calibration. Surface dead rules + stale subcommand references (e.g. /kaizen:code-tour after cat-2 retirement). Cross-check intent suggestions against the live commands/* surface",
+      "verify": "(a) Survey all rules in intents.yaml + count by action.subcommand. (b) Run each trigger against trace.jsonl sample data to measure firing rate. (c) Flag any suggest: string mentioning a retired slash. (d) Confidence-calibration: rules with high confidence that rarely fire (or never fire) — candidates for retirement/refinement. (e) Cross-check that every action.subcommand resolves to a live commands/<name>.md OR to a skill. Output deliverable to .kaizen/audits/intent-audit-<ts>.{md,jsonl}.",
+      "tags": [
+        "intent",
+        "audit",
+        "analyze",
+        "quality"
+      ],
+      "created": "2026-05-19",
+      "started_at": null,
+      "committed": null,
+      "committed_at": null,
+      "parked_reason": null,
+      "probe_output": null
+    },
+    {
+      "id": "BK-046",
+      "section": "next_up",
+      "title": "trace + analyze code-to-test coverage; auto-generate test stubs (TDD seed pass)",
+      "ref": null,
+      "probe": "kaizen-coverage gaps surfaces 1:1 script-to-test deficiencies but doesn't act. Generate failing test scaffolds for each gap so TDD can fill them in. Trace + correlate which scripts have ZERO calls in the trace log — those are dead surfaces that DON'T need tests",
+      "verify": "(a) Walk scripts/<cluster>/*.py (excluding _<x>.py privates) + match to tests/test_<x>*.py. (b) Cross-reference with trace.jsonl call counts per bin/script over a representative time window. (c) For each gap, classify: TDD-seed (real surface needs test), DEAD-CODE (zero trace calls → park for retirement), VENDORED (no test, intentional). (d) For TDD-seed gaps, scaffold tests/test_<name>.py with RED-failing skeleton (one test per public function, asserting return shape). (e) Output coverage-trace audit at .kaizen/audits/coverage-trace-<ts>.{md,jsonl}",
+      "tags": [
+        "coverage",
+        "trace",
+        "tdd",
+        "audit"
+      ],
+      "created": "2026-05-19",
+      "started_at": null,
+      "committed": null,
+      "committed_at": null,
+      "parked_reason": null,
+      "probe_output": null
     }
   ],
   "decisions": []
