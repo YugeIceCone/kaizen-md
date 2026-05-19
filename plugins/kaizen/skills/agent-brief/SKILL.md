@@ -23,7 +23,7 @@ test -L .kaizen/hooks/pre-commit                                  # gate active
 git config --get core.hooksPath | grep -q '\.kaizen/hooks'        # local hooksPath set
 ```
 
-You're in a kaizen-installed session if `kaizen:*` commands appear in your skill catalog (look for `/kaizen:backlog`, `/kaizen:precommit`, `kaizen-trace`).
+You're in a kaizen-installed session if `kaizen:*` commands appear in your skill catalog (look for `kaizen-backlog`, `/kaizen:precommit`, `kaizen-trace`).
 
 If neither: this skill doesn't apply — kaizen isn't here.
 
@@ -77,7 +77,7 @@ backlog.py render                        # regenerate .md
 backlog.py verify                        # check .md/.json sync
 ```
 
-Slash: `/kaizen:backlog` (same surface).
+Slash: `kaizen-backlog` (same surface).
 
 **Sizing rule** — NEVER by clock-time:
 - ≤3 files, 0 manifest edits, 0 trait moves → micro backlog item

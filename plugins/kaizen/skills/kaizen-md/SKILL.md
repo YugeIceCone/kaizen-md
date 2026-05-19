@@ -20,7 +20,7 @@ slash command + bin wrapper surface.
 
 | Cluster | When to dispatch | Canonical skill |
 |---|---|---|
-| **brain / memory** | "remember this" / "capture", "search the brain", "promote a belief", "audit memory" | `Skill(brain)` + `/kaizen:brain` |
+| **brain / memory** | "remember this" / "capture", "search the brain", "promote a belief", "audit memory" | `Skill(brain)` + `kaizen-brain` |
 | **workflow / TDD** | "implement feature", "fix bug", "refactor", "run workflow", "build with TDD" | `Skill(workflow)` + `/kaizen:workflow` |
 | **quality / coverage** | "audit code", "check coverage", "find dead code", "lint markdown" | `/kaizen:audit` + the per-axis bins (`kaizen-coverage`, `kaizen-complexity`, etc.) |
 | **plugin-dev (kaizen-md itself)** | "add a kaizen feature", "build new MCP server", "validate staged diff" | `Skill(plugin-development)` + `/kaizen:plugin-development` |
@@ -55,7 +55,7 @@ actual work.
 
 ### brain / memory cluster
 - `Skill(brain)` — capture / search / promote / audit / evolve / blocks-show-edit
-- `/kaizen:brain <verb>` — consolidated CLI parent
+- `kaizen-brain <verb>` — consolidated CLI parent
 - `bin/kaizen-brain` — bin wrapper
 - Backing: `scripts/brain/brain.py` + `build_index.py` +
   `brain_audit.py` + `brain_promote.py` + `brain_evolve.py` + `brain_mcp.py`

@@ -1,4 +1,4 @@
-"""Contract tests for /kaizen:brain empty-args multiSelect verb checklist
+"""Contract tests for kaizen-brain empty-args multiSelect verb checklist
 (P4 of the menu-consolidation plan). Pins the menu structure + the
 dispatch table + that args-mode still works for the curated-out verbs.
 """
@@ -12,12 +12,21 @@ from pathlib import Path
 _KZ_DIR = Path(__file__).resolve().parent.parent
 _CMD = _KZ_DIR / "commands/brain.md"
 
+_FOLDED_REASON = (
+    "consolidate-2 D5: /kaizen:brain slash retired into "
+    "/kaizen:memory-ledger Folded surface table. brain.md no longer "
+    "exists; the feature is preserved via the kaizen-brain bin + the "
+    "brain skill. Post-fold wiring is asserted by "
+    "TestPostFoldBrainWiring at the bottom of this file."
+)
+
 
 def _fm(text: str) -> str:
     m = re.match(r"^---\n(.*?)\n---", text, re.DOTALL)
     return m.group(1) if m else ""
 
 
+@unittest.skip(_FOLDED_REASON)
 class TestFrontmatter(unittest.TestCase):
     def setUp(self):
         self.text = _CMD.read_text(encoding="utf-8")
@@ -49,6 +58,7 @@ class TestFrontmatter(unittest.TestCase):
         self.assertRegex(self.fm.lower(), r"no-args|multi[Ss]elect.*verb")
 
 
+@unittest.skip(_FOLDED_REASON)
 class TestMenuStructure(unittest.TestCase):
     def setUp(self):
         self.text = _CMD.read_text(encoding="utf-8")
@@ -81,6 +91,7 @@ class TestMenuStructure(unittest.TestCase):
                               "drill-down if more are needed")
 
 
+@unittest.skip(_FOLDED_REASON)
 class TestDispatchTable(unittest.TestCase):
     def setUp(self):
         self.text = _CMD.read_text(encoding="utf-8")
@@ -89,10 +100,10 @@ class TestDispatchTable(unittest.TestCase):
         self.assertRegex(self.text, r"###\s+After the pick")
 
     def test_each_picker_verb_has_dispatch_row(self):
-        for verb, slash in (("Capture", "/kaizen:brain capture"),
-                             ("Search", "/kaizen:brain search"),
-                             ("Audit", "/kaizen:brain audit"),
-                             ("Status", "/kaizen:brain status")):
+        for verb, slash in (("Capture", "kaizen-brain capture"),
+                             ("Search", "kaizen-brain search"),
+                             ("Audit", "kaizen-brain audit"),
+                             ("Status", "kaizen-brain status")):
             self.assertIn(verb, self.text)
             self.assertIn(slash, self.text,
                            f"dispatch table missing slash for {verb}")
@@ -106,6 +117,7 @@ class TestDispatchTable(unittest.TestCase):
                            f"curated-out verb not documented: {verb}")
 
 
+@unittest.skip(_FOLDED_REASON)
 class TestArgsModeBackcompat(unittest.TestCase):
     """The pre-P4 args-mode bash dispatcher MUST still work and route
     every existing verb to its backing script."""
@@ -141,6 +153,29 @@ class TestArgsModeBackcompat(unittest.TestCase):
         safety net for scripts/CI that invoke the args-mode body
         directly."""
         self.assertIn('ARGS="${ARGUMENTS:-status}"', self.text)
+
+
+class TestPostFoldBrainWiring(unittest.TestCase):
+    """Post-fold (consolidate-2 D5): the brain feature is preserved
+    via the bin + the kaizen-brain skill + the memory-ledger Folded
+    surface row. Asserts the canonical entry-points still exist."""
+
+    def test_bin_exists(self):
+        bin_path = _KZ_DIR / "bin" / "kaizen-brain"
+        self.assertTrue(bin_path.exists(),
+                        f"kaizen-brain bin missing at {bin_path}")
+
+    def test_brain_skill_exists(self):
+        skill = _KZ_DIR / "skills" / "brain" / "SKILL.md"
+        self.assertTrue(skill.is_file(),
+                        f"brain skill missing at {skill}")
+
+    def test_memory_ledger_folded_surface_advertises_brain(self):
+        ml = (_KZ_DIR / "commands" / "memory-ledger.md").read_text()
+        self.assertIn("kaizen-brain", ml,
+                      "memory-ledger Folded surface must reference kaizen-brain bin")
+        self.assertIn("was `/kaizen:brain`", ml,
+                      "memory-ledger Folded surface row must mark the retired slash")
 
 
 if __name__ == "__main__":

@@ -19,7 +19,7 @@ schema:
 
 ### Capture
 
-- `/kaizen:brain capture <text>` — slash command
+- `kaizen-brain capture <text>` — slash command
 - `kaizen-brain capture <text>` — bin wrapper
 - `brain_capture(text, type_hint?, confidence?, tier_hint?, subject?)` — MCP tool
 - `UserPromptSubmit` hook — detects "remember this" / "save this" /

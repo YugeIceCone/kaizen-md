@@ -8,7 +8,7 @@ tags: [persona, system]
 
 Loaded at every session start. The plugin reads `## Mission` and
 `## Directives` as instruction; `## Top Beliefs` is auto-populated
-by `/kaizen:brain evolve` from your highest-confidence Notes.
+by `kaizen-brain evolve` from your highest-confidence Notes.
 
 ---
 
@@ -36,7 +36,7 @@ discipline? File one per principle as a brain Note + link it here.)_
 
 ## Top Beliefs
 
-_Auto-populated by `/kaizen:brain evolve` — ranks your highest-
+_Auto-populated by `kaizen-brain evolve` — ranks your highest-
 confidence Notes from the `Notes/` directory. Empty until your
 first evolve run (or your first capture builds confidence)._
 

@@ -38,7 +38,7 @@ class TestRender(unittest.TestCase):
 
     def test_print_includes_known_commands(self):
         r = _run("print")
-        for cmd in ("audit", "audit:axis", "brain", "backlog", "help"):
+        for cmd in ("audit", "audit:axis", "memory-ledger", "observe", "help"):
             self.assertIn(f"`{cmd}`", r.stdout)
 
     def test_render_then_check_passes(self):

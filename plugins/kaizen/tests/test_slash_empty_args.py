@@ -4,7 +4,7 @@ empty-args. The fix pattern is the `bash -c 'exec ... ${ARGUMENTS:-<safe-verb>}'
 wrapper that defaults to a safe read-only subcommand.
 
 This defect bit us 3 times in one session (/kaizen:workflow,
-/kaizen:gold, /kaizen:coverage, /kaizen:scrape) before this test.
+kaizen-gold, /kaizen:coverage, /kaizen:scrape) before this test.
 Lock it in.
 """
 

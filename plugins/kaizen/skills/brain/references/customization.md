@@ -120,7 +120,7 @@ CLI: `kaizen-brain evolve`. MCP: `brain_evolve`.
 
 The capture pipeline is in `scripts/brain/brain.py`. Triggered
 by:
-- Explicit: `/kaizen:brain capture <text>` slash command
+- Explicit: `kaizen-brain capture <text>` slash command
 - MCP: `brain_capture(text, type_hint?, confidence?, tier_hint?, subject?)`
 - UserPromptSubmit hook: `hooks/claude/brain-user-prompt.sh` matches
   "remember this" / "save this" / "for the record" / "brain dump"

@@ -105,7 +105,7 @@ def main() -> int:
 
     if hard_block:
         reason = (f"{count} in_flight backlog item(s) remain:\n{titles}\n"
-                   "Tick them via /kaizen:backlog tick BK-N --committed <sha>, "
+                   "Tick them via kaizen-backlog tick BK-N --committed <sha>, "
                    "or move back to next_up if not actually started.")
         print(json.dumps({"decision": "block", "reason": reason}))
     else:

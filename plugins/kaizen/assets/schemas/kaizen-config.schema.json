@@ -23,7 +23,7 @@
     },
     "backlog_path": {
       "type": "string",
-      "description": "Path (repo-relative) to the rendered backlog markdown. Default `.kaizen/workflow/backlog.md`. NEVER hand-edit this — it's regenerated from `.kaizen/workflow/backlog.json` by `/kaizen:backlog`.",
+      "description": "Path (repo-relative) to the rendered backlog markdown. Default `.kaizen/workflow/backlog.md`. NEVER hand-edit this — it's regenerated from `.kaizen/workflow/backlog.json` by `kaizen-backlog`.",
       "default": ".kaizen/workflow/backlog.md"
     },
     "verify_cmd": {
@@ -45,7 +45,7 @@
     },
     "brain_path": {
       "type": "string",
-      "description": "Absolute path to the kaizen Second Brain. Default `~/.claude/.kaizen/brain`; can be overridden via the `KAIZEN_BRAIN_DIR` env var. Used by `/kaizen:brain` flows and the pre-deletion belief scanner."
+      "description": "Absolute path to the kaizen Second Brain. Default `~/.claude/.kaizen/brain`; can be overridden via the `KAIZEN_BRAIN_DIR` env var. Used by `kaizen-brain` flows and the pre-deletion belief scanner."
     },
     "project_memory_path": {
       "type": "string",

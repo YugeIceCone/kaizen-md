@@ -1,7 +1,7 @@
 # kaizen brain starter — `default`
 
 A minimal but production-ready Second Brain. Seeded by
-`/kaizen:brain seed default` (or `kaizen-brain seed default`).
+`kaizen-brain seed default` (or `kaizen-brain seed default`).
 
 ## What you get
 
@@ -14,7 +14,7 @@ A minimal but production-ready Second Brain. Seeded by
 │   ├── pref-tdd-for-new-code.md         ← belief: net-new code uses TDD
 │   └── kaizen-allow-log-deletions.md    ← gate rule: *.log can be deleted
 ├── Inbox/           — drafts land here (brain-audit auto-fills)
-├── Journal/         — daily entries (you write these or `/kaizen:brain capture`)
+├── Journal/         — daily entries (you write these or `kaizen-brain capture`)
 ├── Projects/        — per-project beliefs / facts
 ├── People/          — per-person notes
 ├── Areas/           — long-running responsibilities

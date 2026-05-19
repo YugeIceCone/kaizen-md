@@ -37,7 +37,7 @@ intents:
       - { kind: phrase, pattern: "(resume|continue|pick up).*(last|prior|previous).*session", case_insensitive: true }
       - { kind: phrase, pattern: "where (did|were) we (left|stop)", case_insensitive: true }
     action:
-      suggest: "/kaizen:handoff resume  # loads latest handoff + verify"
+      suggest: "kaizen-handoff resume  # loads latest handoff + verify"
       subcommand: handoff-resume
       confidence: 0.9
 
@@ -351,13 +351,13 @@ intents:
   # ─── One-off helpers (gold / inbox / metrics / discovery) ────────
 
   - id: gold-capture
-    description: User captured a gold pattern — point at /kaizen:gold.
+    description: User captured a gold pattern — point at kaizen-gold.
     triggers:
       - { kind: phrase, pattern: "capture (a |this )?(gold )?pattern", case_insensitive: true }
       - { kind: phrase, pattern: "(gold|incidental) (capture|learning|discovery)", case_insensitive: true }
       - { kind: phrase, pattern: "promote.*to brain (note|file)", case_insensitive: true }
     action:
-      suggest: "/kaizen:gold capture \"<pattern>\" --tag X  # or list / promote --brain"
+      suggest: "kaizen-gold capture \"<pattern>\" --tag X  # or list / promote --brain"
       subcommand: gold
       confidence: 0.85
 

@@ -5,7 +5,7 @@
 # When the user's prompt contains capture-intent phrases ("remember
 # this", "save this", "for the record", "brain dump"), this hook emits
 # a stderr breadcrumb telling the agent to invoke
-# /kaizen:brain capture <text> or the brain_capture MCP tool.
+# kaizen-brain capture <text> or the brain_capture MCP tool.
 #
 # This is ADVISORY — no auto-write. The user's actual prompt may not
 # carry the text to capture (just the trigger). The agent decides
@@ -67,7 +67,7 @@ TRIGGERS=(
 LOWER="$(echo "$PROMPT" | tr '[:upper:]' '[:lower:]')"
 for trigger in "${TRIGGERS[@]}"; do
     if [[ "$LOWER" == *"$trigger"* ]]; then
-        echo "kaizen-brain: detected capture trigger ('$trigger') — consider invoking /kaizen:brain capture or the brain_capture MCP tool" >&2
+        echo "kaizen-brain: detected capture trigger ('$trigger') — consider invoking kaizen-brain capture or the brain_capture MCP tool" >&2
         break
     fi
 done

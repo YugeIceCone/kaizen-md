@@ -5,7 +5,7 @@
 # ///
 """kaizen MCP server — read-mostly handoff queries.
 
-Sister to `/kaizen:handoff`. Exposes the queryable surface (latest,
+Sister to `kaizen-handoff`. Exposes the queryable surface (latest,
 list, path) so agents can query the handoff store without subprocess
 roundtrip + JSON parsing.
 

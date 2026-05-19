@@ -400,8 +400,8 @@ Test the gate:
   git commit --allow-empty -m 'test: gate smoke test'
 
 Backlog quick reference:
-  /kaizen:backlog list
-  /kaizen:backlog add --title "..." --probe "..." --verify "..."
+  kaizen-backlog list
+  kaizen-backlog add --title "..." --probe "..." --verify "..."
 
 Diagnostic:
   /kaizen:health

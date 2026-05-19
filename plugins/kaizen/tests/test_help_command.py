@@ -74,8 +74,8 @@ class TestBodyContent(unittest.TestCase):
         Spot-check a few clusters to ensure descriptions are present.
         Fixture uses only permanent roots — slashes that survive the
         consolidate-2 D1-D7 fold."""
-        for cmd in ("audit", "audit:axis", "memory-ledger", "backlog",
-                     "setup", "onboard", "handoff"):
+        for cmd in ("audit", "audit:axis", "memory-ledger",
+                     "setup", "onboard", "observe"):
             # row format: `cmd` | <description>
             self.assertRegex(self.body, rf"`{cmd}`\s*\|",
                               f"missing per-command row for {cmd}")

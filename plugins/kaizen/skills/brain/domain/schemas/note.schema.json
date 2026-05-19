@@ -101,7 +101,7 @@
     },
     "promote": {
       "type": "boolean",
-      "description": "Project-memory only. Set to true to force brain promotion on the next /kaizen:brain promote run."
+      "description": "Project-memory only. Set to true to force brain promotion on the next kaizen-brain promote run."
     },
     "metadata": {
       "type": "object",

@@ -57,7 +57,7 @@ print(f'  in_flight={sec.get("in_flight",0)} next_up={sec.get("next_up",0)} done
 print(f'  decisions: {len(data.get("decisions", []))}')
 PY
 else
-    echo "  (no $WF_DIR/backlog.json yet — run /kaizen:backlog add)"
+    echo "  (no $WF_DIR/backlog.json yet — run kaizen-backlog add)"
 fi
 echo ""
 

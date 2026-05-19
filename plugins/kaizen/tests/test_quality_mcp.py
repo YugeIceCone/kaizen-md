@@ -91,21 +91,24 @@ class TestQualityAxisShapes(unittest.TestCase):
 
 
 class TestSlashCollisionsRealSurface(unittest.TestCase):
-    """Live-data check — the real plugin commands/ dir has known
-    collisions (back* / self* / stat* / trac*) per the audit earlier
-    this session. Tool must surface them."""
+    """Live-data check — the slash_collisions tool surfaces prefix-overlap
+    families in commands/. Post consolidate-2 D1-D7 the menu collapsed
+    from 56 → 9 (8 roots + audit:axis) so most historical families
+    (back* / self* / stat* / trac*) no longer overlap. The tool must
+    still return a well-formed envelope; absence of findings is now
+    the expected steady state."""
 
     def setUp(self):
         self.mod = _load()
 
-    def test_real_collisions_surfaced(self):
+    def test_real_collisions_envelope_well_formed(self):
         r = self.mod.slash_collisions()
-        prefixes = {f["prefix"] for f in r["findings"]}
-        # At least one of the known intentional families should appear
-        self.assertTrue(
-            prefixes & {"back", "self", "stat", "trac"},
-            f"expected at least one known collision; got {prefixes}",
-        )
+        self.assertIsInstance(r, dict)
+        self.assertIn("count", r)
+        self.assertIn("findings", r)
+        self.assertEqual(r["count"], len(r["findings"]))
+        for f in r["findings"]:
+            self.assertIn("prefix", f)
 
 
 if __name__ == "__main__":

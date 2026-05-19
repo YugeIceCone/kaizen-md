@@ -43,7 +43,7 @@ else
     if [ -n "$BACKLOG_MD" ]; then
         BACKLOG_JSON="${BACKLOG_MD%.md}.json"
         [ -f "$BACKLOG_JSON" ] && log_pass "backlog source: $BACKLOG_JSON" \
-            || check_warn "backlog_path → $BACKLOG_JSON not on disk (run /kaizen:backlog list to seed)"
+            || check_warn "backlog_path → $BACKLOG_JSON not on disk (run kaizen-backlog list to seed)"
     fi
     [ -n "$ARCH_LOG" ] && [ -f "$ARCH_LOG" ] && log_pass "architecture log: $ARCH_LOG" \
         || log_skip "architecture log: $ARCH_LOG (will be created by first structural commit)"

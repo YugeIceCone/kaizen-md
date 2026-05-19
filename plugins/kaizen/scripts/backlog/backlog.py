@@ -377,7 +377,7 @@ def cmd_verify(store, args, *, json_path: Path, md_path: Path):
 
 def build_parser():
     p = argparse.ArgumentParser(prog="backlog", description=__doc__.split("\n")[0])
-    # Subcommand is optional; bare invocation (e.g. /kaizen:backlog with
+    # Subcommand is optional; bare invocation (e.g. kaizen-backlog with
     # no args) defaults to `list all`. Avoids the slash-command iron-law
     # forbidding ${ARGUMENTS:-defaults-with-spaces}.
     sp = p.add_subparsers(dest="cmd", required=False)

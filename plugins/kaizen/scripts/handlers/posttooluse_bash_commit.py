@@ -143,7 +143,7 @@ def main() -> int:
     lines = ["⚙ kaizen: commit landed; in_flight backlog item(s) likely tied:"]
     for mid, title, kind in matches:
         lines.append(f"  - {mid} ({kind}-match): {title}")
-    lines.append("  Tick: /kaizen:backlog tick <id> --committed <short-sha>")
+    lines.append("  Tick: kaizen-backlog tick <id> --committed <short-sha>")
     suggestion = "\n".join(lines)
 
     print(json.dumps({

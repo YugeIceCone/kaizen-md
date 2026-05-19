@@ -91,11 +91,11 @@ manifest:
 
 ## Pairing with related features
 
-- **brain** (`/kaizen:brain`) — the most-referenced owner feature; the
+- **brain** (`kaizen-brain`) — the most-referenced owner feature; the
   durable knowledge layer.
-- **handoff** (`/kaizen:handoff`) — owns the session-boundary
+- **handoff** (`kaizen-handoff`) — owns the session-boundary
   continuity (resume / create / verify).
-- **backlog** (`/kaizen:backlog`) — owns the active-work ledger
+- **backlog** (`kaizen-backlog`) — owns the active-work ledger
   (BK-N items + memory-resident summary per BK-023).
 - **better-memory** — owns the auto-memory dir; the daemon ticks
   `regen-index` to keep MEMORY.md in sync.

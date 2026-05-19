@@ -160,7 +160,7 @@ except Exception:
       echo "## Handoff document (kaizen store)"
       echo "- session: \`$sid\` (status: $status, created: $created)"
       echo "- file: \`$fp\`"
-      echo "- resume: \`/kaizen:handoff resume\`"
+      echo "- resume: \`kaizen-handoff resume\`"
       return
     fi
   fi

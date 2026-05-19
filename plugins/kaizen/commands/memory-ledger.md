@@ -44,3 +44,18 @@ export KAIZEN_MEMORY_LEDGER_DISABLE=1
 ```
 
 Every verb becomes a silent no-op.
+
+## Folded surface (formerly separate slashes)
+
+Four memory + continuity slashes absorbed in consolidate-2 D5; bins / skills / databases remain reachable and continue to be the canonical capture/inspect verbs. **This is a menu-UX collapse, not a behaviour change — handoff store, brain DB, gold log, and backlog json all stay intact:**
+
+| Concern | Bin (direct) | Use case |
+|---|---|---|
+| Durable second brain | `kaizen-brain` | capture / search / promote / audit / evolve / show / append — was `/kaizen:brain` |
+| Mid-work pattern capture | `kaizen-gold` | capture / list / show / promote / path — was `/kaizen:gold` |
+| Session-boundary continuity | `kaizen-handoff` | create / resume / verify / assess / auto-finalize / bridge / latest — was `/kaizen:handoff` |
+| Active work tracker | `kaizen-backlog` | list / add / start / tick / done / park / unpark / decision / render / verify / show — was `/kaizen:backlog` |
+
+All four are already declared surfaces in
+`skills/memory-ledger/domain/memory-surfaces.yaml`; this fold puts the
+verb invocation alongside the catalog instead of in a separate slash.

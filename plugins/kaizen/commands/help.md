@@ -7,7 +7,7 @@ allowed-tools: ["AskUserQuestion", "Bash(${CLAUDE_PLUGIN_ROOT}/bin/kaizen-help-g
 
 # /kaizen:help
 
-Static taxonomy of all 26 `/kaizen:*` commands. **One screen, zero bash
+Static taxonomy of all 22 `/kaizen:*` commands. **One screen, zero bash
 execution.** For full per-command docs use `kaizen help <name>`. Auto-
 generated from `commands/*.md` frontmatter via `kaizen-help-gen`.
 
@@ -21,9 +21,9 @@ the wizard and emit the corresponding slice directly.
 **Q1 — Which domain?** (single-select; 4 options + Other)
 
 - `audit/quality` (2)
-- `workflow` (4)
+- `workflow` (2)
 - `observability` (1)
-- `brain/memory` (3)
+- `brain/memory` (1)
 - Other (overflow: plugin-meta / discovery/search / dev-aids)
 
 After the user picks, dispatch:
@@ -47,20 +47,16 @@ dispatch the same way.
 |---|---|
 | `observe` | Unified observability across kaizen 6 data-stream layers (L1 stderr → L6 plugin st |
 
-## brain/memory (3)
+## brain/memory (1)
 
 | Command | Does |
 |---|---|
-| `brain` | Second Brain - capture / search / promote / audit / evolve + zero-roundtrip block- |
-| `gold` | Incidental-discovery + learnings tracker. Captures mid-work "ha!" moments before t |
 | `memory-ledger` | Catalog + status + flow over every memory and continuity-of-session surface in kai |
 
-## workflow (4)
+## workflow (2)
 
 | Command | Does |
 |---|---|
-| `backlog` | Project backlog (JSON-sourced, .md generated). Verbs - list | in_flight | next_up  |
-| `handoff` | Session handoff doc. `create` wraps the current session into YAML + indexes it; `r |
 | `workflow` | Workflow-shape config — default scope × run-mode × disciplines × threshold. Three  |
 | `migrate` | Migrate from loose skills / separate plugins / non-canonical layouts to canonical  |
 

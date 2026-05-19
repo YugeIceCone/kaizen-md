@@ -122,7 +122,7 @@ options:
   - label: "50%"
     description: "Half-full — fires very early. Fine for paranoid / cheap-context flows."
   - label: "Disabled"
-    description: "No auto-handoff. /kaizen:handoff create stays manual-only."
+    description: "No auto-handoff. kaizen-handoff create stays manual-only."
 ```
 
 ### Arg assembly
