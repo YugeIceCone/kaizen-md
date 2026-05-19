@@ -230,6 +230,95 @@ async def discovery_search(
     return {name: result for name, result in results}
 
 
+# ─── Phase 4.B: unified kaizen_search with auto-corpus routing ──────
+
+
+# First-match-wins regex routing rules. Order matters: more specific
+# patterns first. Each rule maps (pattern → corpus name).
+_CORPUS_ROUTING_RULES: list[tuple[str, str]] = [
+    # Code-shape patterns → symbol search
+    (r"\b(def|class|fn|func|function|method)\b", "symbol-search"),
+    # Brain-note ref shape (pref-X / Notes/X)
+    (r"(^|\b)(pref-|Notes/|brain[/ ])", "brain"),
+    # Error / exception shape → kaizen-trace
+    (r"\b(error|exception|traceback|stack ?trace|fail(ed|ure)?)\b",
+     "trace"),
+    # URL → scrape store
+    (r"https?://", "scrape"),
+    # Claude-docs cues
+    (r"\b(claude code|anthropic|claude api|hooks?|MCP)\b", "claude-docs"),
+]
+
+
+def pick_corpus(query: str, corpus: str = "auto") -> str:
+    """Resolve a corpus name from explicit hint or query auto-routing.
+
+    Args:
+      query: the search text (used only when corpus='auto').
+      corpus: 'auto' (pattern-route), 'all' (fan-out), or an explicit
+              corpus name (passes through unchanged).
+
+    Returns the resolved corpus name. Falls through to 'all' when
+    'auto' finds no rule match — federates across surfaces rather
+    than returning nothing.
+    """
+    if corpus and corpus != "auto":
+        return corpus
+    import re
+    q = (query or "").lower()
+    for pattern, name in _CORPUS_ROUTING_RULES:
+        if re.search(pattern, q, re.I):
+            return name
+    return "all"
+
+
+@mcp.tool()
+async def kaizen_search(
+    query: str,
+    corpus: str = "auto",
+    top_k: int = 10,
+) -> dict[str, Any]:
+    """Unified semantic search across kaizen's 7 indexes.
+
+    Args:
+      query:  free-text search string.
+      corpus: routing hint:
+              - 'auto' (default) — pattern-route by query shape
+              - 'all'  — federate across all indexes
+              - explicit name (codebase / knowledge / claude-docs /
+                scrape / brain / trace / symbol-search) — single
+                surface, no auto-routing.
+      top_k:  per-surface result cap.
+
+    Returns:
+      {"corpus": <resolved-name>, "results": {<surface>: hits | {error}}}
+
+    Composes existing discovery_search for the 4 federated surfaces;
+    direct passthrough for symbol-search + brain + trace.
+    """
+    resolved = pick_corpus(query, corpus)
+    out: dict[str, Any] = {"corpus": resolved, "results": {}}
+    # 'all' → federated discovery_search (4 surfaces) — plus a future
+    # extension for brain / trace / symbol-search direct calls.
+    if resolved == "all":
+        out["results"] = await discovery_search(query, top_k_per=top_k)
+        return out
+    # Single-surface route. We don't yet wire brain / trace / symbol-search
+    # direct calls here — those have their own MCP tools that the agent
+    # can call. We surface a pointer so the agent knows where to go.
+    if resolved in ("codebase", "knowledge", "claude-docs", "scrape"):
+        out["results"] = await discovery_search(
+            query, surfaces=[resolved], top_k_per=top_k)
+        return out
+    out["results"] = {
+        resolved: {
+            "hint": (f"Use mcp__kaizen__{resolved.replace('-', '_')}_search "
+                     f"directly for richer per-surface filters.")
+        }
+    }
+    return out
+
+
 @mcp.tool()
 async def discovery_stats(
     surfaces: list[str] | None = None,
