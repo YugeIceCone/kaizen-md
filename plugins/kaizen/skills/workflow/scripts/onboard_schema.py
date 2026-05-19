@@ -78,6 +78,13 @@ SCHEMA_SQL = """
         -- transformers/torch unavailable. _sparse.deserialize decodes it
         -- at search time; sparse_search in _search.py fuses with dense.
         embedding_sparse BLOB,
+        -- v1.40 (symbol-search Phase 2): 1-indexed inclusive line range
+        -- populated from _ast_chunk.SymbolChunk for Python; 0 for
+        -- sliding-window non-AST chunks. Enables symbol_search_mcp
+        -- to return exact (file, line_start, line_end) for matches so
+        -- the agent can Read just the slice.
+        line_start INTEGER NOT NULL DEFAULT 0,
+        line_end INTEGER NOT NULL DEFAULT 0,
         UNIQUE(file_id, chunk_idx)
     );
     CREATE INDEX IF NOT EXISTS idx_chunk_file ON code_chunks(file_id);
@@ -170,6 +177,35 @@ def _migrate_embedding_sparse_column(conn: sqlite3.Connection) -> None:
         )
 
 
+def _migrate_line_columns(conn: sqlite3.Connection) -> None:
+    """Phase 2 (symbol-search arc) — add line_start + line_end to
+    code_chunks. Populated at index time from _ast_chunk.SymbolChunk
+    for Python; non-AST chunks default to 0 (unknown).
+
+    Same PRAGMA-probe + ALTER-if-absent pattern as the prior
+    migrations. Pre-existing rows get 0/0; the next reindex of a
+    Python file populates real ranges from ast.AST.lineno/end_lineno.
+
+    Enables: symbol_search_mcp returning exact file:line_start-line_end
+    so the agent can Read(file, offset, limit) for just the matched
+    symbol — no whole-file reads.
+    """
+    cols = {row[1] for row in conn.execute("PRAGMA table_info(code_chunks)")}
+    if "line_start" not in cols:
+        conn.execute(
+            "ALTER TABLE code_chunks ADD COLUMN line_start INTEGER NOT NULL DEFAULT 0"
+        )
+    if "line_end" not in cols:
+        conn.execute(
+            "ALTER TABLE code_chunks ADD COLUMN line_end INTEGER NOT NULL DEFAULT 0"
+        )
+    # Index on line_start enables symbol_at_line lookups (find symbol
+    # enclosing a given line via file_id + line_start <= L <= line_end).
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_chunk_line ON code_chunks(file_id, line_start)"
+    )
+
+
 def _migrate_colbert_sidecar(conn: sqlite3.Connection) -> None:
     """E10 migration — ensure the `code_chunks_colbert` sidecar table
     exists. Idempotent — CREATE TABLE IF NOT EXISTS in the schema SQL
@@ -195,3 +231,4 @@ def apply_migrations(conn: sqlite3.Connection) -> None:
     _migrate_symbol_name_column(conn)   # v1.33 — adds `symbol_name`
     _migrate_embedding_sparse_column(conn)  # v1.34 — adds `embedding_sparse` (E9)
     _migrate_colbert_sidecar(conn)      # v1.34 — adds code_chunks_colbert (E10)
+    _migrate_line_columns(conn)         # v1.40 — adds line_start + line_end (Phase 2)

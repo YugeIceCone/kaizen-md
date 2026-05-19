@@ -692,6 +692,8 @@ def chunk_record(cleaned_rec: dict) -> list[dict]:
                 "text": sc.text,
                 "kind": "code",
                 "symbol_name": sc.symbol_name,
+                "line_start": sc.line_start,
+                "line_end": sc.line_end,
                 "kept": True,
             })
     if not out:
@@ -1051,7 +1053,7 @@ def _persist_file_and_chunks(conn: sqlite3.Connection, payload: dict) -> int:
     ]
     if chunk_q8_blobs is not None:
         cols.append("embedding_q8")
-    cols.extend(["language", "kind", "symbol_name"])
+    cols.extend(["language", "kind", "symbol_name", "line_start", "line_end"])
     if chunk_sparse_blobs is not None:
         cols.append("embedding_sparse")
     sql = (
@@ -1070,6 +1072,8 @@ def _persist_file_and_chunks(conn: sqlite3.Connection, payload: dict) -> int:
             cleaned_rec["language"],
             c.get("kind") or "code",
             c.get("symbol_name") or "",
+            int(c.get("line_start") or 0),
+            int(c.get("line_end") or 0),
         ])
         if chunk_sparse_blobs is not None:
             row.append(chunk_sparse_blobs[idx])
