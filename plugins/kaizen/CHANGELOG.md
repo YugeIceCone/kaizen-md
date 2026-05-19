@@ -457,7 +457,7 @@ Surface dimensions surfaced: 22 MCP sub-servers, 146 tools, 18 hook registration
 
 Closes audit-finding F-001 (gatekeeper existed but had no MCP wrapper, forcing shell-invocations) + F-004 (CURATED_CORE was stale, missing new tools).
 
-- **`skills/workflow/scripts/gatekeeper_mcp.py`** — FastMCP wrapper exposing `gatekeeper_check(scope, only=None)` + `gatekeeper_list()`. Uses explicit `importlib.util.spec_from_file_location` to load `gatekeeper.py` without `sys.path` pollution (gatekeeper internally uses the same pattern for its sub-gates).
+- **`scripts/mcp/gatekeeper_mcp.py`** — FastMCP wrapper exposing `gatekeeper_check(scope, only=None)` + `gatekeeper_list()`. Uses explicit `importlib.util.spec_from_file_location` to load `gatekeeper.py` without `sys.path` pollution (gatekeeper internally uses the same pattern for its sub-gates).
 - **`skills/workflow/scripts/gateway.py::SUBSERVERS`** — adds `("gatekeeper", "gatekeeper_mcp")`. The kaizen gateway now mounts **22 sub-servers / 146 tools**.
 - **`skills/workflow/scripts/gateway.py::CURATED_CORE`** rebalanced:
   - Added: `gatekeeper_check`, `auto_fix_lint`
@@ -943,7 +943,7 @@ Each routine in `routines.yaml` declares which of the 8 coding-skills principles
 
 ### Added — `kaizen-workflow` MCP server (9 tools)
 
-`plugins/kaizen/skills/workflow/scripts/workflow_mcp.py`. Wraps `workflow.sh` +
+`plugins/kaizen/scripts/mcp/workflow_mcp.py`. Wraps `workflow.sh` +
 `workflow_runner.py` so Claude can drive a multi-stage workflow without
 slash-command typing.
 
@@ -957,7 +957,7 @@ No embed-model dependency; pure stdlib + `mcp>=1.0`.
 
 ### Added — `kaizen-lint` MCP server (7 tools)
 
-`plugins/kaizen/skills/workflow/scripts/lint_mcp.py`. Wraps ruff (lint +
+`plugins/kaizen/scripts/mcp/lint_mcp.py`. Wraps ruff (lint +
 format) and ty (typecheck + explain) so linters run mid-conversation
 without slash commands.
 
@@ -2112,7 +2112,7 @@ embedding BLOB (384 f32) | sha (16-hex) | updated_at
 
 ### Added — `kaizen-onboard-search` MCP server
 
-`skills/workflow/scripts/onboard_mcp.py` — FastMCP server exposing 5 tools:
+`scripts/mcp/onboard_mcp.py` — FastMCP server exposing 5 tools:
 
 - `onboard_search(query, top_k, language)` — semantic search with optional language filter.
 - `onboard_index_status()` — total files / sloc / bytes / model / counts by language.
@@ -2247,7 +2247,7 @@ Closes the three v1.16.x follow-ups in one release: (1) MCP wrapper for `knowled
 
 ### Added — `kaizen-knowledge-search` MCP server
 
-`skills/workflow/scripts/knowledge_mcp.py` — FastMCP server exposing 5 tools that wrap `knowledge_index.do_*` helpers (parallel to `trace_mcp.py`'s wrapping of `trace_index`):
+`scripts/mcp/knowledge_mcp.py` — FastMCP server exposing 5 tools that wrap `knowledge_index.do_*` helpers (parallel to `trace_mcp.py`'s wrapping of `trace_index`):
 
 - `knowledge_search(query, top_k, source)` — cosine-similarity search; optional source filter.
 - `knowledge_index_status()` — totals, model, dim, last-indexed-ts, counts by source.
@@ -2292,7 +2292,7 @@ E2E smoke-tested:
 
 ### Permissions
 
-`plugin.json` allowlists `uv run --script ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/knowledge_mcp.py:*` for the new MCP spawn path.
+`plugin.json` allowlists `uv run --script ${CLAUDE_PLUGIN_ROOT}/scripts/mcp/knowledge_mcp.py:*` for the new MCP spawn path.
 
 ### Why minor (1.16.0 → 1.17.0)
 

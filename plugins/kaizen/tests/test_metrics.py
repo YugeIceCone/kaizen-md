@@ -11,6 +11,7 @@ from pathlib import Path
 
 _KZ_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_KZ_DIR / "skills/workflow/scripts"))
+sys.path.insert(0, str(_KZ_DIR / "scripts/mcp"))
 
 import metrics  # noqa: E402
 
@@ -474,7 +475,7 @@ class TestMcpModuleParses(unittest.TestCase):
     """Even without mcp installed, the .py file should compile."""
 
     def test_metrics_mcp_compiles(self):
-        path = _KZ_DIR / "skills/workflow/scripts/metrics_mcp.py"
+        path = _KZ_DIR / "scripts/mcp/metrics_mcp.py"
         with open(path, "r") as f:
             compile(f.read(), str(path), "exec")
 

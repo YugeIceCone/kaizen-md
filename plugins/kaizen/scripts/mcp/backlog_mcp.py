@@ -32,7 +32,7 @@ from pathlib import Path
 from fastmcp import FastMCP
 
 SCRIPT_DIR = Path(os.path.realpath(__file__)).parent
-BACKLOG_PY = SCRIPT_DIR / "backlog.py"
+BACKLOG_PY = SCRIPT_DIR.parents[1] / "skills" / "workflow" / "scripts" / "backlog.py"
 
 
 def _run(*args: str) -> str:

@@ -49,7 +49,7 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 
 def _load_gatekeeper():
     spec = importlib.util.spec_from_file_location(
-        "kaizen_gatekeeper_mcp_inner", SCRIPT_DIR / "gatekeeper.py"
+        "kaizen_gatekeeper_mcp_inner", SCRIPT_DIR.parents[1] / "skills" / "workflow" / "scripts" / "gatekeeper.py"
     )
     if spec is None or spec.loader is None:
         raise ImportError("could not load gatekeeper.py")

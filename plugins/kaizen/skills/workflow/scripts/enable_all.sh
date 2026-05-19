@@ -296,7 +296,7 @@ if [ "$WITH_INDEX" -eq 1 ] || [ "$WITH_BROWSER" -eq 1 ] || [ "$WITH_DAEMON" -eq 
 
   if [ "$WITH_BROWSER" -eq 1 ]; then
     step "install Playwright browser MCP server" \
-      "uv run --script '$PLUGIN_ROOT/skills/workflow/scripts/browser_mcp.py' install"
+      "uv run --script '$PLUGIN_ROOT/scripts/mcp/browser_mcp.py' install"
   fi
 
   if [ "$WITH_DAEMON" -eq 1 ]; then

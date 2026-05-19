@@ -34,6 +34,11 @@ from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR))
+# MIGRATION BRIDGE — relocated modules + legacy helpers
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "skills" / "workflow" / "scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts" / "brain"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts" / "indexers"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts" / "handlers"))
 
 try:
     from fastmcp import FastMCP
@@ -61,7 +66,7 @@ async def state_status() -> str:
 
     Cheaper than the slash command (which also embeds 50+ lines of
     .md prose around the bash output). Returns text; parse if needed."""
-    sh = SCRIPT_DIR / "status.sh"
+    sh = SCRIPT_DIR.parents[1] / "skills" / "workflow" / "scripts" / "status.sh"
     r = subprocess.run(
         ["bash", str(sh)],
         cwd=_repo_root(), capture_output=True, text=True,
@@ -74,7 +79,7 @@ async def state_health() -> dict:
     """Diagnostic health-check (wraps `health.sh`). Returns
     {ok: bool, exit_code: int, output: str} — `ok` is True iff
     exit_code == 0 (no RED findings)."""
-    sh = SCRIPT_DIR / "health.sh"
+    sh = SCRIPT_DIR.parents[1] / "skills" / "workflow" / "scripts" / "health.sh"
     r = subprocess.run(
         ["bash", str(sh)],
         cwd=_repo_root(), capture_output=True, text=True,

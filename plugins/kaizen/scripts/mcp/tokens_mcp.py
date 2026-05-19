@@ -39,6 +39,10 @@ from fastmcp import FastMCP
 _HERE = Path(os.path.realpath(__file__)).parent
 if str(_HERE) not in sys.path:
     sys.path.insert(0, str(_HERE))
+# MIGRATION BRIDGE — _token_db still at skills/workflow/scripts/
+_LEGACY = _HERE.parents[1] / "skills" / "workflow" / "scripts"
+if str(_LEGACY) not in sys.path:
+    sys.path.insert(0, str(_LEGACY))
 
 from _token_db import TokenDB  # noqa: E402
 

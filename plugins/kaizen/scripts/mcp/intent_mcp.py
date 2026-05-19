@@ -39,7 +39,7 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 
 def _load_intent():
     spec = importlib.util.spec_from_file_location(
-        "kaizen_intent_mcp_inner", SCRIPT_DIR / "intent.py"
+        "kaizen_intent_mcp_inner", SCRIPT_DIR.parents[1] / "skills" / "workflow" / "scripts" / "intent.py"
     )
     if spec is None or spec.loader is None:
         raise ImportError("could not load intent.py")

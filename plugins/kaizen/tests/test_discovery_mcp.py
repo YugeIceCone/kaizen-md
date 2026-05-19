@@ -19,7 +19,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 _KZ_DIR = Path(__file__).resolve().parent.parent
-_SCRIPT = _KZ_DIR / "skills/workflow/scripts/discovery_mcp.py"
+_SCRIPT = _KZ_DIR / "scripts/mcp/discovery_mcp.py"
 
 
 def _load():

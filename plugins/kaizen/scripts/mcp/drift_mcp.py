@@ -23,6 +23,11 @@ from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR))
+# MIGRATION BRIDGE — relocated modules + legacy helpers
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "skills" / "workflow" / "scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts" / "brain"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts" / "indexers"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts" / "handlers"))
 
 try:
     from fastmcp import FastMCP

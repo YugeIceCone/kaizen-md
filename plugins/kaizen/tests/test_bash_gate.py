@@ -408,7 +408,7 @@ class TestLongFormNudge(unittest.TestCase):
     def test_mcp_module_not_nudged(self):
         # *_mcp.py modules aren't aliased — they're for the MCP gateway,
         # not direct CLI invocation.
-        cmd = "uv run --script plugins/kaizen/skills/workflow/scripts/gatekeeper_mcp.py"
+        cmd = "uv run --script plugins/kaizen/scripts/mcp/gatekeeper_mcp.py"
         r = _bash_gate.decide(cmd)
         self.assertNotIn("kaizen-cli nudge", r.get("systemMessage", ""))
 

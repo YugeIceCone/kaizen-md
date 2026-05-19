@@ -16,8 +16,9 @@ from pathlib import Path
 _PLUGIN_ROOT = Path(__file__).resolve().parent.parent
 _APP = _PLUGIN_ROOT / "skills" / "iron-laws" / "application"
 _SCRIPTS = _PLUGIN_ROOT / "skills" / "workflow" / "scripts"
+_MCP = _PLUGIN_ROOT / "scripts" / "mcp"
 _DOMAIN = _PLUGIN_ROOT / "skills" / "iron-laws" / "domain"
-for _p in (_APP, _SCRIPTS):
+for _p in (_APP, _SCRIPTS, _MCP):
     if str(_p) not in sys.path:
         sys.path.insert(0, str(_p))
 

@@ -39,6 +39,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "scripts" / "brain"))
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "scripts" / "indexers"))
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "scripts" / "handlers"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "scripts" / "mcp"))
 
 from fastmcp import FastMCP
 

@@ -58,6 +58,11 @@ mcp = FastMCP("lint")
 SCRIPT_DIR = Path(__file__).resolve().parent
 # Curator + severity rank are shared with other MCPs — import from sibling.
 sys.path.insert(0, str(SCRIPT_DIR))
+# MIGRATION BRIDGE — relocated modules + legacy helpers
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "skills" / "workflow" / "scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts" / "brain"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts" / "indexers"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts" / "handlers"))
 from _curate import curate as _curate, SEVERITY_RANK  # noqa: E402
 from _uv import uv_cmd  # noqa: E402
 from _subproc import git_repo_root as _repo_root  # noqa: E402, F401 — M2 dedup

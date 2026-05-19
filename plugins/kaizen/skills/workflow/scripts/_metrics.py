@@ -621,10 +621,14 @@ def smoke_mcp() -> dict:
     scripts = plugin_root() / "skills" / "workflow" / "scripts"
     if str(scripts) not in _sys.path:
         _sys.path.insert(0, str(scripts))
+    # Post-DOMAIN-4: MCPs live at scripts/mcp/
+    mcp_dir = plugin_root() / "scripts" / "mcp"
+    if mcp_dir.is_dir() and str(mcp_dir) not in _sys.path:
+        _sys.path.insert(0, str(mcp_dir))
     passed = 0
     failed: list[dict] = []
     checked = 0
-    for p in sorted(scripts.glob("*_mcp.py")):
+    for p in sorted(mcp_dir.glob("*_mcp.py")) if mcp_dir.is_dir() else sorted(scripts.glob("*_mcp.py")):
         checked += 1
         mod_name = p.stem
         try:

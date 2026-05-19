@@ -17,6 +17,7 @@ from unittest import mock
 
 PLUGIN_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PLUGIN_ROOT / "skills" / "workflow" / "scripts"))
+sys.path.insert(0, str(PLUGIN_ROOT / "scripts" / "mcp"))
 
 import lint_fix_dispatch as lfd  # noqa: E402
 import lint_fix_prefs as prefs   # noqa: E402

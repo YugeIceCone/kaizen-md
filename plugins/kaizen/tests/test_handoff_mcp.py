@@ -11,7 +11,7 @@ import unittest
 from pathlib import Path
 
 _KZ_DIR = Path(__file__).resolve().parent.parent
-_SCRIPT = _KZ_DIR / "skills/workflow/scripts/handoff_mcp.py"
+_SCRIPT = _KZ_DIR / "scripts/mcp/handoff_mcp.py"
 
 
 def _load():
@@ -21,6 +21,8 @@ def _load():
     scripts_dir = str(_SCRIPT.parent)
     if scripts_dir not in sys.path:
         sys.path.insert(0, scripts_dir)
+    legacy = str(_KZ_DIR / "skills/workflow/scripts")
+    if legacy not in sys.path: sys.path.insert(0, legacy)
     spec.loader.exec_module(mod)
     return mod
 

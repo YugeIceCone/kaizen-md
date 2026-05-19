@@ -20,6 +20,7 @@ from pathlib import Path
 
 PLUGIN_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PLUGIN_ROOT / "skills" / "workflow" / "scripts"))
+sys.path.insert(0, str(PLUGIN_ROOT / "scripts" / "mcp"))
 sys.path.insert(0, str(PLUGIN_ROOT / "scripts" / "indexers"))
 
 import onboard_index as oi  # noqa: E402

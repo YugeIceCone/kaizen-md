@@ -44,9 +44,11 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 
 
 def _load_dxm():
-    """Load dxm.py via explicit spec (mirrors the gatekeeper_mcp pattern)."""
+    """Load dxm.py via explicit spec (mirrors the gatekeeper_mcp pattern).
+    Post-DOMAIN-4: dxm.py still lives at skills/workflow/scripts/ — bridge."""
+    dxm_py = SCRIPT_DIR.parents[1] / "skills" / "workflow" / "scripts" / "dxm.py"
     spec = importlib.util.spec_from_file_location(
-        "kaizen_dxm_mcp_inner", SCRIPT_DIR / "dxm.py"
+        "kaizen_dxm_mcp_inner", dxm_py,
     )
     if spec is None or spec.loader is None:
         raise ImportError("could not load dxm.py")

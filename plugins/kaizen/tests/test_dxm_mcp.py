@@ -19,7 +19,7 @@ from pathlib import Path
 
 _KZ_DIR = Path(__file__).resolve().parent.parent
 _SCRIPTS = _KZ_DIR / "skills/workflow/scripts"
-_DXM_MCP = _SCRIPTS / "dxm_mcp.py"
+_DXM_MCP = _KZ_DIR / "scripts/mcp" / "dxm_mcp.py"
 
 
 def _load_dxm_mcp():
@@ -102,6 +102,7 @@ class TestDxmNowTool(DxmMcpBase):
         mod = _load_dxm_mcp()
         # Seed events directly via dxm.py
         sys.path.insert(0, str(_SCRIPTS))
+        sys.path.insert(0, str(_KZ_DIR / "scripts/mcp"))
         import dxm
         for _ in range(3):
             sub_args = type("A", (), {"payload": json.dumps({

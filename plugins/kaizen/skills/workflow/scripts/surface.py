@@ -61,7 +61,7 @@ class HookEntry:
 class McpServer:
     name: str             # e.g. "gatekeeper"
     module: str           # e.g. "gatekeeper_mcp"
-    script_path: str      # e.g. "skills/workflow/scripts/gatekeeper_mcp.py"
+    script_path: str      # e.g. "scripts/mcp/gatekeeper_mcp.py"
     tool_count: int       # # of @mcp.tool() decorators
     in_curated_core: list[str] = field(default_factory=list)  # tools from this server in CURATED_CORE
 
@@ -162,9 +162,14 @@ def _tool_count(script_path: Path) -> int:
 def list_mcp_servers() -> list[McpServer]:
     core = _curated_core()
     out = []
+    # Post-DOMAIN-4: MCP scripts live at plugins/kaizen/scripts/mcp/
+    _MCP_DIR = _PLUGIN_ROOT / "scripts" / "mcp"
     for name, module in _gateway_subservers():
-        script_path = _SCRIPT_DIR / f"{module}.py"
-        rel = str(script_path.relative_to(_PLUGIN_ROOT)) if script_path.exists() else f"skills/workflow/scripts/{module}.py"
+        script_path = _MCP_DIR / f"{module}.py"
+        if not script_path.is_file():
+            # Fallback to legacy location for any not-yet-migrated MCP
+            script_path = _SCRIPT_DIR / f"{module}.py"
+        rel = str(script_path.relative_to(_PLUGIN_ROOT)) if script_path.exists() else f"scripts/mcp/{module}.py"
         count = _tool_count(script_path)
         in_core = []
         # Heuristic: a tool from this server is in core if the tool name

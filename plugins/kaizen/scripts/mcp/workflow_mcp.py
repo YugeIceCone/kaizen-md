@@ -56,8 +56,8 @@ mcp = FastMCP("workflow")
 SCRIPT_DIR = Path(__file__).resolve().parent
 # workflow.sh + workflow_runner.py now live alongside this file at
 # skills/workflow/scripts/ (v1.31.0 merge — was skills/workflow-routing/scripts/).
-WF_SH = SCRIPT_DIR / "workflow.sh"
-WF_RUNNER = SCRIPT_DIR / "workflow_runner.py"
+WF_SH = SCRIPT_DIR.parents[1] / "skills" / "workflow" / "scripts" / "workflow.sh"
+WF_RUNNER = SCRIPT_DIR.parents[1] / "skills" / "workflow" / "scripts" / "workflow_runner.py"
 
 
 # M2 dedup: shared in _subproc.py (default timeout 30s is the workflow MCP variant).

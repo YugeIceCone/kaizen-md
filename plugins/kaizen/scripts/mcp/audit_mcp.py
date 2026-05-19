@@ -51,6 +51,11 @@ from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR))
+# MIGRATION BRIDGE — relocated modules + legacy helpers
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "skills" / "workflow" / "scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts" / "brain"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts" / "indexers"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts" / "handlers"))
 
 try:
     from fastmcp import FastMCP
@@ -82,7 +87,7 @@ def _audit_sh() -> Path:
     env = os.environ.get("CLAUDE_PLUGIN_ROOT") or os.environ.get("KAIZEN_PLUGIN_ROOT")
     if env:
         return Path(env) / "skills" / "workflow" / "scripts" / "audit.sh"
-    return SCRIPT_DIR / "audit.sh"
+    return SCRIPT_DIR.parents[1] / "skills" / "workflow" / "scripts" / "audit.sh"
 
 
 # ─── Report parsing ──────────────────────────────────────────────────

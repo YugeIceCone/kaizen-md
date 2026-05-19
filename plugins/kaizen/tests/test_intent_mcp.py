@@ -15,7 +15,7 @@ from pathlib import Path
 
 _KZ_DIR = Path(__file__).resolve().parent.parent
 _SCRIPTS = _KZ_DIR / "skills/workflow/scripts"
-_INTENT_MCP = _SCRIPTS / "intent_mcp.py"
+_INTENT_MCP = _KZ_DIR / "scripts/mcp" / "intent_mcp.py"
 
 
 def _load_intent_mcp():
@@ -150,6 +150,7 @@ class TestIntentScanTool(IntentMcpBase):
         self._intents(_SAMPLE_INTENTS)
         # Seed dxm with bash failures
         sys.path.insert(0, str(_SCRIPTS))
+        sys.path.insert(0, str(_KZ_DIR / "scripts/mcp"))
         import dxm
         for _ in range(2):
             sub = type("A", (), {"payload": json.dumps({
