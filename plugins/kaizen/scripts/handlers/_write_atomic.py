@@ -101,7 +101,8 @@ def main() -> int:
     #   - Net: atomic for in-place edits (the risky case); native for
     #     fresh files (no risk + no error).
     from pathlib import Path as _P
-    if not _P(path).exists():
+    target_path = _P(path)
+    if not target_path.exists():
         return _emit({
             "hookSpecificOutput": {
                 "hookEventName":     "PreToolUse",
@@ -112,6 +113,28 @@ def main() -> int:
                 ),
             },
         })
+
+    # Idempotency short-circuit — if the target already has the intended
+    # content, skip the pre-write. Avoids bumping mtime, which would
+    # trip CC's stale-file guard on the next Write to the same file
+    # within the session. Common case: agent re-writes its own prior
+    # Write (linter / formatter / regeneration with identical output).
+    try:
+        if target_path.read_text() == content:
+            return _emit({
+                "hookSpecificOutput": {
+                    "hookEventName":     "PreToolUse",
+                    "additionalContext": (
+                        f"[atomic-write/{mode}] {path} ({size}b) — "
+                        f"content-identical no-op (mtime preserved; "
+                        f"stale-file guard untripped). CC's Write runs normally."
+                    ),
+                },
+            })
+    except (OSError, UnicodeDecodeError):
+        # Binary or unreadable file — fall through to atomic pre-write
+        # (the safe behavior for unknown content).
+        pass
 
     # Always pre-write atomically when enabled — both modes share this.
     try:

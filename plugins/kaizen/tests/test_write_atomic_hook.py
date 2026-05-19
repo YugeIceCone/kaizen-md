@@ -150,6 +150,62 @@ class TestSkipCreate(unittest.TestCase):
         self.assertNotIn("CREATE skipped", ho["additionalContext"])
 
 
+class TestSkipIdenticalContent(unittest.TestCase):
+    """When the intended content equals the current file content, the
+    hook is a no-op — no pre-write, no mtime bump. Eliminates spurious
+    CC stale-file-guard trips when the agent re-writes its own content
+    (e.g. after a tool that internally re-emits the same body)."""
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.tmp = Path(self._tmp.name)
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    def test_identical_content_skips_pre_write(self):
+        target = self.tmp / "same.txt"
+        target.write_text("UNCHANGED")
+        mtime_before = target.stat().st_mtime_ns
+        # Sleep to make a stale-write detectable in ns
+        import time
+        time.sleep(0.01)
+        evt = {
+            "tool_name":  "Write",
+            "tool_input": {"file_path": str(target), "content": "UNCHANGED"},
+        }
+        r = _fire_py(evt)
+        self.assertEqual(r.returncode, 0)
+        data = json.loads(r.stdout)
+        ho = data["hookSpecificOutput"]
+        # Hook must declare the no-op explicitly so the agent can read intent
+        self.assertIn("content-identical", ho["additionalContext"])
+        # No deny — let CC's Write run (it will also no-op on identical content)
+        self.assertNotIn("permissionDecision", ho)
+        # mtime UNCHANGED — the whole point of the short-circuit
+        self.assertEqual(target.stat().st_mtime_ns, mtime_before,
+                          "hook bumped mtime on identical content — "
+                          "stale-file guard will trip on next Write")
+        # Content unchanged
+        self.assertEqual(target.read_text(), "UNCHANGED")
+
+    def test_different_content_still_pre_writes(self):
+        target = self.tmp / "diff.txt"
+        target.write_text("BEFORE")
+        evt = {
+            "tool_name":  "Write",
+            "tool_input": {"file_path": str(target), "content": "AFTER"},
+        }
+        r = _fire_py(evt)
+        self.assertEqual(r.returncode, 0)
+        data = json.loads(r.stdout)
+        ho = data["hookSpecificOutput"]
+        # Different content — pre-write fires normally
+        self.assertEqual(target.read_text(), "AFTER")
+        self.assertIn("atomic-write/note", ho["additionalContext"])
+        self.assertNotIn("content-identical", ho["additionalContext"])
+
+
 class TestEnforceMode(unittest.TestCase):
     """KAIZEN_ATOMIC_WRITE_MODE=enforce restores the legacy deny-shape:
     pre-write atomically + permissionDecision: deny so CC's Write is
