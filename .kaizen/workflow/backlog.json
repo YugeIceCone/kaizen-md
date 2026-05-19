@@ -551,6 +551,307 @@
       "committed_at": null,
       "parked_reason": null,
       "probe_output": null
+    },
+    {
+      "id": "BK-029",
+      "section": "next_up",
+      "title": "backlog: atomic write for backlog.{json,md} (tempfile+rename)",
+      "ref": null,
+      "probe": "Ctrl-C during save_store or auto-render leaves half-written backlog file → corrupt JSON or partial .md",
+      "verify": "save_store + cmd_render write via tempfile.NamedTemporaryFile then Path.replace(); existing tests confirm content; add canary test that interrupts mid-write",
+      "tags": [
+        "backlog",
+        "atomic",
+        "robustness"
+      ],
+      "created": "2026-05-19",
+      "started_at": null,
+      "committed": null,
+      "committed_at": null,
+      "parked_reason": null,
+      "probe_output": null
+    },
+    {
+      "id": "BK-030",
+      "section": "next_up",
+      "title": "backlog: cmd_tick idempotent on already-done items",
+      "ref": null,
+      "probe": "kaizen-backlog tick BK-N where N is already done silently re-stamps committed_at — should no-op or warn",
+      "verify": "If item.section already done, exit 0 with informational note (no mutation); --force re-stamps. TDD covers both paths",
+      "tags": [
+        "backlog",
+        "idempotency",
+        "ux"
+      ],
+      "created": "2026-05-19",
+      "started_at": null,
+      "committed": null,
+      "committed_at": null,
+      "parked_reason": null,
+      "probe_output": null
+    },
+    {
+      "id": "BK-031",
+      "section": "next_up",
+      "title": "backlog: list --pending alias for in_flight+next_up",
+      "ref": null,
+      "probe": "No single command shows 'active queue' (in_flight + next_up combined); have to run two list calls",
+      "verify": "kaizen-backlog list pending returns both sections in one envelope; --json includes section field per item",
+      "tags": [
+        "backlog",
+        "ux"
+      ],
+      "created": "2026-05-19",
+      "started_at": null,
+      "committed": null,
+      "committed_at": null,
+      "parked_reason": null,
+      "probe_output": null
+    },
+    {
+      "id": "BK-032",
+      "section": "next_up",
+      "title": "commands/memory-ledger.md description trim below 250 chars (karpathy)",
+      "ref": null,
+      "probe": "wc -c on description field exceeds the soft karpathy threshold",
+      "verify": "Trim to <=250 chars while preserving the trigger phrase set; gate test that asserts every commands/*.md description <=250",
+      "tags": [
+        "commands",
+        "karpathy",
+        "boy-scout"
+      ],
+      "created": "2026-05-19",
+      "started_at": null,
+      "committed": null,
+      "committed_at": null,
+      "parked_reason": null,
+      "probe_output": null
+    },
+    {
+      "id": "BK-033",
+      "section": "next_up",
+      "title": "commands/backlog.md mentions done alias (BK-019 follow-up)",
+      "ref": null,
+      "probe": "done alias was added to backlog CLI but commands/backlog.md help table + description still list only tick",
+      "verify": "verb table row added; description trigger list includes 'done'; test grep ensures parity with argparse choices",
+      "tags": [
+        "backlog",
+        "docs",
+        "boy-scout"
+      ],
+      "created": "2026-05-19",
+      "started_at": null,
+      "committed": null,
+      "committed_at": null,
+      "parked_reason": null,
+      "probe_output": null
+    },
+    {
+      "id": "BK-034",
+      "section": "next_up",
+      "title": "backlog.md generated header lists verify verb",
+      "ref": null,
+      "probe": "render_md header line currently mentions {add|start|tick|done|park|render} — verify is omitted despite being a real verb",
+      "verify": "Update render_md header line; test_backlog asserts 'verify' appears in the regenerated header",
+      "tags": [
+        "backlog",
+        "docs",
+        "boy-scout"
+      ],
+      "created": "2026-05-19",
+      "started_at": null,
+      "committed": null,
+      "committed_at": null,
+      "parked_reason": null,
+      "probe_output": null
+    },
+    {
+      "id": "BK-035",
+      "section": "next_up",
+      "title": "CLAUDE.md adds memory-ledger to Discovery surface block",
+      "ref": null,
+      "probe": "memory-ledger is the new umbrella over 16 surfaces but CLAUDE.md doesn't reference kaizen-memory-ledger catalog as a discovery handle",
+      "verify": "Add 1-2 lines under 'Discovery surface' pointing at kaizen-memory-ledger catalog and the manifest path",
+      "tags": [
+        "claude-md",
+        "docs",
+        "boy-scout"
+      ],
+      "created": "2026-05-19",
+      "started_at": null,
+      "committed": null,
+      "committed_at": null,
+      "parked_reason": null,
+      "probe_output": null
+    },
+    {
+      "id": "BK-036",
+      "section": "next_up",
+      "title": "memory-ledger status: --missing-only filter flag",
+      "ref": null,
+      "probe": "kaizen-memory-ledger status prints 16 lines; when scanning a fresh repo most are present and the noise hides the real findings",
+      "verify": "Add --missing-only flag suppressing present entries in both human + json modes; counts/summary still show full numbers",
+      "tags": [
+        "memory-ledger",
+        "ux"
+      ],
+      "created": "2026-05-19",
+      "started_at": null,
+      "committed": null,
+      "committed_at": null,
+      "parked_reason": null,
+      "probe_output": null
+    },
+    {
+      "id": "BK-037",
+      "section": "next_up",
+      "title": "memory-ledger flow --mermaid emits sequenceDiagram (first cut of ML-004)",
+      "ref": null,
+      "probe": "Reading continuity_flow as raw json/text is high-friction; visual sequenceDiagram makes phase transitions scannable",
+      "verify": "flow --mermaid emits a valid mermaid sequenceDiagram block (Actor=phase, Note=surfaces). Round-trip test parses + asserts node count == phases count",
+      "tags": [
+        "memory-ledger",
+        "visualization"
+      ],
+      "created": "2026-05-19",
+      "started_at": null,
+      "committed": null,
+      "committed_at": null,
+      "parked_reason": null,
+      "probe_output": null
+    },
+    {
+      "id": "BK-038",
+      "section": "next_up",
+      "title": "kaizen-backlog show missing-ID returns structured error envelope",
+      "ref": null,
+      "probe": "kaizen-backlog show BK-999 prints 'id not found' + exit 2 — no --json envelope, agents can't parse",
+      "verify": "Wrap not-found in {error: 'id-not-found', id: 'BK-999'} envelope when --json set; exit 2 preserved; test covers both modes",
+      "tags": [
+        "backlog",
+        "envelope",
+        "api"
+      ],
+      "created": "2026-05-19",
+      "started_at": null,
+      "committed": null,
+      "committed_at": null,
+      "parked_reason": null,
+      "probe_output": null
+    },
+    {
+      "id": "BK-039",
+      "section": "next_up",
+      "title": "kaizen-help-gen visibility — auto-regenerated commands/help.md needs an entry-point",
+      "ref": null,
+      "probe": "commands/help.md regenerated silently when I added memory-ledger; no documented verb for the help-gen step + no test that asserts every new command lands in help.md",
+      "verify": "Either document the existing kaizen-help-gen invocation OR add a 'kaizen help regen' verb. Add a test that grep-asserts each commands/*.md appears in the generated help.md.",
+      "tags": [
+        "help-gen",
+        "discoverability",
+        "docs"
+      ],
+      "created": "2026-05-19",
+      "started_at": null,
+      "committed": null,
+      "committed_at": null,
+      "parked_reason": null,
+      "probe_output": null
+    },
+    {
+      "id": "BK-040",
+      "section": "next_up",
+      "title": "workflow_runner: legacy state.json cleanup nudge fires on every commit",
+      "ref": null,
+      "probe": "Every commit prints 'legacy state.json at .kaizen/workflow/state.json (missing current_stage/schema; written by an older runner)' — noisy, not actionable inline",
+      "verify": "Two options: (a) auto-migrate the legacy file on first run; (b) silence the warn after a one-time acknowledgment knob. Pick (a) — TDD test runs old-format state.json through the migration + asserts new shape",
+      "tags": [
+        "workflow",
+        "migration",
+        "noise-reduction"
+      ],
+      "created": "2026-05-19",
+      "started_at": null,
+      "committed": null,
+      "committed_at": null,
+      "parked_reason": null,
+      "probe_output": null
+    },
+    {
+      "id": "BK-041",
+      "section": "next_up",
+      "title": "kaizen-backlog tick --committed resolves 'HEAD' to git rev-parse sha",
+      "ref": null,
+      "probe": "Used 'kaizen-backlog done BK-N --committed HEAD' multiple times this session — literal string 'HEAD' stored. Should resolve to short SHA so it pins to a commit not a moving ref",
+      "verify": "If --committed value is 'HEAD' or starts with 'HEAD~', resolve via git rev-parse --short and store the SHA. Test covers HEAD / HEAD~1 / explicit-sha / arbitrary-string passthrough",
+      "tags": [
+        "backlog",
+        "git",
+        "ux"
+      ],
+      "created": "2026-05-19",
+      "started_at": null,
+      "committed": null,
+      "committed_at": null,
+      "parked_reason": null,
+      "probe_output": null
+    },
+    {
+      "id": "BK-042",
+      "section": "next_up",
+      "title": "Lint: large markdown deliverables without sibling .jsonl (pref-jsonl-indexed-deliverables)",
+      "ref": null,
+      "probe": "Brain note pref-jsonl-indexed-deliverables says >=30-entry deliverables ship paired .md + .jsonl, but no automation catches violations",
+      "verify": "Add a deliverable-shape rule scanning .kaizen/{plans,audits,brainstorms}/*.md — when entry count >=30 (counted via headings or list items), require sibling .jsonl. Fires as a gatekeeper soft finding",
+      "tags": [
+        "lint",
+        "gatekeeper",
+        "deliverables"
+      ],
+      "created": "2026-05-19",
+      "started_at": null,
+      "committed": null,
+      "committed_at": null,
+      "parked_reason": null,
+      "probe_output": null
+    },
+    {
+      "id": "BK-043",
+      "section": "next_up",
+      "title": "handoff: _parse_handoff_yaml ImportError path also surfaces _parse_error",
+      "ref": null,
+      "probe": "Current code sets _parse_error on YAMLError but the ImportError branch (pyyaml missing) also silently returns empty body — same silent-FAILED class as the bug we just fixed",
+      "verify": "ImportError branch also sets _parse_error='pyyaml unavailable: <msg>'. Existing tests still green; new test asserts ImportError → _parse_error present",
+      "tags": [
+        "handoff",
+        "robustness",
+        "parser"
+      ],
+      "created": "2026-05-19",
+      "started_at": null,
+      "committed": null,
+      "committed_at": null,
+      "parked_reason": null,
+      "probe_output": null
+    },
+    {
+      "id": "BK-044",
+      "section": "next_up",
+      "title": "_paths.sh: mirror KAIZEN_BACKLOG_LEDGER_* env knobs for shell consumers",
+      "ref": null,
+      "probe": "BK-023 introduced KAIZEN_BACKLOG_LEDGER_DIR + KAIZEN_BACKLOG_LEDGER_DISABLE but only _paths.py was updated (if at all); shell scripts/hooks can't source them via _paths.sh",
+      "verify": "Add the two env knobs to _paths.sh with default expansion + comments. Test: 'source _paths.sh && env | grep KAIZEN_BACKLOG_LEDGER' returns both",
+      "tags": [
+        "paths",
+        "shell",
+        "parity"
+      ],
+      "created": "2026-05-19",
+      "started_at": null,
+      "committed": null,
+      "committed_at": null,
+      "parked_reason": null,
+      "probe_output": null
     }
   ],
   "decisions": []
