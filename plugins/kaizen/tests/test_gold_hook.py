@@ -60,7 +60,7 @@ class TestHookBehavior(unittest.TestCase):
         self._tmp.cleanup()
 
     def _capture(self, *patterns):
-        gold_py = _KZ_DIR / "skills/workflow/scripts/gold.py"
+        gold_py = _KZ_DIR / "scripts/gold/gold.py"
         for p in patterns:
             subprocess.run([sys.executable, str(gold_py), "capture", p],
                             capture_output=True, text=True, timeout=5,
@@ -91,7 +91,7 @@ class TestHookBehavior(unittest.TestCase):
     def test_all_promoted_emits_empty_json(self):
         """When everything is promoted there is nothing to surface."""
         self._capture("alpha")
-        gold_py = _KZ_DIR / "skills/workflow/scripts/gold.py"
+        gold_py = _KZ_DIR / "scripts/gold/gold.py"
         target = self.tmp / "rules.md"
         subprocess.run([sys.executable, str(gold_py), "promote", "1",
                          "--to", str(target)],

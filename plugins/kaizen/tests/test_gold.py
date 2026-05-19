@@ -11,7 +11,7 @@ import unittest
 from pathlib import Path
 
 _KZ_DIR = Path(__file__).resolve().parent.parent
-_SCRIPT = _KZ_DIR / "skills/workflow/scripts/gold.py"
+_SCRIPT = _KZ_DIR / "scripts/gold/gold.py"
 
 
 class GoldBase(unittest.TestCase):
