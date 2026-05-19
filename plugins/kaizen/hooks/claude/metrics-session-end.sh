@@ -38,7 +38,7 @@ BRAIN_ROOT="$KAIZEN_BRAIN_DIR"
 [ -d "$BRAIN_ROOT" ] || exit 0
 
 # Run skip-detection on the latest session.
-SKIPS_JSON=$(python3 "$PLUGIN_ROOT/skills/workflow/scripts/metrics.py" \
+SKIPS_JSON=$(python3 "$PLUGIN_ROOT/scripts/observe/metrics.py" \
     skips --json 2>/dev/null || echo '{}')
 
 # Extract the count of skip candidates

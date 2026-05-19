@@ -40,7 +40,7 @@ SID=$(printf '%s' "$INPUT" \
     | head -n1 \
     | sed -E 's/.*:[[:space:]]*"([^"]*)".*/\1/')
 
-python3 "$PLUGIN_ROOT/skills/workflow/scripts/trace.py" event \
+python3 "$PLUGIN_ROOT/scripts/observe/trace.py" event \
     --src hook --evt "$EVT" \
     ${TOOL:+--tool "$TOOL"} ${SID:+--sid "$SID"} \
     >/dev/null 2>&1 || true

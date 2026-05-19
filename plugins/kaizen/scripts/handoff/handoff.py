@@ -573,7 +573,7 @@ def _dxm_link(parent: str, child: str) -> bool:
         return False
     try:
         r = subprocess.run(
-            ["python3", str(_SCRIPT_DIR.parents[1] / "skills" / "workflow" / "scripts" / "dxm.py"),
+            ["python3", str(_SCRIPT_DIR.parent / "observe" / "dxm.py"),
               "link", "--parent", parent, "--child", child],
             capture_output=True, text=True, timeout=10,
         )

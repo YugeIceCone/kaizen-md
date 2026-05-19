@@ -55,7 +55,7 @@ except Exception:
     print(0)
 " 2>/dev/null)
             if [ "${INFLIGHT:-0}" != "0" ]; then
-                python3 "$PLUGIN_ROOT/skills/workflow/scripts/trace.py" event \
+                python3 "$PLUGIN_ROOT/scripts/observe/trace.py" event \
                     --src hook --evt SessionEnd-inflight \
                     --data "{\"in_flight\":$INFLIGHT}" \
                     >/dev/null 2>&1 || true

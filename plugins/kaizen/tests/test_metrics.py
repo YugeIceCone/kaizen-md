@@ -406,7 +406,7 @@ class TestCli(unittest.TestCase):
 
     def _run(self, *args):
         import subprocess
-        script = _KZ_DIR / "skills/workflow/scripts/metrics.py"
+        script = _KZ_DIR / "scripts/observe/metrics.py"
         env = os.environ.copy()
         return subprocess.run(
             ["python3", str(script), *args],

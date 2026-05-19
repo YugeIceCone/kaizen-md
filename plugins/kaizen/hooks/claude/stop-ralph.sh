@@ -200,7 +200,7 @@ case "$ACTION" in
     # `completed` come from the post-loop_ledger.py body. Best-effort:
     # any failure is swallowed so tracing never breaks the loop.
     if command -v python3 >/dev/null 2>&1 \
-            && [ -f "$PLUGIN_ROOT/skills/workflow/scripts/trace.py" ]; then
+            && [ -f "$PLUGIN_ROOT/scripts/observe/trace.py" ]; then
         python3 - "$RALPH_STATE_FILE" "$ITERATION" \
                    "$PLUGIN_ROOT" "$HOOK_SESSION" <<'PY' 2>/dev/null || true
 import json, os, subprocess, sys
@@ -224,7 +224,7 @@ data = json.dumps({
     "pending": pending,
     "completed": completed,
 })
-trace_py = os.path.join(plugin_root, "skills/workflow/scripts/trace.py")
+trace_py = os.path.join(plugin_root, "scripts/observe/trace.py")
 cmd = [sys.executable, trace_py, "event", "--src", "hook",
        "--evt", "Stop-ralph-iteration", "--data", data]
 if sid:

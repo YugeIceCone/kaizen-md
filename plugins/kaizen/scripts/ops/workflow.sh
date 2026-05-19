@@ -34,7 +34,7 @@ now() { date -u +%Y-%m-%dT%H:%M:%SZ; }
 _wf_trace() {
   local evt="$1" stage="${2:-}"
   local trace_py
-  trace_py="$(dirname "$0")/../../skills/workflow/scripts/trace.py"
+  trace_py="$(dirname "$0")/../../scripts/observe/trace.py"
   [ -f "$trace_py" ] || return 0
   python3 "$trace_py" event --src workflow --evt "$evt" \
     ${stage:+--tool "$stage"} >/dev/null 2>&1 || true

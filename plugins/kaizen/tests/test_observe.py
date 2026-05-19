@@ -10,7 +10,7 @@ import unittest
 from pathlib import Path
 
 _KZ = Path(__file__).resolve().parent.parent
-_observe = _KZ / "skills/workflow/scripts/observe.py"
+_observe = _KZ / "scripts/observe/observe.py"
 
 
 class TestScriptObserve(unittest.TestCase):

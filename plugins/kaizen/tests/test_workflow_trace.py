@@ -10,7 +10,7 @@ from pathlib import Path
 
 PLUGIN = Path(__file__).resolve().parent.parent
 WF_SH = PLUGIN / "scripts" / "ops" / "workflow.sh"
-TRACE_PY = PLUGIN / "skills" / "workflow" / "scripts" / "trace.py"
+TRACE_PY = PLUGIN / "scripts" / "observe" / "trace.py"
 
 
 class TestWorkflowTraceSource(unittest.TestCase):

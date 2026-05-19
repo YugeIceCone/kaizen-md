@@ -16,4 +16,4 @@ PLUGIN_ROOT="$(kaizen_plugin_root)" || {
     exit 1
 }
 
-exec python3 "$PLUGIN_ROOT/skills/workflow/scripts/metrics.py" "$@"
+exec python3 "$PLUGIN_ROOT/scripts/observe/metrics.py" "$@"
