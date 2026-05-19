@@ -188,6 +188,7 @@
       "Bash(bash ${CLAUDE_PLUGIN_ROOT}/bin/kaizen-learn:*)",
       "Bash(bash ${CLAUDE_PLUGIN_ROOT}/hooks/claude/pretooluse-brain-redirect.sh:*)",
       "Bash(bash ${CLAUDE_PLUGIN_ROOT}/hooks/claude/instructions-loaded-trace.sh:*)",
+      "Bash(bash ${CLAUDE_PLUGIN_ROOT}/hooks/claude/posttool-webfetch-capture.sh:*)",
       "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/hooks/claude/_brain_redirect.py:*)",
       "Bash(bash ${CLAUDE_PLUGIN_ROOT}/hooks/claude/posttool-roundtrip-detect.sh:*)",
       "Bash(bash ${CLAUDE_PLUGIN_ROOT}/hooks/claude/posttool-observer-capture.sh:*)",
