@@ -58,8 +58,19 @@ echo "kaizen ci-gate — $REPO_ROOT"
 # is auto-covered. Excludes vendored bundles (.bundle/, _disabled/)
 # and any tests-only scratch dirs. The bin/ glob picks up the `kaizen`
 # top-level binary plus every kaizen-* wrapper.
+#
+# Post-BIG-REFACTOR: bin/ now contains both bash wrappers AND Python
+# scripts (DOMAIN-5 quality bins). Check the file's shebang and only
+# bash-syntax-check bash files.
 while IFS= read -r f; do
   [ -f "$f" ] || continue
+  # Skip non-bash bin entries (Python scripts have a python3 shebang).
+  first_line="$(head -1 "$f" 2>/dev/null)"
+  case "$first_line" in
+    "#!/usr/bin/env bash"*|"#!/bin/bash"*|"#!/bin/sh"*|"#!/usr/bin/env sh"*) ;;
+    "#!"*) continue ;;
+    *) ;;  # No shebang — assume bash (sourcable lib files etc.)
+  esac
   bash -n "$f" || fail "bash syntax: $f"
 done < <(
   find plugins/kaizen -type f -name '*.sh' \
@@ -77,9 +88,16 @@ ok "shell scripts parse"
 # 1 spawn + per-file ast.parse in-process = ~0.25s. The per-file
 # failure path still names the offending file for debuggability.
 _PY_FILES=()
-for f in plugins/kaizen/skills/workflow/scripts/*.py plugins/kaizen/tests/*.py; do
+# Post-BIG-REFACTOR: walk scripts/<cluster>/*.py too. Legacy
+# skills/workflow/scripts/ retains shims + deferred high-blast-radius
+# helpers — still parsed.
+while IFS= read -r f; do
   [ -f "$f" ] && _PY_FILES+=("$f")
-done
+done < <(
+  find plugins/kaizen/scripts -maxdepth 2 -type f -name '*.py' 2>/dev/null
+  find plugins/kaizen/skills/workflow/scripts -maxdepth 1 -type f -name '*.py' 2>/dev/null
+  find plugins/kaizen/tests -maxdepth 1 -type f -name '*.py' 2>/dev/null
+)
 python3 -c "
 import ast, sys
 for p in sys.argv[1:]:

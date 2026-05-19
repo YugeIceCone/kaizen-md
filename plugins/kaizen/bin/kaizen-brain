@@ -2,7 +2,7 @@
 # kaizen-brain — capture / detect / path / status for the kaizen Second Brain.
 # Symlinked to ~/.local/bin/kaizen-brain by /kaizen:install.
 #
-# Backed by ${PLUGIN_ROOT}/skills/workflow/scripts/brain.py. Subcommands:
+# Backed by ${PLUGIN_ROOT}/scripts/brain/brain.py. Subcommands:
 #   capture <text>   — classify, journal, route, write
 #   detect <text>    — show inferred type without writing
 #   path             — print resolved brain + project-memory paths
@@ -37,7 +37,7 @@ case "${1:-}" in
         # `kaizen-brain evolve ...` → uv run --script brain_evolve.py ...
         # (evolve uses the same embed pipeline for clustering)
         verb="$1"; shift
-        script="$PLUGIN_ROOT/skills/workflow/scripts/brain_${verb}.py"
+        script="$PLUGIN_ROOT/scripts/brain/brain_${verb}.py"
         if command -v uv >/dev/null 2>&1; then
             exec uv run --script "$script" "$@"
         else
@@ -47,6 +47,6 @@ case "${1:-}" in
         fi
         ;;
     *)
-        exec python3 "$PLUGIN_ROOT/skills/workflow/scripts/brain.py" "$@"
+        exec python3 "$PLUGIN_ROOT/scripts/brain/brain.py" "$@"
         ;;
 esac

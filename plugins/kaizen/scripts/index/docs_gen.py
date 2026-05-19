@@ -634,6 +634,8 @@ def git_log_for_path(workspace_root: Path, pkg_dir: Path, limit: int = 8) -> lis
 # ─── Per-package scan ────────────────────────────────────────────────
 
 
+import sys as _sys
+_sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "io"))
 from _time import iso  # M5 dedup
 
 
