@@ -1,6 +1,6 @@
 ---
 name: flow
-description: Run the async pocketflow Node+Flow reference pipeline over the current workspace. 4 nodes (ReadBacklog → DetectPackages → GenerateDocs → WriteReport) with parallel fan-out via asyncio.gather. No LLM calls, no pip deps — vendors AsyncNode + AsyncFlow as kaizen's canonical Node+Flow primitives. See skills/workflow/references/node-flow.md.
+description: "Async Node+Flow demo pipeline over the current workspace. 4 nodes (ReadBacklog → DetectPackages → GenerateDocs → WriteReport). asyncio.gather fan-out. No deps."
 argument-hint: [<workspace-dir>]
 ---
 

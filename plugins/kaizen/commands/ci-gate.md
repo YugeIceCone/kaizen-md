@@ -1,6 +1,6 @@
 ---
 name: ci-gate
-description: "Run the CI-equivalent merge gate locally — bash/python/json/SKILL.md checks, iron-laws codegen drift, and (optionally) the full unittest suite. Static-only by default (~1s, agent-callable); pass --full to include the ~80s unittest run. Distinct from the staged pre-commit gate. Triggers on \"run the gate\", \"local CI\", \"check before push\", \"lint before commit\", \"ci-gate dry-run\"."
+description: "Local CI-equivalent merge gate. bash/python/json/SKILL.md syntax + iron-laws codegen drift + optional test suite. Run before commit. Args - --full."
 argument-hint: "[--full | --syntax-only]"
 ---
 

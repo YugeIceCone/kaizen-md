@@ -38,99 +38,99 @@ dispatch the same way.
 
 | Command | Does |
 |---|---|
-| `audit` | Periodic comprehensive audit (per the article's "code audit" definition). Whole-re |
+| `audit` | Periodic full-repo audit. Severity-classified findings (Critical/High/Medium/Low)  |
 | `audit:axis` | Per-axis audit dispatcher. Consolidates the 5 axis-specific commands under the aud |
-| `gatekeeper` | Run the unified kaizen gate — aggregates iron-laws + efficient-tool-use anti-patte |
-| `precommit` | Dry-run the kaizen pre-commit gate against currently staged changes — without comm |
-| `review` | Fast diff-time code review (per the article's "code review" definition). Runs agai |
-| `coverage` | Mechanical 1:1 code-to-test mapper for the kaizen plugin. Walks `skills/workflow/s |
-| `karpathy-check` | Run Karpathy's 4-principle review on staged changes or the last commit. Checks com |
-| `vibe-check` | Run the vibe-coding discipline checklist against the currently staged diff. Combin |
-| `self-audit` | Schema-driven plugin self-audit. Default - mechanical checks (validator, metrics-c |
-| `ci-gate` | Run the CI-equivalent merge gate locally — bash/python/json/SKILL.md checks, iron- |
+| `gatekeeper` | Unified kaizen gate. Aggregates iron-laws + etu anti-patterns + karpathy diff scan |
+| `precommit` | Dry-run pre-commit gate against staged - surfaces blocks/warns/skips without commi |
+| `review` | Fast diff-time code review (HEAD vs base). Runs analyzers, returns severity-tagged |
+| `coverage` | 1:1 code-to-test mapper for the kaizen plugin. Walks scripts/ excluding _<x>.py pr |
+| `karpathy-check` | Karpathy 4-principle review on staged changes (or --last-commit). Checks complexit |
+| `vibe-check` | Vibe-coding discipline checklist on staged diff. Combines /kaizen:precommit dry-ru |
+| `self-audit` | Plugin self-audit. Default - mechanical pipeline (validator, metrics-coverage, ski |
+| `ci-gate` | Local CI-equivalent merge gate. bash/python/json/SKILL.md syntax + iron-laws codeg |
 
 ## observability (6)
 
 | Command | Does |
 |---|---|
-| `trace` | Unified event log across kaizen hooks, agents, LLM calls, tool invocations, and us |
-| `trace-proxy` | Wrap the Claude Code → api.anthropic.com connection in a logging HTTP proxy. Every |
-| `metrics` | Rollup + never-used catalog + skip-detection + graveyard + MCP smoke-test over the |
-| `observe` | Unified observability across kaizen's 6 data-stream layers (L1 stderr → L6 plugin  |
-| `context` | Report Claude Code's current context-window state — tokens used, percentage of lim |
-| `statusline` | Install or inspect the kaizen statusline — a one-line status bar showing context w |
+| `trace` | Unified event log across kaizen hooks/agents/LLM/tool/user actions. JSONL, auto-ro |
+| `trace-proxy` | Logging HTTP proxy wrapping CC → api.anthropic.com. Every LLM request/response (au |
+| `metrics` | Adoption + dead-feature surface over the trace log. Verbs - session | lifetime | n |
+| `observe` | Unified observability across kaizen 6 data-stream layers (L1 stderr → L6 plugin st |
+| `context` | CC context-window state report - tokens used, percentage, zone (green/yellow/red), |
+| `statusline` | Install or inspect the kaizen statusline - one-line status bar (context-window % + |
 
 ## brain/memory (3)
 
 | Command | Does |
 |---|---|
-| `brain` | Schema-driven Second Brain — capture / search / promote / audit / evolve PLUS zero |
-| `self-improving` | Curate Claude Code's auto-memory into durable project knowledge. `review` flags pr |
-| `gold` | Incidental-discovery + learnings tracker. Capture mid-work patterns + gotchas + hi |
+| `brain` | Second Brain - capture / search / promote / audit / evolve + zero-roundtrip block- |
+| `self-improving` | Curate Claude Code auto-memory into durable project knowledge. `review` flags prom |
+| `gold` | Incidental-discovery + learnings tracker. Captures mid-work "ha!" moments before t |
 
 ## workflow (6)
 
 | Command | Does |
 |---|---|
-| `backlog` | View or mutate the project's kaizen backlog (JSON-sourced, .md is generated). Usag |
-| `handoff` | Create or resume a session handoff document. `/kaizen:handoff create` wraps up the |
-| `loop` | Start (or cancel) a self-correcting Ralph loop — cross-CLI. No-args → 2-question w |
-| `flow` | Run the async pocketflow Node+Flow reference pipeline over the current workspace.  |
-| `workflow` | Unified workflow-shape config — scope / run-mode / disciplines / auto-handoff thre |
-| `migrate` | Migrate from loose skills / separate plugins / non-canonical layouts to the kaizen |
+| `backlog` | Project backlog (JSON-sourced, .md generated). Verbs - list | in_flight | next_up  |
+| `handoff` | Session handoff doc. `create` wraps the current session into YAML + indexes it; `r |
+| `loop` | Self-correcting Ralph loop - cross-CLI. No-args 2-question wizard (iteration budge |
+| `flow` | Async Node+Flow demo pipeline over the current workspace. 4 nodes (ReadBacklog → D |
+| `workflow` | Workflow-shape config (scope × run-mode × disciplines × threshold). Persistent (pr |
+| `migrate` | Migrate from loose skills / separate plugins / non-canonical layouts to canonical  |
 
 ## plugin-meta (12)
 
 | Command | Does |
 |---|---|
-| `setup` | Unified kaizen setup. No-args → interactive QA super-menu (master action picker →  |
-| `bootstrap` | Provision the kaizen plugin's uv-managed Python surface — verifies uv is installed |
-| `update` | Single-command kaizen maintenance — `git pull` the marketplace, refresh Claude Cod |
-| `daemon` | Manage the kaizen auto-daemon — cron-driven worker that hash-compares source↔cache |
-| `hygiene` | Run kaizen hygiene checks + safe auto-cleanups. Five checks: prune old cache versi |
-| `backup` | Snapshot workflow state (.kaizen/, legacy .workflow/, .kaizen.toml, optionally bra |
-| `publish` | Publish this plugin/marketplace to GitHub. Subcommands cover the full lifecycle —  |
-| `health` | Diagnostic health check for the kaizen plugin's install in this repo. Reports brok |
-| `status` | Show the kaizen setup for this repo at a glance — config, gate state, backlog summ |
-| `surface` | Unified MCP+hooks registry / validator. `list` enumerates all 22 MCP sub-servers a |
+| `setup` | Unified plugin setup. No-args wizard (install/uninstall/health/maintenance) or dir |
+| `bootstrap` | Pre-warm uv-managed Python venvs for the plugin (loc, onboard, daemon, MCP servers |
+| `update` | Single-command plugin maintenance - git pull marketplace + refresh CC plugin cache |
+| `daemon` | Manage kaizen auto-daemon - cron-driven worker, hash-compares source↔cache, valida |
+| `hygiene` | Plugin hygiene checks + safe auto-cleanups. 5 checks - prune old cache, prune back |
+| `backup` | Snapshot workflow state (.kaizen/, .kaizen.toml, optionally brain + project memory |
+| `publish` | Publish plugin/marketplace to GitHub. Full lifecycle - gh auth | remote create | p |
+| `health` | Diagnostic health check - broken symlinks, missing scripts, schema mismatch, hook  |
+| `status` | Plugin install state at a glance - config, gate state, backlog summary, active wor |
+| `surface` | MCP+hooks registry. `list` enumerates servers + hooks; `validate` flags drift betw |
 | `disable-dupes` | Find and reversibly disable duplicate skills (loose ~/.claude/skills/X vs bundled  |
-| `plugin-development` | Single-entry hub for everything plugin-development in kaizen-md — routing, context |
+| `plugin-development` | Hub for kaizen plugin-dev work. Verbs - intake | workflow | validate | rules | dis |
 
 ## discovery/search (9)
 
 | Command | Does |
 |---|---|
-| `discovery` | Unified entry point for kaizen's 4 semantic indexes — codebase (onboard) / knowled |
-| `onboard` | Index a codebase for semantic search. SQLite + sentence-transformers (same model a |
-| `knowledge` | Semantic search over kaizen's knowledge surface — Remember brain notes, project pl |
-| `claude-docs` | Semantic search over a local Claude API/Code/SDK docs mirror. Pairs with ericbuess |
-| `code-tour` | Scaffold a CodeTour .tour walkthrough — persona-targeted, step-by-step, file+line  |
+| `discovery` | Umbrella over kaizen 4 semantic indexes - codebase (onboard) / knowledge / Claude- |
+| `onboard` | Semantic index for codebase search. SQLite + sentence-transformers. Project-scoped |
+| `knowledge` | Semantic search over brain notes + plans + backlog + workflow schemas. SQLite + se |
+| `claude-docs` | Semantic search over local Claude API/Code/SDK docs mirror. Verbs - bootstrap | up |
+| `code-tour` | Scaffold a CodeTour .tour walkthrough - persona-targeted, step-by-step, file+line  |
 | `scrape` | Scrape + synthesize web content into a semantic SQLite index. PocketFlow async pip |
-| `models` | Ollama-backed local model management — list, pull, show, delete, copy, plus embed/ |
-| `browser` | Manage the Playwright-backed MCP browser server that gives Claude real browser-dri |
-| `docs` | Generate per-package documentation for any workspace — Rust (Cargo.toml), JS/TS (p |
+| `models` | Ollama-backed local model management. list | pull | show | delete | copy + embed/c |
+| `browser` | Manage Playwright-backed MCP browser server (navigate/click/type/screenshot/extrac |
+| `docs` | Per-package doc generator. Rust (Cargo.toml) / JS-TS (package.json) / Go (go.mod)  |
 
 ## intent/session (1)
 
 | Command | Does |
 |---|---|
-| `intent` | Inspect or test kaizen's intent system — declarative phrase/event triggers that au |
+| `intent` | Inspect or test the intent system - declarative phrase/event triggers that auto-su |
 
 ## dev-aids (5)
 
 | Command | Does |
 |---|---|
-| `rules` | Inspect, validate, or generate templates for brain-sourced kaizen rules. Rules liv |
-| `schema` | Inspect declarative workflow schemas (v1.14.0+). Schemas live as yaml in `.kaizen/ |
-| `inbox` | Manage the kaizen message inbox — captures every user message via UserPromptSubmit |
-| `test` | Run the full kaizen pipeline smoke-test (install → backlog → gate → hooks → backup |
-| `help` | Show kaizen surface — auto-generated by kaizen-help-gen from `commands/*.md` |
+| `rules` | Inspect/validate brain-sourced kaizen rules. Rules live as Markdown notes in <brai |
+| `schema` | Inspect declarative workflow schemas. Verbs - list | show <name> | branches <name> |
+| `inbox` | Message inbox - captures every user message via UserPromptSubmit, surfaces pending |
+| `test` | TAP-style pipeline smoke-test (install → backlog → gate → hooks → backup → migrate |
+| `help` | Static taxonomy of all /kaizen:* commands. One screen, zero bash. Auto-generated f |
 
 ## uncategorized (1) — add to CLUSTERS
 
 | Command | Does |
 |---|---|
-| `test-suite` | Run the kaizen plugin's unittest+pytest+bash test SUITE via the unified `kaizen-te |
+| `test-suite` | Run plugin test SUITE via kaizen-tests harness (unittest+pytest+bash, parallel). D |
 
 ## Drill-down (single CLI roundtrip)
 

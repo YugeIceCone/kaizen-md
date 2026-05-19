@@ -1,6 +1,6 @@
 ---
 name: daemon
-description: Manage the kaizen auto-daemon — cron-driven worker that hash-compares source↔cache, validates remote sha, and runs hygiene cleanups (prune old cache versions, purge stale inbox, clean backups, validate rules, render backlog). Subcommands: run | install | uninstall | status | log.
+description: "Manage kaizen auto-daemon - cron-driven worker, hash-compares source↔cache, validates remote sha, runs hygiene + memory tasks."
 argument-hint: [run|install|uninstall|status|log]
 ---
 

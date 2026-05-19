@@ -1,6 +1,6 @@
 ---
 name: setup
-description: "Unified kaizen setup. No-args → interactive QA super-menu (master action picker → branched install / uninstall / health / maintenance flows). With-args → direct dispatch (install / uninstall / cache + --enable-all / --with-* / --no-*). Triggers on \"install kaizen\", \"setup the plugin\", \"enable kaizen\", \"uninstall kaizen\", \"kaizen cache\", \"setup menu\", \"reconfigure kaizen\", \"kaizen maintenance\", \"first-time setup\"."
+description: "Unified plugin setup. No-args wizard (install/uninstall/health/maintenance) or direct dispatch. Triggers - "install kaizen", "setup plugin", "kaizen cache", "first-time setup"."
 argument-hint: "(empty = interactive super-menu) | [install|uninstall|cache ...] [--enable-all] [--with-index] [--with-browser] [--with-daemon] [--with-trace-proxy] [--no-globals] [--no-project] [--dry-run]"
 allowed-tools: ["AskUserQuestion", "Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/setup.sh:*)", "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/scripts/util/detect_stack.py:*)", "Bash(kaizen-detect-stack:*)"]
 ---

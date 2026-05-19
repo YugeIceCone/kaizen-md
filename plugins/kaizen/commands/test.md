@@ -1,6 +1,6 @@
 ---
 name: test
-description: Run the full kaizen pipeline smoke-test (install → backlog → gate → hooks → backup → migrate). TAP-style output, detail only on failures. Low token usage by default. Pass -v / --keep for verbose / preserve sandbox.
+description: "TAP-style pipeline smoke-test (install → backlog → gate → hooks → backup → migrate). Distinct from /kaizen:test-suite (Python unittest+pytest)."
 argument-hint: [-v|--keep]
 ---
 

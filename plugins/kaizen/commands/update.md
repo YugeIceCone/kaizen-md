@@ -1,6 +1,6 @@
 ---
 name: update
-description: Single-command kaizen maintenance — `git pull` the marketplace, refresh Claude Code's plugin cache, auto-reload if anything changed, optionally prune old version slots. Subcommands: (none = pull+refresh+reload) | check | prune | path. Replaces the manual `cd marketplace + git pull + /kaizen:refresh-cache + /reload-plugins` dance.
+description: "Single-command plugin maintenance - git pull marketplace + refresh CC plugin cache + auto-reload + optional prune. Replaces the manual dance."
 argument-hint: [pull|check|prune|path]
 ---
 

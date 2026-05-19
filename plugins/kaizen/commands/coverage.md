@@ -1,6 +1,6 @@
 ---
 name: coverage
-description: Mechanical 1:1 code-to-test mapper for the kaizen plugin. Walks `skills/workflow/scripts/*.py` (excluding `_<x>.py` private helpers + `<x>_mcp.py` MCP servers) and reports which scripts have a matching `tests/test_<x>*.py` and which don't. Stdlib only — no coverage.py / pytest-cov required. Subcommands - summary | gaps | report. Default behavior - emit `gaps` (the actionable one).
+description: "1:1 code-to-test mapper for the kaizen plugin. Walks scripts/ excluding _<x>.py privates. Verbs - gaps | summary | report. Returns structured JSON via --json."
 argument-hint: "summary | gaps | report [--json]"
 allowed-tools: ["Bash(${CLAUDE_PLUGIN_ROOT}/bin/kaizen-coverage:*)"]
 ---

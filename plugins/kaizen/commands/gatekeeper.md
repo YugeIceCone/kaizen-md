@@ -1,6 +1,6 @@
 ---
 name: gatekeeper
-description: Run the unified kaizen gate — aggregates iron-laws + efficient-tool-use anti-patterns + karpathy diff-level scanners + plugin-validator into one verdict (green/yellow/red). Use before committing structural changes, on demand to audit the plugin, or as the "single command that tells me everything is wrong" check.
+description: "Unified kaizen gate. Aggregates iron-laws + etu anti-patterns + karpathy diff scanners + plugin-dev validate + 7 sub-gates. One verdict."
 argument-hint: "[check|list|only <gate>] [--staged|--all] [--json]"
 ---
 

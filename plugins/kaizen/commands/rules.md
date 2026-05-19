@@ -1,6 +1,6 @@
 ---
 name: rules
-description: Inspect, validate, or generate templates for brain-sourced kaizen rules. Rules live as Markdown notes in <KAIZEN_BRAIN_DIR>/Notes/ (default ~/.claude/.kaizen/brain/Notes/) with a `kaizen:` frontmatter block, owned end-to-end by the kaizen plugin. (Bin wrapper is `kaizen-rules` — old `/kaizen:rule` slash is a deprecation alias.)
+description: "Inspect/validate brain-sourced kaizen rules. Rules live as Markdown notes in <brain>/Notes/ with `kaizen:` frontmatter. Verbs - list | show | validate | template."
 ---
 
 # kaizen rules

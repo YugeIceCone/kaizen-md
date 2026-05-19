@@ -1,6 +1,6 @@
 ---
 name: handoff
-description: Create or resume a session handoff document. `/kaizen:handoff create` wraps up the current session into a YAML handoff + indexes it into the plugin's handoff store; `/kaizen:handoff resume` loads the latest handoff (or one by path/ticket), verifies the codebase still matches, and proposes a continuation plan. Thin router over the handoff skill. Triggers on "create a handoff", "resume from handoff", "wrap up this session", "hand off to next session", "save session context".
+description: "Session handoff doc. `create` wraps the current session into YAML + indexes it; `resume` loads latest (or by path/ticket), verifies state, proposes continuation. Triggers - "create handoff", "resume from handoff", "wrap up session"."
 argument-hint: "[create|resume] [path-or-ticket]"
 ---
 

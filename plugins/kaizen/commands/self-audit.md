@@ -1,6 +1,6 @@
 ---
 name: self-audit
-description: Schema-driven plugin self-audit. Default - mechanical checks (validator, metrics-coverage, skip-detection, hook-trace, bin-permission, vendored-modification, claude-md-volatile-data) AND emits skill-checkpoint TODOs. `agent` verb dispatches one subagent per checkpoint to load + apply each skill, then aggregates results. Subcommands - run [--json] [--no-write] | list-stages | path | agent [dispatch-plan|aggregate]
+description: "Plugin self-audit. Default - mechanical pipeline (validator, metrics-coverage, skip-detection, hook-trace, bin-perm, vendored, claude-md-volatile). `agent` verb fans out skill-checkpoints. Verbs - run | list-stages | path | agent."
 argument-hint: "[run|list-stages|path|agent [dispatch-plan|aggregate]]"
 ---
 

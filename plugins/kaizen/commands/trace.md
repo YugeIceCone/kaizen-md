@@ -1,6 +1,6 @@
 ---
 name: trace
-description: Unified event log across kaizen hooks, agents, LLM calls, tool invocations, and user actions. JSONL-backed, fast queries, auto-rotation. Subcommands - tail | query | stats | event | clear | path | search "<query>" (semantic — folded from retired /kaizen:trace-search). Use to debug "what fired when", trace agent dispatch, see hook latency distribution, find LLM cost outliers.
+description: "Unified event log across kaizen hooks/agents/LLM/tool/user actions. JSONL, auto-rotated. Verbs - tail | query | stats | event | clear | path | search | index. (search folded from /kaizen:trace-search.)"
 argument-hint: "[tail [--n N] [--src S] [--evt E]|query|stats|event ...|clear|path|search \"<query>\"|index|reindex|get <id>]"
 ---
 

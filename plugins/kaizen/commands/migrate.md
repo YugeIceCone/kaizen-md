@@ -1,6 +1,6 @@
 ---
 name: migrate
-description: Migrate from loose skills / separate plugins / non-canonical layouts to the kaizen plugin's canonical shape. Auto-backs up before any destructive operation. Default is dry-run.
+description: "Migrate from loose skills / separate plugins / non-canonical layouts to canonical kaizen shape. Auto-backs up before any destructive op. Default dry-run."
 ---
 
 # kaizen migrate

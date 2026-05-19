@@ -1,6 +1,6 @@
 ---
 name: claude-docs
-description: Semantic search over a local Claude API/Code/SDK docs mirror. Pairs with ericbuess/claude-code-docs (the upstream markdown mirror) and adds the SQLite + sentence-transformers search layer the upstream lacks. Subcommands - bootstrap | update | index | reindex | search "<query>" | stats | get <id> | path | clear --yes.
+description: "Semantic search over local Claude API/Code/SDK docs mirror. Verbs - bootstrap | update | index | search | stats | get | path | clear."
 argument-hint: [bootstrap|update|index|reindex|search "<query>"|stats|get <id>|path|clear --yes]
 ---
 

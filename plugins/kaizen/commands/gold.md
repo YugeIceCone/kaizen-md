@@ -1,6 +1,6 @@
 ---
 name: gold
-description: Incidental-discovery + learnings tracker. Capture mid-work patterns + gotchas + hidden contracts that would otherwise decay; later `promote` durable ones to CLAUDE.md or a brain Note. Subcommands - capture | list | show | promote | path. Default behavior - emit `list` (the safe read-only view).
+description: "Incidental-discovery + learnings tracker. Captures mid-work "ha!" moments before they decay. Sits between dxm (raw) and brain (consolidated). Verbs - capture | list | show | promote | path."
 argument-hint: "capture <pattern> [...] | list [--unpromoted] | show <id> | promote <id> --to <path> [--brain] | path"
 allowed-tools: ["Bash(${CLAUDE_PLUGIN_ROOT}/bin/kaizen-gold:*)"]
 ---

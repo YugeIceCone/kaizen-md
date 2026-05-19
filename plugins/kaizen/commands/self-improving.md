@@ -1,6 +1,6 @@
 ---
 name: self-improving
-description: "Curate Claude Code's auto-memory into durable project knowledge. `review` flags promotion candidates, `promote` graduates one, `extract` turns a recurring pattern into a kaizen skill, `health` shows memory metrics. Triggers on \"review memory\", \"promote this learning\", \"extract a skill from\", \"what has Claude learned\", \"memory health\", \"curate auto-memory\", \"self-improve\"."
+description: "Curate Claude Code auto-memory into durable project knowledge. `review` flags promotion candidates; `promote` graduates them to brain Notes."
 argument-hint: "review | promote <slug> | extract <pattern> | health"
 allowed-tools: ["Read", "Glob", "Grep", "Write", "Edit", "Bash(${CLAUDE_PLUGIN_ROOT}/bin/kaizen-brain:*)"]
 ---

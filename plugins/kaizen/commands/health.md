@@ -1,6 +1,6 @@
 ---
 name: health
-description: Diagnostic health check for the kaizen plugin's install in this repo. Reports broken symlinks, missing scripts, schema mismatch, hook misconfiguration, stale backlog drift, missing pre-deletion belief. Read-only; exits 1 on any error, 0 otherwise.
+description: "Diagnostic health check - broken symlinks, missing scripts, schema mismatch, hook misconfig, stale backlog drift, missing pre-deletion belief. exit 1 on any error."
 ---
 
 # kaizen health

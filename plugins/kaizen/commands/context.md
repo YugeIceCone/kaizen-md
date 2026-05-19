@@ -1,6 +1,6 @@
 ---
 name: context
-description: Report Claude Code's current context-window state — tokens used, percentage of limit, zone (green/yellow/red), and a recommendation. Uses CLAUDE_CONTEXT_TOKENS env or stdin JSON (statusline schema). Use to decide when to /compact, before a large refactor, or when the gate Check #12 fired a warning.
+description: "CC context-window state report - tokens used, percentage, zone (green/yellow/red), recommendation. Uses CLAUDE_CONTEXT_TOKENS env or statusline-shape stdin."
 argument-hint: [show|json]
 ---
 

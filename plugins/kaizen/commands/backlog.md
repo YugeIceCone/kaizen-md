@@ -1,6 +1,6 @@
 ---
 name: backlog
-description: View or mutate the project's kaizen backlog (JSON-sourced, .md is generated). Usage:[list|in_flight|next_up|done|parked|add ...|start BK-N|tick BK-N|park BK-N|decision]
+description: "Project backlog (JSON-sourced, .md generated). Verbs - list | in_flight | next_up | done | parked | add | start BK-N | tick BK-N | park BK-N | decision."
 ---
 
 # kaizen backlog

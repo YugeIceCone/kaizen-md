@@ -1,6 +1,6 @@
 ---
 name: bootstrap
-description: Provision the kaizen plugin's uv-managed Python surface — verifies uv is installed, then pre-warms every PEP-723 `uv run --script` venv (loc, onboard, daemon, the MCP servers) so the first real invocation is not a cold download. --check verifies uv only; --list enumerates the uv-script files.
+description: "Pre-warm uv-managed Python venvs for the plugin (loc, onboard, daemon, MCP servers) so first invocation is not a cold download. --check verifies uv."
 argument-hint: "[--check|--list]"
 ---
 

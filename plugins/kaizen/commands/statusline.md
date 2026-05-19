@@ -1,6 +1,6 @@
 ---
 name: statusline
-description: Install or inspect the kaizen statusline — a one-line status bar showing context window usage, backlog state (in flight + next up), and gate state (cached vs ready). Wires into Claude Code's `statusLine` config in ~/.claude/settings.json. Subcommands: install | preview | path | uninstall.
+description: "Install or inspect the kaizen statusline - one-line status bar (context-window % + backlog + active workflow stage + dxm event count)."
 argument-hint: [preview|install|path|uninstall]
 ---
 

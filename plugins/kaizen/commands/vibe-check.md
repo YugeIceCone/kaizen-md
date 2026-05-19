@@ -1,6 +1,6 @@
 ---
 name: vibe-check
-description: Run the vibe-coding discipline checklist against the currently staged diff. Combines `/kaizen:precommit` dry-run output with AI-specific checks (commit-message marker presence, dependency-allowlist rule consultation, scope-size advisory). Triggers on "vibe check", "is this safe to commit", "review my AI-generated diff".
+description: "Vibe-coding discipline checklist on staged diff. Combines /kaizen:precommit dry-run + karpathy diff scanners + intent-trigger surfacing."
 ---
 
 # kaizen vibe-check

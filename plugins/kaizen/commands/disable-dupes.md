@@ -1,6 +1,6 @@
 ---
 name: disable-dupes
-description: Find and reversibly disable duplicate skills (loose ~/.claude/skills/X vs bundled in this plugin) by renaming SKILL.md ↔ SKILL.md.disabled. Default is dry-run; --execute applies. Fully reversible.
+description: "Find and reversibly disable duplicate skills (loose ~/.claude/skills/X vs bundled in plugin) by renaming SKILL.md ↔ SKILL.md.disabled."
 ---
 
 # kaizen disable-dupes

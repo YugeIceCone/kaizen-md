@@ -1,6 +1,6 @@
 ---
 name: hygiene
-description: Run kaizen hygiene checks + safe auto-cleanups. Five checks: prune old cache versions, prune old backup tarballs, purge drained inbox entries, validate brain rules, re-render drifted backlog.md. On-demand cousin of /kaizen:daemon (which runs the same checks on cron). Subcommands: check (default) | fix | check-<name> | fix-<name> | json.
+description: "Plugin hygiene checks + safe auto-cleanups. 5 checks - prune old cache, prune backups, purge inbox TTL, vacuum trace DB, prune logs."
 ---
 
 # kaizen hygiene

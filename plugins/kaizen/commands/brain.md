@@ -1,6 +1,6 @@
 ---
 name: brain
-description: "Schema-driven Second Brain — capture / search / promote / audit / evolve PLUS zero-roundtrip block-level edits (blocks / show / edit). Use blocks/show/edit INSTEAD OF Read+Edit for any Persona.md / Note / Inbox file (8× fewer tokens per read). Subcommands - capture <text> [--type T] [--confidence X] [--tier brain|project] [--subject S] | detect <text> | status | path | search <q> [--type T] [--min-confidence X] | promote [--apply] | audit [--apply] | evolve [--stale-days N] | stats | blocks --file X [--json] | show --file X --block PATH | edit --file X --block PATH --replace BODY (or --append LINE)"
+description: "Second Brain - capture / search / promote / audit / evolve + zero-roundtrip block-level edits. Triggers - "remember this", "search the brain", "promote a belief", "audit memory", "evolve brain"."
 argument-hint: "(empty = multiSelect verb checklist) | [capture <text>|search <q>|promote|audit|evolve|status|path|detect|stats|blocks --file X|show --file X --block PATH|edit --file X --block PATH --replace BODY]"
 allowed-tools: ["AskUserQuestion", "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/scripts/brain/brain.py:*)", "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/scripts/indexers/build_index.py:*)", "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/scripts/brain/brain_promote.py:*)", "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/scripts/brain/brain_audit.py:*)", "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/scripts/brain/brain_evolve.py:*)"]
 ---

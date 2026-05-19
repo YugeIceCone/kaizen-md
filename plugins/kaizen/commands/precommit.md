@@ -1,6 +1,6 @@
 ---
 name: precommit
-description: "Dry-run the kaizen pre-commit gate against currently staged changes — without committing. Surfaces blocks, warns, and skill suggestions. Renamed from /kaizen:gate to disambiguate from /kaizen:gatekeeper (multi-axis audit aggregator). Triggers on \"dry-run the gate\", \"precommit check\", \"would this block my commit\", \"staged-diff gate\"."
+description: "Dry-run pre-commit gate against staged - surfaces blocks/warns/skips without committing."
 argument-hint: "(no args — operates on staged diff)"
 ---
 

@@ -1,6 +1,6 @@
 ---
 name: inbox
-description: Manage the kaizen message inbox — captures every user message via UserPromptSubmit, surfaces pending messages on the next PostToolUse boundary so Claude sees user input mid-sequence without waiting for the whole tool chain to finish. Subcommands: list | peek | drain | clear | stats. Location: ~/.claude/.kaizen/inbox/.
+description: "Message inbox - captures every user message via UserPromptSubmit, surfaces pending messages on PostToolUse boundary. Verbs - list | peek | drain | clear | stats."
 argument-hint: [list|peek|drain|clear|stats]
 ---
 

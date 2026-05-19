@@ -1,6 +1,6 @@
 ---
 name: intent
-description: "Inspect or test kaizen's intent system — declarative phrase/event triggers that auto-suggest actions on UserPromptSubmit. Subcommands - list (all 31 intents), match \"<text>\" (which intents fire on a prompt), suggest \"<text>\" (top match), scan <session-id> (dxm event-pattern matches). Backed by kaizen-intent bin (skills/intent/domain/intents.yaml is the rule catalog)."
+description: "Inspect or test the intent system - declarative phrase/event triggers that auto-suggest actions on UserPromptSubmit. Verbs - list | match | hits | path."
 argument-hint: "[list | match \"<text>\" | suggest \"<text>\" | scan <session-id>]"
 allowed-tools: ["Bash(${CLAUDE_PLUGIN_ROOT}/bin/kaizen-intent:*)"]
 ---

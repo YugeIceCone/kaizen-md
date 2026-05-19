@@ -1,6 +1,6 @@
 ---
 name: test-suite
-description: Run the kaizen plugin's unittest+pytest+bash test SUITE via the unified `kaizen-tests` harness — auto-detects style per file, dispatches in parallel, surfaces slow dominators. Distinct from `/kaizen:test` (TAP-style pipeline smoke). Renamed from `/kaizen:tests` 2026-05-19 to eliminate the singular/plural footgun. Subcommands - (none = full suite) | --affected | --pattern <glob> | --json | bench
+description: "Run plugin test SUITE via kaizen-tests harness (unittest+pytest+bash, parallel). Distinct from /kaizen:test (TAP pipeline smoke). Args - --affected | --pattern | --json | bench."
 argument-hint: "[--affected | --pattern <glob> | --json | bench [--top-n N]]"
 allowed-tools: ["Bash(${CLAUDE_PLUGIN_ROOT}/bin/kaizen-tests:*)"]
 ---

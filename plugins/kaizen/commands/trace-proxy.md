@@ -1,6 +1,6 @@
 ---
 name: trace-proxy
-description: Wrap the Claude Code → api.anthropic.com connection in a logging HTTP proxy. Every LLM request/response (auth scrubbed) flows into kaizen-trace as src=llm with model, message count, input/output tokens, latency. Stdlib-only, opt-in. Subcommands: start | stop | status | log | fg.
+description: "Logging HTTP proxy wrapping CC → api.anthropic.com. Every LLM request/response (auth scrubbed) logged for replay/analysis."
 argument-hint: [start|stop|status|log|fg]
 ---
 

@@ -1,6 +1,6 @@
 ---
 name: workflow
-description: "Unified workflow-shape config — scope / run-mode / disciplines / auto-handoff threshold. Persistent (project / user-global) or ephemeral (this-session-only). Folds the retired /kaizen:session-mode slash into a single tool: session = ephemeral per session; project = persistent in repo; global = persistent across all projects. No-args → 4-question AskUserQuestion wizard. With-args → direct dispatch. Triggers on \"set session mode\", \"start loop\", \"start workflow\", \"choose disciplines\", \"set workflow defaults\", \"configure workflow\", \"workflow shape\", \"persistent disciplines\", \"workflow menu\"."
+description: "Workflow-shape config (scope × run-mode × disciplines × threshold). Persistent (project/global) or ephemeral (session). 4-question wizard or direct dispatch. Triggers - "set session mode", "start loop/workflow", "choose disciplines"."
 argument-hint: "(empty = interactive 4-Q wizard) | [set|get|show|path|reset ...]"
 allowed-tools: ["AskUserQuestion", "Bash(${CLAUDE_PLUGIN_ROOT}/bin/kaizen-workflow-config:*)", "Bash(${CLAUDE_PLUGIN_ROOT}/bin/kaizen-session-mode:*)", "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/scripts/workflow/workflow_config.py:*)"]
 ---

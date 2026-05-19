@@ -1,6 +1,6 @@
 ---
 name: observe
-description: Unified observability across kaizen's 6 data-stream layers (L1 stderr → L6 plugin state). Schema-driven (uses v1.9.0 dataclasses), with dynamic queries (live filtering) and deterministic snapshots (SHA1-content-keyed captures). Subcommands: layers | query | stats | drill <sid> | snapshot | compare | snapshots. Drill is the automated debugging recipe.
+description: "Unified observability across kaizen 6 data-stream layers (L1 stderr → L6 plugin state). Schema-driven (v1.9.0 data model). Verbs - layers | drill | stats."
 argument-hint: [layers|query|stats|drill <sid>|snapshot [name]|compare <a> <b>|snapshots]
 ---
 

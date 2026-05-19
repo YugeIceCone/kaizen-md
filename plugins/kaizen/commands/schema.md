@@ -1,6 +1,6 @@
 ---
 name: schema
-description: Inspect declarative workflow schemas (v1.14.0+). Schemas live as yaml in `.kaizen/workflow/schemas/<name>/` (project, post-v1.22), `~/.claude/.kaizen/schemas/<name>/` (user), or the plugin's built-ins (minimalist, kaizen-default, spec-driven, onion-tdd-strict, debug-with-pdb). Pair with `/workflow schema=<name>` to run a schema-driven routine.
+description: "Inspect declarative workflow schemas. Verbs - list | show <name> | branches <name> <id> | validate <name>. Pair with `/workflow schema=<name>` to run."
 argument-hint: [list|show <name>|branches <name> <artifact>|validate <name>]
 ---
 

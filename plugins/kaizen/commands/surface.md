@@ -1,6 +1,6 @@
 ---
 name: surface
-description: Unified MCP+hooks registry / validator. `list` enumerates all 22 MCP sub-servers and 18 hook registrations. `validate` finds orphan hook scripts, unmounted MCP servers, missing permission entries — catches the kind of drift the gatekeeper-finding pass surfaces.
+description: "MCP+hooks registry. `list` enumerates servers + hooks; `validate` flags drift between gateway / hooks.json / .mcp.json / plugin.json."
 argument-hint: "[list|validate] [--kind mcp|hooks|both] [--json]"
 ---
 

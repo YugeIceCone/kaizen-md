@@ -1,6 +1,6 @@
 ---
 name: publish
-description: Publish this plugin/marketplace to GitHub. Subcommands cover the full lifecycle — gh auth setup, remote create, push, release tagging, fresh-history reset, and diagnostic. Handles the failure modes (SSH user mismatch, stale origin, ssh-askpass missing) documented in the `publishing` skill.
+description: "Publish plugin/marketplace to GitHub. Full lifecycle - gh auth | remote create | push | release tag | fresh-history reset | diagnostic."
 argument-hint: [status|auth|create-remote|push|tag <v>|reset-history|diagnose]
 ---
 

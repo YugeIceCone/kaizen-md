@@ -1,6 +1,6 @@
 ---
 name: loop
-description: "Start (or cancel) a self-correcting Ralph loop — cross-CLI. No-args → 2-question wizard (iteration budget + stop conditions) bridges from /kaizen:workflow Q2=Loop."
+description: "Self-correcting Ralph loop - cross-CLI. No-args 2-question wizard (iteration budget + stop conditions). Triggers - "start loop", "ralph loop"."
 argument-hint: "(empty = 2-Q wizard) | PROMPT [--its N] [--promise TEXT] | --cancel"
 allowed-tools: ["AskUserQuestion", "Bash(${CLAUDE_PLUGIN_ROOT}/skills/loop/scripts/setup-ralph-loop.sh:*)", "Bash(test -f .kaizen/loop.state.md:*)", "Bash(rm .kaizen/loop.state.md)", "Read(.kaizen/loop.state.md)", "Bash(${CLAUDE_PLUGIN_ROOT}/bin/kaizen-session-mode:*)", "Bash(${CLAUDE_PLUGIN_ROOT}/bin/kaizen-workflow-config:*)"]
 ---

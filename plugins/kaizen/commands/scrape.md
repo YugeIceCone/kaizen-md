@@ -1,6 +1,6 @@
 ---
 name: scrape
-description: Scrape + synthesize web content into a semantic SQLite index. PocketFlow async pipeline (FetchURLs → ScrapeFanOut → Synthesize → EmbedAndPersist) wrapping ScrapeGraphAI's SmartScraperGraph; stored in ~/.claude/.kaizen/scrape/index.db using the same indexer pattern as trace/knowledge/onboard. Defaults to local Ollama (no API key); openai/* models via env var.
+description: "Scrape + synthesize web content into a semantic SQLite index. PocketFlow async pipeline. Defaults to local Ollama (no API key). Index at ~/.claude/.kaizen/scrape/index.db."
 argument-hint: [<url>|batch <urls.txt>|search "<query>"|stats|get <id>|list|clear]
 ---
 

@@ -1,6 +1,6 @@
 ---
 name: docs
-description: Generate per-package documentation for any workspace — Rust (Cargo.toml), JS/TS (package.json), Go (go.mod), Python (pyproject.toml). Writes `.md` + `.json` per package to `docs/crates/` (or configured output dir). Stdlib-only; ports shodan's `cargo xtask docs --json` to a language-agnostic Python tool.
+description: "Per-package doc generator. Rust (Cargo.toml) / JS-TS (package.json) / Go (go.mod) / Python (pyproject.toml). Stdlib-only. Writes .md + .json per package."
 ---
 
 # kaizen docs

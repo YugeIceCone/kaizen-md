@@ -1,6 +1,6 @@
 ---
 name: backup
-description: Snapshot workflow state (.kaizen/, legacy .workflow/, .kaizen.toml, optionally brain + project memory) to ~/.claude/backups/kaizen/<repo-slug>/<UTC>.tar.gz. List / restore / prune.
+description: "Snapshot workflow state (.kaizen/, .kaizen.toml, optionally brain + project memory) to ~/.claude/backups/kaizen/<repo>/<UTC>.tar.gz. list | restore | prune."
 ---
 
 # kaizen backup
