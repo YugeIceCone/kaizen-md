@@ -82,6 +82,8 @@ SUBSERVERS: list[tuple[str, str]] = [
     ("handoff", "handoff_mcp"),
     # Phase 9 — config lookup
     ("config", "config_mcp"),
+    # Phase 10 — WebFetch recall + policy + dedup
+    ("webfetch", "webfetch_mcp"),
 ]
 
 gw = FastMCP("kaizen")
