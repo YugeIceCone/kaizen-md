@@ -672,6 +672,158 @@ def _cmd_edit(args) -> int:
     return 0
 
 
+# ─── Persona semantic verbs (Phase A — Gap 3) ────────────────────────
+
+
+def _persona_path() -> "Path":
+    """Resolve Persona.md via the short-name resolver."""
+    return _resolve_memory_file("Persona.md")
+
+
+def _block_contains_line(text: str, block_path: str, needle: str) -> bool:
+    """True iff ``needle`` appears verbatim inside the block body."""
+    import _brain_blocks as _bb
+    body = _bb.extract_block(text, block_path)
+    return body is not None and needle in body
+
+
+def _ensure_block(text: str, heading: str, level: int = 2) -> str:
+    """Return text with ``## {heading}`` appended if missing. Idempotent."""
+    import _brain_blocks as _bb
+    if _bb.extract_block(text, heading) is not None:
+        return text
+    sep = "" if text.endswith("\n") else "\n"
+    return f"{text}{sep}\n{'#' * level} {heading}\n\n"
+
+
+def _atomic_write_persona(persona_path: "Path", new_text: str) -> None:
+    """Tempfile-then-rename. Same shape as _cmd_edit's writer."""
+    tmp = persona_path.with_suffix(persona_path.suffix + ".tmp")
+    tmp.write_text(new_text, encoding="utf-8")
+    tmp.replace(persona_path)
+
+
+def _cmd_log_evidence(args) -> int:
+    """Append a quote / observation to Persona's Evidence Log block.
+
+    Auto-prefixes [YYYY-MM-DD] when the input doesn't start with `[`.
+    Idempotent: skips if the exact line already exists.
+    Auto-seeds the Evidence Log block if absent.
+    """
+    import _brain_blocks as _bb
+    persona = _persona_path()
+    if not persona.is_file():
+        sys.stderr.write(f"brain log-evidence: Persona not found at {persona}\n")
+        return 2
+
+    text = persona.read_text(encoding="utf-8")
+    raw = (args.text or "").strip()
+    if not raw:
+        sys.stderr.write("brain log-evidence: empty text\n")
+        return 1
+
+    # Prefix today's date unless the text already starts with [YYYY-...]
+    if raw.startswith("["):
+        line_body = raw
+    else:
+        from datetime import date
+        line_body = f"[{date.today().isoformat()}] {raw}"
+
+    full_line = f"- {line_body}"
+    text = _ensure_block(text, "Evidence Log", level=2)
+    if _block_contains_line(text, "Evidence Log", full_line):
+        print(f"brain log-evidence: already present (skip): {line_body[:60]}…")
+        return 0
+    new_text = _bb.append_to_list_block(text, "Evidence Log", full_line)
+    _atomic_write_persona(persona, new_text)
+    print(f"brain log-evidence: appended → {persona}")
+    return 0
+
+
+def _cmd_new_directive(args) -> int:
+    """Append a new directive to Persona's Directives block.
+
+    Every directive must link a Note (via --note Notes/<slug>). Idempotent
+    on exact text match. Atomic.
+    """
+    import _brain_blocks as _bb
+    persona = _persona_path()
+    if not persona.is_file():
+        sys.stderr.write(f"brain new-directive: Persona not found at {persona}\n")
+        return 2
+    rule = (args.text or "").strip().rstrip(".")
+    if not rule:
+        sys.stderr.write("brain new-directive: empty rule text\n")
+        return 1
+    if not args.note:
+        sys.stderr.write("brain new-directive: --note <Notes/slug> is required "
+                          "(every directive must link a Note)\n")
+        return 1
+    note_ref = args.note.strip()
+    full_line = f"- **{rule}.** See [[{note_ref}]]."
+
+    text = persona.read_text(encoding="utf-8")
+    text = _ensure_block(text, "Directives", level=2)
+    if _block_contains_line(text, "Directives", full_line):
+        print(f"brain new-directive: already present (skip): {rule[:60]}…")
+        return 0
+    new_text = _bb.append_to_list_block(text, "Directives", full_line)
+    _atomic_write_persona(persona, new_text)
+    print(f"brain new-directive: appended → {persona}")
+    return 0
+
+
+def _cmd_promote_belief(args) -> int:
+    """Append a new entry to Persona's Top Beliefs block.
+
+    Auto-assigns the next sequential rank. Normalizes ``Notes/pref-x`` →
+    ``Notes/pref-x.md`` (Top Beliefs convention). Idempotent: a Note
+    already in Top Beliefs is reported but not duplicated.
+    """
+    import re as _re
+    import _brain_blocks as _bb
+    persona = _persona_path()
+    if not persona.is_file():
+        sys.stderr.write(f"brain promote-belief: Persona not found at {persona}\n")
+        return 2
+    note = (args.note or "").strip()
+    if not note:
+        sys.stderr.write("brain promote-belief: <note> ref required (e.g. Notes/pref-x)\n")
+        return 1
+    if not note.endswith(".md"):
+        note = note + ".md"
+
+    text = persona.read_text(encoding="utf-8")
+    text = _ensure_block(text, "Top Beliefs", level=2)
+    body = _bb.extract_block(text, "Top Beliefs") or ""
+
+    # Idempotency: skip if note already in Top Beliefs
+    if f"[[{note}]]" in body:
+        print(f"brain promote-belief: {note} already promoted (skip)")
+        return 0
+
+    # Find max existing rank
+    max_rank = 0
+    for m in _re.finditer(r"^(\d+)\.\s+\[\[", body, _re.M):
+        max_rank = max(max_rank, int(m.group(1)))
+    next_rank = max_rank + 1
+
+    meta = []
+    if args.conf is not None:
+        meta.append(f"conf={args.conf}")
+    if args.sources is not None:
+        meta.append(f"sources={args.sources}")
+    if args.freshness:
+        meta.append(f"freshness={args.freshness}")
+    tail = (" — " + " ".join(meta)) if meta else ""
+    full_line = f"{next_rank}. [[{note}]]{tail}"
+
+    new_text = _bb.append_to_list_block(text, "Top Beliefs", full_line)
+    _atomic_write_persona(persona, new_text)
+    print(f"brain promote-belief: rank {next_rank} → {note}")
+    return 0
+
+
 # ─── auto-load pin management ────────────────────────────────────────
 
 
@@ -843,6 +995,28 @@ def main(argv: Optional[list[str]] = None) -> int:
                           "(caller provides marker e.g. `- foo` or `4. bar`)")
     se.add_argument("--json", action="store_true")
     se.set_defaults(func=_cmd_edit)
+
+    # Persona semantic verbs — thin shortcuts over edit + _brain_blocks.
+    le = sub.add_parser("log-evidence",
+                         help="append a quote to Persona's Evidence Log (auto-dates)")
+    le.add_argument("text", help="the quote / observation; [YYYY-MM-DD] auto-prefixed if missing")
+    le.set_defaults(func=_cmd_log_evidence)
+
+    nd = sub.add_parser("new-directive",
+                         help="append a directive to Persona's Directives (requires --note)")
+    nd.add_argument("text", help="the rule body (trailing `.` and ` See [[X]].` added)")
+    nd.add_argument("--note", required=False,
+                     help="Notes/<slug> — the brain Note backing the rule")
+    nd.set_defaults(func=_cmd_new_directive)
+
+    pb = sub.add_parser("promote-belief",
+                         help="append a Note to Persona's Top Beliefs (auto-ranks)")
+    pb.add_argument("note", help="Notes/<slug>[.md] — the Note to promote")
+    pb.add_argument("--conf", type=float, default=None, help="confidence (e.g. 0.85)")
+    pb.add_argument("--sources", type=int, default=None, help="evidence count")
+    pb.add_argument("--freshness", default=None,
+                     help="freshness tag (stable / fresh / aging)")
+    pb.set_defaults(func=_cmd_promote_belief)
 
     # Pin management for auto-load.md.
     pn = sub.add_parser("pin", help="pin a Note into ~/.claude/.kaizen/auto-load.md")
