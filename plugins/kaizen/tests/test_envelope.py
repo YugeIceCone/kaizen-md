@@ -52,8 +52,8 @@ _RETROFIT_TOOLS = [
     # Phase D — observe / scrape / manifests / handoff / drift / config / docs_flow
     ("observe layers",   [str(_SCRIPTS / "observe.py"), "layers"]),
     ("observe stats",    [str(_SCRIPTS / "observe.py"), "stats"]),
-    ("manifests audit",  [str(_SCRIPTS / "manifests_cli.py"), "audit", "--json"]),
-    ("manifests unused", [str(_SCRIPTS / "manifests_cli.py"), "unused", "--json"]),
+    ("manifests audit",  [str(_REPO_ROOT / "plugins/kaizen/scripts/workflow/manifests_cli.py"), "audit", "--json"]),
+    ("manifests unused", [str(_REPO_ROOT / "plugins/kaizen/scripts/workflow/manifests_cli.py"), "unused", "--json"]),
     ("handoff latest",   [str(_REPO_ROOT / "plugins/kaizen/scripts/handoff/handoff.py"), "latest", "--json"]),
     ("handoff path",     [str(_REPO_ROOT / "plugins/kaizen/scripts/handoff/handoff.py"), "path"]),
     ("config defaults",  [str(_SCRIPTS / "config.py"), "--defaults"]),

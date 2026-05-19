@@ -122,7 +122,7 @@ verb_matched_explicitly() {
 # List available schemas across project/user/built-in tiers (one per line).
 # Used by suggest_schemas at init time when the verb didn't match.
 list_available_schemas() {
-  local runner="$(dirname "$0")/../../skills/workflow/scripts/workflow_runner.py"
+  local runner="$(dirname "$0")/../workflow/workflow_runner.py"
   [ -f "$runner" ] || return 0
   python3 "$runner" list 2>/dev/null | awk '{print $1}' | sort -u
 }
@@ -181,7 +181,7 @@ cmd_init() {
   local stages_str
   if [ -n "$SCHEMA" ]; then
     # Schema-driven: topo-order stages via workflow_runner.py (v1.14.0+).
-    local runner="$(dirname "$0")/../../skills/workflow/scripts/workflow_runner.py"
+    local runner="$(dirname "$0")/../workflow/workflow_runner.py"
     if [ ! -f "$runner" ]; then
       echo "[workflow] workflow_runner.py not found at $runner" >&2
       exit 1
@@ -303,7 +303,7 @@ cmd_advance() {
   local stage="$1" msg="${2:-}"
   [ -f "$STATE_FILE" ] || { echo "[workflow] no active workflow"; exit 1; }
   local runner_path
-  runner_path="$(dirname "$0")/../../skills/workflow/scripts/workflow_runner.py"
+  runner_path="$(dirname "$0")/../workflow/workflow_runner.py"
   set +e
   WF_RUNNER="$runner_path" python3 - "$STATE_FILE" "$stage" "$msg" "$force" <<'PY'
 import json, sys, datetime, os, pathlib, subprocess
@@ -392,7 +392,7 @@ cmd_branch() {
   # Promotes the advisory Confidence-Score branching (v1.15.0) to runtime state mutation.
   local stage="$1" key="$2"
   [ -f "$STATE_FILE" ] || { echo "[workflow] no active workflow"; exit 1; }
-  local runner="$(dirname "$0")/../../skills/workflow/scripts/workflow_runner.py"
+  local runner="$(dirname "$0")/../workflow/workflow_runner.py"
   [ -f "$runner" ] || { echo "[workflow] workflow_runner.py not found at $runner"; exit 1; }
   python3 - "$STATE_FILE" "$runner" "$stage" "$key" <<'PY'
 import json, sys, subprocess, datetime
@@ -448,7 +448,7 @@ cmd_artifact() {
     exit 2
   fi
   local runner_path
-  runner_path="$(dirname "$0")/../../skills/workflow/scripts/workflow_runner.py"
+  runner_path="$(dirname "$0")/../workflow/workflow_runner.py"
   # set -e is on at script level; suspend it so we can read python's exit code
   # for strict-mode rejection (rc=3) without aborting the script.
   set +e

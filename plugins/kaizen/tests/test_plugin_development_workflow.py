@@ -12,7 +12,7 @@ from pathlib import Path
 _KZ_DIR = Path(__file__).resolve().parent.parent
 _SCHEMA = _KZ_DIR / "schemas/plugin-development/schema.yaml"
 _COMMAND = _KZ_DIR / "commands/plugin-development.md"
-_WORKFLOW_RUNNER = _KZ_DIR / "skills/workflow/scripts/workflow_runner.py"
+_WORKFLOW_RUNNER = _KZ_DIR / "scripts/workflow/workflow_runner.py"
 
 
 class TestSchemaArtifact(unittest.TestCase):

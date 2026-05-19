@@ -66,7 +66,7 @@ fi
 # annotation block (empty when no config); concat into the body below.
 PREFILL=""
 if [ -f ".kaizen/workflow.json" ]; then
-    PREFILL=$(python3 "$PLUGIN_ROOT/skills/workflow/scripts/_workflow_prefill.py" \
+    PREFILL=$(python3 "$PLUGIN_ROOT/scripts/workflow/_workflow_prefill.py" \
         --from ".kaizen/workflow.json" 2>/dev/null || echo "")
 fi
 

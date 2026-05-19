@@ -49,7 +49,7 @@ except Exception:
 # Advance the state machine. Output goes to stderr so the commit message
 # stays clean in `git commit` UX.
 cd "$REPO" || exit 0
-python3 "$PLUGIN_ROOT/skills/workflow/scripts/workflow_runner.py" advance \
+python3 "$PLUGIN_ROOT/scripts/workflow/workflow_runner.py" advance \
     >&2 2>&1 || true
 
 exit 0

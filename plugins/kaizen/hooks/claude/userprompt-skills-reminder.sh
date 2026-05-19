@@ -40,7 +40,7 @@ cd "$REPO" || { echo '{}'; exit 0; }
 # Get the active-skills reminder block (single python3 spawn — reads
 # state, looks up descriptions, emits the formatted block, or empty
 # string when no skills pinned).
-REMINDER=$(python3 "$PLUGIN_ROOT/skills/workflow/scripts/session_mode.py" reminder 2>/dev/null)
+REMINDER=$(python3 "$PLUGIN_ROOT/scripts/workflow/session_mode.py" reminder 2>/dev/null)
 
 # Empty stdout → nothing to inject.
 [ -z "$REMINDER" ] && { echo '{}'; exit 0; }

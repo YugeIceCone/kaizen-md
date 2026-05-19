@@ -34,7 +34,7 @@ import unittest
 from pathlib import Path
 
 PLUGIN_ROOT = Path(__file__).resolve().parent.parent
-SCRIPT = PLUGIN_ROOT / "skills" / "workflow" / "scripts" / "workflow_runner.py"
+SCRIPT = PLUGIN_ROOT / "scripts" / "workflow" / "workflow_runner.py"
 
 
 _SCHEMA_YAML = """\

@@ -17,7 +17,7 @@ from pathlib import Path
 
 _KZ_DIR = Path(__file__).resolve().parent.parent
 _SCRIPTS = _KZ_DIR / "skills/workflow/scripts"
-_FLOW_CLI = _SCRIPTS / "flow_cli.py"
+_FLOW_CLI = _KZ_DIR / "scripts/workflow/flow_cli.py"
 
 
 def _run(*args: str) -> subprocess.CompletedProcess:
@@ -92,7 +92,7 @@ class TestConsolidatedCliParentHeaders(unittest.TestCase):
     """Iron-law contract: dispatched scripts declare the parent."""
 
     def test_flow_has_consolidated_cli_parent_header(self):
-        body = (_SCRIPTS / "flow.py").read_text(encoding="utf-8")
+        body = (_KZ_DIR / "scripts/workflow/flow.py").read_text(encoding="utf-8")
         self.assertIn("# consolidated-cli-parent: flow", body[:200])
 
     def test_docs_flow_has_consolidated_cli_parent_header(self):

@@ -2,7 +2,7 @@
 name: plugin-development
 description: "Single-entry hub for everything plugin-development in kaizen-md — routing, context, validation, dispatch, intake QA. Verbs: intake (which skills to load for THIS task), workflow (8-stage TDD routine), validate (staged check), rules (iron-laws dump), dispatch (pick the right subagent via rubric), audit (gatekeeper on plugin), surface (plugin inventory), cluster (list a domain's commands). Default: load the plugin-development skill body. Triggers on \"add a kaizen feature\", \"build a plugin feature\", \"plugin-dev workflow\", \"feature shape\", \"iron laws\", \"validate feature\", \"plugin inventory\", \"which subagent\", \"plugin cluster\", \"dispatch subagent\", \"which skills to load\", \"intake checklist\"."
 argument-hint: "[intake [<work-type>] | workflow | validate | rules | dispatch <task> | audit | surface | cluster <name> | (no args = load skill)]"
-allowed-tools: ["AskUserQuestion", "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/plugin-development/scripts/validate.py:*)", "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/plugin-development/scripts/intake.py:*)", "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/workflow_runner.py:*)", "Bash(${CLAUDE_PLUGIN_ROOT}/bin/kaizen-iron-laws:*)", "Bash(${CLAUDE_PLUGIN_ROOT}/bin/kaizen-rubric:*)", "Bash(${CLAUDE_PLUGIN_ROOT}/bin/kaizen-gatekeeper:*)", "Bash(${CLAUDE_PLUGIN_ROOT}/bin/kaizen-surface:*)"]
+allowed-tools: ["AskUserQuestion", "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/plugin-development/scripts/validate.py:*)", "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/plugin-development/scripts/intake.py:*)", "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/scripts/workflow/workflow_runner.py:*)", "Bash(${CLAUDE_PLUGIN_ROOT}/bin/kaizen-iron-laws:*)", "Bash(${CLAUDE_PLUGIN_ROOT}/bin/kaizen-rubric:*)", "Bash(${CLAUDE_PLUGIN_ROOT}/bin/kaizen-gatekeeper:*)", "Bash(${CLAUDE_PLUGIN_ROOT}/bin/kaizen-surface:*)"]
 ---
 
 # /kaizen:plugin-development
@@ -37,7 +37,7 @@ case "$ARGS" in
     python3 "${CLAUDE_PLUGIN_ROOT}/skills/plugin-development/scripts/intake.py" $TYPE
     ;;
   workflow|workflow\ *)
-    python3 "${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/workflow_runner.py" show plugin-development ;;
+    python3 "${CLAUDE_PLUGIN_ROOT}/scripts/workflow/workflow_runner.py" show plugin-development ;;
   validate|validate\ *)
     python3 "${CLAUDE_PLUGIN_ROOT}/skills/plugin-development/scripts/validate.py" ${ARGS#validate} ;;
   rules|rules\ *)
