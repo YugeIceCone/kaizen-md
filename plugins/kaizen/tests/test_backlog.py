@@ -136,6 +136,16 @@ class TestRender(unittest.TestCase):
 
 
 class TestRoundTrip(unittest.TestCase):
+    def setUp(self):
+        # Save_store has a memory-ledger side-effect (BK-023). This test
+        # only cares about JSON round-trip, so disable the ledger.
+        import os
+        os.environ["KAIZEN_BACKLOG_LEDGER_DISABLE"] = "1"
+
+    def tearDown(self):
+        import os
+        os.environ.pop("KAIZEN_BACKLOG_LEDGER_DISABLE", None)
+
     def test_save_load_preserves_data(self):
         s = bl.empty_store()
         s["items"].append({
@@ -235,6 +245,95 @@ class TestRenderHeaderPath(unittest.TestCase):
     def test_header_points_at_canonical_cli(self):
         md = bl.render_md(bl.empty_store())
         self.assertIn("kaizen backlog", md)
+
+
+class TestMemoryLedger(unittest.TestCase):
+    """BK-023. save_store side-effect writes a token-efficient ledger
+    to the CC auto-memory dir so the agent can read backlog state from
+    auto-loaded context (no `kaizen-backlog list` roundtrip).
+
+    Tests redirect the memory dir to a tempdir via KAIZEN_BACKLOG_LEDGER_DIR
+    so they never touch the real ~/.claude/projects/<slug>/memory/."""
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.tmp = Path(self._tmp.name)
+        self._json = self.tmp / "backlog.json"
+        self._ledger_dir = self.tmp / "memory"
+        self._ledger_dir.mkdir()
+        import os
+        os.environ["KAIZEN_BACKLOG_LEDGER_DIR"] = str(self._ledger_dir)
+
+    def tearDown(self):
+        import os
+        os.environ.pop("KAIZEN_BACKLOG_LEDGER_DIR", None)
+        self._tmp.cleanup()
+
+    def _store_with_items(self) -> dict:
+        s = bl.empty_store()
+        s["items"].extend([
+            {"id": "BK-001", "section": "in_flight", "title": "active 1",
+             "ref": None, "probe": "p", "verify": "v",
+             "tags": ["a"], "created": "2026-05-19"},
+            {"id": "BK-002", "section": "next_up", "title": "queued 2",
+             "ref": None, "probe": "p", "verify": "v",
+             "tags": ["b", "c"], "created": "2026-05-19"},
+            {"id": "BK-003", "section": "done", "title": "completed 3",
+             "ref": None, "probe": "p", "verify": "v",
+             "tags": [], "created": "2026-05-18",
+             "committed": "abc1234"},
+            {"id": "BK-004", "section": "parked", "title": "deferred 4",
+             "ref": None, "probe": "p", "verify": "v",
+             "tags": [], "created": "2026-05-17",
+             "parked_reason": "needs research"},
+        ])
+        return s
+
+    def test_save_store_writes_ledger(self):
+        bl.save_store(self._json, self._store_with_items())
+        ledger = self._ledger_dir / "backlog_ledger.md"
+        self.assertTrue(ledger.is_file(),
+                        f"save_store did not write {ledger}")
+
+    def test_ledger_has_counts_header(self):
+        bl.save_store(self._json, self._store_with_items())
+        text = (self._ledger_dir / "backlog_ledger.md").read_text()
+        self.assertIn("in_flight=1", text)
+        self.assertIn("next_up=1", text)
+        self.assertIn("done=1", text)
+        self.assertIn("parked=1", text)
+
+    def test_ledger_lists_active_items(self):
+        bl.save_store(self._json, self._store_with_items())
+        text = (self._ledger_dir / "backlog_ledger.md").read_text()
+        # In-flight and next_up items must appear by ID + title
+        self.assertIn("BK-001", text)
+        self.assertIn("active 1", text)
+        self.assertIn("BK-002", text)
+        self.assertIn("queued 2", text)
+
+    def test_ledger_byte_stable_across_redundant_saves(self):
+        s = self._store_with_items()
+        bl.save_store(self._json, s)
+        first = (self._ledger_dir / "backlog_ledger.md").read_bytes()
+        # metadata.updated is overwritten on save — re-load to avoid
+        # spurious diff. Re-save same store after load.
+        s2 = bl.load_store(self._json)
+        bl.save_store(self._json, s2)
+        second = (self._ledger_dir / "backlog_ledger.md").read_bytes()
+        self.assertEqual(first, second,
+                         "ledger format is not byte-stable across saves")
+
+    def test_disable_knob_skips_write(self):
+        import os
+        os.environ["KAIZEN_BACKLOG_LEDGER_DISABLE"] = "1"
+        try:
+            bl.save_store(self._json, self._store_with_items())
+            ledger = self._ledger_dir / "backlog_ledger.md"
+            self.assertFalse(ledger.exists(),
+                             "disable knob should skip ledger write")
+        finally:
+            os.environ.pop("KAIZEN_BACKLOG_LEDGER_DISABLE", None)
 
 
 class TestDoneAliasForTick(unittest.TestCase):
