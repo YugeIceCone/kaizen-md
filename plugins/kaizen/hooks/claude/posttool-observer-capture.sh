@@ -18,13 +18,14 @@ fi
 _SCRIPT_REAL="$(readlink -f "${BASH_SOURCE[0]}" 2>/dev/null \
     || python3 -c 'import os, sys; print(os.path.realpath(sys.argv[1]))' "${BASH_SOURCE[0]}")"
 _HOOK_DIR="$(cd "$(dirname "$_SCRIPT_REAL")" && pwd)"
+_HANDLERS_DIR="$_HOOK_DIR/../../scripts/handlers"
 
 NOW="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
 python3 -c "
 import sys
 from pathlib import Path
-sys.path.insert(0, '$_HOOK_DIR')
+sys.path.insert(0, '$_HANDLERS_DIR')
 from _observer_capture import capture
 stdin_text = sys.stdin.read()
 capture(stdin_text, event_kind='post_tool_use', now='$NOW')

@@ -20,7 +20,7 @@ If the user's intent is ambiguous, ask which one.
 
 Every subcommand declares its input + output schemas in
 `skills/handoff/domain/handoff.yaml` (v2 manifest). The runtime
-(`skills/workflow/scripts/schema_cli.py`, the "lens") validates I/O
+(`scripts/rules/schema_cli.py`, the "lens") validates I/O
 before each call. Agents discover the contract by reading the manifest:
 
 | Subcommand        | Role | Input schema | Output schema |

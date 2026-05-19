@@ -29,6 +29,7 @@ _HANDOFF_PY = _SCRIPTS / "handoff.py"
 _DOMAIN = _KZ_DIR / "skills/handoff/domain"
 
 sys.path.insert(0, str(_SCRIPTS))
+sys.path.insert(0, str(_KZ_DIR / "scripts/rules"))
 
 
 # ─── A small fixture for handoff YAMLs ───────────────────────────────

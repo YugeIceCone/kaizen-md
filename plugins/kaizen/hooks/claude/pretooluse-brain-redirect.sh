@@ -11,5 +11,5 @@ _SCRIPT_REAL="$(readlink -f "${BASH_SOURCE[0]}" 2>/dev/null \
 _HOOK_DIR="$(cd "$(dirname "$_SCRIPT_REAL")" && pwd)"
 EVENT=$(cat 2>/dev/null || echo '{}')
 printf '%s' "$EVENT" | bash "$_HOOK_DIR/_trace.sh" PreToolUse-brain-redirect Read 2>/dev/null || true
-printf '%s' "$EVENT" | python3 "$_HOOK_DIR/_brain_redirect.py" 2>/dev/null || echo '{}'
+printf '%s' "$EVENT" | python3 "$PLUGIN_ROOT/scripts/handlers/_brain_redirect.py" 2>/dev/null || echo '{}'
 exit 0

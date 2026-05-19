@@ -42,6 +42,8 @@ from typing import Optional
 
 _SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(_SCRIPT_DIR))
+# MIGRATION BRIDGE — rules cluster moved to scripts/rules/
+sys.path.insert(0, str(_SCRIPT_DIR.parents[2] / "scripts" / "rules"))
 
 import _handoff as _core  # noqa: E402
 import _envelope  # noqa: E402

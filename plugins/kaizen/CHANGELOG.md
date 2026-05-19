@@ -2481,7 +2481,7 @@ New runtime surface (workflow_runner.py + `schema=` flag + `/kaizen:schema` comm
 
 Closes the v1.13.0 follow-up. Vibe-check's orphan-import check (Rust `use` not in any `Cargo.toml`) now consults brain-sourced `dependency-allowlist` rules and demotes listed crates from `! orphan` to `∘ allowlisted` — advisory only, no behaviour change for unlisted crates.
 
-**`skills/workflow/scripts/rules.py`** — fourth rule_type added:
+**`scripts/rules/rules.py`** — fourth rule_type added:
 
 - `VALID_RULE_TYPES` extended with `dependency-allowlist`.
 - `dependency_allowed(name) -> (bool, rule_name)` — union lookup across all loaded rules; first hit wins.
@@ -2495,7 +2495,7 @@ Closes the v1.13.0 follow-up. Vibe-check's orphan-import check (Rust `use` not i
 
 ```bash
 # 1. Get a template:
-python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/rules.py template dependency-allowlist > ~/.claude/brain/Notes/kaizen-allow-core-deps.md
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/rules/rules.py template dependency-allowlist > ~/.claude/brain/Notes/kaizen-allow-core-deps.md
 # 2. Edit the allowlist line in the YAML frontmatter:
 #    allowlist: "serde,tokio,my-internal-crate,..."
 # 3. Validate:

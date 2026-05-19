@@ -154,6 +154,7 @@ class TestScaffoldEnvelopeShape(ScaffoldBase):
     def test_envelope_validates_against_schema(self):
         import sys as _sys
         _sys.path.insert(0, str(_SCRIPTS))
+        _sys.path.insert(0, str(_KZ_DIR / "scripts/rules"))
         import schema_cli
         self._commit("a", "1")
         r = self._run("--session", "s", "--goal", "g", "--now", "n",

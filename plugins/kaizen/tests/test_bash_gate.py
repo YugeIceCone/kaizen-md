@@ -1,4 +1,4 @@
-"""Tests for hooks/claude/_bash_gate.py — the unified PreToolUse Bash gate.
+"""Tests for scripts/handlers/_bash_gate.py — the unified PreToolUse Bash gate.
 
 _bash_gate.py collapses the old multi-python3 pretooluse-bash-gate.sh into
 one process: command extraction + destructive-op match + bash-discipline
@@ -16,10 +16,11 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-HOOKS_DIR = Path(__file__).resolve().parent.parent / "hooks" / "claude"
+HOOKS_DIR = Path(__file__).resolve().parent.parent / "scripts" / "handlers"
 
 import sys
 sys.path.insert(0, str(HOOKS_DIR))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts" / "handlers"))
 import _bash_gate  # noqa: E402
 
 

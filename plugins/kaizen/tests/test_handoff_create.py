@@ -107,6 +107,7 @@ class TestCreateSchemaValidation(CreateBase):
     def test_output_validates_against_schema(self):
         import sys as _sys
         _sys.path.insert(0, str(_SCRIPTS))
+        _sys.path.insert(0, str(_KZ_DIR / "scripts/rules"))
         import schema_cli
         r = self._run(_SAMPLE)
         env = json.loads(r.stdout)

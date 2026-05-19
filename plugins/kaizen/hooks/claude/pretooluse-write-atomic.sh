@@ -24,5 +24,5 @@ printf '%s' "$EVENT" | bash "$PLUGIN_ROOT/hooks/claude/_trace.sh" PreToolUse-wri
 
 # Single python3: parse event, atomic-write, emit decision. Falls through
 # (empty decision) on any error so CC's Write runs as fallback.
-printf '%s' "$EVENT" | python3 "$PLUGIN_ROOT/hooks/claude/_write_atomic.py" 2>/dev/null || echo '{}'
+printf '%s' "$EVENT" | python3 "$PLUGIN_ROOT/scripts/handlers/_write_atomic.py" 2>/dev/null || echo '{}'
 exit 0

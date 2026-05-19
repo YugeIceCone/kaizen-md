@@ -27,6 +27,7 @@ _KZ = Path(__file__).resolve().parent.parent
 _HANDOFF = _KZ / "skills/workflow/scripts/handoff.py"
 
 sys.path.insert(0, str(_KZ / "skills/workflow/scripts"))
+sys.path.insert(0, str(_KZ / "scripts/rules"))
 import handoff as _h  # noqa: E402
 
 

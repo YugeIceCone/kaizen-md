@@ -22,6 +22,7 @@ from pathlib import Path
 
 _HOOKS = Path(__file__).resolve().parent.parent / "hooks" / "claude"
 sys.path.insert(0, str(_HOOKS))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts" / "handlers"))
 
 import _observer_capture as oc  # noqa: E402
 

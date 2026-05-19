@@ -1,6 +1,6 @@
 # kaizen auto-handoff rubric — multi-signal classifier.
 # Validated against domain/schemas/rubric.schema.json.
-# Walked via skills/workflow/scripts/schema_cli.py::BucketWalker.
+# Walked via scripts/rules/schema_cli.py::BucketWalker.
 #
 # First match wins. Signals computed in auto_handoff.py:
 #   pct                — current context % of limit

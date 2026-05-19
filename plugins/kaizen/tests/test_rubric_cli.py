@@ -16,8 +16,7 @@ import unittest
 from pathlib import Path
 
 _KZ_DIR = Path(__file__).resolve().parent.parent
-_SCRIPTS = _KZ_DIR / "skills/workflow/scripts"
-_RUBRIC_PY = _SCRIPTS / "rubric.py"
+_RUBRIC_PY = _KZ_DIR / "scripts" / "rules" / "rubric.py"
 
 
 class RubricCliBase(unittest.TestCase):

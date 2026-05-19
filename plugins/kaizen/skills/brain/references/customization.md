@@ -154,7 +154,7 @@ CLI: `kaizen-brain index <subcommand>` (subcommand ∈ `index|search|stats|get|p
 
 ## 10. Kaizen-rule notes — gate behavior
 
-The pre-commit gate consumes brain notes that carry a `kaizen:` block in their frontmatter (rule notes). Surface: `skills/workflow/scripts/rules.py`.
+The pre-commit gate consumes brain notes that carry a `kaizen:` block in their frontmatter (rule notes). Surface: `scripts/rules/rules.py`.
 
 | Want to change | Edit |
 |---|---|
@@ -202,7 +202,7 @@ $EDITOR ~/.claude/settings.json   # or shell rc
 # → env: KAIZEN_BRAIN_DISABLE=1
 
 # Add a new rule type for the gate
-$EDITOR plugins/kaizen/skills/workflow/scripts/rules.py
+$EDITOR plugins/kaizen/scripts/rules/rules.py
 # → VALID_RULE_TYPES + the dispatcher
 
 # Customize Persona Top Beliefs promotion criteria

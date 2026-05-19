@@ -27,6 +27,7 @@ _DOMAIN = _KZ_DIR / "skills/handoff/domain"
 _RUBRIC = _DOMAIN / "outcome-rubric.yaml"
 
 sys.path.insert(0, str(_SCRIPTS))
+sys.path.insert(0, str(_KZ_DIR / "scripts/rules"))
 
 
 def _yaml_with(

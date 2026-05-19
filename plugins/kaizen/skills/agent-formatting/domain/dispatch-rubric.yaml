@@ -1,6 +1,6 @@
 # kaizen agent-dispatch rubric — picks the right subagent for a task.
 # Validated against domain/schemas/dispatch-rubric.schema.json.
-# Walked via skills/workflow/scripts/schema_cli.py::BucketWalker.
+# Walked via scripts/rules/schema_cli.py::BucketWalker.
 #
 # Signals are binary (0 = phrase absent, 1 = present). Computed
 # externally by whoever's dispatching — typically by regex over the

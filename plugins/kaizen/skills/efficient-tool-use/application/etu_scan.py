@@ -183,7 +183,7 @@ def scan_text(text: str, source: str = "<command>") -> list[Finding]:
     """Apply the catalog's `detect` regexes to a plain text string.
 
     Used by callers that have the text in hand (no file to read) — most
-    notably the PreToolUse Bash gate (`hooks/claude/_bash_gate.py`),
+    notably the PreToolUse Bash gate (`scripts/handlers/_bash_gate.py`),
     which scans the about-to-run command string for anti-patterns
     before letting Claude execute it.
 
