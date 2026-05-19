@@ -107,6 +107,9 @@ _SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(_SCRIPT_DIR))
 # MIGRATION BRIDGE — until indexers move back / consumers move forward
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts" / "indexers"))
+# Reach scripts/workflow for `flow` (post-DOMAIN-12) + scripts/io for _envelope.
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "workflow"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "io"))
 
 # flow.py provides the AsyncNode/AsyncFlow primitives (see
 # references/node-flow.md). Local import to keep search_flow runnable

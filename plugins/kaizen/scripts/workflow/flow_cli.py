@@ -40,11 +40,14 @@ _SCRIPT_DIR = Path(__file__).resolve().parent
 # verb → (interpreter_argv_prefix, script path). The prefix is a
 # tuple so `uv run --script <path>` can be expressed as multiple argv
 # elements (the dispatcher concats: prefix + [str(script)] + rest).
+# *_flow.py siblings live under scripts/index/ (post-DOMAIN-10).
+_INDEX_DIR = _SCRIPT_DIR.parent / "index"
+
 _DISPATCH: dict[str, tuple[tuple[str, ...], Path]] = {
     "demo":   (("python3",),                _SCRIPT_DIR / "flow.py"),
-    "docs":   (("python3",),                _SCRIPT_DIR / "docs_flow.py"),
-    "index":  (("uv", "run", "--script"),   _SCRIPT_DIR / "index_flow.py"),
-    "search": (("uv", "run", "--script"),   _SCRIPT_DIR / "search_flow.py"),
+    "docs":   (("python3",),                _INDEX_DIR / "docs_flow.py"),
+    "index":  (("uv", "run", "--script"),   _INDEX_DIR / "index_flow.py"),
+    "search": (("uv", "run", "--script"),   _INDEX_DIR / "search_flow.py"),
 }
 
 
