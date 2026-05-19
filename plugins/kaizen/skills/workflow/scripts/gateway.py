@@ -84,6 +84,8 @@ SUBSERVERS: list[tuple[str, str]] = [
     ("config", "config_mcp"),
     # Phase 10 — WebFetch recall + policy + dedup
     ("webfetch", "webfetch_mcp"),
+    # Phase 11 — symbol search with exact line ranges (Phase 3/9 of arc)
+    ("symbol_search", "symbol_search_mcp"),
 ]
 
 gw = FastMCP("kaizen")
