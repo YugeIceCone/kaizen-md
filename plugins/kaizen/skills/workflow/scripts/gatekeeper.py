@@ -521,6 +521,66 @@ def _gate_menu_lint(scope: str, repo_root: Path) -> list[GateFinding]:
     return out
 
 
+# Phase 4.C — known kaizen index registry.
+# Each entry: (indexer_name, corpus_path_resolver, glob).
+# The resolver returns the directory whose contents drive index drift;
+# returns None when the index doesn't exist on this machine.
+def _brain_corpus_dir() -> Path | None:
+    env = os.environ.get("KAIZEN_BRAIN_DIR")
+    base = Path(env) if env else Path.home() / ".claude" / ".kaizen" / "brain"
+    notes = base / "Notes"
+    return notes if notes.is_dir() else None
+
+
+_INDEXER_REGISTRY: list[tuple[str, "callable", str]] = [
+    ("brain", _brain_corpus_dir, "*.md"),
+    # Extension point: add (name, dir_fn, glob) for other indexers as
+    # they migrate to _index_kit.compute_corpus_drift.
+]
+
+
+def _check_indexer_stale() -> list[GateFinding]:
+    """Compare each registered index's current corpus hash against the
+    last-recorded hash in indexer-state.json. Warn on mismatch.
+    """
+    state_dir_env = os.environ.get("KAIZEN_INDEXER_STATE_DIR")
+    state_dir = (Path(state_dir_env).expanduser() if state_dir_env
+                  else Path.home() / ".claude" / ".kaizen")
+    state_file = state_dir / "indexer-state.json"
+    try:
+        sys.path.insert(0, str(_PLUGIN_ROOT / "skills" / "workflow" / "scripts"))
+        import _index_kit as _ik  # type: ignore
+    except ImportError:
+        return []
+    try:
+        state = (json.loads(state_file.read_text(encoding="utf-8"))
+                  if state_file.is_file() else {})
+    except (OSError, json.JSONDecodeError):
+        state = {}
+    out: list[GateFinding] = []
+    for name, dir_fn, glob in _INDEXER_REGISTRY:
+        try:
+            corpus_dir = dir_fn()
+        except Exception:  # noqa: BLE001 — indexer probe shouldn't blow gate
+            continue
+        if corpus_dir is None:
+            continue
+        current = _ik.compute_corpus_drift(corpus_dir, glob)
+        if not current:
+            continue
+        prior = state.get(name, "")
+        if prior and prior != current:
+            out.append(GateFinding(
+                gate="brain-drift", severity="warn",
+                rule_id="indexer-stale",
+                message=(f"{name!r} index hash drift: state={prior} "
+                         f"current={current}. Run "
+                         f"`kaizen-{name} index` (or wait for the matching "
+                         f"daemon job) to refresh."),
+            ))
+    return out
+
+
 def _top_level_imports(claude_md_text: str, base_dir: Path) -> list[Path]:
     """Return resolved Paths of top-level `@import` directives in
     a CLAUDE.md body. Same resolution rules as _expand_imports but
@@ -696,6 +756,10 @@ def _gate_brain_drift(scope: str, repo_root: Path) -> list[GateFinding]:
     # (4a) Expected @import didn't fire — uses Phase A's
     # InstructionsLoaded jsonl to detect silent install failures.
     out.extend(_check_expected_imports_fired())
+
+    # (4b) Indexer-stale — for each known kaizen index, compare current
+    # corpus hash against last-known-hash in indexer-state.json.
+    out.extend(_check_indexer_stale())
 
     # (4) Pin references a Note that doesn't exist
     if pins_path.is_file() and brain_dir.is_dir():

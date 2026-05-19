@@ -415,6 +415,85 @@ class TestExpectedImportNotFired(unittest.TestCase):
         self.assertNotIn("expected-import-not-fired", kinds)
 
 
+class TestIndexerStaleRule(unittest.TestCase):
+    """Phase 4.C: brain-drift gets an indexer-stale rule_id that warns
+    when ANY known kaizen index's source-corpus hash differs from the
+    last-recorded index hash. Catches the "index out of date" condition
+    BEFORE the next semantic search returns stale results.
+
+    Composes _index_kit.compute_corpus_drift. Per-indexer state lives in
+    a tiny JSON sidecar at <KAIZEN_INDEXER_STATE_DIR>/indexer-state.json
+    so the gate can compare current-hash against last-known-hash without
+    parsing each index's internal state.
+    """
+
+    def setUp(self):
+        self.gk = _load("gatekeeper_test_idx_stale", _GATEKEEPER)
+        self._tmp = tempfile.TemporaryDirectory()
+        self.root = Path(self._tmp.name)
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    def _env(self, **overrides):
+        e = {
+            "KAIZEN_INDEXER_STATE_DIR": str(self.root),
+            "KAIZEN_BRAIN_DIR":         str(self.root / "brain-absent"),
+            "KAIZEN_BETTER_MEMORY_DIR": str(self.root / "mem-absent"),
+            "KAIZEN_AUTO_LOAD_PATH":    str(self.root / "auto-load-absent.md"),
+            "KAIZEN_GATES_DIR":         str(self.root / "gates-absent"),
+            "KAIZEN_AUTO_LOAD_PINS_PATH": str(self.root / "pins-absent.json"),
+            "KAIZEN_CLAUDE_MD_PATH":    str(self.root / "claude-absent.md"),
+            "KAIZEN_INSTRUCTIONS_LOADED_LOG": str(self.root / "il-absent.jsonl"),
+        }
+        e.update(overrides)
+        return e
+
+    def test_no_corpus_no_findings(self):
+        from unittest.mock import patch
+        with patch.dict(os.environ, self._env()):
+            findings = self.gk._gate_brain_drift("staged", _REPO_ROOT)
+        kinds = [f.rule_id for f in findings]
+        self.assertNotIn("indexer-stale", kinds)
+
+    def test_stale_brain_index_emits_warn(self):
+        """Brain Notes/ exists + has files; state.json shows an OLD hash."""
+        import json as _json
+        brain = self.root / "brain"
+        (brain / "Notes").mkdir(parents=True)
+        (brain / "Notes" / "pref-x.md").write_text("body")
+        # Seed state.json with a stale hash for the brain indexer
+        state_file = self.root / "indexer-state.json"
+        state_file.write_text(_json.dumps({"brain": "OLD-HASH-VALUE"}))
+        from unittest.mock import patch
+        env = self._env(KAIZEN_BRAIN_DIR=str(brain))
+        with patch.dict(os.environ, env):
+            findings = self.gk._gate_brain_drift("staged", _REPO_ROOT)
+        kinds = [f.rule_id for f in findings]
+        self.assertIn("indexer-stale", kinds)
+        msgs = " ".join(f.message for f in findings)
+        self.assertIn("brain", msgs)
+
+    def test_fresh_index_no_findings(self):
+        """state.json hash matches the current corpus hash → no drift."""
+        import json as _json
+        brain = self.root / "brain"
+        (brain / "Notes").mkdir(parents=True)
+        (brain / "Notes" / "pref-x.md").write_text("body")
+        # Compute the actual current hash + seed state with the same value
+        sys.path.insert(0, str(_REPO_ROOT / "plugins/kaizen/skills/workflow/scripts"))
+        import _index_kit as ik
+        current = ik.compute_corpus_drift(brain / "Notes", "*.md")
+        state_file = self.root / "indexer-state.json"
+        state_file.write_text(_json.dumps({"brain": current}))
+        from unittest.mock import patch
+        env = self._env(KAIZEN_BRAIN_DIR=str(brain))
+        with patch.dict(os.environ, env):
+            findings = self.gk._gate_brain_drift("staged", _REPO_ROOT)
+        kinds = [f.rule_id for f in findings]
+        self.assertNotIn("indexer-stale", kinds)
+
+
 class TestGatekeeperCollisionResistance(unittest.TestCase):
     """Regression — both iron-laws and efficient-tool-use ship a
     `_loader.py`; the gatekeeper must load each without collision."""
