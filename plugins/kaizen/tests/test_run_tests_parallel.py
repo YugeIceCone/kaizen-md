@@ -19,7 +19,7 @@ import unittest
 from pathlib import Path
 
 _KZ_DIR = Path(__file__).resolve().parent.parent
-_SCRIPT = _KZ_DIR / "skills/workflow/scripts/run_tests_parallel.py"
+_SCRIPT = _KZ_DIR / "scripts/tests/run_tests_parallel.py"
 
 
 def _load():
