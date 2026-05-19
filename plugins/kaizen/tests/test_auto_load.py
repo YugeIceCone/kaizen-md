@@ -124,8 +124,13 @@ class TestBuildAutoLoad(unittest.TestCase):
     def test_output_is_valid_markdown_with_heading(self):
         import auto_load as al
         out = al.build_auto_load(_SAMPLE_PERSONA, top_n=10, byte_budget=5000)
-        self.assertTrue(out.startswith("# "),
-                         "must start with a markdown heading")
+        # First line is the zero-token daemon fingerprint (HTML comment);
+        # the markdown heading follows.
+        self.assertIn("# ", out)
+        # Heading must appear before any rule content
+        heading_idx = out.index("# kaizen auto-load")
+        self.assertGreater(heading_idx, 0,
+            "fingerprint must precede the heading")
 
 
 class TestDaemonJob(unittest.TestCase):
@@ -367,6 +372,61 @@ class TestPerClusterGates(unittest.TestCase):
             remaining = sorted(p.name for p in gates_dir.glob("*.md"))
         self.assertNotIn("pref-obsolete.md", remaining)
         self.assertIn("pref-no-deletions.md", remaining)
+
+
+class TestHtmlFingerprint(unittest.TestCase):
+    """Improvement C: daemon stamps a `<!-- daemon: ISO-time sha256:xx -->`
+    fingerprint line into auto-load.md + each gate file.
+
+    HTML comments are stripped before context injection (per the
+    Claude Code memory doc), so this is zero-token. The fingerprint
+    lets the brain-drift gate detect:
+    - hand-edits (sha mismatch with body content)
+    - staleness (ISO timestamp older than threshold)
+    - missing fingerprint (file wasn't daemon-written)
+    """
+
+    def test_build_auto_load_includes_fingerprint_comment(self):
+        import auto_load as al
+        out = al.build_auto_load(_SAMPLE_PERSONA, top_n=5, byte_budget=5000)
+        # Fingerprint is a HTML comment so token cost is zero
+        import re
+        m = re.search(
+            r"<!--\s*daemon:\s*\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z\s+"
+            r"sha256:[a-f0-9]{8,}\s*-->",
+            out,
+        )
+        self.assertIsNotNone(m,
+            "build_auto_load must embed a `<!-- daemon: <ts> sha256:<hex> -->` line")
+
+    def test_fingerprint_sha_changes_when_body_changes(self):
+        import auto_load as al
+        import re
+        out_a = al.build_auto_load(_SAMPLE_PERSONA, top_n=3, byte_budget=5000)
+        # Same Persona + same args + same time-bucket → could match.
+        # Force body divergence via different top_n.
+        out_b = al.build_auto_load(_SAMPLE_PERSONA, top_n=2, byte_budget=5000)
+        sha_pat = re.compile(r"sha256:([a-f0-9]+)")
+        sha_a = sha_pat.search(out_a).group(1)
+        sha_b = sha_pat.search(out_b).group(1)
+        self.assertNotEqual(sha_a, sha_b,
+            "different body content must produce different sha256")
+
+    def test_write_cluster_gates_emits_fingerprint_per_file(self):
+        import auto_load as al
+        import tempfile
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory() as td:
+            gates_dir = Path(td) / "gates"
+            with patch.dict(os.environ,
+                            {"KAIZEN_GATES_DIR": str(gates_dir)}):
+                al.write_cluster_gates(_SAMPLE_PERSONA)
+            for gf in gates_dir.glob("*.md"):
+                text = gf.read_text()
+                self.assertIn("daemon:", text,
+                    f"{gf.name} missing daemon fingerprint")
+                self.assertIn("sha256:", text,
+                    f"{gf.name} missing sha256 fingerprint")
 
 
 if __name__ == "__main__":
