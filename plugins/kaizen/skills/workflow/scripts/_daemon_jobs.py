@@ -98,9 +98,9 @@ def _brain_notes_hash() -> str:
 
 
 def _regen_brain_index_subprocess() -> None:
-    """Shell out to ``brain_index.py index``; raise on non-zero rc so the
+    """Shell out to ``build_index.py index``; raise on non-zero rc so the
     drift-job factory leaves the state hash un-stamped on failure."""
-    script = _SCRIPT_DIR / "brain_index.py"
+    script = _SCRIPT_DIR / "build_index.py"
     result = subprocess.run(
         [_python(), str(script), "index", "--json"],
         capture_output=True, text=True, timeout=300,

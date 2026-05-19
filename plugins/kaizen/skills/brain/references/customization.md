@@ -139,11 +139,11 @@ Bypass any brain hook: `KAIZEN_BRAIN_DISABLE=1`.
 
 ## 9. Search + index
 
-`skills/workflow/scripts/brain_index.py` is the SQLite + sentence-transformers index over Notes / Projects / People / Areas.
+`skills/workflow/scripts/build_index.py` is the SQLite + sentence-transformers index over Notes / Projects / People / Areas.
 
 | Want to change | Edit |
 |---|---|
-| Which subdirs get indexed | `brain_index.py` — search for the iter walker |
+| Which subdirs get indexed | `build_index.py` — search for the iter walker |
 | Index DB path | `_paths.py::BRAIN_DB` |
 | Embedding model | `config.py::EMBED_MODEL` (default `all-MiniLM-L6-v2`) |
 | Fallback to LIKE search (skip embeddings) | `KAIZEN_BRAIN_INDEX_SKIP_EMBED=1` env |

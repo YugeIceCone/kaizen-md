@@ -1056,7 +1056,7 @@ def main(argv: Optional[list[str]] = None) -> int:
          "session-end discovery — drafts → Inbox/"),
         ("evolve",  "brain_evolve",
          "consolidation + freshness + Persona promotion"),
-        ("index",   "brain_index",
+        ("index",   "build_index",
          "SQLite + sentence-transformers index over Notes"),
         ("promote", "brain_promote",
          "project-memory → brain promotion flow"),

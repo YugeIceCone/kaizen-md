@@ -104,7 +104,7 @@ stages:
       - "plugins/kaizen/skills/workflow/scripts/"
     focus: |
       Check for: parallel implementations across modules
-      (e.g. brain_index.py vs onboard_index.py — should share),
+      (e.g. build_index.py vs onboard_index.py — should share),
       copy-pasted blocks across the brain_*.py files,
       duplicated yaml schemas.
 

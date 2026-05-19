@@ -178,7 +178,7 @@ When touching plugin-original code, the plugin-development skill is mandatory-lo
 
 ### `bin-wrapper-per-cli-strict` (hard · auto)
 
-Every Python script with an argparse main() under skills/workflow/scripts/ MUST have a matching bin/kaizen-* wrapper landed in the SAME commit. Specialized op scripts (e.g. brain_index.py / brain_promote.py / metrics.py) need their own wrappers — one bin per CLI script.
+Every Python script with an argparse main() under skills/workflow/scripts/ MUST have a matching bin/kaizen-* wrapper landed in the SAME commit. Specialized op scripts (e.g. build_index.py / brain_promote.py / metrics.py) need their own wrappers — one bin per CLI script.
 
 **Check:** `bin_wrapper_per_cli_strict` (in `_iron_laws.py`)
 

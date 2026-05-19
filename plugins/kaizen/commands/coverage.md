@@ -23,7 +23,7 @@ matching test file.
 A source `<name>.py` is covered when ANY of these test files exists:
 
 - `tests/test_<name>.py` (exact)
-- `tests/test_<name>_*.py` (variants, e.g. `test_brain_index.py` covers `brain_index.py`)
+- `tests/test_<name>_*.py` (variants, e.g. `test_build_index.py` covers `build_index.py`)
 - `tests/test_<head>*.py` where `head = <name>.split('_')[0]`
   (parent-feature tests exercise op scripts indirectly)
 

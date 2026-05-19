@@ -20,9 +20,9 @@ EXCEPT:
 A source `<name>.py` is covered when ANY of these test files exists:
 
 - `tests/test_<name>.py` (exact)
-- `tests/test_<name>_*.py` (variants — e.g. test_brain_index.py covers brain_index.py)
+- `tests/test_<name>_*.py` (variants — e.g. test_build_index_search.py covers build_index.py)
 - `tests/test_<head>*.py` where head = <name>.split('_')[0]
-  (so brain_index.py is covered by test_brain.py — parent feature tests
+  (so brain_audit.py is covered by test_brain.py — parent feature tests
   exercise the op script indirectly via integration)
 
 ## CLI
@@ -93,7 +93,7 @@ def _is_covered(script_stem: str, test_stems: set[str]) -> bool:
             return True
         if script_stem.startswith(t + "_"):
             return True
-        # 3) Parent-feature: brain_index covered by test_brain*
+        # 3) Parent-feature: brain_audit covered by test_brain*
         if t == head or t.startswith(head + "_"):
             return True
     return False

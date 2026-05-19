@@ -159,7 +159,7 @@ def _has_argparse_main(text: str) -> bool:
 
 
 def _wrapper_name(stem: str) -> str:
-    """demo.py -> kaizen-demo ; brain_index.py -> kaizen-brain-index.
+    """demo.py -> kaizen-demo ; build_index.py -> kaizen-build-index.
 
     Idempotency: a stem already starting with ``kaizen_`` (e.g.
     ``kaizen_write.py``) maps to ``kaizen-write``, NOT

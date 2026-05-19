@@ -107,9 +107,9 @@ class TestRunBrainIndex(unittest.TestCase):
 
         self.assertTrue(ok)
         self.assertEqual(state["brain_notes_hash"], "NEW")
-        # Confirm we shelled out to brain_index.py index
+        # Confirm we shelled out to build_index.py index
         called = list(run.call_args[0][0])
-        self.assertIn("brain_index.py", " ".join(called))
+        self.assertIn("build_index.py", " ".join(called))
         self.assertIn("index", called)
 
     def test_failed_reindex_keeps_old_hash(self):

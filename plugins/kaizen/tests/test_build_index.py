@@ -1,4 +1,4 @@
-"""Tests for brain_index.py — SQLite + sentence-transformers index
+"""Tests for build_index.py — SQLite + sentence-transformers index
 over the Second Brain.
 
 Most tests run with KAIZEN_BRAIN_INDEX_SKIP_EMBED=1 to avoid loading
@@ -18,7 +18,7 @@ from pathlib import Path
 _KZ_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_KZ_DIR / "skills/workflow/scripts"))
 
-import brain_index as bi  # noqa: E402
+import build_index as bi  # noqa: E402
 
 
 def _seed_brain(root: Path):
@@ -199,7 +199,7 @@ class TestPath(unittest.TestCase):
 class TestCli(BrainIndexBase):
     def test_index_then_stats_cli(self):
         import subprocess
-        script = _KZ_DIR / "skills/workflow/scripts/brain_index.py"
+        script = _KZ_DIR / "skills/workflow/scripts/build_index.py"
         env = os.environ.copy()
         r1 = subprocess.run(
             ["python3", str(script), "index"],

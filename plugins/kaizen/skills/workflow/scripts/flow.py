@@ -45,7 +45,7 @@ the default is ``"default"``.
 This module was upgraded from a minimal 40-LOC dispatcher to a
 performance-oriented runtime while preserving 100 % backward
 compatibility with the 9 existing pipelines (brain / index_flow /
-docs_flow / search_flow / brain_index / brain_promote / brain_audit /
+docs_flow / search_flow / build_index / brain_promote / brain_audit /
 brain_evolve / scrape_index's local copy).
 
 Wins captured here (each measured against the prior implementation):

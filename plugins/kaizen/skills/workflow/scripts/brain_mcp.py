@@ -8,7 +8,7 @@
 # ///
 """kaizen-brain-mcp — MCP server exposing the Second Brain.
 
-FastMCP + async wrappers around brain.py / brain_index.py /
+FastMCP + async wrappers around brain.py / build_index.py /
 brain_promote.py / brain_audit.py / brain_evolve.py. Every capture
 / search / promotion / audit / evolution capability the CLI exposes
 is reachable as an MCP tool.
@@ -70,7 +70,7 @@ try:
     from fastmcp import FastMCP
     import _brain  # type: ignore
     import brain as _brain_cli  # type: ignore
-    import brain_index as bi  # type: ignore
+    import build_index as bi  # type: ignore
     import brain_promote as bp  # type: ignore
     import brain_audit as ba  # type: ignore
     import brain_evolve as be  # type: ignore

@@ -120,7 +120,7 @@ laws:
     why: "User stated: 'the dev skill can't be skipped' — codified 2026-05-14. Manual: needs session state (which skills were loaded) — not visible to a file/diff checker."
 
   - id: bin-wrapper-per-cli-strict
-    statement: "Every Python script with an argparse main() under skills/workflow/scripts/ MUST have a matching bin/kaizen-* wrapper landed in the SAME commit. Specialized op scripts (e.g. brain_index.py / brain_promote.py / metrics.py) need their own wrappers — one bin per CLI script."
+    statement: "Every Python script with an argparse main() under skills/workflow/scripts/ MUST have a matching bin/kaizen-* wrapper landed in the SAME commit. Specialized op scripts (e.g. build_index.py / brain_promote.py / metrics.py) need their own wrappers — one bin per CLI script."
     severity: hard
     enforcement: auto
     check: bin_wrapper_per_cli_strict

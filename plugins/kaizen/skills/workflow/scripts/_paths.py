@@ -75,7 +75,7 @@ The following env vars exist primarily so tests can sandbox path
 resolution to a tempdir without monkeypatching constants:
 
     KAIZEN_BRAIN_DB         test-only: pin brain.db location independent
-                            of KAIZEN_BRAIN_DIR (used by test_brain_index,
+                            of KAIZEN_BRAIN_DIR (used by test_build_index,
                             test_brain_mcp)
     KAIZEN_HANDOFF_DB       same shape (used by test_handoff)
 

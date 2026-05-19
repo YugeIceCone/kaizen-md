@@ -169,7 +169,7 @@ Each module has its own test file:
 - `tests/test_brain_core.py` — paths, config, type detection, fm
   parse/serialize (~30 tests)
 - `tests/test_brain_capture.py` — full flow + routing + CLI (~18)
-- `tests/test_brain_index.py` — index build, search, stats (~13)
+- `tests/test_build_index.py` — index build, search, stats (~13)
 - `tests/test_brain_promote.py` — promotion criteria + apply (~10)
 - `tests/test_brain_audit.py` — extraction patterns + sources (~8)
 - `tests/test_brain_evolve.py` — duplicates / freshness / persona (~8)

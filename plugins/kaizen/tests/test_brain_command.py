@@ -34,9 +34,9 @@ class TestFrontmatter(unittest.TestCase):
 
     def test_allowed_tools_includes_brain_backing_scripts(self):
         """allowed-tools must permit each backing script the dispatcher
-        execs (brain.py / brain_index.py / brain_promote.py /
+        execs (brain.py / build_index.py / brain_promote.py /
         brain_audit.py / brain_evolve.py)."""
-        for script in ("brain.py", "brain_index.py", "brain_promote.py",
+        for script in ("brain.py", "build_index.py", "brain_promote.py",
                         "brain_audit.py", "brain_evolve.py"):
             self.assertIn(script, self.fm,
                            f"allowed-tools missing backing script: {script}")
@@ -122,9 +122,9 @@ class TestArgsModeBackcompat(unittest.TestCase):
         # across multiple lines).
         self.assertRegex(self.text, r"(?s)capture\|.*brain\.py")
 
-    def test_dispatcher_routes_search_to_brain_index_py(self):
+    def test_dispatcher_routes_search_to_build_index_py(self):
         self.assertIn("search", self.text)
-        self.assertIn("brain_index.py", self.text)
+        self.assertIn("build_index.py", self.text)
 
     def test_dispatcher_routes_promote_to_brain_promote_py(self):
         self.assertIn("brain_promote.py", self.text)

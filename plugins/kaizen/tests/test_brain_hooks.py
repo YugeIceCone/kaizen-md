@@ -119,7 +119,7 @@ class TestPluginManifest(unittest.TestCase):
             manifest = json.load(f)
         perms = manifest.get("permissions", {}).get("allow", [])
         for script in (
-            "brain.py", "brain_index.py", "brain_promote.py",
+            "brain.py", "build_index.py", "brain_promote.py",
             "brain_audit.py", "brain_evolve.py", "brain_mcp.py",
         ):
             # Accept either a specific entry or a wildcard (*.py) that covers all scripts

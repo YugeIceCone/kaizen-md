@@ -54,10 +54,10 @@ A source `<name>.py` (under `skills/workflow/scripts/`) is covered
 when ANY of these test files exists in `tests/`:
 
 1. `test_<name>.py` (exact match)
-2. `test_<name>_*.py` (variants — e.g. `test_brain_index_lazy.py` covers `brain_index.py`)
+2. `test_<name>_*.py` (variants — e.g. `test_build_index_lazy.py` covers `build_index.py`)
 3. `test_<head>*.py` where `head = <name>.split("_")[0]`
    (parent-feature tests exercise op scripts indirectly; e.g.
-   `test_brain.py` counts as coverage for `brain_index.py` too)
+   `test_brain.py` counts as coverage for `brain_audit.py` too)
 
 ## What's excluded from the denominator
 

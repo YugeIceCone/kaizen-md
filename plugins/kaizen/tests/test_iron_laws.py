@@ -224,7 +224,7 @@ class TestChecker(unittest.TestCase):
         Stems that already start with `kaizen_` shouldn't double-prefix."""
         import _iron_laws
         self.assertEqual(_iron_laws._wrapper_name("demo"), "kaizen-demo")
-        self.assertEqual(_iron_laws._wrapper_name("brain_index"), "kaizen-brain-index")
+        self.assertEqual(_iron_laws._wrapper_name("build_index"), "kaizen-build-index")
         self.assertEqual(_iron_laws._wrapper_name("kaizen_write"), "kaizen-write")
         self.assertEqual(_iron_laws._wrapper_name("kaizen"), "kaizen")
 

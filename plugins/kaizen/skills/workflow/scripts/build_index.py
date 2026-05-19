@@ -48,15 +48,15 @@ those, not just generic title + body.
 
 ::
 
-   kaizen-brain-index index           # build / rebuild
-   kaizen-brain-index search "<q>"    # semantic + frontmatter filter
+   kaizen-build-index index           # build / rebuild
+   kaizen-build-index search "<q>"    # semantic + frontmatter filter
      [--type belief|world-fact|observation|experience]
      [--min-confidence 0.7]
      [--subdir Notes|People|...]
-   kaizen-brain-index stats           # counts per type / freshness
-   kaizen-brain-index path            # print db path
-   kaizen-brain-index get <id>        # full note + frontmatter
-   kaizen-brain-index clear --yes     # drop the db
+   kaizen-build-index stats           # counts per type / freshness
+   kaizen-build-index path            # print db path
+   kaizen-build-index get <id>        # full note + frontmatter
+   kaizen-build-index clear --yes     # drop the db
 
 The index db lives at ``$KAIZEN_BRAIN_DB`` (env) or
 ``<KAIZEN_USER_DIR>/brain.db`` (default ``~/.claude/.kaizen/brain.db``).
@@ -135,7 +135,7 @@ CREATE TABLE IF NOT EXISTS brain_meta (
 def open_db(create: bool = True) -> sqlite3.Connection:
     """Open the brain index db via the shared `_sqlite.open_indexer_db`
     helper — same path onboard_index / trace_index / knowledge_index
-    take. (DRY: brain_index used to reimplement open/schema; the
+    take. (DRY: this module used to reimplement open/schema; the
     self-audit DRY checkpoint flagged the duplication.)"""
     conn = _kz_sqlite.open_indexer_db(db_path(), _SCHEMA_SQL, create=create)
     if create:
@@ -238,7 +238,7 @@ def _maybe_embed(text: str):
 
     Catches BaseException because `_embed.embed_one` calls `sys.exit(1)`
     on missing-numpy (raises SystemExit, which is NOT caught by
-    `except Exception`). Without this, brain_index crashes and writes
+    `except Exception`). Without this, build_index crashes and writes
     0 rows — the bug that left brain.db at 0 bytes pre-fix."""
     try:
         import _embed
@@ -608,7 +608,7 @@ def _cmd_clear(args) -> int:
 
 def main(argv: Optional[list[str]] = None) -> int:
     p = argparse.ArgumentParser(
-        prog="kaizen-brain-index",
+        prog="kaizen-build-index",
         description="Index + search the kaizen Second Brain.",
     )
     sub = p.add_subparsers(dest="cmd", required=True)

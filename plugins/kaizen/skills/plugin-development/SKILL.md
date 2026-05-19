@@ -206,7 +206,7 @@ routing.
 ### Indexer (`<feature>_index.py`)
 
 When the feature needs SQLite + semantic search, mirror
-`brain_index.py` / `trace_index.py` / `onboard_index.py`:
+`build_index.py` / `trace_index.py` / `onboard_index.py`:
 
 - Schema in `_SCHEMA_SQL` constant (idempotent `CREATE IF NOT EXISTS`)
 - Migrations as separate functions (`_migrate_<v>_<col>`)
@@ -815,7 +815,7 @@ a multi-verb consolidated parent in the same commit.
 | Script stem | Wrapper name | Why |
 |---|---|---|
 | `demo.py` | `kaizen-demo` | normal — `kaizen-` prefix added, `_`→`-` |
-| `brain_index.py` | `kaizen-brain-index` | underscores normalize |
+| `build_index.py` | `kaizen-build-index` | underscores normalize |
 | `kaizen_write.py` | `kaizen-write` | stem already starts with `kaizen_` → idempotent (no `kaizen-kaizen-write`) |
 | `kaizen.py` | `kaizen` | stem IS the prefix |
 
@@ -879,7 +879,7 @@ This rule applies to README.md and any rulebook-shaped file too.
 
 ### Don't ship a CLI script without a bin wrapper
 
-Specialized op scripts (e.g. `brain_index.py` / `brain_promote.py` /
+Specialized op scripts (e.g. `build_index.py` / `brain_promote.py` /
 `brain_audit.py` / `brain_evolve.py` / `metrics.py`) each need their
 OWN `bin/kaizen-<feature>[-<op>]` wrapper. `/kaizen:setup` symlinks
 `bin/` entries into `~/.local/bin/`; a missing wrapper means

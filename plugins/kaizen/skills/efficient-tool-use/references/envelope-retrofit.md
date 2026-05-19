@@ -83,7 +83,7 @@ Add `--json` to argparse, then envelope-wrap. Phase E work.
 |---|---|
 | `backlog.py` | Text-only CLI; many subcommands |
 | `brain.py` | Schema-driven brain CLI; large surface |
-| `brain_index.py` | Brain semantic index |
+| `build_index.py` | Brain semantic index |
 | `cache.py` | Cache CRUD; small surface |
 | `context.py` | Context-window state reporter |
 | `daemon.py` | Daemon control (status would benefit) |
