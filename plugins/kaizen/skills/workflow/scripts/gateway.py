@@ -91,6 +91,11 @@ SUBSERVERS: list[tuple[str, str]] = [
     ("webfetch", "webfetch_mcp"),
     # Phase 11 — symbol search with exact line ranges (Phase 3/9 of arc)
     ("symbol_search", "symbol_search_mcp"),
+    # Phase 12 — agent self-orientation surface (2026-05-19)
+    ("coverage", "coverage_mcp"),
+    ("rules", "rules_mcp"),
+    ("schema", "schema_mcp"),
+    ("surface", "surface_mcp"),
 ]
 
 gw = FastMCP("kaizen")
