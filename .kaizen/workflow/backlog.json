@@ -892,6 +892,82 @@
       "committed_at": null,
       "parked_reason": null,
       "probe_output": null
+    },
+    {
+      "id": "BK-047",
+      "section": "next_up",
+      "title": "Strip vN.N.N + dated narration from user-facing commands + top SKILL.md (Tier A)",
+      "ref": "consolidate-3-cruft-survey-2026-05-20",
+      "probe": "grep -rEn '\\bv[0-9]+\\.[0-9]+(\\.[0-9]+)?\\+?' plugins/kaizen/commands plugins/kaizen/skills/*/SKILL.md | grep -v -E '/references/|description:|CHANGELOG' returns 0 matches",
+      "verify": "kaizen-tests 318/0; kaizen-gatekeeper check --all green; diff confirms only parentheticals + dates removed, no semantic content lost",
+      "tags": [
+        "tech-debt",
+        "docs",
+        "cruft"
+      ],
+      "created": "2026-05-19",
+      "started_at": null,
+      "committed": null,
+      "committed_at": null,
+      "parked_reason": null,
+      "probe_output": null
+    },
+    {
+      "id": "BK-048",
+      "section": "next_up",
+      "title": "Rewrite _paths.py + _paths.sh + onboard_index.py opening docstrings (Tier B)",
+      "ref": "consolidate-3-cruft-survey-2026-05-20",
+      "probe": "scripts/io/_paths.py opening docstring describes CURRENT layout only (zero pre-v1.22 narration); _paths.sh + onboard_index.py same; sprint tags (O1-O8, E1-E10, M1) collapsed into single concise comment per import block",
+      "verify": "kaizen-tests 318/0; grep for 'v1.2[0-9]|v1.3[0-9]' in those files returns 0 outside schema_version fields",
+      "tags": [
+        "tech-debt",
+        "refactor",
+        "cruft"
+      ],
+      "created": "2026-05-19",
+      "started_at": null,
+      "committed": null,
+      "committed_at": null,
+      "parked_reason": null,
+      "probe_output": null
+    },
+    {
+      "id": "BK-049",
+      "section": "next_up",
+      "title": "Add comment-cruft sub-gate to kaizen-gatekeeper (6 detect rules)",
+      "ref": "consolidate-3-cruft-survey-2026-05-20",
+      "probe": "kaizen-gatekeeper only comment-cruft --all surfaces findings; rules: version stamps in command bodies, consolidation labels in skill bodies, folded-surface section age >N weeks, sprint phase tags in code, dated narration in non-test sources, stale TODO with version pin",
+      "verify": "new SUB_GATES['comment-cruft'] entry in gatekeeper.py; iron-laws integration; soft-warn default, hard-fail on commands/*.md; tests added",
+      "tags": [
+        "tech-debt",
+        "gatekeeper",
+        "iron-laws"
+      ],
+      "created": "2026-05-19",
+      "started_at": null,
+      "committed": null,
+      "committed_at": null,
+      "parked_reason": null,
+      "probe_output": null
+    },
+    {
+      "id": "BK-050",
+      "section": "next_up",
+      "title": "Relocate shipped planning docs to docs/_legacy/ (or delete)",
+      "ref": "consolidate-3-cruft-survey-2026-05-20",
+      "probe": "docs/workflow-schemas-research.md + docs/sdd-ssot-research.md moved to docs/_legacy/ OR deleted with brain Note pointer; live docs/ contains only current-state references",
+      "verify": "ls docs/ shows only current docs; git log preserves history for future archaeology; no live grep result claims a feature is 'in vX we will ship'",
+      "tags": [
+        "docs",
+        "cleanup",
+        "cruft"
+      ],
+      "created": "2026-05-19",
+      "started_at": null,
+      "committed": null,
+      "committed_at": null,
+      "parked_reason": null,
+      "probe_output": null
     }
   ],
   "decisions": []
