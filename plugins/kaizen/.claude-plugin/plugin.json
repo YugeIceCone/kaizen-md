@@ -165,6 +165,7 @@
       "Bash(uv run --script ${CLAUDE_PLUGIN_ROOT}/scripts/mcp/rules_mcp.py:*)",
       "Bash(uv run --script ${CLAUDE_PLUGIN_ROOT}/scripts/mcp/schema_mcp.py:*)",
       "Bash(uv run --script ${CLAUDE_PLUGIN_ROOT}/scripts/mcp/surface_mcp.py:*)",
+      "Bash(uv run --script ${CLAUDE_PLUGIN_ROOT}/scripts/mcp/debug_mcp.py:*)",
       "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/scripts/handlers/statusline_dxm.py:*)",
       "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/scripts/handlers/statusline_intent.py:*)",
       "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/scripts/handlers/context_notifier.py:*)",

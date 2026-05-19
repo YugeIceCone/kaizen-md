@@ -96,6 +96,8 @@ SUBSERVERS: list[tuple[str, str]] = [
     ("rules", "rules_mcp"),
     ("schema", "schema_mcp"),
     ("surface", "surface_mcp"),
+    # Phase 13 — diagnostic surface
+    ("debug", "debug_mcp"),
 ]
 
 gw = FastMCP("kaizen")
