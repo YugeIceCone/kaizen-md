@@ -968,6 +968,25 @@
       "committed_at": null,
       "parked_reason": null,
       "probe_output": null
+    },
+    {
+      "id": "BK-051",
+      "section": "next_up",
+      "title": "Investigate tokens_mcp orphan — file + tests exist but not mounted in gateway SUBSERVERS",
+      "ref": null,
+      "probe": "scripts/mcp/tokens_mcp.py exists; tests/test_tokens_mcp.py exists; plugin.json permissions reference it; but gateway.py::SUBSERVERS doesn't mount it. Tools (read_token, read_token_by_name, batch_read) unreachable via the unified kaizen MCP. Decide: (a) mount it normally, (b) keep standalone with documented reason (tree-sitter deps?), or (c) retire if unused.",
+      "verify": "Either gateway.py::SUBSERVERS includes (\"tokens\", \"tokens_mcp\") AND kaizen-mcp-coverage passes, OR a comment in tokens_mcp.py + skills/kaizen-mcp/SKILL.md documents the standalone reason.",
+      "tags": [
+        "mcp",
+        "orphan",
+        "investigation"
+      ],
+      "created": "2026-05-19",
+      "started_at": null,
+      "committed": null,
+      "committed_at": null,
+      "parked_reason": null,
+      "probe_output": null
     }
   ],
   "decisions": []

@@ -42,7 +42,11 @@ the run() causes side effects at import time.
 - Every other tool stays CALLABLE but isn't in default `list_tools()`
   output — the search transform controls DISCOVERY, not access.
 
-## The fleet (29 mounted MCPs as of last gateway update)
+## The fleet
+
+Authoritative mount list: `skills/workflow/scripts/gateway.py::SUBSERVERS`
+(grep it for the current set; the table below documents per-MCP
+domains, not the live count).
 
 | MCP | Domain | Key tools |
 |---|---|---|
@@ -78,6 +82,12 @@ the run() causes side effects at import time.
 | `symbol_search_mcp` | Symbol + exact-line search | symbol_search |
 | `handoff_mcp` | Handoff get/list | handoff_get, handoff_list |
 | `webfetch_mcp` | WebFetch semantic capture | webfetch_search |
+| `config_mcp` | Config lookup (.kaizen.toml + plugin defaults) | config_get, config_defaults |
+| `coverage_mcp` | Code-to-test coverage map | coverage_gaps, coverage_summary |
+| `debug_mcp` | Error-locator + bin smoke + parse-validity | debug_scan, debug_smoke, debug_parse |
+| `rules_mcp` | Brain-rule / iron-law inspection | rules_list, rules_show |
+| `schema_mcp` | JSON Schema + domain yaml catalog | schema_list, schema_validate |
+| `surface_mcp` | Plugin surface inventory (commands / bins / hooks / MCPs) | surface_validate, surface_inventory |
 
 ## Adding a new MCP server (checklist)
 
