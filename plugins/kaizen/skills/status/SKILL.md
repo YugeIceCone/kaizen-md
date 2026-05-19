@@ -113,7 +113,7 @@ Backup: ✅ git-tracked    (or)    ⚠️  NOT git-tracked — see warning below
 ````
 
 To produce this:
-1. Walk the brain — read frontmatter for each L2 markdown file (use `scripts/config.js parseFrontmatter`).
+1. Walk the brain — read frontmatter for each L2 markdown file (use `scripts/upstream/config.js parseFrontmatter`).
 2. Tally by `type` and `freshness`.
 3. Filter `type: belief` files; sort by `confidence` desc; take top 5.
 4. Read tail of `~/.local/state/remember/evolution.log` (use `tail -n 5`).
@@ -124,7 +124,7 @@ If `~/.local/state/remember/evolution.log` does not exist yet (no `evolve` runs 
 
 ## Implementation
 
-Use `LS` and `Glob` tools to read directories and count files. For frontmatter parsing, use `parseFrontmatter` from `scripts/config.js`. For complex stats, use a subagent.
+Use `LS` and `Glob` tools to read directories and count files. For frontmatter parsing, use `parseFrontmatter` from `scripts/upstream/config.js`. For complex stats, use a subagent.
 
 ## Notes
 

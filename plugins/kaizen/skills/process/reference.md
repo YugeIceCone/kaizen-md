@@ -291,7 +291,7 @@ When session contains URLs:
 
 ## Schema rules
 
-- Every newly created L2 file (Notes/People/Projects/Areas) carries `type:` (see Task heuristic). Use `scripts/schema.js detectType()` if uncertain.
+- Every newly created L2 file (Notes/People/Projects/Areas) carries `type:` (see Task heuristic). Use `scripts/upstream/schema.js detectType()` if uncertain.
 - Every fact must include at least one `evidence` entry: `{ source: <where>, quote: <verbatim>, date: <SESSION_DATE> }`.
 - For `type: belief`, `confidence: 0.0–1.0` is REQUIRED.
 - `freshness: stable` is the default for new captures.

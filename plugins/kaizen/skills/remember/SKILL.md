@@ -27,7 +27,7 @@ Immediate capture: when the user says "remember this", "save this", "brain dump"
 ### Step 1: Get Knowledge Index
 
 ```bash
-node ${CLAUDE_PLUGIN_ROOT}/scripts/build-index.js --compact
+node ${CLAUDE_PLUGIN_ROOT}/scripts/upstream/build-index.js --compact
 ```
 
 Use this to prevent duplicates and enable smart linking.
@@ -76,7 +76,7 @@ Heuristics (apply in order; first match wins):
 
 When creating or editing a file, write/preserve the frontmatter `type:` field accordingly. For beliefs, `confidence` is REQUIRED (use your best estimate 0.0–1.0).
 
-The same rules live in `scripts/schema.js` (`detectType`); use that as canonical reference if uncertain.
+The same rules live in `scripts/upstream/schema.js` (`detectType`); use that as canonical reference if uncertain.
 
 ### Step 3: Build Resolution Map
 
@@ -92,7 +92,7 @@ Resolve every name/reference against the knowledge index:
 Before creating a new `Notes/<slug>.md` for a belief or world-fact, check if a similar one already exists:
 
 ```bash
-node ${CLAUDE_PLUGIN_ROOT}/scripts/append-evidence.js find-similar {brain} <slug> belief
+node ${CLAUDE_PLUGIN_ROOT}/scripts/upstream/append-evidence.js find-similar {brain} <slug> belief
 ```
 
 Or for world-fact: pass `world-fact` as the type filter.
@@ -107,14 +107,14 @@ Read the existing file (its body + the `evidence:` array). Compare the new claim
 
 1. **Same direction (re-affirms existing belief)** → append as positive evidence:
    ```bash
-   node ${CLAUDE_PLUGIN_ROOT}/scripts/append-evidence.js append <filepath> '{"source":"Journal/<TODAY>.md","quote":"<verbatim>","date":"<TODAY>"}'
+   node ${CLAUDE_PLUGIN_ROOT}/scripts/upstream/append-evidence.js append <filepath> '{"source":"Journal/<TODAY>.md","quote":"<verbatim>","date":"<TODAY>"}'
    ```
    This increments `sources_count`, appends to `evidence:`, updates `updated:`, refuses duplicate sources (idempotent).
 
 2. **Opposite direction (contradicts existing belief)** → append as counter-evidence and log the event:
    ```bash
-   node ${CLAUDE_PLUGIN_ROOT}/scripts/append-evidence.js append-counter <filepath> '{"source":"Journal/<TODAY>.md","quote":"<verbatim>","date":"<TODAY>"}'
-   node ${CLAUDE_PLUGIN_ROOT}/scripts/evolution-log.js CONTRADICT "<filepath> counter from Journal/<TODAY>.md"
+   node ${CLAUDE_PLUGIN_ROOT}/scripts/upstream/append-evidence.js append-counter <filepath> '{"source":"Journal/<TODAY>.md","quote":"<verbatim>","date":"<TODAY>"}'
+   node ${CLAUDE_PLUGIN_ROOT}/scripts/upstream/evolution-log.js CONTRADICT "<filepath> counter from Journal/<TODAY>.md"
    ```
    The first command appends to `counter_evidence:`, leaves `sources_count` untouched, and **automatically flips `freshness: contradicted`** when counter entries outnumber positive ones. The second writes a `CONTRADICT` line to `~/.local/state/remember/evolution.log` for audit.
 
@@ -158,7 +158,7 @@ See `reference.md` for detailed templates and routing tables.
 After all writes are done, run promote.js once. It is deterministic, fast, and zero LLM cost — so it can run on every capture without any user opt-in. This keeps `Persona.md ## Top Beliefs` in sync with the brain in real time.
 
 ```bash
-node ${CLAUDE_PLUGIN_ROOT}/scripts/promote.js
+node ${CLAUDE_PLUGIN_ROOT}/scripts/upstream/promote.js
 ```
 
 The script no-ops if nothing crossed the threshold. If something promoted or demoted, surface the delta in Step 6.
@@ -209,7 +209,7 @@ If the auto-promote step skipped writing (e.g. `auto_promote: false` in user's c
 
 ## Schema rules
 
-- Every L2 file (Notes/People/Projects/Areas) carries `type:`. Use `Step 2.5` heuristics or `scripts/schema.js detectType()`.
+- Every L2 file (Notes/People/Projects/Areas) carries `type:`. Use `Step 2.5` heuristics or `scripts/upstream/schema.js detectType()`.
 - Every captured fact must include at least one `evidence` entry: `{ source: <real-file-path>, quote: <verbatim>, date: <SESSION_DATE> }`.
 - **`source:` MUST be a real file path inside the brain** — typically `Journal/<SESSION_DATE>.md` (the journaled capture from Step 2.4). Never invent paths like `chat/...`, `session/...`, or anything that doesn't exist on disk.
 - For `type: belief`, `confidence: 0.0–1.0` is REQUIRED.
@@ -221,7 +221,7 @@ If the auto-promote step skipped writing (e.g. `auto_promote: false` in user's c
 After every `Write` or `Edit` on a brain file (Notes/, People/, Projects/, Areas/, Journal/, or Persona.md), run the validator:
 
 ```bash
-node ${CLAUDE_PLUGIN_ROOT}/scripts/schema.js validate <filepath>
+node ${CLAUDE_PLUGIN_ROOT}/scripts/upstream/schema.js validate <filepath>
 ```
 
 The output is JSON: `{changed, addedFields, addedSections, warnings}`.

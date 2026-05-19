@@ -142,7 +142,7 @@ if [ -d "$PLUGIN_ROOT/skills" ]; then
     SKILL_COUNT=$(find "$PLUGIN_ROOT/skills" -maxdepth 2 -name "SKILL.md" | wc -l)
     log_pass "plugin skills: $SKILL_COUNT bundled"
     # Spot-check critical scripts
-    for f in "$PLUGIN_ROOT/scripts/build-index.js" "$PLUGIN_ROOT/scripts/extract.js"; do
+    for f in "$PLUGIN_ROOT/scripts/upstream/build-index.js" "$PLUGIN_ROOT/scripts/upstream/extract.js"; do
         if [ -f "$f" ]; then log_pass "$(basename $f) present"
         else log_skip "$(basename $f) missing (remember tooling won't work)"; fi
     done

@@ -46,7 +46,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node ${CLAUDE_PLUGIN_ROOT}/scripts/session_start.js",
+            "command": "node ${CLAUDE_PLUGIN_ROOT}/scripts/upstream/session_start.js",
             "timeout": 5
           },
           {
@@ -63,7 +63,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node ${CLAUDE_PLUGIN_ROOT}/scripts/user_prompt.js",
+            "command": "node ${CLAUDE_PLUGIN_ROOT}/scripts/upstream/user_prompt.js",
             "timeout": 10
           },
           {
