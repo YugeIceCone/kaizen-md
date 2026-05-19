@@ -13,25 +13,26 @@ Hook BYPASS knobs MATTER (every hook honors a `KAIZEN_<HOOK>_DISABLE`
 env so users can opt out per-hook). Adding a new hook without these
 breaks the convention.
 
-## 12 events × 52 handlers (current state)
+## 12 events kaizen hooks into
 
-| Event | Handlers (matcher blocks) | Purpose |
-|---|---|---|
-| `SessionStart` | 9 (across 2 matcher blocks) | Surface backlog/CLI/context; intake; dxm; token-bloat; detect-stack; brain Persona inject; systems check |
-| `UserPromptSubmit` | 5 (1 block) | Brain capture nudge (Python port of upstream user_prompt); inbox; brain-user-prompt; context inject; dxm |
-| `PreToolUse` | 4 blocks | Bash gate; brain-redirect; trace; (matcher-specific) |
-| `PostToolUse` | 3 blocks | Trace; keepalive; observer-capture; webfetch-capture; roundtrip-detect; drain-inbox |
-| `Stop` | 1 block | Backlog reminder; karpathy check; self-improving review |
-| `PreCompact` | 1 block | Gold-precompact (mine learnings) |
-| `SubagentStop` | 1 block | Subagent-stop trace |
-| `SessionEnd` | 1 block | Token-bloat scan; session-end trace |
-| `Notification` | 1 block | Push notify (optional) |
-| `InstructionsLoaded` | 1 block | Trace which @imports loaded |
-| `PostCompact` | 1 block | Refresh auto-load.md after compaction |
-| `CwdChanged` | 1 block | Memory-sync on dir change |
+Authoritative registry: `plugins/kaizen/hooks/hooks.json`. Live per-event
+counts via `kaizen-hook-coverage` or `surface.py validate` (handler counts
+drift on every new hook; the table below documents purpose only).
 
-Registration: `plugins/kaizen/hooks/hooks.json` (canonical). Inspect via
-`surface.py validate` or `kaizen-hook-coverage` for orphan-script detection.
+| Event | Purpose |
+|---|---|
+| `SessionStart` | Surface backlog/CLI/context; intake; dxm; token-bloat; detect-stack; brain Persona inject; systems check |
+| `UserPromptSubmit` | Brain capture nudge (Python port of upstream user_prompt); inbox; brain-user-prompt; context inject; dxm |
+| `PreToolUse` | Bash gate; brain-redirect; trace; write-atomic |
+| `PostToolUse` | Trace; keepalive; observer-capture; webfetch-capture; roundtrip-detect; drain-inbox; bash-commit |
+| `Stop` | Backlog reminder; karpathy check; self-improving review; ralph-loop stop |
+| `PreCompact` | Gold-precompact (mine learnings before context compaction) |
+| `SubagentStop` | Subagent-stop trace |
+| `SessionEnd` | Token-bloat scan; session-end trace; gold mine; inbox drain; brain session-end |
+| `Notification` | Push notify (optional) |
+| `InstructionsLoaded` | Trace which @imports loaded |
+| `PostCompact` | Refresh auto-load.md after compaction |
+| `CwdChanged` | Memory-sync on dir change |
 
 ## Hook handlers — where they live
 
