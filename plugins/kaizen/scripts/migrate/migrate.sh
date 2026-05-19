@@ -21,8 +21,7 @@ set -uo pipefail
 _SCRIPT_REAL_DIR="$(cd "$(dirname "$(python3 -c "import os,sys; print(os.path.realpath(sys.argv[1]))" "${BASH_SOURCE[0]}")")" && pwd)"
 BACKUP_SH="$_SCRIPT_REAL_DIR/backup.sh"
 BACKLOG_PY="$_SCRIPT_REAL_DIR/backlog.py"
-# v1.30.0+ — unified path SSOT.
-source "$_SCRIPT_REAL_DIR/_paths.sh"
+source "$_SCRIPT_REAL_DIR/../../skills/workflow/scripts/_paths.sh"
 
 # Colours
 if [ -t 1 ]; then BOLD=$'\e[1m'; DIM=$'\e[2m'; YELLOW=$'\e[33m'; GREEN=$'\e[32m'; RESET=$'\e[0m'
