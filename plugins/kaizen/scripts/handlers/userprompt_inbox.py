@@ -40,6 +40,8 @@ def main() -> int:
     session_id = event.get("session_id", "") or ""
 
     sys.path.insert(0, str(Path(__file__).resolve().parent))
+    # MIGRATION BRIDGE — kaizen modules (trace, inbox) still at skills/workflow/scripts/
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "skills" / "workflow" / "scripts"))
     try:
         import inbox as _inbox
     except ImportError:

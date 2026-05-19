@@ -34,6 +34,8 @@ def _discover_session(cwd: Path) -> str | None:
     """Shared session discovery via _session_jsonl helper."""
     _SCRIPT_DIR = Path(__file__).resolve().parent
     sys.path.insert(0, str(_SCRIPT_DIR))
+    # MIGRATION BRIDGE — _session_jsonl still at skills/workflow/scripts/
+    sys.path.insert(0, str(_SCRIPT_DIR.parents[1] / "skills" / "workflow" / "scripts"))
     from _session_jsonl import discover_active_session_id
     return discover_active_session_id(cwd)
 

@@ -27,7 +27,7 @@ PLUGIN_ROOT="$(kaizen_plugin_root 2>/dev/null)" || exit 0
 # SubagentStop-detail event (when subagent identity is present).
 # Was 5 spawns (trace.sh subprocess + EXTRA extract + AGENT extract
 # + SID extract + final trace.py).
-python3 "$PLUGIN_ROOT/skills/workflow/scripts/subagentstop_trace.py" \
+python3 "$PLUGIN_ROOT/scripts/handlers/subagentstop_trace.py" \
     >/dev/null 2>&1 || true
 
 # Empty JSON envelope — never blocks, never injects context.

@@ -26,4 +26,4 @@ python3 "$PLUGIN_ROOT/skills/workflow/scripts/inbox.py" \
 # in one process. Was 3 spawns (count + titles + final-JSON), plus
 # the redundant shell-side toml grep+sed. The helper also adds a
 # KAIZEN_BACKLOG_DISABLE bypass for parity with sibling hooks.
-python3 "$PLUGIN_ROOT/skills/workflow/scripts/stop_backlog_reminder.py"
+python3 "$PLUGIN_ROOT/scripts/handlers/stop_backlog_reminder.py"

@@ -12,7 +12,7 @@ import unittest
 from pathlib import Path
 
 _KZ_DIR = Path(__file__).resolve().parent.parent
-_SCRIPT = _KZ_DIR / "skills/workflow/scripts/posttooluse_trace.py"
+_SCRIPT = _KZ_DIR / "scripts/handlers/posttooluse_trace.py"
 
 
 class Base(unittest.TestCase):

@@ -19,7 +19,8 @@ from pathlib import Path
 
 _KZ_DIR = Path(__file__).resolve().parent.parent
 _SCRIPTS = _KZ_DIR / "skills/workflow/scripts"
-_STATUSLINE = _SCRIPTS / "statusline_intent.py"
+sys.path.insert(0, str(_KZ_DIR / "scripts/handlers"))
+_STATUSLINE = _KZ_DIR / "scripts/handlers/statusline_intent.py"
 
 
 class StatuslineIntentBase(unittest.TestCase):

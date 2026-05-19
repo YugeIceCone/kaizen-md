@@ -23,7 +23,7 @@ from pathlib import Path
 
 _KZ_DIR = Path(__file__).resolve().parent.parent
 _SCRIPTS = _KZ_DIR / "skills/workflow/scripts"
-_SCRIPT = _SCRIPTS / "pretooluse_trace.py"
+_SCRIPT = _KZ_DIR / "scripts/handlers/pretooluse_trace.py"
 
 
 class Base(unittest.TestCase):

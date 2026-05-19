@@ -11,7 +11,7 @@ import unittest
 from pathlib import Path
 
 _KZ_DIR = Path(__file__).resolve().parent.parent
-_SCRIPT = _KZ_DIR / "skills/workflow/scripts/stop_self_improving_review.py"
+_SCRIPT = _KZ_DIR / "scripts/handlers/stop_self_improving_review.py"
 
 
 class _Sandbox(unittest.TestCase):

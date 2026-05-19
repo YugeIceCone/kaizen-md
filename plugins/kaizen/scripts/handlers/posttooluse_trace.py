@@ -57,6 +57,8 @@ def main() -> int:
     ok = _extract_ok(event)
 
     sys.path.insert(0, str(Path(__file__).resolve().parent))
+    # MIGRATION BRIDGE — kaizen modules (trace, inbox) still at skills/workflow/scripts/
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "skills" / "workflow" / "scripts"))
     try:
         import trace as _trace
     except ImportError:

@@ -10,7 +10,7 @@ _HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$_HOOK_DIR/../../skills/workflow/scripts/_plugin_root.sh"
 PLUGIN_ROOT="$(kaizen_plugin_root 2>/dev/null)" || { echo '{}'; exit 0; }
 
-python3 "$PLUGIN_ROOT/skills/workflow/scripts/context_notifier.py" check \
+python3 "$PLUGIN_ROOT/scripts/handlers/context_notifier.py" check \
     >/dev/null 2>&1 || true
 echo '{}'
 exit 0

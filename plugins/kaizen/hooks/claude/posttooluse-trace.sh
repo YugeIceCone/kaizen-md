@@ -20,7 +20,7 @@ PLUGIN_ROOT="$(kaizen_plugin_root 2>/dev/null)" || { echo '{}'; exit 0; }
 
 # Single python3 spawn — posttooluse_trace.py does parse + tool_response
 # extraction + trace.append_event in one process. Was 4 spawns.
-python3 "$PLUGIN_ROOT/skills/workflow/scripts/posttooluse_trace.py" \
+python3 "$PLUGIN_ROOT/scripts/handlers/posttooluse_trace.py" \
     >/dev/null 2>&1 || true
 
 echo '{}'

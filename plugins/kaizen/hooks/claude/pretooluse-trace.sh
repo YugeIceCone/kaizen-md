@@ -29,7 +29,7 @@ PLUGIN_ROOT="$(kaizen_plugin_root 2>/dev/null)" || { echo '{}'; exit 0; }
 # ident extraction + trace.append_event in one process. Prior pattern
 # spawned python3 four times per fire (~120ms × 1000 tool calls per
 # session). The helper does the same work in ~30ms total.
-python3 "$PLUGIN_ROOT/skills/workflow/scripts/pretooluse_trace.py" \
+python3 "$PLUGIN_ROOT/scripts/handlers/pretooluse_trace.py" \
     >/dev/null 2>&1 || true
 
 echo '{}'
