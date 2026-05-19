@@ -177,6 +177,85 @@ def _cmd_graveyard(args) -> int:
     return 0
 
 
+_NOISE_AXES: list[tuple[str, str]] = [
+    # (axis-id, scripts/quality/<file>.py basename)
+    ("hook_cascade",  "hook_cascade.py"),
+    ("silent_fail",   "silent_fail.py"),
+    ("turn_density",  "turn_density.py"),
+]
+
+
+def _run_axis(script: str) -> dict:
+    """Invoke one quality axis with `gaps --json`. Returns the parsed
+    envelope dict (or {error, rc, stderr} on failure)."""
+    import subprocess
+    quality_dir = _SCRIPT_DIR.parent / "quality"
+    r = subprocess.run(
+        ["python3", str(quality_dir / script), "gaps", "--json"],
+        capture_output=True, text=True, timeout=20,
+    )
+    if r.returncode != 0:
+        return {"error": (r.stderr or r.stdout or "").strip(), "rc": r.returncode,
+                "verdict": "red", "counts": {}, "data": {}}
+    try:
+        return json.loads(r.stdout)
+    except json.JSONDecodeError as e:
+        return {"error": f"non-JSON output: {e}", "verdict": "red",
+                "counts": {}, "data": {}}
+
+
+def _rollup_verdict(verdicts: list[str]) -> str:
+    """Merge axis verdicts: any red → red; any yellow → yellow; else green."""
+    if "red" in verdicts:
+        return "red"
+    if "yellow" in verdicts:
+        return "yellow"
+    return "green"
+
+
+def _cmd_noise(args) -> int:
+    """Hook/tool noise dashboard — aggregates the 3 dynamic-trace axes
+    (cascade / silent-fail / per-turn density) into one verdict.
+
+    Static wiring axes (hook-coverage / mcp-coverage / *-trace-coverage)
+    are NOT included — those are coverage, not noise. Use the
+    individual `kaizen-<axis>` bins for those.
+    """
+    results: dict[str, dict] = {}
+    verdicts: list[str] = []
+    counts: dict[str, int] = {}
+    for axis_id, script in _NOISE_AXES:
+        env = _run_axis(script)
+        results[axis_id] = env
+        verdicts.append(env.get("verdict", "green"))
+        # Hoist axis counts up into the consolidated counts dict.
+        for k, v in env.get("counts", {}).items():
+            counts[f"{axis_id}.{k}"] = v
+    verdict = _rollup_verdict(verdicts)
+
+    if args.json:
+        _emit({"axes": results}, verdict=verdict, counts=counts)
+        return 0
+
+    # Human-readable rollup
+    print(f"\n[kaizen-metrics noise] verdict={verdict}")
+    for axis_id, env in results.items():
+        v = env.get("verdict", "?")
+        c = env.get("counts", {})
+        c_str = ", ".join(f"{k}={vv}" for k, vv in c.items()) or "(empty)"
+        marker = {"green": "✓", "yellow": "∘", "red": "✗"}.get(v, "?")
+        print(f"  {marker} {axis_id:<14} {v:<7} {c_str}")
+        # Surface the most useful axis-specific detail if present
+        data = env.get("data", {})
+        if axis_id == "hook_cascade" and data.get("cascades"):
+            print(f"      cascades: {len(data['cascades'])}")
+        elif axis_id == "silent_fail" and data.get("findings"):
+            print(f"      silent-fail hooks: {len(data['findings'])}")
+        elif axis_id == "turn_density" and data.get("turns"):
+            print(f"      turns scanned: {len(data['turns'])}")
+    return 0 if verdict != "red" else 2
+
+
 def _cmd_smoke(args) -> int:
     if args.kind != "mcp":
         print(json.dumps({"error": f"smoke --kind {args.kind} not implemented "
@@ -277,6 +356,13 @@ def main(argv: Optional[list[str]] = None) -> int:
                          help="min trace-watch age before flagging (default 14)")
     s_grave.add_argument("--json", action="store_true")
     s_grave.set_defaults(func=_cmd_graveyard)
+
+    s_noise = sub.add_parser(
+        "noise",
+        help="hook/tool noise dashboard — cascade + silent-fail + turn-density rollup",
+    )
+    s_noise.add_argument("--json", action="store_true")
+    s_noise.set_defaults(func=_cmd_noise)
 
     s_smoke = sub.add_parser(
         "smoke",
