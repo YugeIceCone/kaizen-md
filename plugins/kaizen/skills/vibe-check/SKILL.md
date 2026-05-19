@@ -19,7 +19,7 @@ Run each step. Surface results to the user. Block commit on any failure.
 2. **Static analysis green**: project's lint/format command exits 0. For Rust: `cargo check --workspace` + `cargo clippy`. For TS: `tsc --noEmit` + `eslint`. For Python: `ruff check` + `mypy` if present. (`kaizen:gate` Check #1 already runs this if `compile_check_cmd` is set.)
 3. **Tests cover new code paths**: for every new `pub fn` / exported function, a corresponding test exists OR a deliberate `KAIZEN_SKIP_TDD_CHECK=1` justification is in scope. Check via `kaizen:gate` Check #7 (paired-test).
 4. **Dependencies validated**: new `Cargo.toml` / `package.json` entries → version pinned, license known, brain `dependency-allowlist` rule consulted if present.
-5. **CI gate dry-run passes**: `/kaizen:precommit` reports green or only-warnings. Red → fix before committing.
+5. **CI gate dry-run passes**: `kaizen-precommit` reports green or only-warnings. Red → fix before committing.
 
 ## Anti-patterns to refuse (auto-block)
 
@@ -69,7 +69,7 @@ When you commit AI-authored code:
 Per Presta's recommendation:
 
 1. **Phase 1**: use vibe-coding ONLY on internal-tool / helper / docs changes. Block on customer-facing code.
-2. **Phase 2**: when 5 consecutive vibe-coded commits pass `/kaizen:precommit` cleanly without revert, expand scope to non-critical features.
+2. **Phase 2**: when 5 consecutive vibe-coded commits pass `kaizen-precommit` cleanly without revert, expand scope to non-critical features.
 3. **Phase 3**: customer-facing code allowed AFTER:
    - Test coverage > 80% on the touched module
    - At least 1 human reviewer approves

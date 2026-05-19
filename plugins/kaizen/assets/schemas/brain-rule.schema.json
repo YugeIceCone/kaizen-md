@@ -64,7 +64,7 @@
         "allowlist": {
           "type": "string",
           "pattern": "^[a-zA-Z0-9_-]+(,[a-zA-Z0-9_-]+)*$",
-          "description": "Comma-separated list of pre-vetted dependency names. Consulted by /kaizen:vibe-check to demote orphan-import warnings."
+          "description": "Comma-separated list of pre-vetted dependency names. Consulted by kaizen-vibe-check to demote orphan-import warnings."
         }
       },
       "additionalProperties": false

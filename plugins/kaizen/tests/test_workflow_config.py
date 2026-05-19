@@ -161,7 +161,7 @@ class TestPath(_Sandbox):
 
 class TestGetKey(_Sandbox):
     """`get-key <dotted-key>` returns scalar values for shell consumers
-    (no jq dependency). Powers /kaizen:loop's workflow-config defaults
+    (no jq dependency). Powers kaizen-loop's workflow-config defaults
     (Ralph brainstorm #4)."""
 
     def setUp(self):

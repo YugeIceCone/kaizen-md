@@ -6,7 +6,7 @@ symlink before computing the plugin root — otherwise the `source
 $_BIN_DIR/../skills/workflow/scripts/_plugin_root.sh` fails with
 "No such file or directory".
 
-This was the bug that broke `/kaizen:loop` mid-loop on 2026-05-14.
+This was the bug that broke `kaizen-loop` mid-loop on 2026-05-14.
 Verifies all kaizen plugin bin wrappers work end-to-end through a
 symlinked invocation, not just direct.
 

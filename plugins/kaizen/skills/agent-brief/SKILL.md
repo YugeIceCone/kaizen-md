@@ -23,7 +23,7 @@ test -L .kaizen/hooks/pre-commit                                  # gate active
 git config --get core.hooksPath | grep -q '\.kaizen/hooks'        # local hooksPath set
 ```
 
-You're in a kaizen-installed session if `kaizen:*` commands appear in your skill catalog (look for `kaizen-backlog`, `/kaizen:precommit`, `kaizen-trace`).
+You're in a kaizen-installed session if `kaizen:*` commands appear in your skill catalog (look for `kaizen-backlog`, `kaizen-precommit`, `kaizen-trace`).
 
 If neither: this skill doesn't apply — kaizen isn't here.
 
@@ -59,7 +59,7 @@ Plus a **suggestion engine** that emits skill-pointers based on diff content:
 - Net-new source file → `tdd`
 - Cargo/package.json dep change → `onion-ddd-workflow`
 
-**Invoke**: gate runs automatically on `git commit`. Dry-run: `/kaizen:precommit`.
+**Invoke**: gate runs automatically on `git commit`. Dry-run: `kaizen-precommit`.
 
 ### 2. Backlog (JSON-source-of-truth)
 
@@ -193,7 +193,7 @@ Each is a self-locating bash shim that resolves to the real script via `python3 
 
 | Task | Invocation |
 |---|---|
-| Dry-run the gate against current diff | `/kaizen:precommit` |
+| Dry-run the gate against current diff | `kaizen-precommit` |
 | Add a backlog item | `kaizen-backlog add --title "..." --probe "<grep ...>" --verify "<cmd>"` |
 | Promote BK-N from next_up to in_flight | `kaizen-backlog start BK-N` |
 | Mark BK-N done after commit | `kaizen-backlog tick BK-N --committed <sha>` |

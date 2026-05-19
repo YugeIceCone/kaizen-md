@@ -35,7 +35,7 @@ Tools (Claude can invoke):
     verify command (those must pass the hook gate — cheat-proof).
 
   loop_cancel()
-    Remove the state file (equivalent of /kaizen:loop --cancel).
+    Remove the state file (equivalent of kaizen-loop --cancel).
 
 ## State
 

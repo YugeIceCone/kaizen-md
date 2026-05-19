@@ -15,7 +15,7 @@ Four rule_types:
                         pattern_message: <string>
   dependency-allowlist  allowlist: <csv>          Comma-separated crates / packages
                                                   pre-vetted for import. Consulted
-                                                  by /kaizen:vibe-check to demote
+                                                  by kaizen-vibe-check to demote
                                                   orphan-import warnings on the
                                                   listed names.
 
@@ -286,7 +286,7 @@ at commit time.
 """,
         "dependency-allowlist": f"""---
 name: kaizen-allow-core-deps
-description: Pre-vetted dependencies. /kaizen:vibe-check skips orphan-import warnings on these.
+description: Pre-vetted dependencies. kaizen-vibe-check skips orphan-import warnings on these.
 type: behaviour
 tags: [kaizen, dependency-allowlist]
 sources_count: 1

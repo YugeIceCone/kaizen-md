@@ -3,7 +3,7 @@
 At SessionStart the intake hook asks "loop, workflow, or neither?"
 The user's answer routes future agent behavior:
 
-  loop      → agent runs /kaizen:loop with its prompt
+  loop      → agent runs kaizen-loop with its prompt
   workflow  → agent runs /workflow with a routine
   neither   → no kaizen-loop / no workflow scaffolding
 

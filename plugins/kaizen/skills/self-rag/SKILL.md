@@ -91,6 +91,6 @@ kaizen-trace-search search "<adjacent query>" --top-k 5
 
 - `kaizen-knowledge` — the corpus + search surface this skill governs.
 - `kaizen-trace-search` — semantic search over trace events.
-- `/kaizen:vibe-check` — pre-commit AI-coding discipline (the answering-side analog).
+- `kaizen-vibe-check` — pre-commit AI-coding discipline (the answering-side analog).
 - `kaizen:memory-state` — how to decide what to persist vs recall.
 - `kaizen:remember` — capture-side counterpart (what goes into the corpus in the first place).

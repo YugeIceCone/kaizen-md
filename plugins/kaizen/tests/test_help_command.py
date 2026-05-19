@@ -64,7 +64,7 @@ class TestBodyContent(unittest.TestCase):
     def test_under_165_lines(self):
         """Body budget — tight per-command descriptions but bounded.
         Loosened progressively as the command surface grew:
-          120 → 150 (added /kaizen:intent + /kaizen:audit:axis)
+          120 → 150 (added kaizen-intent + /kaizen:audit:axis)
           150 → 165 (added the QA wizard preamble + /kaizen:discovery)."""
         self.assertLess(self.body.count("\n"), 165,
                          "help body should be precise+concise (~165 lines max for ~60 commands)")

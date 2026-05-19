@@ -142,7 +142,7 @@ MCP equivalents under the `kaizen-workflow` server: `workflow_init`, `workflow_a
 
 Each links to the corresponding `kaizen:*` skill (kaizen:solid, kaizen:kiss, etc.). The skill bodies are NOT absorbed into this file — they remain independent. The cross-link is just a routing hint: "during execute-tasks for refactor, also have these principles in context."
 
-**`kaizen:karpathy`** (v1.32.0+) is the active-coding-discipline sibling — same family, different angle. Where the 8 classic principles teach *what to do*, karpathy enforces *what NOT to do* with diff-level Python scanners (complexity / surgical / assumption / goal). Run `/kaizen:karpathy-check` before commit on non-trivial diffs.
+**`kaizen:karpathy`** (v1.32.0+) is the active-coding-discipline sibling — same family, different angle. Where the 8 classic principles teach *what to do*, karpathy enforces *what NOT to do* with diff-level Python scanners (complexity / surgical / assumption / goal). Run `kaizen-karpathy-check` before commit on non-trivial diffs.
 
 ## Skill weaving (stage → skill map)
 

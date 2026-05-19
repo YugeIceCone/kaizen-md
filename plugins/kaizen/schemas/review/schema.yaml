@@ -1,5 +1,5 @@
 # yaml-language-server: $schema=../../assets/schemas/workflow.schema.json
-# Review workflow schema — diff-time code review (per /kaizen:review).
+# Review workflow schema — diff-time code review (per kaizen-review).
 #
 # Distinct from /kaizen:audit (periodic full-repo) — this runs against
 # one diff (HEAD vs base) and returns severity-tagged findings. The

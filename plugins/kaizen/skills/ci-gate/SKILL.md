@@ -37,7 +37,7 @@ bash skills/workflow/scripts/ci-gate.sh              # full gate
 bash skills/workflow/scripts/ci-gate.sh --syntax-only  # static checks only
 ```
 
-Or `/kaizen:ci-gate` / `kaizen-ci-gate` from the shell. Exit 0 = green;
+Or `kaizen-ci-gate` / `kaizen-ci-gate` from the shell. Exit 0 = green;
 non-zero = the first failing check (with the offending file). Bypass
 with `KAIZEN_CI_GATE_DISABLE=1` only when the gate itself is broken —
 never to get past a real failure.

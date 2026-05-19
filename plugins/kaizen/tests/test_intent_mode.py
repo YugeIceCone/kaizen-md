@@ -150,7 +150,7 @@ class TestCodeTourIntent(_MatchBase):
 
 
 class TestKarpathyReviewIntent(_MatchBase):
-    """User wants a diff-level review → suggest /kaizen:karpathy-check."""
+    """User wants a diff-level review → suggest kaizen-karpathy-check."""
 
     def test_review_my_diff(self):
         env = self._suggest("review my diff before commit")

@@ -10,7 +10,7 @@
 # refuses to manually complete verify-bearing items (those must pass the
 # hook's verify gate, which is the cheat-proof completion path).
 #
-# NOT to be confused with /kaizen:loop (the slash command that STARTS a
+# NOT to be confused with kaizen-loop (the slash command that STARTS a
 # loop) — this binary operates on the state of an already-running loop.
 
 set -euo pipefail

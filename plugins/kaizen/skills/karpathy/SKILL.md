@@ -1,6 +1,6 @@
 ---
 name: karpathy
-description: Use when writing, reviewing, or committing code to enforce Karpathy's 4 coding principles — surface assumptions before coding, keep it simple, make surgical changes, define verifiable goals. Triggers on "review my diff", "check complexity", "am I overcomplicating this", "karpathy check", "before I commit", "/kaizen:karpathy-check", or any code quality concern where the LLM might be overcoding. Pairs with `kaizen:kiss`, `kaizen:yagni`, `kaizen:dry` — same family, different angle: kaizen's principles teach *what* to do; karpathy enforces *what NOT to do* with diff-level scanners. Adapted from claude-code-skills/engineering/karpathy-coder, integrated into the kaizen workflow.
+description: Use when writing, reviewing, or committing code to enforce Karpathy's 4 coding principles — surface assumptions before coding, keep it simple, make surgical changes, define verifiable goals. Triggers on "review my diff", "check complexity", "am I overcomplicating this", "karpathy check", "before I commit", "kaizen-karpathy-check", or any code quality concern where the LLM might be overcoding. Pairs with `kaizen:kiss`, `kaizen:yagni`, `kaizen:dry` — same family, different angle: kaizen's principles teach *what* to do; karpathy enforces *what NOT to do* with diff-level scanners. Adapted from claude-code-skills/engineering/karpathy-coder, integrated into the kaizen workflow.
 version: 1.0.0
 tags: [code-quality, discipline, karpathy, simplicity, surgical-changes, anti-patterns, review]
 ---
@@ -123,7 +123,7 @@ The pairing is intentional: kaizen's coding-skills are positive principles ("do 
 **In the workflow:**
 
 - During `execute-tasks` stage of `build-feature` / `refactor` / `migrate` routines, karpathy scripts run alongside the regular tests
-- `/kaizen:karpathy-check` runs the agent + scanners explicitly before commit
+- `kaizen-karpathy-check` runs the agent + scanners explicitly before commit
 - The `hooks/karpathy-gate.sh` can wire as a PostToolUse Bash hook for continuous nudging (non-blocking)
 
 ## Related kaizen skills
@@ -131,5 +131,5 @@ The pairing is intentional: kaizen's coding-skills are positive principles ("do 
 - `kaizen:kiss`, `kaizen:yagni`, `kaizen:dry`, `kaizen:boy-scout-rule` — the positive-principle pairs
 - `kaizen:review` — broader change review; this skill focuses on the 4 LLM-specific pitfalls
 - `kaizen:tdd` — Principle #4 (goal-driven) is TDD's RED step in disguise
-- `kaizen:command-development` — for authoring the `/kaizen:karpathy-check` slash command body
+- `kaizen:command-development` — for authoring the `kaizen-karpathy-check` slash command body
 - `kaizen-karpathy-reviewer` agent — runs all 4 principles against a diff (Task tool dispatch)

@@ -3,7 +3,7 @@
 #
 # Per synavos.com/blogs/code-review-vs-code-audit: audit is periodic,
 # comprehensive, formal-report-producing, severity-classified. Distinct
-# from /kaizen:review which is per-change + lightweight + inline.
+# from kaizen-review which is per-change + lightweight + inline.
 #
 # Default scope: whole repo. Writes a formal findings report to
 # <repo>/.kaizen/workflow/audits/<UTC>-<scope>.md with Critical / High /
@@ -338,7 +338,7 @@ if [ "$NO_REPORT" -eq 0 ]; then
     echo ""
     echo "Per [synavos.com/code-review-vs-code-audit](https://synavos.com/blogs/code-review-vs-code-audit/):"
     echo "audit is comprehensive + periodic + severity-classified. For per-change"
-    echo "lightweight review, use \`/kaizen:review\`."
+    echo "lightweight review, use \`kaizen-review\`."
     echo ""
     for sev in critical high medium low info; do
       case "$sev" in
@@ -368,6 +368,6 @@ if [ "$NO_REPORT" -eq 0 ]; then
 fi
 
 echo ""
-echo "${DIM}Audit is periodic + comprehensive. For per-change review run: /kaizen:review${RESET}"
+echo "${DIM}Audit is periodic + comprehensive. For per-change review run: kaizen-review${RESET}"
 
 exit 0

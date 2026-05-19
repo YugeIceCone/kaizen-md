@@ -147,7 +147,7 @@ def check(session_id: str | None = None) -> dict:
         for w in warns[:3]:  # cap noise
             lines.append(f"      {w.strip()}")
     lines.append(
-        "Run `/kaizen:karpathy-check` for the full 4-principle review.")
+        "Run `kaizen-karpathy-check` for the full 4-principle review.")
     return {"systemMessage": "\n".join(lines)}
 
 

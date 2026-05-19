@@ -1,6 +1,6 @@
 ---
 name: kaizen-karpathy-reviewer
-description: Reviews staged git changes against Karpathy's 4 coding principles. Runs complexity_checker on changed files, diff_surgeon on the diff, and produces a verdict with specific fix recommendations. Spawn before committing, when the user says "karpathy check", "review my diff", or when /kaizen:karpathy-check is invoked.
+description: Reviews staged git changes against Karpathy's 4 coding principles. Runs complexity_checker on changed files, diff_surgeon on the diff, and produces a verdict with specific fix recommendations. Spawn before committing, when the user says "karpathy check", "review my diff", or when kaizen-karpathy-check is invoked.
 domain: engineering
 model: sonnet
 maxTurns: 30

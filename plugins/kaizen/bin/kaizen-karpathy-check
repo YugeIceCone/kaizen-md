@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # kaizen-karpathy-check — dispatch over the 4 karpathy diff-level scanners.
 #
-# Canonical CLI name — aligns with /kaizen:karpathy-check slash.
+# Canonical CLI name — aligns with kaizen-karpathy-check slash.
 # bin/kaizen-karpathy kept as a deprecation alias (forwards here).
 #
 # Subcommands:

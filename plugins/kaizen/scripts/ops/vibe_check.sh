@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# kaizen vibe-check — augment /kaizen:precommit with AI-coding specific checks
+# kaizen vibe-check — augment kaizen-precommit with AI-coding specific checks
 # against the staged diff. Advisory; never blocks.
 #
 # Encapsulates the Presta vibe-coding checklist
@@ -25,7 +25,7 @@ if [ -x "$SCRIPT_DIR/pre-commit.sh" ]; then
     if bash "$SCRIPT_DIR/pre-commit.sh" >/dev/null 2>&1; then
         echo "  ✓ kaizen:precommit dry-run: green" >&2
     else
-        echo "  ✗ kaizen:precommit dry-run: failed — run /kaizen:precommit for details" >&2
+        echo "  ✗ kaizen:precommit dry-run: failed — run kaizen-precommit for details" >&2
     fi
 fi
 

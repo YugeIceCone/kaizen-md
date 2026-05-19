@@ -183,7 +183,7 @@ intents:
       confidence: 0.8
 
   - id: karpathy-review
-    description: User wants a diff-level review — suggest /kaizen:karpathy-check.
+    description: User wants a diff-level review — suggest kaizen-karpathy-check.
     triggers:
       - { kind: phrase, pattern: "review (my|the|this) (diff|changes?|patch)", case_insensitive: true }
       - { kind: phrase, pattern: "(is|am i) (this )?(over.?complicated|overcoded|over.?engineered)", case_insensitive: true }
@@ -191,7 +191,7 @@ intents:
       - { kind: phrase, pattern: "karpathy (check|review|gate)", case_insensitive: true }
       - { kind: phrase, pattern: "(am i|are these).*assumptions", case_insensitive: true }
     action:
-      suggest: "/kaizen:karpathy-check  # complexity + diff-noise + assumption + goal scanners"
+      suggest: "kaizen-karpathy-check  # complexity + diff-noise + assumption + goal scanners"
       subcommand: karpathy-check
       confidence: 0.85
 
@@ -217,7 +217,7 @@ intents:
       - { kind: phrase, pattern: "(before|about to|ready to) commit", case_insensitive: true }
       - { kind: phrase, pattern: "(stage|staged).*for commit", case_insensitive: true }
     action:
-      suggest: "kaizen gatekeeper check --staged + /kaizen:karpathy-check  # gate before commit"
+      suggest: "kaizen gatekeeper check --staged + kaizen-karpathy-check  # gate before commit"
       subcommand: gatekeeper
       confidence: 0.85
 
@@ -299,7 +299,7 @@ intents:
       - { kind: phrase, pattern: "(too many|wasted|excess) tokens?", case_insensitive: true }
       - { kind: phrase, pattern: "trim (the )?(skill|prompt)", case_insensitive: true }
     action:
-      suggest: "/kaizen:gatekeeper check token-bloat  # scan for high-cost low-value content"
+      suggest: "kaizen-gatekeeper check token-bloat  # scan for high-cost low-value content"
       subcommand: gatekeeper
       confidence: 0.85
 

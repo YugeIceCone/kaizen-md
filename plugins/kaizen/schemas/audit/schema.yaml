@@ -14,7 +14,7 @@ description: |
   Suitable for: pre-release audits, quarterly/monthly cadence checks,
   post-incident systemic-gap analysis, entering an unfamiliar codebase.
 
-  Pair with /kaizen:review for per-change checks (audit is periodic +
+  Pair with kaizen-review for per-change checks (audit is periodic +
   comprehensive; review is diff-time + fast).
 
 artifacts:

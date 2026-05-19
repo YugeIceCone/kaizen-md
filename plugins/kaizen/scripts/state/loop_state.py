@@ -48,7 +48,7 @@ This module is the audited, validated alternative. Every mutation:
     python3 loop_state.py list [--pending|--completed|--all]
     python3 loop_state.py status [--json]
     python3 loop_state.py complete <id-or-desc> [--note "..."]
-    python3 loop_state.py cancel    # equivalent of /kaizen:loop --cancel
+    python3 loop_state.py cancel    # equivalent of kaizen-loop --cancel
 
 Exit codes: 0 = success, 1 = no loop active, 2 = bad arguments / schema
 mismatch.
@@ -399,7 +399,7 @@ def emit_promise(phrase: str, path: Path | None = None) -> dict:
 
 
 def cancel(path: Path | None = None) -> dict:
-    """Remove the state file (equivalent of /kaizen:loop --cancel)."""
+    """Remove the state file (equivalent of kaizen-loop --cancel)."""
     p = path or state_path()
     if not p.is_file():
         return {"cancelled": False, "reason": "no loop active"}
