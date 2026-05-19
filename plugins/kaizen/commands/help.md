@@ -55,7 +55,7 @@ dispatch the same way.
 |---|---|
 | `trace` | Unified event log across kaizen hooks/agents/LLM/tool/user actions. JSONL, auto-ro |
 | `trace-proxy` | Logging HTTP proxy wrapping CC → api.anthropic.com. Every LLM request/response (au |
-| `metrics` | Adoption + dead-feature surface over the trace log. Verbs - session | lifetime | n |
+| `metrics` | Adoption + dead-feature + noise surface over the trace log. Verbs - session | life |
 | `observe` | Unified observability across kaizen 6 data-stream layers (L1 stderr → L6 plugin st |
 | `context` | CC context-window state report - tokens used, percentage, zone (green/yellow/red), |
 | `statusline` | Install or inspect the kaizen statusline - one-line status bar (context-window % + |

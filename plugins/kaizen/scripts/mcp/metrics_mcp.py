@@ -133,5 +133,55 @@ async def metrics_smoke_mcp() -> dict:
     return await asyncio.to_thread(metrics.smoke_mcp)
 
 
+@mcp.tool()
+async def metrics_noise() -> dict:
+    """Hook/tool noise dashboard — aggregates 3 dynamic-trace axes
+    (hook_cascade + silent_fail + turn_density) into one verdict.
+
+    Returns {verdict, counts: {<axis>.<metric>: int, ...}, axes:
+    {<axis>: <axis_envelope>}}. Verdict rolls up: any axis red → red;
+    any yellow → yellow; else green.
+
+    Use to surface what's misbehaving at runtime — separate from
+    static wiring axes (hook-coverage / mcp-coverage / *-trace-coverage)
+    which are coverage, not noise."""
+    import subprocess, json as _json
+    quality = Path(__file__).resolve().parents[1] / "quality"
+    axes = {
+        "hook_cascade":  "hook_cascade.py",
+        "silent_fail":   "silent_fail.py",
+        "turn_density":  "turn_density.py",
+    }
+
+    def _run_one(script: str) -> dict:
+        r = subprocess.run(
+            ["python3", str(quality / script), "gaps", "--json"],
+            capture_output=True, text=True, timeout=20,
+        )
+        if r.returncode != 0:
+            return {"error": (r.stderr or r.stdout or "").strip(),
+                    "verdict": "red", "counts": {}, "data": {}}
+        try:
+            return _json.loads(r.stdout)
+        except _json.JSONDecodeError as e:
+            return {"error": f"non-JSON output: {e}", "verdict": "red",
+                    "counts": {}, "data": {}}
+
+    results = await asyncio.gather(*[
+        asyncio.to_thread(_run_one, script)
+        for script in axes.values()
+    ])
+    axes_envs = dict(zip(axes.keys(), results))
+    verdicts = [e.get("verdict", "green") for e in results]
+    verdict = ("red" if "red" in verdicts
+               else "yellow" if "yellow" in verdicts
+               else "green")
+    counts: dict[str, int] = {}
+    for axis_id, env in axes_envs.items():
+        for k, v in env.get("counts", {}).items():
+            counts[f"{axis_id}.{k}"] = v
+    return {"verdict": verdict, "counts": counts, "axes": axes_envs}
+
+
 if __name__ == "__main__":
     mcp.run()

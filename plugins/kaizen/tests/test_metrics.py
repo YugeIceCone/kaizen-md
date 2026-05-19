@@ -443,6 +443,39 @@ class TestCli(unittest.TestCase):
         out = json.loads(result.stdout)
         self.assertEqual(out["data"]["kind"], "skill")
 
+    def test_noise_subcommand_emits_envelope(self):
+        """`noise` runs the 3 dynamic-trace axes (cascade + silent-fail
+        + turn-density) and emits a rolled-up envelope."""
+        result = self._run("noise", "--json")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        out = json.loads(result.stdout)
+        self.assertIn("verdict", out)
+        self.assertIn(out["verdict"], ("green", "yellow", "red"))
+        self.assertIn("axes", out["data"])
+        # All 3 axes must report
+        self.assertEqual(set(out["data"]["axes"].keys()),
+                          {"hook_cascade", "silent_fail", "turn_density"})
+
+    def test_noise_counts_are_prefixed_by_axis(self):
+        """Consolidated counts use `<axis>.<metric>` keys so callers can
+        attribute findings to the source axis."""
+        result = self._run("noise", "--json")
+        out = json.loads(result.stdout)
+        for key in out["counts"]:
+            axis, _, metric = key.partition(".")
+            self.assertIn(axis,
+                           {"hook_cascade", "silent_fail", "turn_density"},
+                           f"unexpected axis prefix in counts key {key!r}")
+            self.assertTrue(metric, f"missing metric segment in {key!r}")
+
+    def test_noise_human_output_shows_per_axis_marker(self):
+        """Default (non-JSON) output lists each axis with a verdict
+        marker — so users see the rollup without parsing JSON."""
+        result = self._run("noise")
+        self.assertEqual(result.returncode, 0)
+        for axis in ("hook_cascade", "silent_fail", "turn_density"):
+            self.assertIn(axis, result.stdout, f"axis {axis} missing from output")
+
 
 def _mcp_available():
     try:
