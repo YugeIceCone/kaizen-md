@@ -17,7 +17,7 @@ Picking the wrong agent risks unsafe execution or wasted spawn cost.
 |---|---|---|---|
 | **kaizen-backlog-curator** | Read-only | "mine session for backlog items", "what should I file", end-of-session sweep | Read, Grep, Glob, Bash |
 | **kaizen-debt-auditor** | Read-only | "find architecture violations", "tech debt audit", pre-sprint scan | Read, Grep, Glob, Bash |
-| **kaizen-implementer** | Read + Write | TDD-disciplined multi-phase feature work in isolated worktree | Read, Edit, Write, Glob, Grep, Bash (RESTRICTED — blocks destructive git) |
+| **kaizen-implementer** | Read + Write | TDD-disciplined multi-phase feature work in isolated worktree | Read, Edit, Write, Glob, Grep, Bash (RESTRICTED — blocks destructive git), TaskCreate / TaskUpdate / TaskList / TaskGet (for tracking phase progress) |
 | **kaizen-karpathy-reviewer** | Read-only | "karpathy check", "review my diff" against the 4 principles | Read, Grep, Glob, Bash (diff/log/status/python only) |
 | **kaizen-memory-analyst** | Read-only | Brain/memory file analysis, stale-ref detection, consolidation candidates | Read, Glob, Grep |
 | **kaizen-reviewer** | Read-only | Pre-commit staged-diff review against 10 kaizen gate rules | Read, Grep, Glob, Bash |
