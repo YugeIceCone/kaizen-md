@@ -111,6 +111,10 @@ class TestRunBrainIndex(unittest.TestCase):
         called = list(run.call_args[0][0])
         self.assertIn("build_index.py", " ".join(called))
         self.assertIn("index", called)
+        # Regression: build_index.py's `index` subparser does NOT declare
+        # `--json` (it always prints JSON). Passing it triggered argparse
+        # rc=2 and silently broke every daemon brain-index tick.
+        self.assertNotIn("--json", called)
 
     def test_failed_reindex_keeps_old_hash(self):
         import _daemon_jobs as jobs

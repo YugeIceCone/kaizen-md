@@ -99,10 +99,15 @@ def _brain_notes_hash() -> str:
 
 def _regen_brain_index_subprocess() -> None:
     """Shell out to ``build_index.py index``; raise on non-zero rc so the
-    drift-job factory leaves the state hash un-stamped on failure."""
+    drift-job factory leaves the state hash un-stamped on failure.
+
+    Does NOT pass ``--json`` — build_index.py's ``index`` subparser
+    doesn't declare it (the script always prints JSON), so passing it
+    triggers argparse rc=2 and silently breaks every daemon tick.
+    """
     script = _SCRIPT_DIR / "build_index.py"
     result = subprocess.run(
-        [_python(), str(script), "index", "--json"],
+        [_python(), str(script), "index"],
         capture_output=True, text=True, timeout=300,
     )
     if result.returncode != 0:
