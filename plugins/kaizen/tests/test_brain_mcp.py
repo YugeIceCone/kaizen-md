@@ -16,6 +16,7 @@ from pathlib import Path
 
 _KZ_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_KZ_DIR / "skills/workflow/scripts"))
+sys.path.insert(0, str(_KZ_DIR / "scripts/brain"))
 
 
 def _mcp_available():
@@ -118,7 +119,7 @@ class TestMcpToolBehaviour(unittest.TestCase):
 # script file itself parses (no syntax errors).
 class TestModuleParses(unittest.TestCase):
     def test_brain_mcp_script_parses(self):
-        path = _KZ_DIR / "skills/workflow/scripts/brain_mcp.py"
+        path = _KZ_DIR / "scripts/brain/brain_mcp.py"
         # Compile via stdlib so we don't depend on the mcp package
         with open(path, "r", encoding="utf-8") as f:
             src = f.read()

@@ -47,9 +47,9 @@ Phase A-C landed search hot-path + brain/audit + karpathy bundle (11 tools). Pha
 | `search_flow` | `skills/workflow/scripts/search_flow.py` | A |
 | `claude_docs_index` | `scripts/indexers/claude_docs_index.py` | A |
 | `onboard_index` | `scripts/indexers/onboard_index.py` | A |
-| `brain_audit` | `skills/workflow/scripts/brain_audit.py` | B |
-| `brain_evolve` | `skills/workflow/scripts/brain_evolve.py` | B |
-| `brain_promote` | `skills/workflow/scripts/brain_promote.py` | B |
+| `brain_audit` | `scripts/brain/brain_audit.py` | B |
+| `brain_evolve` | `scripts/brain/brain_evolve.py` | B |
+| `brain_promote` | `scripts/brain/brain_promote.py` | B |
 | `self_audit` | `skills/workflow/scripts/self_audit.py` | B |
 | `hygiene` | `skills/workflow/scripts/hygiene.py` | B |
 | `complexity_checker` | `skills/karpathy/scripts/complexity_checker.py` | C |

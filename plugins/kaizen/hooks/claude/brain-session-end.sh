@@ -33,7 +33,7 @@ echo '{}' | bash "$PLUGIN_ROOT/hooks/claude/_trace.sh" \
 
 # Run with apply=true so candidates land as drafts. Suppress stdout
 # (hook output is noisy in the user's terminal); errors go to stderr.
-python3 "$PLUGIN_ROOT/skills/workflow/scripts/brain_audit.py" \
+python3 "$PLUGIN_ROOT/scripts/brain/brain_audit.py" \
     --apply --json >/dev/null 2>&1 || true
 
 exit 0

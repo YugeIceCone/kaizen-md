@@ -124,7 +124,7 @@ If `~/.local/state/remember/evolution.log` does not exist yet (no `evolve` runs 
 
 ## Implementation
 
-Use `LS` and `Glob` tools to read directories and count files. For frontmatter parsing, read `_brain.parse_note()` from `skills/workflow/scripts/_brain.py` (or shell out to `kaizen-brain` for the same logic). For complex stats, use a subagent.
+Use `LS` and `Glob` tools to read directories and count files. For frontmatter parsing, read `_brain.parse_note()` from `scripts/brain/_brain.py` (or shell out to `kaizen-brain` for the same logic). For complex stats, use a subagent.
 
 ## Notes
 

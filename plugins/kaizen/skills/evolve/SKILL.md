@@ -142,12 +142,12 @@ Goal: pin top beliefs into `Persona.md ## Top Beliefs` based on thresholds. Pure
 
 If `--dry-run`:
 ```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/brain_promote.py --dry-run
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/brain/brain_promote.py --dry-run
 ```
 
 Otherwise:
 ```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/brain_promote.py
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/brain/brain_promote.py
 ```
 
 The script:

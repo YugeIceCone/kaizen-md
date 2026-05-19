@@ -41,10 +41,13 @@ from typing import Any, Optional
 
 _SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(_SCRIPT_DIR))
+# MIGRATION BRIDGE — kaizen helpers still at skills/workflow/scripts/
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "skills" / "workflow" / "scripts"))
 
-# Domain yaml lives one level up (skills/brain/domain/) — resolve
-# from the plugin root so tests can run with the source tree.
-_PLUGIN_ROOT = _SCRIPT_DIR.parent.parent.parent  # plugins/kaizen
+# Domain yaml lives at skills/brain/domain/ — resolve from plugin root.
+# Was .parent.parent.parent (skills/workflow/scripts/ depth); now .parent.parent
+# (scripts/brain/ depth after DOMAIN-3 migration).
+_PLUGIN_ROOT = _SCRIPT_DIR.parent.parent  # plugins/kaizen
 _DOMAIN_DIR = _PLUGIN_ROOT / "skills" / "brain" / "domain"
 
 

@@ -61,6 +61,8 @@ from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR))
+# MIGRATION BRIDGE — trace_index moved to scripts/indexers/
+sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "scripts" / "indexers"))
 
 try:
     from fastmcp import FastMCP

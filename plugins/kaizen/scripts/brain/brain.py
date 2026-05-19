@@ -53,6 +53,8 @@ from typing import Any, Optional
 
 _SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(_SCRIPT_DIR))
+# MIGRATION BRIDGE — kaizen helpers still at skills/workflow/scripts/
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "skills" / "workflow" / "scripts"))
 
 import _brain  # noqa: E402
 import flow as _flow  # noqa: E402
@@ -877,8 +879,8 @@ def _starters_dir():
     """Path to the bundled `assets/starters/` directory."""
     from pathlib import Path as _P
     here = _P(__file__).resolve()
-    # plugins/kaizen/skills/workflow/scripts/brain.py  →  plugins/kaizen/
-    plugin_root = here.parents[3]
+    # plugins/kaizen/scripts/brain/brain.py  →  plugins/kaizen/
+    plugin_root = here.parents[2]
     return plugin_root / "assets" / "starters"
 
 

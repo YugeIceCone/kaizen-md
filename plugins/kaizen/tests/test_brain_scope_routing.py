@@ -23,6 +23,7 @@ from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "skills" / "workflow" / "scripts"))
+sys.path.insert(0, str(ROOT / "scripts" / "brain"))
 
 
 class TestProjectMemoryRootResolution(unittest.TestCase):

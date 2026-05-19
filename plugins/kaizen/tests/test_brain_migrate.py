@@ -29,6 +29,7 @@ from pathlib import Path
 
 _KZ_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_KZ_DIR / "skills/workflow/scripts"))
+sys.path.insert(0, str(_KZ_DIR / "scripts/brain"))
 
 import brain_migrate as bm  # noqa: E402
 
@@ -273,7 +274,7 @@ class SettingsMutation(_BaseCase):
 class CliSmoke(_BaseCase):
 
     def _run(self, *argv):
-        script = _KZ_DIR / "skills/workflow/scripts/brain_migrate.py"
+        script = _KZ_DIR / "scripts/brain/brain_migrate.py"
         return subprocess.run(
             ["python3", str(script), *argv,
              "--src", str(self.src), "--dst", str(self.dst),
@@ -447,7 +448,7 @@ class Phase4JsonEnvelope(_BaseCase):
     test forced the implementation to use _report() consistently."""
 
     def _run(self, *argv):
-        script = _KZ_DIR / "skills/workflow/scripts/brain_migrate.py"
+        script = _KZ_DIR / "scripts/brain/brain_migrate.py"
         return subprocess.run(
             ["python3", str(script), *argv,
              "--src", str(self.src), "--dst", str(self.dst),

@@ -63,6 +63,8 @@ def build_hint(path: Path) -> str:
     try:
         scripts_dir = Path(__file__).resolve().parent.parent.parent / "skills" / "workflow" / "scripts"
         sys.path.insert(0, str(scripts_dir))
+        # MIGRATION BRIDGE — _brain_blocks moved to scripts/brain/
+        sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "scripts" / "brain"))
         import _brain_blocks as _bb  # type: ignore
         text = path.read_text(encoding="utf-8", errors="replace")
         blocks = _bb.parse_blocks(text)

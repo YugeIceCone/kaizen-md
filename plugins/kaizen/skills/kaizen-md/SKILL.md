@@ -57,7 +57,7 @@ actual work.
 - `Skill(brain)` — capture / search / promote / audit / evolve / blocks-show-edit
 - `/kaizen:brain <verb>` — consolidated CLI parent
 - `bin/kaizen-brain` — bin wrapper
-- Backing: `skills/workflow/scripts/brain.py` + `build_index.py` +
+- Backing: `scripts/brain/brain.py` + `build_index.py` +
   `brain_audit.py` + `brain_promote.py` + `brain_evolve.py` + `brain_mcp.py`
 - Related: `Skill(remember)`, `Skill(process)`, `Skill(evolve)`,
   `Skill(status)` — back-compat wrappers; route through `brain/`

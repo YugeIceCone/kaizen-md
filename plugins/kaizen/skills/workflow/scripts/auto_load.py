@@ -33,6 +33,8 @@ from pathlib import Path
 
 _SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(_SCRIPT_DIR))
+# MIGRATION BRIDGE — until brain moves back / consumers move forward
+sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "scripts" / "brain"))
 
 
 # ─── Pure: parse + build ─────────────────────────────────────────────

@@ -79,6 +79,7 @@ _SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(_SCRIPT_DIR))
 # MIGRATION BRIDGE — until helpers move from skills/workflow/scripts/ → scripts/
 sys.path.insert(0, str(_SCRIPT_DIR.parents[1] / "skills" / "workflow" / "scripts"))
+sys.path.insert(0, str(_SCRIPT_DIR.parents[1] / "scripts" / "brain"))
 
 import _brain  # noqa: E402
 import _sqlite as _kz_sqlite  # noqa: E402  — shared SQLite open/meta helpers

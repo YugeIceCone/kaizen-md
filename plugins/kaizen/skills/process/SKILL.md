@@ -42,7 +42,7 @@ Parse into a lookup map: `file_path → last_modified_date`. Use this in Step 4c
 ## Step 2: Find Unprocessed Sessions
 
 ```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/brain_audit.py --unprocessed
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/brain/brain_audit.py --unprocessed
 ```
 
 Optional filters: `--project <name>`, `--source openclaw|claude-code`.
@@ -52,7 +52,7 @@ Show the list. Ask user which to process: **All**, **specific sessions by number
 ## Step 3: Extract Each Session
 
 ```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/brain_audit.py <file_path>
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/brain/brain_audit.py <file_path>
 ```
 
 Use the `**Session date (use for journal/tasks):**` line as SESSION_DATE for everything. Never use today's date.
@@ -104,7 +104,7 @@ Output `{changed, addedFields, addedSections, warnings}`. Surface any `warnings`
 Before creating a new `Notes/<slug>.md`, check for an existing similar belief/world-fact:
 
 ```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/brain.py append-evidence find-similar {brain} <slug> <belief|world-fact>
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/brain/brain.py append-evidence find-similar {brain} <slug> <belief|world-fact>
 ```
 
 **No match** → create new (Step 4a).
@@ -117,13 +117,13 @@ Read the existing file (body + `evidence:`). Decide which of three branches appl
 
 1. **Same direction (re-affirms existing claim)** → append positive evidence:
    ```bash
-   python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/brain.py append-evidence append <filepath> '{"source":"Journal/<SESSION_DATE>.md","quote":"<verbatim>","date":"<SESSION_DATE>"}'
+   python3 ${CLAUDE_PLUGIN_ROOT}/scripts/brain/brain.py append-evidence append <filepath> '{"source":"Journal/<SESSION_DATE>.md","quote":"<verbatim>","date":"<SESSION_DATE>"}'
    ```
    Increments `sources_count`, appends to `evidence:`, refuses duplicate sources.
 
 2. **Opposite direction (contradicts existing claim)** → append counter-evidence + log:
    ```bash
-   python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/brain.py append-evidence append-counter <filepath> '{"source":"Journal/<SESSION_DATE>.md","quote":"<verbatim>","date":"<SESSION_DATE>"}'
+   python3 ${CLAUDE_PLUGIN_ROOT}/scripts/brain/brain.py append-evidence append-counter <filepath> '{"source":"Journal/<SESSION_DATE>.md","quote":"<verbatim>","date":"<SESSION_DATE>"}'
    python3 ${CLAUDE_PLUGIN_ROOT}/scripts/evolution_log.py CONTRADICT "<filepath> counter from Journal/<SESSION_DATE>.md"
    ```
    Appends to `counter_evidence:`, leaves `sources_count` alone, auto-flips `freshness: contradicted` when counter entries exceed positive ones.
@@ -164,7 +164,7 @@ Analyze session for: user corrections, stated preferences, repeated workflows, c
 ## Step 5: Mark Processed
 
 ```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/brain_audit.py --source <source> --mark-processed <session_id>
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/brain/brain_audit.py --source <source> --mark-processed <session_id>
 ```
 
 ## Step 6: Auto-promote (once per batch)
@@ -172,7 +172,7 @@ python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/brain_audit.py --source <s
 After all sessions in this batch have been processed, run promote.js a single time so `Persona.md ## Top Beliefs` reflects everything that just landed:
 
 ```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/brain_promote.py
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/brain/brain_promote.py
 ```
 
 Bulk extraction often pushes many beliefs over the threshold at once — surface the deltas (promoted/demoted) in the report below.

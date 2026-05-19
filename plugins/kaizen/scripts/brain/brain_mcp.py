@@ -65,8 +65,9 @@ from typing import Optional
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR))
-# MIGRATION BRIDGE — until indexers move back / consumers move forward
-sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "scripts" / "indexers"))
+# MIGRATION BRIDGE — build_index at scripts/indexers/; kaizen helpers still at skills/workflow/scripts/
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts" / "indexers"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "skills" / "workflow" / "scripts"))
 
 try:
     from fastmcp import FastMCP

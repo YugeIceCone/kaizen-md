@@ -64,6 +64,8 @@ from typing import Optional
 
 _SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(_SCRIPT_DIR))
+# MIGRATION BRIDGE — kaizen helpers still at skills/workflow/scripts/
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "skills" / "workflow" / "scripts"))
 import _paths  # noqa: E402
 import _envelope  # noqa: E402
 import _migrator as _mig  # noqa: E402 — shared migrator primitives (DEBT-1)
