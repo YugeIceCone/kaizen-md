@@ -1,0 +1,212 @@
+# memory-ledger — catalog of every memory + continuity-flow surface
+# in the kaizen plugin.
+#
+# Each entry is one persistent surface (file, dir, or db) that holds
+# memory or drives the continuity-of-session flow. The ledger is
+# read-only — it does not own, mutate, or consolidate the underlying
+# data; it observes + audits.
+#
+# Walked by:
+#   scripts/memory_ledger/memory_ledger.py {catalog | status | flow}
+#
+# Schema enforced by:
+#   skills/memory-ledger/domain/schemas/memory-surfaces.schema.json
+#
+# Scope discipline (per BK-024):
+#   - project: per-repo state; lives in <repo>/.kaizen/ or
+#     ~/.claude/projects/<repo-slug>/memory/
+#   - global:  user-wide state; lives in ~/.claude/.kaizen/
+#
+# Auto-load: a surface is `auto_load: true` when CC's session-start
+# loader picks it up automatically (MEMORY.md, MEMORY.md siblings,
+# Persona.md via @import).
+
+version: 1
+
+surfaces:
+  - id: brain-persona
+    name: "Brain Persona"
+    owner_feature: brain
+    scope: global
+    path: "~/.claude/.kaizen/brain/Persona.md"
+    auto_load: true
+    auto_load_via: "CLAUDE.md @import + SessionStart hook"
+    role: "Top Beliefs + Directives + Evidence Log — durable cross-project rules"
+    refresh: "kaizen-brain evolve (weekly + on-demand)"
+
+  - id: brain-notes
+    name: "Brain Notes"
+    owner_feature: brain
+    scope: global
+    path: "~/.claude/.kaizen/brain/Notes/"
+    auto_load: false
+    auto_load_via: "Persona Top Beliefs links + kaizen-brain show/search on demand"
+    role: "Durable Notes — pref-* rules, gotchas, patterns"
+    refresh: "manual via kaizen-brain append/capture; daemon promote"
+
+  - id: brain-journal
+    name: "Brain Journal"
+    owner_feature: brain
+    scope: global
+    path: "~/.claude/.kaizen/brain/Journal/"
+    auto_load: false
+    auto_load_via: "Persona Evidence Log mentions + on-demand"
+    role: "Per-day behavioural observations"
+    refresh: "manual append; daemon evolve consolidates"
+
+  - id: auto-memory-index
+    name: "Project auto-memory index"
+    owner_feature: better-memory
+    scope: project
+    path: "~/.claude/projects/<repo-slug>/memory/MEMORY.md"
+    auto_load: true
+    auto_load_via: "CC built-in session-start loader (first 200 lines / 25KB)"
+    role: "Per-project pointer index to project_* / feedback_* entries"
+    refresh: "kaizen-better-memory regen-index (daemon tick + manual)"
+
+  - id: auto-memory-entries
+    name: "Project auto-memory entries"
+    owner_feature: better-memory
+    scope: project
+    path: "~/.claude/projects/<repo-slug>/memory/{project,feedback,user,reference}_*.md"
+    auto_load: false
+    auto_load_via: "MEMORY.md index points to them; CC loads on-demand"
+    role: "Discrete memory entries with frontmatter (type/name/description)"
+    refresh: "Claude writes them via the auto-memory protocol"
+
+  - id: backlog-ledger
+    name: "Backlog memory ledger"
+    owner_feature: backlog
+    scope: project
+    path: "~/.claude/projects/<repo-slug>/memory/backlog_ledger.md"
+    auto_load: true
+    auto_load_via: "CC session-start loads MEMORY.md siblings"
+    role: "Compact view of in-flight + next-up + last-10-done backlog items"
+    refresh: "save_store side-effect on every backlog mutation (BK-023)"
+
+  - id: backlog-source
+    name: "Backlog source-of-truth"
+    owner_feature: backlog
+    scope: project
+    path: "<repo>/.kaizen/workflow/backlog.json"
+    auto_load: false
+    auto_load_via: "Read explicitly via kaizen-backlog list/show"
+    role: "Canonical JSON store of all BK-N items"
+    refresh: "kaizen-backlog add/start/tick/done/park"
+
+  - id: handoff-store
+    name: "Handoff SQLite store"
+    owner_feature: handoff
+    scope: global
+    path: "~/.claude/.kaizen/data/handoff.db"
+    auto_load: false
+    auto_load_via: "kaizen-handoff latest/list/resume on demand"
+    role: "Queryable index of every handoff YAML"
+    refresh: "kaizen-handoff create/save indexes on write"
+
+  - id: handoff-yamls
+    name: "Handoff YAML files"
+    owner_feature: handoff
+    scope: global
+    path: "~/.claude/handoff/<session>/*.yaml"
+    auto_load: false
+    auto_load_via: "Resume flow reads the latest entry"
+    role: "Durable session-state record — system of record"
+    refresh: "kaizen-handoff create (end of session); auto-finalize"
+
+  - id: gold-store
+    name: "Gold (incidental-discovery) store"
+    owner_feature: gold
+    scope: project
+    path: "<repo>/.kaizen/gold/*.md"
+    auto_load: false
+    auto_load_via: "kaizen-gold list on demand; daemon mining promotes to brain"
+    role: "Mid-work learnings — patterns, gotchas, hidden contracts"
+    refresh: "kaizen-gold capture (mid-work)"
+
+  - id: dxm-events
+    name: "DXM raw events"
+    owner_feature: dxm
+    scope: project
+    path: "~/.claude/.kaizen/dxm/<session>/events.jsonl"
+    auto_load: false
+    auto_load_via: "kaizen-trace query on demand"
+    role: "Per-session tool / hook / LLM event stream — continuity reconstruction"
+    refresh: "Hooks emit events on every lifecycle fire"
+
+  - id: trace-log
+    name: "Unified trace log"
+    owner_feature: trace
+    scope: project
+    path: "<repo>/.kaizen/indexes/trace/trace.jsonl"
+    auto_load: false
+    auto_load_via: "kaizen-trace tail/query/stats on demand"
+    role: "Cross-cutting event log (hooks + agents + LLM + tool + user)"
+    refresh: "Hooks + scripts emit via dxm-event.sh"
+
+  - id: inbox
+    name: "User message inbox"
+    owner_feature: inbox
+    scope: project
+    path: "<repo>/.kaizen/inbox/"
+    auto_load: false
+    auto_load_via: "PostToolUse boundary surfaces pending count"
+    role: "Captures every user message via UserPromptSubmit"
+    refresh: "Hook on UserPromptSubmit; drain on demand"
+
+  - id: chatlog
+    name: "Per-session chatlog"
+    owner_feature: chatlog
+    scope: project
+    path: "<repo>/.kaizen/chatlog/<date>.md"
+    auto_load: false
+    auto_load_via: "Read on demand for session reconstruction"
+    role: "Markdown transcript of agent ↔ user exchange"
+    refresh: "Hook on UserPromptSubmit + Stop"
+
+  - id: claude-md
+    name: "CLAUDE.md (project orientation)"
+    owner_feature: project
+    scope: project
+    path: "<repo>/CLAUDE.md"
+    auto_load: true
+    auto_load_via: "CC built-in session-start loader"
+    role: "Project orientation handle — points at brain Notes, runnable surface"
+    refresh: "Manual edit (never auto-written per pref-claude-md-is-rulebook-not-state)"
+
+  - id: claude-md-global
+    name: "CLAUDE.md (user-global)"
+    owner_feature: global
+    scope: global
+    path: "~/.claude/CLAUDE.md"
+    auto_load: true
+    auto_load_via: "CC built-in session-start loader"
+    role: "User-wide preferences + Persona @import handle"
+    refresh: "Manual edit"
+
+# The continuity flow — declarative description of how surfaces
+# connect across a session lifecycle. Rendered by `memory_ledger flow`.
+continuity_flow:
+  - phase: session_start
+    description: "CC loads the auto-load surfaces into context."
+    surfaces: [claude-md-global, claude-md, brain-persona, auto-memory-index, backlog-ledger]
+
+  - phase: orientation
+    description: "Agent reads the handoff (if resuming) and verifies state."
+    surfaces: [handoff-yamls, handoff-store]
+    verbs: ["kaizen-handoff resume", "kaizen-handoff verify"]
+
+  - phase: mid_work
+    description: "Discoveries land in gold / inbox / trace; tasks tracked in backlog."
+    surfaces: [gold-store, inbox, trace-log, backlog-source]
+    verbs: ["kaizen-gold capture", "kaizen-backlog add"]
+
+  - phase: end_of_session
+    description: "Handoff captures session state; durables bridge to brain."
+    surfaces: [handoff-yamls, brain-notes, auto-memory-entries]
+    verbs: ["kaizen-handoff create", "kaizen-handoff bridge"]
+
+  - phase: between_sessions
+    description: "Daemon ticks consolidate gold → brain, regen auto-memory index."
+    surfaces: [brain-notes, brain-persona, auto-memory-index]
+    verbs: ["kaizen-daemon run"]

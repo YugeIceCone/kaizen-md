@@ -490,6 +490,46 @@
       "committed_at": null,
       "parked_reason": null,
       "probe_output": null
+    },
+    {
+      "id": "BK-026",
+      "section": "next_up",
+      "title": "plugin-development — full audit of the dev-workflow surface (gaps + stale refs)",
+      "ref": null,
+      "probe": "Audit produces a single report: every feature in plugins/kaizen/scripts/ vs feature-shape.yaml slots; gap-classified (missing slot / present-but-out-of-spec / stale path reference / undocumented surface). Output to .kaizen/workflow/audits/plugin-development-<ts>.md + .jsonl",
+      "verify": "(a) Walk plugins/kaizen/scripts/<feature>/ + skills/<feature>/ + commands/<feature>.md + bin/kaizen-<feature> + tests/test_<feature>*.py for each known feature ID. (b) Predicate-evaluate against feature-shape.yaml::predicates. (c) Cross-check feature-shape.yaml's path_patterns against ACTUAL layout (skills/workflow/scripts/<feature>.py in yaml vs scripts/<feature>/<feature>.py in reality — stale conventions). (d) Scan SKILL.md bodies for stale path refs to ~/.claude/skills/workflow/, .kaizen/superpowers/, etc. (e) JSONL-indexed deliverable per [[Notes/pref-jsonl-indexed-deliverables]].",
+      "tags": [
+        "plugin-development",
+        "audit",
+        "gaps",
+        "stale"
+      ],
+      "created": "2026-05-19",
+      "started_at": null,
+      "committed": null,
+      "committed_at": null,
+      "parked_reason": null,
+      "probe_output": null
+    },
+    {
+      "id": "BK-027",
+      "section": "next_up",
+      "title": "subagent dispatch — optimizations + analyze pass + content-delivery + gaps",
+      "ref": null,
+      "probe": "Audit + improve the subagent dispatch surface: kaizen-implementer / general-purpose / Explore / Plan / wf-*/ kaizen-* subagents. Coverage gaps, prompt-template quality, return-shape consistency, dispatch-rubric accuracy",
+      "verify": "(a) Survey every available subagent_type in plugins/kaizen/agents/ and ~/.claude/agents/; tabulate tool-inventory, model preference, isolation defaults. (b) Identify gaps — work-types that have no good subagent fit (per dispatch-rubric.yaml). (c) Audit prompt-template quality: do prompts hand over self-contained context (file paths, line numbers, what to change)? Flag 'based on your findings' anti-patterns. (d) Standardize return-shape across subagents (envelope vs prose vs hybrid); content-delivery contract for 'brainstorm', 'audit', 'implement', 'review'. (e) Refine the dispatch rubric with real-session evidence (which dispatches were chosen, were they right). Ship as a single audit deliverable + targeted fixes to dispatch-rubric.yaml + agent definitions.",
+      "tags": [
+        "subagent",
+        "dispatch",
+        "audit",
+        "optimization"
+      ],
+      "created": "2026-05-19",
+      "started_at": null,
+      "committed": null,
+      "committed_at": null,
+      "parked_reason": null,
+      "probe_output": null
     }
   ],
   "decisions": []
