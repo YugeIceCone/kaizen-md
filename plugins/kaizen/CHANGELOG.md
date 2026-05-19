@@ -618,13 +618,13 @@ tests). No regressions in the existing 1360.
 
 Follow-up to the `auto_fix_lint` ship (below). Three additions:
 
-- **`skills/workflow/scripts/lint_fix_prefs.py`** — atomic per-repo
+- **`scripts/lint/lint_fix_prefs.py`** — atomic per-repo
   persistence at `.kaizen/lint_dispatch_prefs.json`. The user picks
   subagent vs local_llm once, the rest of the session honors it.
   `load_prefs(repo)` / `save_prefs(repo, data)` / `get_strategy(repo,
   default='subagent')` / `set_strategy(repo, strategy)`. Schema
   v1 + `updated_at` stamp. 10 tests.
-- **`skills/workflow/scripts/lint_fix_setup.py`** — local-LLM
+- **`scripts/lint/lint_fix_setup.py`** — local-LLM
   detection + install-script generator (no auto-execute, returns
   bash for `ollama` or `llama-server`). `detect_servers()` sweeps
   `LLM_BASE_URL` env + ollama:11434 + llama-server:8080 via a TCP
@@ -667,7 +667,7 @@ are the errors". TDD-built (21 unit + integration + contract +
 regression tests via `tests/test_lint_fix_dispatch.py`; full plugin
 suite of 1324 tests stays green).
 
-- **`skills/workflow/scripts/lint_fix_dispatch.py`** — two strategies
+- **`scripts/lint/lint_fix_dispatch.py`** — two strategies
   sharing the lint-finding shape `_normalize_ruff` / `_parse_ty_concise`
   already produce:
   - `strategy="subagent"` — emits structured task specs (`file`,
