@@ -96,15 +96,15 @@ class TestConsolidatedCliParentHeaders(unittest.TestCase):
         self.assertIn("# consolidated-cli-parent: flow", body[:200])
 
     def test_docs_flow_has_consolidated_cli_parent_header(self):
-        body = (_SCRIPTS / "docs_flow.py").read_text(encoding="utf-8")
+        body = (_KZ_DIR / "scripts/index/docs_flow.py").read_text(encoding="utf-8")
         self.assertIn("# consolidated-cli-parent: flow", body[:200])
 
     def test_index_flow_has_consolidated_cli_parent_header(self):
-        body = (_SCRIPTS / "index_flow.py").read_text(encoding="utf-8")
+        body = (_KZ_DIR / "scripts/index/index_flow.py").read_text(encoding="utf-8")
         self.assertIn("# consolidated-cli-parent: flow", body[:200])
 
     def test_search_flow_has_consolidated_cli_parent_header(self):
-        body = (_SCRIPTS / "search_flow.py").read_text(encoding="utf-8")
+        body = (_KZ_DIR / "scripts/index/search_flow.py").read_text(encoding="utf-8")
         self.assertIn("# consolidated-cli-parent: flow", body[:200])
 
 

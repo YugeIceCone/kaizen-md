@@ -142,7 +142,7 @@ class TestEmbedPathWiring(unittest.TestCase):
     called in the embed pipeline. Source grep — catches a regression
     where someone removes the wiring without removing the helper."""
 
-    EMBED_PATH = PLUGIN_ROOT / "skills" / "workflow" / "scripts" / "_embed.py"
+    EMBED_PATH = PLUGIN_ROOT / "scripts" / "index" / "_embed.py"
 
     def test_embed_local_calls_maybe_truncate(self):
         text = self.EMBED_PATH.read_text()

@@ -59,7 +59,7 @@ def test_help_lists_umbrella_subcommands():
     so users discover the consolidation."""
     import subprocess
     r = subprocess.run(
-        [sys.executable, str(_KZ_DIR / "skills/workflow/scripts/plugin_docs.py"),
+        [sys.executable, str(_KZ_DIR / "scripts/index/plugin_docs.py"),
          "--help"],
         capture_output=True, text=True, timeout=10,
     )
@@ -75,7 +75,7 @@ def test_scan_and_list_still_work():
     import subprocess
     for sub in ("scan", "list"):
         r = subprocess.run(
-            [sys.executable, str(_KZ_DIR / "skills/workflow/scripts/plugin_docs.py"),
+            [sys.executable, str(_KZ_DIR / "scripts/index/plugin_docs.py"),
              sub, "--help"],
             capture_output=True, text=True, timeout=10,
         )

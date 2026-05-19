@@ -110,7 +110,7 @@ if [ "$cmd" = "create" ]; then
 
     # Ingest into blob store; --ref materialises the symlink at $REF.
     mkdir -p "$BACKUP_BASE"
-    SHA=$(python3 "$_SCRIPT_REAL_DIR/../../skills/workflow/scripts/_blobs.py" put "$TMP_TAR" \
+    SHA=$(python3 "$_SCRIPT_REAL_DIR/../../scripts/index/_blobs.py" put "$TMP_TAR" \
         --kind backup \
         --name "$NAME.tar.gz" \
         --ref "$REF" \

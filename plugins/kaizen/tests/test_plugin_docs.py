@@ -29,7 +29,7 @@ import unittest
 from pathlib import Path
 
 _KZ_DIR = Path(__file__).resolve().parent.parent
-_DOCS_PY = _KZ_DIR / "skills/workflow/scripts/plugin_docs.py"
+_DOCS_PY = _KZ_DIR / "scripts/index/plugin_docs.py"
 
 
 class _DocsBase(unittest.TestCase):

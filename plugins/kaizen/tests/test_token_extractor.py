@@ -20,7 +20,7 @@ from pathlib import Path
 
 SCRIPT = (
     Path(__file__).resolve().parent.parent
-    / "skills" / "workflow" / "scripts" / "_token_extractor.py"
+    / "scripts" / "index" / "_token_extractor.py"
 )
 
 # In-process import of the pure helpers (no tree-sitter needed for these).

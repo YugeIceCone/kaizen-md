@@ -20,7 +20,7 @@ from pathlib import Path
 
 SCRIPT = (
     Path(__file__).resolve().parent.parent
-    / "skills" / "workflow" / "scripts" / "_token_db.py"
+    / "scripts" / "index" / "_token_db.py"
 )
 
 # T2: in-process import of the TokenDB module (stdlib-only path —
