@@ -74,7 +74,7 @@ _LONG_FORM_BIN = re.compile(
     r"(?:^|[\s|;&])(?:bash\s+)?[^\s]*plugins/kaizen/bin/kaizen-([\w-]+)\b"
 )
 _LONG_FORM_SCRIPT = re.compile(
-    r"(?:^|[\s|;&])(?:python3?|uv run --script)\s+[^\s]*plugins/kaizen/skills/workflow/scripts/([\w-]+)\.(?:py|sh)\b"
+    r"(?:^|[\s|;&])(?:python3?|uv run --script)\s+[^\s]*plugins/kaizen/(?:skills/workflow/scripts|scripts/[\w-]+)/([\w-]+)\.(?:py|sh)\b"
 )
 
 

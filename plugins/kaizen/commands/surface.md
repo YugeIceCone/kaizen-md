@@ -61,7 +61,7 @@ Reserved for the future "regenerate hooks.json + permissions from canonical stat
 
 ## Behind the scenes
 
-`skills/workflow/scripts/surface.py` is the entry point. Inventory primitives:
+`scripts/iron-laws/surface.py` is the entry point. Inventory primitives:
 
 - `list_hook_entries() → list[HookEntry]` — parses `hooks/hooks.json`
 - `list_hook_files() → list[str]` — scans `hooks/claude/`

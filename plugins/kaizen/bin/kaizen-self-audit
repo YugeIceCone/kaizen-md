@@ -15,4 +15,4 @@ PLUGIN_ROOT="$(kaizen_plugin_root)" || {
     exit 1
 }
 
-exec python3 "$PLUGIN_ROOT/skills/workflow/scripts/self_audit.py" "$@"
+exec python3 "$PLUGIN_ROOT/scripts/iron-laws/self_audit.py" "$@"

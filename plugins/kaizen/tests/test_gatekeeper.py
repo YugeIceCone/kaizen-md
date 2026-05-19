@@ -1,4 +1,4 @@
-"""Tests for skills/workflow/scripts/gatekeeper.py and
+"""Tests for scripts/iron-laws/gatekeeper.py and
 skills/efficient-tool-use/application/etu_scan.py — the unified gate."""
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ import unittest
 from pathlib import Path
 
 _REPO_ROOT = Path(__file__).resolve().parents[3]
-_GATEKEEPER = _REPO_ROOT / "plugins/kaizen/skills/workflow/scripts/gatekeeper.py"
+_GATEKEEPER = _REPO_ROOT / "plugins/kaizen/scripts/iron-laws/gatekeeper.py"
 _ETU_SCAN = _REPO_ROOT / "plugins/kaizen/skills/efficient-tool-use/application/etu_scan.py"
 
 

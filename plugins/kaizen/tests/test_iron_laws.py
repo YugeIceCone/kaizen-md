@@ -329,7 +329,7 @@ class TestRegistryIntegrity(unittest.TestCase):
 
 
 class TestCLI(unittest.TestCase):
-    CLI = _SCRIPTS / "iron_laws.py"
+    CLI = _PLUGIN_ROOT / "scripts" / "iron-laws" / "iron_laws.py"
 
     def _run(self, *args):
         return subprocess.run(

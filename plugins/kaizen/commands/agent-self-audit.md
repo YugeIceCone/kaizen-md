@@ -6,7 +6,7 @@ argument-hint: "(no args — runs the full A→B→C flow)"
 
 # /kaizen:agent-self-audit
 
-!`python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/self_audit_agent.py dispatch-plan`
+!`python3 ${CLAUDE_PLUGIN_ROOT}/scripts/iron-laws/self_audit_agent.py dispatch-plan`
 
 The command above just ran **Phase A — dispatch-plan**: it ran the
 mechanical self-audit, turned every skill-checkpoint into a
@@ -36,7 +36,7 @@ Now complete phases B and C.
 
 Run (substitute the `run_id` printed in Phase A):
 
-    python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/self_audit_agent.py aggregate --run-id <run_id>
+    python3 ${CLAUDE_PLUGIN_ROOT}/scripts/iron-laws/self_audit_agent.py aggregate --run-id <run_id>
 
 This reads + jsonschema-validates every subagent result, merges the
 findings into one severity-sorted list, and writes the consolidated

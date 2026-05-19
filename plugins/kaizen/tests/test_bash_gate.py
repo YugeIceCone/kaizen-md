@@ -401,7 +401,7 @@ class TestLongFormNudge(unittest.TestCase):
         self.assertIn("kaizen gatekeeper", r["systemMessage"])
 
     def test_script_long_form_caught(self):
-        cmd = "python3 plugins/kaizen/skills/workflow/scripts/gatekeeper.py check --all"
+        cmd = "python3 plugins/kaizen/scripts/iron-laws/gatekeeper.py check --all"
         r = _bash_gate.decide(cmd)
         self.assertIn("kaizen-cli nudge", r.get("systemMessage", ""))
         self.assertIn("kaizen gatekeeper", r["systemMessage"])

@@ -6,4 +6,4 @@ argument-hint: [run|list-stages|path]
 
 # /kaizen:self-audit
 
-!`python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/self_audit.py $ARGUMENTS`
+!`python3 ${CLAUDE_PLUGIN_ROOT}/scripts/iron-laws/self_audit.py $ARGUMENTS`

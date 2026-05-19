@@ -40,7 +40,7 @@ hosts). **Stop hooks:** auto-installed via the kaizen plugin
 ```bash
 # Structured ledger (recommended) — items with verify commands
 /kaizen:loop --its 30 \
-  --item "Implement carve in shim.py|grep -q 'def carve' plugins/kaizen/skills/workflow/scripts/shim.py" \
+  --item "Implement carve in shim.py|grep -q 'def carve' plugins/kaizen/scripts/iron-laws/shim.py" \
   --item "Add tests in tests/test_shim.py|python3 -m unittest tests.test_shim 2>&1 | grep -q OK" \
   --item "Update SKILL.md"
 
