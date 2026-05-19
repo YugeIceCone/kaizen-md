@@ -306,7 +306,7 @@ if [ "$WITH_INDEX" -eq 1 ] || [ "$WITH_BROWSER" -eq 1 ] || [ "$WITH_DAEMON" -eq 
 
   if [ "$WITH_TRACE_PROXY" -eq 1 ]; then
     step "start LLM trace proxy" \
-      "python3 '$PLUGIN_ROOT/skills/workflow/scripts/llm_proxy.py' start"
+      "python3 '$PLUGIN_ROOT/scripts/llm/llm_proxy.py' start"
   fi
 
   echo ""

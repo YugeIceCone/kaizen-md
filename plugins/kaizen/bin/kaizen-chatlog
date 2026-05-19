@@ -4,4 +4,4 @@ _SCRIPT_REAL="$(readlink -f "${BASH_SOURCE[0]}" 2>/dev/null \
     || python3 -c 'import os, sys; print(os.path.realpath(sys.argv[1]))' "${BASH_SOURCE[0]}")"
 _BIN_DIR="$(cd "$(dirname "$_SCRIPT_REAL")" && pwd)"
 _PLUGIN_ROOT="$(cd "$_BIN_DIR/.." && pwd)"
-exec python3 "$_PLUGIN_ROOT/skills/workflow/scripts/chatlog.py" "$@"
+exec python3 "$_PLUGIN_ROOT/scripts/chatlog/chatlog.py" "$@"

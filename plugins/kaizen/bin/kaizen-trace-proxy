@@ -12,7 +12,7 @@ set -uo pipefail
 
 SCRIPT=$(python3 -c "import os, sys; print(os.path.realpath(sys.argv[1]))" "${BASH_SOURCE[0]}")
 PLUGIN_ROOT=$(cd "$(dirname "$SCRIPT")/.." && pwd)
-PY="$PLUGIN_ROOT/skills/workflow/scripts/llm_proxy.py"
+PY="$PLUGIN_ROOT/scripts/llm/llm_proxy.py"
 
 STATE_DIR="${KAIZEN_DAEMON_STATE:-$HOME/.claude/.kaizen-daemon}"
 PID_FILE="$STATE_DIR/llm-proxy.pid"

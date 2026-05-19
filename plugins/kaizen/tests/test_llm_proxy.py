@@ -10,7 +10,7 @@ import unittest
 from pathlib import Path
 
 _KZ = Path(__file__).resolve().parent.parent
-_llm_proxy = _KZ / "skills/workflow/scripts/llm_proxy.py"
+_llm_proxy = _KZ / "scripts/llm/llm_proxy.py"
 
 
 class TestScriptLlmProxy(unittest.TestCase):

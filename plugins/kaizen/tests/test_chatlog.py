@@ -29,7 +29,7 @@ import unittest
 from pathlib import Path
 
 _KZ = Path(__file__).resolve().parent.parent
-_CHATLOG = _KZ / "skills/workflow/scripts/chatlog.py"
+_CHATLOG = _KZ / "scripts/chatlog/chatlog.py"
 
 # Direct import for unit tests of pure functions
 sys.path.insert(0, str(_KZ / "skills/workflow/scripts"))
