@@ -4,7 +4,7 @@
 # stale hook paths. Read-only. Exits 0 if all green, 1 if any RED issue.
 #
 # v1.30.0+: renamed from doctor.sh → health.sh so the script file matches
-# the `/kaizen:health` user-facing slash command (the `/kaizen:doctor`
+# the `kaizen-health` user-facing slash command (the `/kaizen:doctor`
 # command was retired in v1.18.0 — see CHANGELOG).
 
 set -uo pipefail
@@ -182,7 +182,7 @@ COUNT=$(ls -1 "$BAK_DIR"/*.tar.gz 2>/dev/null | wc -l)
 if [ "$COUNT" -gt "0" ]; then
     LAST=$(ls -1t "$BAK_DIR"/*.tar.gz 2>/dev/null | head -1 | xargs -I {} basename {} .tar.gz 2>/dev/null)
     log_pass "$COUNT backup(s) | latest: $LAST"
-    [ "$COUNT" -gt "20" ] && check_warn "$COUNT backups accumulated — consider /kaizen:backup prune --keep 10"
+    [ "$COUNT" -gt "20" ] && check_warn "$COUNT backups accumulated — consider kaizen-backup prune --keep 10"
 else
     log_skip "no backups yet"
 fi

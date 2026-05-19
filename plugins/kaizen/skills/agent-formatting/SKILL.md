@@ -64,15 +64,15 @@ forbidden_constructs:
   - description: slash command inside a bash code fence
     example: |
       ```bash
-      /kaizen:update
+      kaizen-update
       ```
     fix: |
-      /kaizen:update    # plain line, no fence
+      kaizen-update    # plain line, no fence
 
   - description: slash commands chained with &&
-    example: "/kaizen:update && /reload-plugins"
+    example: "kaizen-update && /reload-plugins"
     fix: |
-      /kaizen:update
+      kaizen-update
       /reload-plugins
 
   - description: bash + slash command in same fenced block
@@ -94,7 +94,7 @@ forbidden_constructs:
 
 ````
 ```bash
-/kaizen:update && /reload-plugins
+kaizen-update && /reload-plugins
 ```
 ````
 
@@ -103,7 +103,7 @@ The user gets a `bash` block that looks chained. They type the chain into a term
 ### ✅ Right
 
 ```
-/kaizen:update
+kaizen-update
 /reload-plugins
 ```
 

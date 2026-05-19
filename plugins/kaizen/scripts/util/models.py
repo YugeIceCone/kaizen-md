@@ -150,7 +150,7 @@ def cmd_list(args) -> int:
         _emit(models, counts={"models": len(models)})
         return 0
     if not models:
-        print("(no local models — pull one with: /kaizen:models pull <name>)")
+        print("(no local models — pull one with: kaizen-models pull <name>)")
         print("  suggestions: nomic-embed-text  (embed, ~270MB)")
         print("               qwen2.5:3b        (chat, ~2GB)")
         print("               llama3.2:1b       (chat, ~1.3GB)")

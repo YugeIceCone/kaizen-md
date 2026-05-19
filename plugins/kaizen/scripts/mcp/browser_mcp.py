@@ -22,7 +22,7 @@ inline script-metadata block above. You only need:
     1. uv on PATH                 (curl -LsSf https://astral.sh/uv/install.sh | sh)
     2. Chromium binary            uv run --with playwright python -m playwright install chromium
 
-Or invoke `/kaizen:browser install` which handles both. Subsequent runs
+Or invoke `kaizen-browser install` which handles both. Subsequent runs
 hit the uv cache and start in milliseconds.
 
 ## Tools exposed
@@ -285,7 +285,7 @@ if __name__ == "__main__":
             "  pip install --user mcp playwright\n"
             "  python -m playwright install chromium\n"
             "\n"
-            "Or run: /kaizen:browser install (uses uv).\n"
+            "Or run: kaizen-browser install (uses uv).\n"
         )
         sys.exit(1)
     mcp.run()

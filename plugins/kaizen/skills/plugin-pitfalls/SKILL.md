@@ -545,7 +545,7 @@ Cache mirror lives at `~/.claude/plugins/known_marketplaces.json` with `lastUpda
 
 **Defence:**
 
-For local-source marketplaces (yours under active development), pair `autoUpdate: true` with an explicit refresh path for mid-session updates — either a one-shot script you can `/reload-plugins` after, or a cron-driven daemon. Kaizen's daemon (`/kaizen:daemon`) is the latter and complements CC's autoUpdate cleanly:
+For local-source marketplaces (yours under active development), pair `autoUpdate: true` with an explicit refresh path for mid-session updates — either a one-shot script you can `/reload-plugins` after, or a cron-driven daemon. Kaizen's daemon (`kaizen-daemon`) is the latter and complements CC's autoUpdate cleanly:
 
 | Trigger | CC autoUpdate | Daemon |
 |---|---|---|

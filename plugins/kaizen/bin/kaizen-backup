@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# kaizen-backup — CLI shortcut for /kaizen:backup (snapshot / list / restore).
+# kaizen-backup — CLI shortcut for kaizen-backup (snapshot / list / restore).
 # Strict-name wrapper required by iron-law `bin-wrapper-per-cli`.
 
 set -euo pipefail

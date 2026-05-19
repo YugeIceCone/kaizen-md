@@ -148,8 +148,8 @@ class TestMaintenanceBranch(unittest.TestCase):
     def test_maintenance_dispatches_sibling_slashes(self):
         """Maintenance ops dispatch existing first-class slashes
         rather than wrapping them in setup.sh."""
-        for slash in ("/kaizen:hygiene", "/kaizen:update",
-                      "/kaizen:backup"):
+        for slash in ("/kaizen:hygiene", "kaizen-update",
+                      "kaizen-backup"):
             self.assertIn(slash, self.text,
                            f"Maintenance dispatch missing: {slash}")
 

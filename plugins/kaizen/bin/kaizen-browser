@@ -50,7 +50,7 @@ case "$CMD" in
         echo ""
         echo "  Next:"
         echo "    /reload-plugins              # so Claude Code picks up the new MCP server"
-        echo "    /kaizen:browser status       # verify wiring"
+        echo "    kaizen-browser status       # verify wiring"
         ;;
 
     check)

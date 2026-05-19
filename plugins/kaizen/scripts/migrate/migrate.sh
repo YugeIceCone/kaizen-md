@@ -291,7 +291,7 @@ case "$cmd" in
     paths)
         # Pre-v1.22 path-restructure migrator; delegate to sibling script.
         # Kept here as a subcommand so `kaizen migrate` is the single
-        # entry point — `/kaizen:migrate-paths` slash was retired
+        # entry point — `kaizen-migrate-paths` slash was retired
         # 2026-05-17; users should invoke `kaizen migrate paths` instead.
         exec "$_SCRIPT_REAL_DIR/migrate_paths.sh" "$@" ;;
     -h|--help)

@@ -139,4 +139,4 @@ fi
 
 echo "${GREEN}${BOLD}✓ uninstalled${RESET}"
 echo "${DIM}Re-activate later: /kaizen:setup${RESET}"
-echo "${DIM}Restore from backup: /kaizen:backup list  →  /kaizen:backup restore <id>${RESET}"
+echo "${DIM}Restore from backup: kaizen-backup list  →  kaizen-backup restore <id>${RESET}"

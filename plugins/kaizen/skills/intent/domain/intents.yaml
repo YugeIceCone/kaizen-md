@@ -323,7 +323,7 @@ intents:
       - { kind: phrase, pattern: "refresh (the )?(plugin )?cache", case_insensitive: true }
       - { kind: phrase, pattern: "pull (the )?(plugin )?(updates|changes)", case_insensitive: true }
     action:
-      suggest: "/kaizen:update  # git-pull + cache refresh + reload"
+      suggest: "kaizen-update  # git-pull + cache refresh + reload"
       subcommand: update
       confidence: 0.85
 
@@ -334,7 +334,7 @@ intents:
       - { kind: phrase, pattern: "(broken )?(symlinks?|missing scripts?)", case_invariant: true, case_insensitive: true }
       - { kind: phrase, pattern: "(clean|hygiene|cleanup) (the )?plugin", case_insensitive: true }
     action:
-      suggest: "/kaizen:health  # broken symlinks / missing scripts / schema drift  → kaizen-hygiene bin to clean"
+      suggest: "kaizen-health  # broken symlinks / missing scripts / schema drift  → kaizen-hygiene bin to clean"
       subcommand: health
       confidence: 0.8
 
@@ -344,7 +344,7 @@ intents:
       - { kind: phrase, pattern: "(backup|snapshot) (the )?(plugin|kaizen|state)", case_insensitive: true }
       - { kind: phrase, pattern: "restore (a |from )?(backup|snapshot)", case_insensitive: true }
     action:
-      suggest: "/kaizen:backup list  # then restore <id> or create"
+      suggest: "kaizen-backup list  # then restore <id> or create"
       subcommand: backup
       confidence: 0.85
 

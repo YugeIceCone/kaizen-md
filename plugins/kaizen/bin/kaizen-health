@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# kaizen-health — CLI shortcut for /kaizen:health (read-only diagnostic).
+# kaizen-health — CLI shortcut for kaizen-health (read-only diagnostic).
 # Strict-name wrapper required by iron-law `bin-wrapper-per-cli`.
 
 set -euo pipefail

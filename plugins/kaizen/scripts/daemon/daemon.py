@@ -271,7 +271,7 @@ def index_status(root: Path | None = None) -> dict:
 # ─── Cron install ────────────────────────────────────────────────────
 
 
-CRON_MARKER = "# kaizen daemon (auto-installed by /kaizen:daemon install)"
+CRON_MARKER = "# kaizen daemon (auto-installed by kaizen-daemon install)"
 
 
 def cron_install(interval_min: int = 30) -> bool:
@@ -711,7 +711,7 @@ def watch_foreground(interval: float) -> int:
     st = watch_status()
     if st.get("running"):
         print(f"watcher already running (pid {st['pid']}). "
-              f"/kaizen:daemon watch-stop first.", file=sys.stderr)
+              f"kaizen-daemon watch-stop first.", file=sys.stderr)
         return 1
     if st.get("stale_pid_file"):
         PID_FILE.unlink(missing_ok=True)

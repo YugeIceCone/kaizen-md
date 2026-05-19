@@ -17,7 +17,7 @@
 # menu's "Default" mode pre-fills add-on flags from detect-stack output;
 # "Reconfigure" is an idempotent re-run of install with new flags;
 # "Maintenance" dispatches to sibling slashes (/kaizen:hygiene,
-# /kaizen:update, /kaizen:backup) rather than wrapping them here.
+# kaizen-update, kaizen-backup) rather than wrapping them here.
 #
 # Does (install path):
 #   1. mkdir .kaizen/hooks/
@@ -404,13 +404,13 @@ Backlog quick reference:
   kaizen-backlog add --title "..." --probe "..." --verify "..."
 
 Diagnostic:
-  /kaizen:health
+  kaizen-health
 
 Uninstall (per-repo only; keeps backlog + backups):
   /kaizen:setup uninstall
 
 Backup before risky ops:
-  /kaizen:backup create --label <what>
+  kaizen-backup create --label <what>
 EOF
 echo ""
 echo "Uninstall:  git config --unset core.hooksPath && rm -rf .kaizen/"

@@ -167,4 +167,4 @@ This skill ships with `scripts/publish.sh` — wraps the standard sequence + fai
 bash ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/publish.sh --help
 ```
 
-Slash command: `/kaizen:publish`.
+Slash command: `kaizen-publish`.

@@ -132,7 +132,7 @@ case "$CMD" in
 
         echo ""
         if [ "$CHANGES_APPLIED" = "1" ]; then
-            # Machine-parseable last line. The /kaizen:update slash command
+            # Machine-parseable last line. The kaizen-update slash command
             # body reads this to decide whether to auto-emit /reload-plugins.
             echo "kaizen-update: needs-reload (changes applied)"
         else

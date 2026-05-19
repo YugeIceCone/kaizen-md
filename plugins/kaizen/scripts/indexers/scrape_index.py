@@ -41,8 +41,8 @@ Override via env:
   KAIZEN_SCRAPE_LLM_BASE_URL=http://localhost:11434
 
 Ollama setup (one-time):
-  /kaizen:models pull granite4.1:8b       # the curated winner (2026-05-12)
-  /kaizen:models pull nomic-embed-text    # for embedding (separate from scrape)
+  kaizen-models pull granite4.1:8b       # the curated winner (2026-05-12)
+  kaizen-models pull nomic-embed-text    # for embedding (separate from scrape)
 
 ## SQLite schema (~/.claude/.kaizen/indexes/scrape/index.db)
 
@@ -311,7 +311,7 @@ def _probe_ollama_all_models(base_url: str, timeout: float) -> list[str]:
 
     Stdlib-only — we don't import the `ollama` package here so this stays
     on the python3-only path of bin/kaizen-scrape. Richer metadata (size,
-    digest, modified_at) is available via `/kaizen:models list`."""
+    digest, modified_at) is available via `kaizen-models list`."""
     import urllib.request
     import urllib.error
     url = base_url.rstrip("/") + "/api/tags"
@@ -959,7 +959,7 @@ def cmd_crawl(args):
 def cmd_recommend(args):
     """List the Ollama-hosted chat-model picks for ScrapeGraphAI's
     JSON-extraction workload. Read-only — does not pull anything. To
-    install, copy the `ollama pull` line OR run /kaizen:models pull <name>."""
+    install, copy the `ollama pull` line OR run kaizen-models pull <name>."""
     if args.json:
         _emit({"recommendations": OLLAMA_SCRAPE_RECOMMENDATIONS})
         return
@@ -979,8 +979,8 @@ def cmd_recommend(args):
     print()
     winner = OLLAMA_SCRAPE_RECOMMENDATIONS[0]["name"]
     print("Install the winner:")
-    print(f"  /kaizen:models pull {winner}")
-    print(f"  /kaizen:models pin-chat  {winner}")
+    print(f"  kaizen-models pull {winner}")
+    print(f"  kaizen-models pin-chat  {winner}")
     print("  source ~/.claude/.kaizen/data/profile.env")
     print()
     print("Why each pick:")

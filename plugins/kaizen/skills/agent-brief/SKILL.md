@@ -183,11 +183,11 @@ Each is a self-locating bash shim that resolves to the real script via `python3 
 | Symptom | Cause | Recovery |
 |---|---|---|
 | `Unknown command: /kaizen:*` | Plugin reload missed the new slash command | `/reload-plugins` (and rerun if it doesn't take — caching) |
-| `kaizen-update` reports cache stale | `/plugin update` doesn't refresh local marketplaces | `/kaizen:update` (auto-reloads if changes applied; reads version from plugin.json + rsyncs the cache slot) |
+| `kaizen-update` reports cache stale | `/plugin update` doesn't refresh local marketplaces | `kaizen-update` (auto-reloads if changes applied; reads version from plugin.json + rsyncs the cache slot) |
 | Gate fails on `compile-barrier` | Cargo/TS/Go check failed | Read `/tmp/kaizen-compile.log` |
 | Gate blocks on `pre-deletion` | Trying to `git rm` without `KAIZEN_ALLOW_DELETE=1` or matching `deletion-allow` brain rule | Either authorize via env OR add a `deletion-allow` rule via `kaizen-rules template deletion-allow` |
 | Inbox shows pending messages | User typed while Claude was busy | Acknowledge each entry before continuing the current task |
-| Browser MCP errors with "Sync API inside asyncio loop" | You're on v1.7.0 (pre-fix) | `/kaizen:update` to v1.7.1+ |
+| Browser MCP errors with "Sync API inside asyncio loop" | You're on v1.7.0 (pre-fix) | `kaizen-update` to v1.7.1+ |
 
 ## Common agent tasks → exact invocation
 
@@ -201,7 +201,7 @@ Each is a self-locating bash shim that resolves to the real script via `python3 
 | Replay last hour of hook events | `kaizen-trace query --src hook --since 1h` |
 | Open a real browser | invoke `mcp__plugin_kaizen_kaizen-browser__open_browser` (headless=True default-safe) |
 | Generate per-package docs | `kaizen-docs scan` |
-| Refresh plugin cache after a kaizen push | `/kaizen:update` (auto-reloads on changes) |
+| Refresh plugin cache after a kaizen push | `kaizen-update` (auto-reloads on changes) |
 | Add a brain rule | `kaizen-rules template deletion-allow > ~/.claude/.kaizen/brain/Notes/kaizen-allow-X.md` then edit |
 
 ## State data streams (where to look)

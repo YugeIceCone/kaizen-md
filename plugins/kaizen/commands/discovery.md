@@ -80,7 +80,7 @@ options:
   # One option per Ollama model returned by discovery_list_embed_models().
   # If the tool returns []  (Ollama down or no embed models pulled),
   # show only the "default" option and note "Ollama unreachable — pull
-  # a model with /kaizen:models pull <name> if you want a switch".
+  # a model with kaizen-models pull <name> if you want a switch".
   - label: "<model.name> (dim=<model.dim>)"
     description: "Switch the picked surface(s) to this Ollama embedding model. Re-index is mandatory after a model change because dim differs and cosine isn't comparable across models."
 ```

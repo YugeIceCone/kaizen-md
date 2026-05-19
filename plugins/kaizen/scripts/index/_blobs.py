@@ -91,7 +91,7 @@ def _manifest_lock():
     """fcntl.flock(LOCK_EX) on a sibling lockfile.
 
     Serialises read-modify-write across concurrent processes (e.g. user-
-    invoked /kaizen:backup create racing the daemon's hygiene pass). The
+    invoked kaizen-backup create racing the daemon's hygiene pass). The
     lockfile itself is never read; its handle is the lock token.
 
     Why a separate lockfile (not manifest.json itself)? Because

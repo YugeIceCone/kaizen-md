@@ -7,7 +7,7 @@ allowed-tools: ["AskUserQuestion", "Bash(${CLAUDE_PLUGIN_ROOT}/bin/kaizen-help-g
 
 # /kaizen:help
 
-Static taxonomy of all 17 `/kaizen:*` commands. **One screen, zero bash
+Static taxonomy of all 9 `/kaizen:*` commands. **One screen, zero bash
 execution.** For full per-command docs use `kaizen help <name>`. Auto-
 generated from `commands/*.md` frontmatter via `kaizen-help-gen`.
 
@@ -21,7 +21,7 @@ the wizard and emit the corresponding slice directly.
 **Q1 — Which domain?** (single-select; 4 options + Other)
 
 - `audit/quality` (2)
-- `workflow` (2)
+- `workflow` (1)
 - `observability` (1)
 - `brain/memory` (1)
 - Other (overflow: plugin-meta / discovery/search / dev-aids)
@@ -53,32 +53,24 @@ dispatch the same way.
 |---|---|
 | `memory-ledger` | Catalog + status + flow over every memory and continuity-of-session surface in kai |
 
-## workflow (2)
+## workflow (1)
 
 | Command | Does |
 |---|---|
 | `workflow` | Workflow-shape config — default scope × run-mode × disciplines × threshold. Three  |
-| `migrate` | Migrate from loose skills / separate plugins / non-canonical layouts to canonical  |
 
-## plugin-meta (7)
+## plugin-meta (2)
 
 | Command | Does |
 |---|---|
 | `setup` | Unified plugin setup. No-args wizard (install/uninstall/health/maintenance) or dir |
-| `update` | Single-command plugin maintenance - git pull marketplace + refresh CC plugin cache |
-| `daemon` | Manage kaizen auto-daemon - cron-driven worker, hash-compares source↔cache, valida |
-| `backup` | Snapshot workflow state (.kaizen/, .kaizen.toml, optionally brain + project memory |
-| `publish` | Publish plugin/marketplace to GitHub. Full lifecycle - gh auth | remote create | p |
-| `health` | Diagnostic health check - broken symlinks, missing scripts, schema mismatch, hook  |
 | `plugin-development` | Hub for kaizen plugin-dev work. Verbs - intake | workflow | validate | rules | dis |
 
-## discovery/search (3)
+## discovery/search (1)
 
 | Command | Does |
 |---|---|
 | `discovery` | Umbrella over kaizen 4 semantic indexes - codebase (onboard) / knowledge / Claude- |
-| `models` | Ollama-backed local model management. list | pull | show | delete | copy + embed/c |
-| `browser` | Manage Playwright-backed MCP browser server (navigate/click/type/screenshot/extrac |
 
 ## dev-aids (1)
 

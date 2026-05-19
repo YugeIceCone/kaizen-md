@@ -86,9 +86,9 @@ COUNT=$(ls -1 "$BAK_DIR"/*.tar.gz 2>/dev/null | wc -l)
 if [ "$COUNT" -gt "0" ]; then
     LAST=$(ls -1t "$BAK_DIR"/*.tar.gz 2>/dev/null | head -1 | xargs -I {} basename {} .tar.gz)
     echo "  $COUNT backup(s) | latest: $LAST"
-    echo "  list: /kaizen:backup list"
+    echo "  list: kaizen-backup list"
 else
-    echo "  (no backups yet — run /kaizen:backup create)"
+    echo "  (no backups yet — run kaizen-backup create)"
 fi
 echo ""
 
@@ -110,4 +110,4 @@ MARKETPLACES=""
 [ -d "$HOME/.claude/local-marketplaces/remember-md" ] && MARKETPLACES="remember-md "
 [ -n "$LOOSE_COUNT" ] || LOOSE_COUNT=0
 echo "  loose duplicate skills: $LOOSE_COUNT  |  duplicate marketplaces: ${MARKETPLACES:-none}"
-echo "  full scan: /kaizen:migrate scan"
+echo "  full scan: kaizen-migrate scan"

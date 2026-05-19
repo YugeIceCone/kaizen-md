@@ -56,7 +56,7 @@ It works in any project, any Claude Code session, with no other plugin prerequis
   - **Superpowers (14):** `:using-superpowers`, `:brainstorming`, `:writing-plans`, `:executing-plans`, `:subagent-driven-development`, `:dispatching-parallel-agents`, `:test-driven-development`, `:systematic-debugging`, `:verification-before-completion`, `:requesting-code-review`, `:receiving-code-review`, `:finishing-a-development-branch`, `:using-git-worktrees`, `:writing-skills` — © Jesse Vincent, github.com/obra/superpowers
   - **Workflow-routing (1):** `:workflow-routing` (the `/workflow` engine — multi-stage routines, state.json machine)
   - **Remember / Second Brain (5):** `:remember`, `:process`, `:evolve`, `:status`, `:init` — © Gabi Fratica, github.com/remember-md/remember — plus all supporting scripts at `${CLAUDE_PLUGIN_ROOT}/scripts/`
-- **Slash commands (38 total)** — `/kaizen:setup`, `kaizen-backlog`, `/kaizen:precommit`, `/kaizen:models` (v1.26.0, Ollama lifecycle), `/kaizen:audit`, `/kaizen:review`, `kaizen-knowledge`, `kaizen-trace-search`, `kaizen-onboard`, `kaizen-scrape`, etc. Full list: `/kaizen:help`.
+- **Slash commands (38 total)** — `/kaizen:setup`, `kaizen-backlog`, `/kaizen:precommit`, `kaizen-models` (v1.26.0, Ollama lifecycle), `/kaizen:audit`, `/kaizen:review`, `kaizen-knowledge`, `kaizen-trace-search`, `kaizen-onboard`, `kaizen-scrape`, etc. Full list: `/kaizen:help`.
 - **MCP servers (5)** — `kaizen-backlog`, `kaizen-browser` (Playwright), `kaizen-trace-search`, `kaizen-knowledge-search`, `kaizen-onboard-search`. Auto-wired via `.mcp.json`.
 - **Lifecycle hooks (6)** — SessionStart surfaces `## In flight` + `## Next up` backlog items; UserPromptSubmit captures input to inbox for mid-sequence visibility; PreToolUse(Bash) gates destructive commands; PostToolUse drains inbox + traces commits; Stop reminds about in_flight items; PreCompact snapshots state.
 
@@ -73,7 +73,7 @@ The plugin works in any project, any session, with no plugin prerequisites:
 Optional peers (recommended but not required):
 - `workflow-routing` skill (bundled as `kaizen:workflow-routing`) — gate surfaces active-routine hints from `.kaizen/workflow/state.json` when present
 - `remember` plugin — pre-deletion gate scans Persona Top Beliefs for deletion-prevention rules
-- **Ollama** (`https://ollama.com`) — power `/kaizen:models` + the embedding/chat backends. Optional; the indexers fall back to sentence-transformers if Ollama isn't running.
+- **Ollama** (`https://ollama.com`) — power `kaizen-models` + the embedding/chat backends. Optional; the indexers fall back to sentence-transformers if Ollama isn't running.
 
 ## Quick start (3 steps)
 
@@ -88,7 +88,7 @@ Optional peers (recommended but not required):
 
 That's it. Pre-commit gate fires automatically. Backlog tracker available via `kaizen-backlog`.
 
-For the full command list: `/kaizen:help` (interactive cluster picker). For a diagnostic: `/kaizen:health`.
+For the full command list: `/kaizen:help` (interactive cluster picker). For a diagnostic: `kaizen-health`.
 
 ## Install (detail)
 

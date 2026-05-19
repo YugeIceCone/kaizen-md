@@ -27,5 +27,5 @@ rather than separate slashes:
 | Local CI-equivalent merge gate | `kaizen-ci-gate` | syntax + iron-laws + optional test suite — was `/kaizen:ci-gate` |
 | Unified kaizen gate | `kaizen-gatekeeper` | Aggregates iron-laws + etu + karpathy + plugin-dev validate — was `/kaizen:gatekeeper` |
 
-Surfaces for **MCP+hooks registry drift** moved into `/kaizen:health`
+Surfaces for **MCP+hooks registry drift** moved into `kaizen-health`
 (both are install-state diagnostics — see that command).

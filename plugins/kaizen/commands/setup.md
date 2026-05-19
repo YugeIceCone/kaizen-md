@@ -40,7 +40,7 @@ options:
   - label: "Uninstall"
     description: "Reverse the per-repo install. Default dry-run; confirm to apply."
   - label: "Health check"
-    description: "Run /kaizen:health (read-only diagnostic, no install changes)."
+    description: "Run kaizen-health (read-only diagnostic, no install changes)."
   - label: "Maintenance"
     description: "Hygiene / update / backup / cache ops on an existing install."
 ```
@@ -49,7 +49,7 @@ Routing:
 
 - **Install / re-install** → Q2 (install-mode picker)
 - **Uninstall** → Q-Uninstall (dry-run yes/no), then `/kaizen:setup uninstall [--execute]`
-- **Health check** → dispatch `/kaizen:health` and stop
+- **Health check** → dispatch `kaizen-health` and stop
 - **Maintenance** → Q-Maintenance (which op)
 
 ### Question 2 (install path) — install mode
@@ -134,9 +134,9 @@ options:
   - label: "Hygiene"
     description: "Run /kaizen:hygiene — prune stale cache/inbox, validate rules, render backlog."
   - label: "Update"
-    description: "Run /kaizen:update — git pull marketplace + refresh CC cache + auto-reload."
+    description: "Run kaizen-update — git pull marketplace + refresh CC cache + auto-reload."
   - label: "Backup"
-    description: "Run /kaizen:backup create — snapshot .kaizen/ + optional brain to ~/.claude/backups/kaizen/."
+    description: "Run kaizen-backup create — snapshot .kaizen/ + optional brain to ~/.claude/backups/kaizen/."
   - label: "Cache CRUD"
     description: "Run /kaizen:setup cache — inspect / mutate the per-repo hash cache."
 ```
@@ -181,7 +181,7 @@ After the branch's question chain is answered, assemble the
 |-----------------|-------------------------------------------|
 | Install         | `install` (or omit — same default)        |
 | Uninstall       | `uninstall`                               |
-| Health check    | (dispatch `/kaizen:health` instead)       |
+| Health check    | (dispatch `kaizen-health` instead)       |
 | Maintenance     | (dispatch the Q6-picked sibling slash)    |
 
 | Q2 answer (install path) | Behavior                                                              |
@@ -212,8 +212,8 @@ After the branch's question chain is answered, assemble the
 | Q6 answer (maintenance) | Dispatched                    |
 |-------------------------|-------------------------------|
 | Hygiene                 | `kaizen-hygiene` bin          |
-| Update                  | `/kaizen:update`              |
-| Backup                  | `/kaizen:backup create`       |
+| Update                  | `kaizen-update`              |
+| Backup                  | `kaizen-backup create`       |
 | Cache CRUD              | `/kaizen:setup cache`         |
 
 After assembly, RE-INVOKE: `/kaizen:setup <assembled-args>` (the
@@ -267,21 +267,28 @@ or change scope after the initial install.
 
 ## Maintenance dispatch — why it's not a subcommand
 
-Hygiene / update / backup are first-class concerns. update + backup
-keep slashes (`/kaizen:update`, `/kaizen:backup`); hygiene retired
-its slash in the cat-2 consolidation — the super-menu now dispatches
-the `kaizen-hygiene` bin directly. setup.sh stays focused on
+Hygiene / update / backup are first-class concerns reachable as
+`kaizen-hygiene`, `kaizen-update`, and `kaizen-backup` bins. The
+super-menu dispatches each directly. setup.sh stays focused on
 install/uninstall/cache. This keeps each tool's permissions narrow and
 its surface independently testable.
 
 ## Folded surface (formerly separate slashes)
 
-Two install-time slashes folded into setup; bins remain:
+Lifecycle bins reachable directly:
 
 | Concern | Bin (direct) | Use case |
 |---|---|---|
 | Pre-warm uv venvs | `kaizen-bootstrap [--check\|--list]` | One-shot venv warm; auto-runs as part of `setup --enable-all` — was `/kaizen:bootstrap` |
 | Disable duplicate skills | `kaizen-disable-dupes` | One-off install fix; rename `SKILL.md` ↔ `SKILL.md.disabled` — was `/kaizen:disable-dupes` |
+| Cron daemon | `kaizen-daemon` | run / install / uninstall / status / log — was `/kaizen:daemon` |
+| Ollama model mgmt | `kaizen-models` | list / pull / show / delete / copy / pin — was `/kaizen:models` |
+| Playwright browser MCP | `kaizen-browser` | install + reload — was `/kaizen:browser` |
+| Layout migration | `kaizen-migrate` | dry-run / apply / rollback — was `/kaizen:migrate` |
+| Plugin update | `kaizen-update` | git pull + cache refresh + reload + prune — was `/kaizen:update` |
+| Plugin publish | `kaizen-publish` | gh auth / remote / push / release / fresh-history — was `/kaizen:publish` |
+| Snapshot workflow state | `kaizen-backup` | list / restore / prune — was `/kaizen:backup` |
+| Diagnostic health check | `kaizen-health` | broken symlinks / missing scripts / schema drift — was `/kaizen:health` |
 
 `disable-dupes` is functionally `setup repair` territory — invoke
 the bin directly when you spot a loose-side duplicate.
