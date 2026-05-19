@@ -62,15 +62,15 @@ class TestGatekeeperAggregator(unittest.TestCase):
         self.gk = _load("gatekeeper_test", _GATEKEEPER)
 
     def test_list_subgates(self):
-        # 13 sub-gates: + brain-drift (Phase D — detects MEMORY.md /
-        # auto-load.md / gates/ / pin-list drift).
+        # 14 sub-gates: + claude-md-bloat (Phase L — CLAUDE.md
+        # post-@import expansion size).
         self.assertEqual(
             set(self.gk.SUB_GATES.keys()),
             {"iron-laws", "etu", "karpathy", "validator",
              "token-bloat", "code-to-test-coverage", "schema-coverage",
              "name-quality-coverage", "frontmatter-coverage",
              "slash-collision", "menu-lint", "auto-load-budget",
-             "brain-drift"},
+             "brain-drift", "claude-md-bloat"},
         )
 
     def test_norm_sev_maps_to_canonical(self):

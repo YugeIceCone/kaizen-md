@@ -30,6 +30,7 @@ from __future__ import annotations
 import importlib.util
 import json
 import os
+import re
 import subprocess
 import sys
 import time
@@ -623,6 +624,110 @@ def _gate_brain_drift(scope: str, repo_root: Path) -> list[GateFinding]:
     return out
 
 
+# ─── Sub-gate: claude-md-bloat (post-@import expansion) ─────────────
+
+
+_IMPORT_LINE_RE = re.compile(r"(?<!\\)@([^\s@]+)")
+
+
+def _expand_imports(text: str, base_dir: Path, max_depth: int = 5,
+                     _seen: set | None = None) -> str:
+    """Recursively expand `@path` import directives in ``text``.
+
+    - Relative paths resolve against ``base_dir`` (per Claude Code doc:
+      relative-to-file-containing-import, not cwd).
+    - Absolute paths used as-is.
+    - ``~`` expansion via ``Path.home()`` (sandbox-patchable).
+    - Cycles short-circuit via ``_seen``.
+    - Missing imports are left as literal `@path` lines (matches Claude
+      Code's tolerance — declined imports stay disabled, not erroring).
+    - max_depth=0 leaves all `@path` lines unexpanded; max_depth=N
+      expands up to N hops (matching the documented 5-hop ceiling).
+
+    Pure modulo filesystem reads — no writes, no env reads.
+    """
+    if max_depth <= 0:
+        return text
+    if _seen is None:
+        _seen = set()
+    out_lines = []
+    for line in text.splitlines(keepends=False):
+        m = _IMPORT_LINE_RE.search(line)
+        if not m:
+            out_lines.append(line)
+            continue
+        raw = m.group(1)
+        if raw.startswith("~/"):
+            target = Path.home() / raw[2:]
+        elif raw.startswith("/"):
+            target = Path(raw)
+        else:
+            target = base_dir / raw
+        try:
+            target = target.resolve()
+        except OSError:
+            out_lines.append(line)
+            continue
+        if not target.is_file():
+            out_lines.append(line)
+            continue
+        if str(target) in _seen:
+            # Cycle — emit the file's body once but don't recurse further.
+            out_lines.append(line)
+            continue
+        _seen2 = _seen | {str(target)}
+        try:
+            inner_text = target.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            out_lines.append(line)
+            continue
+        expanded = _expand_imports(
+            inner_text, target.parent, max_depth - 1, _seen2)
+        out_lines.append(expanded)
+    return "\n".join(out_lines)
+
+
+def _gate_claude_md_bloat(scope: str, repo_root: Path) -> list[GateFinding]:
+    """Warn when CLAUDE.md's post-@import expansion exceeds budget.
+
+    Catches the case where the source CLAUDE.md is small but its
+    @imports pull in megabytes — invisible to a `wc -l CLAUDE.md`
+    check but very visible in context cost.
+
+    Env:
+      KAIZEN_CLAUDE_MD_PATH    — override target file (default
+                                  ~/.claude/CLAUDE.md)
+      KAIZEN_CLAUDE_MD_BUDGET  — bytes; default 20480 (20 KB)
+    """
+    target_env = os.environ.get("KAIZEN_CLAUDE_MD_PATH")
+    if target_env:
+        target = Path(target_env).expanduser()
+    else:
+        target = Path.home() / ".claude" / "CLAUDE.md"
+    if not target.is_file():
+        return []
+    try:
+        budget = int(os.environ.get("KAIZEN_CLAUDE_MD_BUDGET", "20480"))
+    except ValueError:
+        budget = 20480
+    try:
+        src = target.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return []
+    expanded = _expand_imports(src, target.parent, max_depth=5)
+    size = len(expanded.encode("utf-8"))
+    if size <= budget:
+        return []
+    return [GateFinding(
+        gate="claude-md-bloat", severity="warn",
+        rule_id="expansion-over-budget",
+        message=(f"{target} expands to {size}B (budget {budget}B). "
+                 "Trim @import targets, raise KAIZEN_CLAUDE_MD_BUDGET, "
+                 "or move bulk content to .claude/rules/ with paths: "
+                 "frontmatter (path-scoped, not always-loaded)."),
+    )]
+
+
 # ─── Sub-gate: auto-load-budget ──────────────────────────────────────
 
 
@@ -674,6 +779,7 @@ SUB_GATES = {
     "menu-lint":              _gate_menu_lint,         # AskUserQuestion contract conformance
     "auto-load-budget":       _gate_auto_load_budget,  # daemon-built auto-load.md size
     "brain-drift":            _gate_brain_drift,       # MEMORY/auto-load/gates/pins drift
+    "claude-md-bloat":        _gate_claude_md_bloat,   # CLAUDE.md post-@import expansion size
 }
 
 
