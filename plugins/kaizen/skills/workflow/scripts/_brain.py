@@ -194,8 +194,8 @@ def brain_root() -> Path:
 
 
 def project_slug_for(cwd: Optional[Path] = None) -> str:
-    """Derive the CC project slug from cwd. Slashes → dashes, leading
-    slash drops. E.g. ``/home/x/workspace/shodan`` →
+    """Pure: derive the CC project slug from a path. Slashes → dashes,
+    leading slash drops. E.g. ``/home/x/workspace/shodan`` →
     ``-home-x-workspace-shodan``."""
     p = (cwd or Path.cwd()).resolve()
     s = str(p)
@@ -206,10 +206,45 @@ def project_slug_for(cwd: Optional[Path] = None) -> str:
     return s
 
 
+def project_root_for(cwd: Optional[Path] = None) -> Path:
+    """Resolve the project ROOT for ``cwd``.
+
+    Returns the git repo root when cwd is inside a git repo (so all
+    subdirs of a repo share one project identity — matches Claude
+    Code's auto-memory convention + kaizen-better-memory's behavior).
+    Falls back to ``cwd.resolve()`` outside git.
+
+    Aligns brain captures with auto-memory: ``capture --tier project``
+    from ``~/repo/sub/`` and from ``~/repo/`` both land in the same
+    dir, indexed by the same MEMORY.md, surfaced by the same
+    daemon memory-sync tick.
+    """
+    import subprocess
+    base = (cwd or Path.cwd()).resolve()
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "--show-toplevel"],
+            cwd=str(base), capture_output=True, text=True,
+            timeout=2, check=False,
+        )
+        if result.returncode == 0 and result.stdout.strip():
+            return Path(result.stdout.strip())
+    except (OSError, subprocess.SubprocessError):
+        pass
+    return base
+
+
 def project_memory_root(cwd: Optional[Path] = None) -> Path:
-    """Resolve the project-memory dir for the given cwd."""
-    slug = project_slug_for(cwd)
-    return Path(f"~/.claude/projects/{slug}/memory").expanduser().resolve()
+    """Resolve the project-memory dir for ``cwd`` — git-root aware.
+
+    Composes ``project_root_for(cwd)`` + ``project_slug_for(root)`` so
+    every caller resolves to the same dir Claude Code's auto-memory +
+    ``kaizen-better-memory`` use. Uses ``Path.home()`` (not
+    ``expanduser()``) so test sandboxes that patch home are honored.
+    """
+    root = project_root_for(cwd)
+    slug = project_slug_for(root)
+    return Path.home() / ".claude" / "projects" / slug / "memory"
 
 
 # ─── Config (loaded from yaml) ────────────────────────────────────────
