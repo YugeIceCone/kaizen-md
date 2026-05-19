@@ -1,0 +1,71 @@
+# yaml-language-server: $schema=../../assets/schemas/workflow.schema.json
+# Review workflow schema — diff-time code review (per /kaizen:review).
+#
+# Distinct from /kaizen:audit (periodic full-repo) — this runs against
+# one diff (HEAD vs base) and returns severity-tagged findings. The
+# gate is "every Critical/High finding has a verdict before the report
+# is written."
+
+name: review
+version: 1
+description: |
+  Five-phase diff-time code review. Reads the diff, runs analyzers,
+  categorizes findings, gates report-write on per-finding verdict.
+
+  Suitable for - pre-commit review, PR review, post-merge sanity. The
+  diff scope keeps it bounded (audit covers full-repo).
+
+artifacts:
+  - id: scope
+    generates: scope.md
+    template: null
+    requires: []
+    description: |
+      Phase 1 - resolve the diff. HEAD vs base; staged; uncommitted.
+      List touched files + LOC delta + which clusters. Output drives
+      analyzer selection in phase 2.
+
+  - id: analyze
+    generates: findings.jsonl
+    template: null
+    requires: [scope]
+    description: |
+      Phase 2 - run the analyzers on touched files only. iron-laws +
+      etu anti-patterns + karpathy + frontmatter + name-quality +
+      schema-coverage. Each finding gets {file, line, severity,
+      category, evidence}.
+
+  - id: categorize
+    generates: triage.md
+    template: null
+    requires: [analyze]
+    description: |
+      Phase 3 - bucket findings by severity (Critical / High / Medium /
+      Low / Info) and category (security / architecture / tech-debt /
+      style). Identify cross-cutting patterns (one root cause behind
+      N findings).
+
+  - id: verdict
+    generates: verdict.md
+    template: null
+    requires: [categorize]
+    description: |
+      Phase 4 (THE GATE) - per-finding verdict. Every Critical and High
+      finding gets {block | suggest | acknowledge | dismiss + rationale}.
+      A finding without a verdict blocks report-write.
+
+  - id: report
+    generates: review-report.md
+    template: null
+    requires: [verdict]
+    description: |
+      Phase 5 - assemble the review report. Executive summary
+      (file count + severity rollup + verdict counts) + per-finding
+      detail with rationale. Writes to .kaizen/workflow/reviews/<UTC>.md.
+
+apply:
+  gate: verdict
+  description: |
+    The report cannot be written until every Critical and High finding
+    has a verdict. This keeps reviews actionable - findings without
+    a verdict are dead weight that erode trust in the tool.

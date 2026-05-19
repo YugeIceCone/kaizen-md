@@ -1,0 +1,59 @@
+# yaml-language-server: $schema=../../assets/schemas/workflow.schema.json
+# Boy-scout workflow schema — in-flight cleanup of touched code.
+#
+# Boy-scout rule: leave touched code cleaner than found. This schema
+# bounds cleanup to ONLY what the current task already touches — not a
+# license for ambient refactoring. The gate is "every fix verifies
+# RED→GREEN before next finding."
+
+name: boy-scout
+version: 1
+description: |
+  Four-phase scoped cleanup. Walks the staged diff for boy-scout
+  candidates, applies each fix with RED-GREEN verification, reports.
+
+  Suitable for - cleanup while touching code (the task scope already
+  includes these files). NOT for broad refactor (use /workflow refactor).
+
+artifacts:
+  - id: scope
+    generates: scope.md
+    template: null
+    requires: []
+    description: |
+      Phase 1 - resolve touched files (staged + working tree). Cleanup
+      candidates outside this scope are deferred. The bounded scope is
+      the discipline; without it boy-scout becomes scope creep.
+
+  - id: candidates
+    generates: candidates.md
+    template: null
+    requires: [scope]
+    description: |
+      Phase 2 - per touched file, list cleanup candidates - typo,
+      dead import, magic number, naming, missing docstring, layer
+      violation, etc. Each candidate gets {file, line, kind, rationale}.
+
+  - id: apply
+    generates: applied.md
+    template: null
+    requires: [candidates]
+    description: |
+      Phase 3 (THE GATE) - apply each candidate in isolation, then
+      run the existing tests. RED-GREEN per fix. A failed test blocks
+      the next candidate - never carry a regression forward.
+
+  - id: report
+    generates: boy-scout-report.md
+    template: null
+    requires: [apply]
+    description: |
+      Phase 4 - count applied / skipped / deferred. Writes a one-page
+      summary to .kaizen/workflow/boy-scout/<UTC>.md so the diff log
+      shows what changed beyond the original task.
+
+apply:
+  gate: apply
+  description: |
+    Each candidate fix runs RED-GREEN against the existing tests
+    before the next candidate. Carries no regressions forward.

@@ -1,0 +1,74 @@
+# yaml-language-server: $schema=../../assets/schemas/workflow.schema.json
+# Consolidate workflow schema — collapse redundancy across a surface.
+#
+# Distinct from refactor (preserve behavior, restructure) and
+# shim-and-sweep (move files across import boundaries). Consolidate
+# targets DUPLICATE surfaces - multiple commands doing the same thing,
+# multiple bins exec'ing the same script, multiple slashes wrapping
+# the same MCP. The gate is "every retirement has a fold-in target."
+
+name: consolidate
+version: 1
+description: |
+  Five-phase redundancy collapse. Inventory the surface, identify
+  redundancies, design folds, retire safely, verify continuity.
+
+  Suitable for - command-surface tightening (X slashes for Y intent),
+  bin overlap, schema duplication, skill overlap. Each retired entry
+  must land its functionality in another surface, never lost.
+
+artifacts:
+  - id: inventory
+    generates: inventory.md
+    template: null
+    requires: []
+    description: |
+      Phase 1 - enumerate the surface (commands, bins, MCPs, hooks).
+      Group by intent. Count duplicates. Output - one row per surface
+      entry with {name, intent, backing, consumers}.
+
+  - id: redundancies
+    generates: redundancies.md
+    template: null
+    requires: [inventory]
+    description: |
+      Phase 2 - cluster by intent. Mark each duplicate-cluster with
+      {primary, secondary[]}. Primary is the canonical keeper; the
+      secondaries are retirement candidates. Justify each pick from
+      KISS / convention / boy-scout / DRY.
+
+  - id: fold-plan
+    generates: fold-plan.md
+    template: null
+    requires: [redundancies]
+    description: |
+      Phase 3 (THE GATE) - per retirement, name the fold target. A
+      retired slash folds into a verb of the keeper. A retired bin
+      folds into a symlink at the canonical. A retirement without a
+      fold target blocks - functionality cannot be lost.
+
+  - id: retire
+    generates: retire.md
+    template: null
+    requires: [fold-plan]
+    description: |
+      Phase 4 - execute the retirements. git rm the redundant entry,
+      add the fold-verb to the keeper, update help.md and any tests
+      that pinned the retired name. One atomic commit per retirement
+      keeps the diff log readable.
+
+  - id: verify
+    generates: verify.md
+    template: null
+    requires: [retire]
+    description: |
+      Phase 5 - confirm functional continuity. Every retired entry has
+      a working fold target (smoke test). Tests still pass. surface
+      validate clean. The retirement count vs starting count is the
+      score.
+
+apply:
+  gate: fold-plan
+  description: |
+    No retirement without a documented fold target. The plan must
+    show, per retirement, where its functionality lives after.

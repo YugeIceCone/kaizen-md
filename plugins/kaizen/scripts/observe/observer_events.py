@@ -1,4 +1,4 @@
-"""kaizen-observer-events — read-side CLI for the observer events.jsonl sink.
+"""kaizen-observer — read-side CLI for the observer events.jsonl sink.
 
 Distinct from kaizen-observe (the 6-layer observability tool at
 skills/workflow/scripts/observe.py). This CLI specifically queries the
@@ -143,7 +143,7 @@ def _cmd_filter(args) -> int:
 
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(
-        prog="kaizen-observer-events",
+        prog="kaizen-observer",
         description="Read-side CLI for the observer events.jsonl sink.",
     )
     sub = p.add_subparsers(dest="command")

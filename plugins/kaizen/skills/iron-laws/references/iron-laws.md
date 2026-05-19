@@ -298,7 +298,7 @@ Structured-event sinks (progress.md rows, learn log, observer events.jsonl, patc
 
 **Detect:** Module that writes to a *.jsonl / *.md / *.log file uses read() before write — should use open(path, 'a').
 
-**Why:** Read-then-Edit costs ~2KB context per row + 2 tool calls. Proven canonical CLIs (kaizen-progress, kaizen-learn, kaizen-observer-events, kaizen-bundle patch-journal) all follow append-only. Test pattern: seed 50KB log, append one row, assert size-delta < N bytes (the row size) — see test_append_cost_constant in test_progress_log.py.
+**Why:** Read-then-Edit costs ~2KB context per row + 2 tool calls. Proven canonical CLIs (kaizen-progress, kaizen-learn, kaizen-observer, kaizen-bundle patch-journal) all follow append-only. Test pattern: seed 50KB log, append one row, assert size-delta < N bytes (the row size) — see test_append_cost_constant in test_progress_log.py.
 
 ### `drift-resilient-config-read` (soft · manual)
 
