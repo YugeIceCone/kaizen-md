@@ -78,6 +78,17 @@
     "parse_error": {
       "type": "string",
       "description": "Set when _parse_handoff_yaml failed to load the YAML body. Forces verdict=regression — the YAML itself is malformed, so file/pattern checks ran on an empty body and cannot be trusted."
+    },
+    "freshness": {
+      "type": "object",
+      "description": "BK-021. Staleness signal — how old this handoff is + how many commits have landed since. Rolls into the top-level verdict alongside file/pattern checks.",
+      "required": ["age_days", "commit_delta_count", "severity"],
+      "additionalProperties": false,
+      "properties": {
+        "age_days":           { "type": "integer", "minimum": 0 },
+        "commit_delta_count": { "type": "integer", "minimum": 0 },
+        "severity":           { "enum": ["info", "warn", "red"] }
+      }
     }
   },
   "$defs": {

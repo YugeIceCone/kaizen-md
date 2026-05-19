@@ -311,12 +311,18 @@ The envelope's `data` matches `schemas/verify-report.json`:
   ∈ `{confirmed, stale, reintroduced, clean}`.
 - `commit_delta` — `{count, since, commits[]}` covering the range
   from the handoff's `date` to HEAD.
+- `freshness` — `{age_days, commit_delta_count, severity}`. Staleness
+  signal: defaults `>30d OR >100c → warn`, `>90d OR >500c → red`.
+  Tune via env knobs `KAIZEN_HANDOFF_AGE_{WARN,RED}_DAYS` /
+  `KAIZEN_HANDOFF_COMMITS_{WARN,RED}`. Severity rolls into the
+  top-level verdict.
 - `qualitative_residue[]` — `{section, reason, items}` for sections
   the script cannot verify mechanically (`next`, `questions`,
   `decisions`, `findings`). **These are the items requiring your
   attention.**
 - `verdict` ∈ `{clean, drift, regression}` — rolled up from
-  severities per `verify-rules.yaml::verdict_rollup`.
+  severities per `verify-rules.yaml::verdict_rollup` (file + pattern
+  checks + freshness).
 
 Routing on the verdict:
 - `clean` → proceed straight to Step 5 (the handoff's `next:` items

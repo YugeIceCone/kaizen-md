@@ -426,12 +426,49 @@ def _qualitative_residue(parsed: dict) -> list[dict]:
     return out
 
 
-def _rollup_verdict(file_checks: list[dict], pattern_checks: list[dict]) -> str:
+def _check_freshness(parsed: dict, commit_delta: dict) -> dict:
+    """BK-021. Staleness signal: how old is this handoff, how many
+    commits since it was written. Defaults: >30d OR >100c → warn;
+    >90d OR >500c → red. Tunable via KAIZEN_HANDOFF_AGE_{WARN,RED}_DAYS
+    and KAIZEN_HANDOFF_COMMITS_{WARN,RED}."""
+    from datetime import date as _date
+    age_warn = int(os.environ.get("KAIZEN_HANDOFF_AGE_WARN_DAYS", "30"))
+    age_red  = int(os.environ.get("KAIZEN_HANDOFF_AGE_RED_DAYS", "90"))
+    com_warn = int(os.environ.get("KAIZEN_HANDOFF_COMMITS_WARN", "100"))
+    com_red  = int(os.environ.get("KAIZEN_HANDOFF_COMMITS_RED", "500"))
+
+    since = (parsed.get("date") or "").strip()
+    try:
+        age_days = (_date.today() - _date.fromisoformat(since)).days
+    except (ValueError, TypeError):
+        age_days = 0
+
+    n = int(commit_delta.get("count", 0) or 0)
+    if age_days > age_red or n > com_red:
+        severity = "red"
+    elif age_days > age_warn or n > com_warn:
+        severity = "warn"
+    else:
+        severity = "info"
+    return {
+        "age_days": max(age_days, 0),
+        "commit_delta_count": n,
+        "severity": severity,
+    }
+
+
+def _rollup_verdict(
+    file_checks: list[dict],
+    pattern_checks: list[dict],
+    freshness: dict | None = None,
+) -> str:
     """First red → regression; else first warn → drift; else clean."""
     severities = (
         [c["severity"] for c in file_checks]
         + [c["severity"] for c in pattern_checks]
     )
+    if freshness:
+        severities.append(freshness["severity"])
     if "red" in severities:
         return "regression"
     if "warn" in severities:
@@ -456,7 +493,8 @@ def _cmd_verify(args) -> int:
     pattern_checks = _check_patterns(parsed, repo_root)
     commit_delta   = _commit_delta(parsed, repo_root)
     qualitative    = _qualitative_residue(parsed)
-    verdict        = _rollup_verdict(file_checks, pattern_checks)
+    freshness      = _check_freshness(parsed, commit_delta)
+    verdict        = _rollup_verdict(file_checks, pattern_checks, freshness)
 
     parse_error = parsed.get("_parse_error")
     if parse_error:
@@ -473,6 +511,7 @@ def _cmd_verify(args) -> int:
         "pattern_checks": pattern_checks,
         "commit_delta": commit_delta,
         "qualitative_residue": qualitative,
+        "freshness": freshness,
     }
     if parse_error:
         data["parse_error"] = parse_error

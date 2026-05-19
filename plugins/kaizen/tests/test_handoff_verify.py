@@ -340,6 +340,62 @@ worked: []
 """
 
 
+class TestVerifyFreshness(HandoffVerifyBase):
+    """BK-021. A handoff older than the staleness thresholds (or with
+    too many commits since) should surface freshness drift in the
+    envelope. Fresh handoff = info, stale = warn, abandoned = red."""
+
+    def _make_dated(self, date_str: str) -> Path:
+        return self._write_handoff(_make_handoff_yaml(date=date_str))
+
+    def test_fresh_handoff_freshness_clean(self):
+        from datetime import date
+        today = date.today().isoformat()
+        p = self._make_dated(today)
+        result = self._run("--file", str(p), "--json")
+        env = json.loads(result.stdout)
+        self.assertIn("freshness", env["data"],
+                      "verify envelope must carry freshness signal")
+        self.assertEqual(env["data"]["freshness"]["severity"], "info")
+
+    def test_stale_handoff_30_days_warn(self):
+        from datetime import date, timedelta
+        d = (date.today() - timedelta(days=45)).isoformat()
+        p = self._make_dated(d)
+        result = self._run("--file", str(p), "--json")
+        env = json.loads(result.stdout)
+        self.assertEqual(env["data"]["freshness"]["severity"], "warn")
+        self.assertGreaterEqual(env["data"]["freshness"]["age_days"], 45)
+        # Drift rolls into the top-level verdict
+        self.assertIn(env["data"]["verdict"], ("drift", "regression"))
+
+    def test_abandoned_handoff_90_days_red(self):
+        from datetime import date, timedelta
+        d = (date.today() - timedelta(days=120)).isoformat()
+        p = self._make_dated(d)
+        result = self._run("--file", str(p), "--json")
+        env = json.loads(result.stdout)
+        self.assertEqual(env["data"]["freshness"]["severity"], "red")
+        self.assertEqual(env["data"]["verdict"], "regression")
+
+    def test_env_knob_overrides_age_warn_threshold(self):
+        """KAIZEN_HANDOFF_AGE_WARN_DAYS lets the user tune staleness."""
+        from datetime import date, timedelta
+        d = (date.today() - timedelta(days=10)).isoformat()
+        p = self._make_dated(d)
+        # 10 days old, threshold 5 days → warn
+        env_extra = {"KAIZEN_HANDOFF_AGE_WARN_DAYS": "5"}
+        result = subprocess.run(
+            [sys.executable, str(_HANDOFF_PY), "verify",
+             "--file", str(p), "--json"],
+            capture_output=True, text=True, timeout=60,
+            cwd=str(self.tmp),
+            env={**os.environ, **env_extra},
+        )
+        env = json.loads(result.stdout)
+        self.assertEqual(env["data"]["freshness"]["severity"], "warn")
+
+
 class TestVerifyParseError(HandoffVerifyBase):
     """A YAML parse failure must NOT silently produce verdict=clean
     via an empty body. It must flag the parse failure so the agent

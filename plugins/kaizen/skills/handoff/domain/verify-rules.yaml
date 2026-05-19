@@ -37,6 +37,16 @@ checks:
     severity: info
     notes: "Count + oneline list of commits between the handoff's date and HEAD."
 
+  - id: freshness
+    applies_to: meta
+    method: age_and_commit_delta
+    severity: dynamic         # info | warn | red — depends on thresholds
+    notes: |
+      BK-021. Staleness signal — age_days from handoff date + commits since.
+      Defaults: >30d OR >100c → warn; >90d OR >500c → red. Tune via env:
+      KAIZEN_HANDOFF_AGE_WARN_DAYS, KAIZEN_HANDOFF_AGE_RED_DAYS,
+      KAIZEN_HANDOFF_COMMITS_WARN, KAIZEN_HANDOFF_COMMITS_RED.
+
 # Items the verify CAN'T check mechanically — agent must look at them.
 qualitative_markers:
   - { applies_to: next,        reason: "forward-looking — needs agent judgment" }
