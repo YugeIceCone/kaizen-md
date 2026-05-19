@@ -520,6 +520,109 @@ def _gate_menu_lint(scope: str, repo_root: Path) -> list[GateFinding]:
     return out
 
 
+# ─── Sub-gate: brain-drift ───────────────────────────────────────────
+
+
+def _gate_brain_drift(scope: str, repo_root: Path) -> list[GateFinding]:
+    """Detect drift across the auto-recording flow:
+
+    1. ``memory-index-drift`` — MEMORY.md entry count != sibling *.md count
+    2. ``auto-load-stale`` — auto-load.md mtime < Persona.md mtime
+    3. ``gate-orphan`` — gates/<slug>.md backs a directive no longer present
+    4. ``pin-missing-note`` — pin references a Note that doesn't exist
+
+    Advisory only — these are next-tick-self-healing conditions.
+    """
+    out: list[GateFinding] = []
+
+    # Resolve paths via env (matches the modules they audit)
+    brain_dir = Path(os.environ.get("KAIZEN_BRAIN_DIR") or
+                     (Path.home() / ".claude" / ".kaizen" / "brain"))
+    memory_dir = Path(os.environ.get("KAIZEN_BETTER_MEMORY_DIR") or
+                      (Path.home() / ".claude" / "projects" / "default" / "memory"))
+    auto_load = Path(os.environ.get("KAIZEN_AUTO_LOAD_PATH") or
+                     (Path.home() / ".claude" / ".kaizen" / "auto-load.md"))
+    gates_dir = Path(os.environ.get("KAIZEN_GATES_DIR") or
+                     (Path.home() / ".claude" / ".kaizen" / "gates"))
+    pins_path = Path(os.environ.get("KAIZEN_AUTO_LOAD_PINS_PATH") or
+                     (Path.home() / ".claude" / ".kaizen" / "auto-load-pins.json"))
+
+    # (1) MEMORY.md index drift
+    if memory_dir.is_dir():
+        memory_md = memory_dir / "MEMORY.md"
+        siblings = [p for p in memory_dir.glob("*.md") if p.name != "MEMORY.md"]
+        if memory_md.is_file() and siblings:
+            text = memory_md.read_text(encoding="utf-8", errors="replace")
+            indexed = sum(1 for line in text.splitlines()
+                          if line.startswith("- ["))
+            if indexed != len(siblings):
+                out.append(GateFinding(
+                    gate="brain-drift", severity="warn",
+                    rule_id="memory-index-drift",
+                    message=(f"MEMORY.md indexes {indexed} entries but dir "
+                             f"has {len(siblings)} sibling .md files — "
+                             "run `kaizen-better-memory regen` or wait for "
+                             "the memory-sync daemon tick."),
+                ))
+
+    # (2) auto-load.md stale relative to Persona.md
+    persona = brain_dir / "Persona.md"
+    if auto_load.is_file() and persona.is_file():
+        try:
+            if persona.stat().st_mtime > auto_load.stat().st_mtime:
+                out.append(GateFinding(
+                    gate="brain-drift", severity="warn",
+                    rule_id="auto-load-stale",
+                    message=(f"{auto_load} older than {persona} — "
+                             "run `kaizen-auto-load` or wait for the "
+                             "auto-load daemon tick."),
+                ))
+        except OSError:
+            pass
+
+    # (3) orphan gate files (slug not in current Persona directives)
+    if gates_dir.is_dir() and persona.is_file():
+        try:
+            sys.path.insert(0, str(_PLUGIN_ROOT / "skills" / "workflow" / "scripts"))
+            import auto_load as _al  # type: ignore
+            parsed = _al.parse_persona(persona.read_text(encoding="utf-8"))
+            valid_slugs = {
+                d["note"].rsplit("/", 1)[-1].removesuffix(".md")
+                for d in parsed["directives"]
+            }
+            for p in gates_dir.glob("*.md"):
+                if p.stem not in valid_slugs:
+                    out.append(GateFinding(
+                        gate="brain-drift", severity="warn",
+                        rule_id="gate-orphan",
+                        message=(f"gates/{p.name} has no backing directive "
+                                 f"in Persona — slug {p.stem!r} not found. "
+                                 "Next daemon tick will prune it."),
+                    ))
+        except (ImportError, OSError):
+            pass
+
+    # (4) Pin references a Note that doesn't exist
+    if pins_path.is_file() and brain_dir.is_dir():
+        try:
+            pins = json.loads(pins_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            pins = []
+        for pin in pins if isinstance(pins, list) else []:
+            # Try both with + without .md suffix
+            candidates = [brain_dir / f"{pin}.md", brain_dir / pin]
+            if not any(c.is_file() for c in candidates):
+                out.append(GateFinding(
+                    gate="brain-drift", severity="warn",
+                    rule_id="pin-missing-note",
+                    message=(f"pin {pin!r} references a Note that does not "
+                             "exist in the brain — unpin it via "
+                             f"`kaizen-brain unpin {pin}` or create the Note."),
+                ))
+
+    return out
+
+
 # ─── Sub-gate: auto-load-budget ──────────────────────────────────────
 
 
@@ -570,6 +673,7 @@ SUB_GATES = {
     "slash-collision":        _gate_slash_collision,   # tab-completion-ambiguous prefix pairs
     "menu-lint":              _gate_menu_lint,         # AskUserQuestion contract conformance
     "auto-load-budget":       _gate_auto_load_budget,  # daemon-built auto-load.md size
+    "brain-drift":            _gate_brain_drift,       # MEMORY/auto-load/gates/pins drift
 }
 
 

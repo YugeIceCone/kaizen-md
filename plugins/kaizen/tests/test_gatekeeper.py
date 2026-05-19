@@ -62,14 +62,15 @@ class TestGatekeeperAggregator(unittest.TestCase):
         self.gk = _load("gatekeeper_test", _GATEKEEPER)
 
     def test_list_subgates(self):
-        # 12 sub-gates: original 11 + auto-load-budget (Phase 13 — surfaces
-        # when ~/.claude/.kaizen/auto-load.md exceeds KAIZEN_AUTO_LOAD_BUDGET).
+        # 13 sub-gates: + brain-drift (Phase D — detects MEMORY.md /
+        # auto-load.md / gates/ / pin-list drift).
         self.assertEqual(
             set(self.gk.SUB_GATES.keys()),
             {"iron-laws", "etu", "karpathy", "validator",
              "token-bloat", "code-to-test-coverage", "schema-coverage",
              "name-quality-coverage", "frontmatter-coverage",
-             "slash-collision", "menu-lint", "auto-load-budget"},
+             "slash-collision", "menu-lint", "auto-load-budget",
+             "brain-drift"},
         )
 
     def test_norm_sev_maps_to_canonical(self):
@@ -181,6 +182,130 @@ class TestAutoLoadBudgetGate(unittest.TestCase):
         # Message includes actual and budget for diagnosis
         self.assertIn("8000", findings[0].message)
         self.assertIn("5120", findings[0].message)
+
+
+class TestBrainDriftGate(unittest.TestCase):
+    """The brain-drift gate detects 4 classes of stale state across the
+    auto-recording flow:
+
+    1. MEMORY.md count mismatch (sibling files vs index entries)
+    2. auto-load.md stale (older mtime than Persona.md)
+    3. gates/<slug>.md orphan (directive no longer in Persona)
+    4. Pin references a Note that doesn't exist
+
+    Advisory only — these are repair-by-next-tick conditions, not
+    commit-blockers. Sandboxed via existing env knobs.
+    """
+
+    def setUp(self):
+        self.gk = _load("gatekeeper_test_drift", _GATEKEEPER)
+        self._tmp = tempfile.TemporaryDirectory()
+        self.root = Path(self._tmp.name)
+        self.brain = self.root / "brain"
+        self.brain.mkdir()
+        (self.brain / "Persona.md").write_text(
+            "# Persona\n\n"
+            "## Directives\n\n"
+            "- **No deletions.** See [[Notes/pref-no-deletions]].\n\n"
+            "## Top Beliefs\n\n"
+            "1. [[Notes/pref-no-deletions.md]] — conf=0.98\n",
+            encoding="utf-8",
+        )
+        (self.brain / "Notes").mkdir()
+        (self.brain / "Notes" / "pref-no-deletions.md").write_text("ok")
+
+        self.memory = self.root / "memory"
+        self.memory.mkdir()
+        self.auto_load = self.root / "auto-load.md"
+        self.gates = self.root / "gates"
+        self.gates.mkdir()
+        self.pins = self.root / "pins.json"
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    def _env(self):
+        return {
+            "KAIZEN_BRAIN_DIR":             str(self.brain),
+            "KAIZEN_BETTER_MEMORY_DIR":     str(self.memory),
+            "KAIZEN_AUTO_LOAD_PATH":        str(self.auto_load),
+            "KAIZEN_GATES_DIR":             str(self.gates),
+            "KAIZEN_AUTO_LOAD_PINS_PATH":   str(self.pins),
+        }
+
+    def test_clean_state_no_findings(self):
+        # Seed minimal valid state
+        import time
+        self.auto_load.write_text("# auto-load\n")
+        # Persona.md older than auto-load.md
+        persona = self.brain / "Persona.md"
+        os.utime(persona, (1000, 1000))
+        os.utime(self.auto_load, (2000, 2000))
+        (self.memory / "MEMORY.md").write_text("- empty\n")
+        # No gate orphans, no pins
+        from unittest.mock import patch
+        with patch.dict(os.environ, self._env()):
+            findings = self.gk._gate_brain_drift("staged", _REPO_ROOT)
+        self.assertEqual(findings, [])
+
+    def test_detects_stale_auto_load(self):
+        """Persona mtime > auto-load mtime → auto-load is stale."""
+        self.auto_load.write_text("# auto-load\n")
+        persona = self.brain / "Persona.md"
+        # Make Persona newer than auto-load
+        os.utime(self.auto_load, (1000, 1000))
+        os.utime(persona, (2000, 2000))
+        (self.memory / "MEMORY.md").write_text("- empty\n")
+        from unittest.mock import patch
+        with patch.dict(os.environ, self._env()):
+            findings = self.gk._gate_brain_drift("staged", _REPO_ROOT)
+        kinds = [f.rule_id for f in findings]
+        self.assertIn("auto-load-stale", kinds)
+
+    def test_detects_memory_index_drift(self):
+        """MEMORY.md index entry count != sibling *.md count."""
+        # 2 siblings, but MEMORY.md indexes 0
+        (self.memory / "project_a.md").write_text("body")
+        (self.memory / "project_b.md").write_text("body")
+        (self.memory / "MEMORY.md").write_text("# empty\n")
+        # Persona newer is fine (we're not testing that here)
+        self.auto_load.write_text("ok")
+        from unittest.mock import patch
+        with patch.dict(os.environ, self._env()):
+            findings = self.gk._gate_brain_drift("staged", _REPO_ROOT)
+        kinds = [f.rule_id for f in findings]
+        self.assertIn("memory-index-drift", kinds)
+
+    def test_detects_orphan_gate_files(self):
+        """Gate file for a slug not in current Persona directives."""
+        (self.gates / "pref-no-deletions.md").write_text("ok")  # current
+        (self.gates / "pref-obsolete.md").write_text("ok")      # orphan
+        self.auto_load.write_text("ok")
+        (self.memory / "MEMORY.md").write_text("- empty\n")
+        from unittest.mock import patch
+        with patch.dict(os.environ, self._env()):
+            findings = self.gk._gate_brain_drift("staged", _REPO_ROOT)
+        kinds = [f.rule_id for f in findings]
+        self.assertIn("gate-orphan", kinds)
+        msgs = " ".join(f.message for f in findings)
+        self.assertIn("pref-obsolete", msgs)
+
+    def test_detects_pin_to_missing_note(self):
+        """Pin references a Note file that doesn't exist."""
+        import json
+        self.pins.write_text(json.dumps([
+            "Notes/pref-no-deletions",   # exists
+            "Notes/pref-does-not-exist", # missing
+        ]))
+        self.auto_load.write_text("ok")
+        (self.memory / "MEMORY.md").write_text("- empty\n")
+        from unittest.mock import patch
+        with patch.dict(os.environ, self._env()):
+            findings = self.gk._gate_brain_drift("staged", _REPO_ROOT)
+        kinds = [f.rule_id for f in findings]
+        self.assertIn("pin-missing-note", kinds)
+        msgs = " ".join(f.message for f in findings)
+        self.assertIn("pref-does-not-exist", msgs)
 
 
 class TestGatekeeperCollisionResistance(unittest.TestCase):
