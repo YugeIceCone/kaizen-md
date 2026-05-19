@@ -558,91 +558,82 @@ def do_clear() -> dict:
     return {"cleared": False, "path": str(p)}
 
 
-# ─── CLI ─────────────────────────────────────────────────────────────
+# ─── CLI (thin IndexerCLI subclass — alignment with the other 6 indexers) ───
 
 
-def _cmd_index(args) -> int:
-    report = do_index()
-    print(json.dumps(report, indent=2))
-    return 0
+from _indexer_cli import IndexerCLI  # noqa: E402
 
 
-def _cmd_search(args) -> int:
-    results = do_search(
-        args.query,
-        top_k=args.top_k,
-        type_filter=args.type,
-        subdir_filter=args.subdir,
-        min_confidence=args.min_confidence,
-    )
-    print(json.dumps(results, indent=2))
-    return 0
+class BuildIndexCLI(IndexerCLI):
+    """Build the Second Brain's SQLite + sentence-transformers index.
 
+    Subclasses ``_indexer_cli.IndexerCLI`` so the 6-subcommand shape
+    (index/search/stats/get/path/clear) matches onboard / knowledge /
+    claude_docs / scrape / trace / loc. Reindex is intentionally NOT
+    exposed (no prior contract for it; preserves user-facing API)."""
 
-def _cmd_stats(args) -> int:
-    print(json.dumps(do_stats(), indent=2))
-    return 0
+    PROG = "kaizen-build-index"
+    DESCRIPTION = "Index + search the kaizen Second Brain."
+    STANDARD_SUBCOMMANDS = ("index", "search", "stats", "get", "path", "clear")
 
+    def db_path_for(self, args):
+        # Env-resolved each call — KAIZEN_BRAIN_DB wins over default.
+        return db_path()
 
-def _cmd_path(args) -> int:
-    print(json.dumps({"db_path": str(db_path())}, indent=2))
-    return 0
+    def do_stats(self, args):
+        return do_stats()
 
+    def do_get(self, args):
+        return do_get(args.id)
 
-def _cmd_get(args) -> int:
-    out = do_get(args.id)
-    if out is None:
-        print(json.dumps({"error": f"id {args.id} not found"}))
-        return 1
-    print(json.dumps(out, indent=2))
-    return 0
+    def do_search(self, args):
+        return do_search(
+            args.query,
+            top_k=args.top_k,
+            type_filter=args.type,
+            subdir_filter=args.subdir,
+            min_confidence=args.min_confidence,
+        )
 
+    def do_index(self, args):
+        return do_index()
 
-def _cmd_clear(args) -> int:
-    if not args.yes:
-        print("Refusing to clear without --yes", file=sys.stderr)
-        return 1
-    print(json.dumps(do_clear(), indent=2))
-    return 0
+    def extra_search_args(self, p):
+        p.add_argument(
+            "--type",
+            choices=["world-fact", "belief", "observation", "experience"],
+        )
+        p.add_argument("--subdir", choices=list(_INDEX_SUBDIRS))
+        p.add_argument("--min-confidence", type=float)
+
+    def extra_clear_args(self, p):
+        p.add_argument("--yes", action="store_true", required=False)
+
+    # ─── Output-shape overrides (preserve prior JSON contracts) ──────
+
+    def cmd_path(self, args):
+        # Prior shape: {"db_path": "..."} JSON object (vs default raw print).
+        print(json.dumps({"db_path": str(self.db_path_for(args))}, indent=2))
+
+    def cmd_get(self, args):
+        # Prior shape: {"error": "id N not found"} + rc=1 on missing.
+        out = self.do_get(args)
+        if out is None:
+            print(json.dumps({"error": f"id {args.id} not found"}))
+            sys.exit(1)
+        print(json.dumps(out, indent=2))
+
+    def cmd_clear(self, args):
+        # Prior contract: --yes required; emit {"cleared": bool, "path": "..."}.
+        if not args.yes:
+            print("Refusing to clear without --yes", file=sys.stderr)
+            sys.exit(1)
+        print(json.dumps(do_clear(), indent=2))
 
 
 def main(argv: Optional[list[str]] = None) -> int:
-    p = argparse.ArgumentParser(
-        prog="kaizen-build-index",
-        description="Index + search the kaizen Second Brain.",
-    )
-    sub = p.add_subparsers(dest="cmd", required=True)
-
-    si = sub.add_parser("index", help="(re)build the brain index")
-    si.set_defaults(func=_cmd_index)
-
-    ss = sub.add_parser("search", help="search the index")
-    ss.add_argument("query")
-    ss.add_argument("--top-k", type=int, default=10)
-    ss.add_argument(
-        "--type",
-        choices=["world-fact", "belief", "observation", "experience"],
-    )
-    ss.add_argument("--subdir", choices=list(_INDEX_SUBDIRS))
-    ss.add_argument("--min-confidence", type=float)
-    ss.set_defaults(func=_cmd_search)
-
-    st = sub.add_parser("stats", help="counts per type / subdir / freshness")
-    st.set_defaults(func=_cmd_stats)
-
-    sp = sub.add_parser("path", help="print db path")
-    sp.set_defaults(func=_cmd_path)
-
-    sg = sub.add_parser("get", help="fetch one note by id")
-    sg.add_argument("id", type=int)
-    sg.set_defaults(func=_cmd_get)
-
-    sc = sub.add_parser("clear", help="drop the db file")
-    sc.add_argument("--yes", action="store_true", required=False)
-    sc.set_defaults(func=_cmd_clear)
-
-    args = p.parse_args(argv)
-    return args.func(args)
+    BuildIndexCLI().run(argv)
+    return 0
 
 
 if __name__ == "__main__":
