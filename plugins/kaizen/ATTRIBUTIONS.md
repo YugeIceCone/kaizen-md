@@ -72,7 +72,7 @@ Five skills + supporting Node scripts originally from the `remember` Second Brai
 - `status`
 - `init`
 
-Plus: `scripts/upstream/*.js` (build-index, extract, schema, promote, append-evidence, evolution-log, session_start, user_prompt, config, build-context — vendored under `scripts/upstream/` to preserve the original Node.js sources for attribution), `references/{structure.md, workflows.md}`, `assets/templates/{daily, note, person, project, remember, resource}.md`, and `config.defaults.json`.
+Plus the original `scripts/*.js` (build-index, extract, schema, promote, append-evidence, evolution-log, session_start, user_prompt, config, build-context — Node.js sources fully replaced by Python equivalents in v1.40+ and no longer shipped; the dependency on `node` was retired with the dedup). Python successors live at `skills/workflow/scripts/{build_index,brain_audit,memory_schema,brain_promote,brain_evolve}.py` and `scripts/{session_start,user_prompt,build_context,evolution_log}.py`. Plus `references/{structure.md, workflows.md}`, `assets/templates/{daily, note, person, project, remember, resource}.md`, and `config.defaults.json`.
 
 - **Original author:** Gabi Fratica — gabriel@codez.ro
 - **Original source:** [github.com/remember-md/remember](https://github.com/remember-md/remember)

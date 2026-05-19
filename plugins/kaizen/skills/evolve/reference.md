@@ -10,7 +10,7 @@ Detailed phase logic, prompts, and report templates for `kaizen-brain evolve`.
 |---|---|---|
 | **1. Consolidate** | YES | Synthesizing entity profiles from many disparate sources requires natural-language judgement. |
 | **2. Reflect** | YES | Weighing evidence vs counter-evidence and updating confidence requires semantic understanding. |
-| **3. Promote** | NO | Pure threshold filter + rank + write. Calls `scripts/upstream/promote.js`; runs on cron without LLM cost. |
+| **3. Promote** | NO | Pure threshold filter + rank + write. Calls `skills/workflow/scripts/brain_promote.py`; runs on cron without LLM cost. |
 
 The schema fields populated by Phases 1 and 2 are themselves what Phase 3 reads. The hand-off is via frontmatter — no LLM context needed at promotion time.
 
@@ -97,21 +97,21 @@ This is a deterministic formula the LLM should follow, not invent. Apply it to e
 For every change:
 
 ```bash
-node ${CLAUDE_PLUGIN_ROOT}/scripts/upstream/evolution-log.js REFLECT "Notes/{slug}.md conf {old}→{new} freshness={new}"
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/evolution_log.py REFLECT "Notes/{slug}.md conf {old}→{new} freshness={new}"
 ```
 
 For state transitions:
 
 ```bash
-node ${CLAUDE_PLUGIN_ROOT}/scripts/upstream/evolution-log.js STALE "Notes/{slug}.md last_seen={date}"
-node ${CLAUDE_PLUGIN_ROOT}/scripts/upstream/evolution-log.js CONTRADICT "Notes/{slug}.md counter_evidence={count}"
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/evolution_log.py STALE "Notes/{slug}.md last_seen={date}"
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/evolution_log.py CONTRADICT "Notes/{slug}.md counter_evidence={count}"
 ```
 
 ---
 
 ## Phase 3 — Promote (script details)
 
-The skill calls `scripts/upstream/promote.js`. The script's logic is fully deterministic and tested (`tests/promote.test.js`):
+The skill calls `skills/workflow/scripts/brain_promote.py`. The script's logic is fully deterministic and tested (`tests/promote.test.js`):
 
 1. **Find beliefs:** walk `Notes/*.md`, filter `type: belief`, parse confidence/sources/freshness.
 2. **Filter candidates:** `confidence ≥ T_conf ∧ sources_count ≥ T_src ∧ freshness IN (stable, strengthening)`. Defaults: T_conf=0.85, T_src=5.

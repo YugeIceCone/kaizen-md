@@ -197,7 +197,7 @@ def validate() -> list[Finding]:
     # --- HOOKS: orphan scripts (on disk but not registered) ---
     on_disk = set(list_hook_files())
     registered = _registered_hook_scripts()
-    # Filter out scripts not under hooks/claude/ (e.g. node ${...}/scripts/upstream/session_start.js)
+    # Filter out scripts not under hooks/claude/ (e.g. python3 ${...}/scripts/session_start.py)
     on_disk_in_claude = {n for n in on_disk if n.endswith((".sh", ".py"))}
     for orphan in sorted(on_disk_in_claude - registered):
         findings.append(Finding(

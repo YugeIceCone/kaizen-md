@@ -23,7 +23,7 @@ Only use Bash for running Node.js scripts. Use Read/Write/Edit/Glob/Grep for all
 
 1. Read `$KAIZEN_BRAIN_DIR` env var (fallback `~/.claude/.kaizen/brain`). Call this `{brain}`.
 2. If missing → tell user to run `kaizen-brain seed` (or skip the init step entirely and let `kaizen-brain capture` greenfield on first write) and stop.
-3. Run: `node ${CLAUDE_PLUGIN_ROOT}/scripts/upstream/build-index.js`
+3. Run: `python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/build_index.py`
 4. Read output — this is your map of everything that exists.
 
 ## Step 1b: Load User Instructions
@@ -42,7 +42,7 @@ Parse into a lookup map: `file_path → last_modified_date`. Use this in Step 4c
 ## Step 2: Find Unprocessed Sessions
 
 ```bash
-node ${CLAUDE_PLUGIN_ROOT}/scripts/upstream/extract.js --unprocessed
+python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/brain_audit.py --unprocessed
 ```
 
 Optional filters: `--project <name>`, `--source openclaw|claude-code`.
@@ -52,7 +52,7 @@ Show the list. Ask user which to process: **All**, **specific sessions by number
 ## Step 3: Extract Each Session
 
 ```bash
-node ${CLAUDE_PLUGIN_ROOT}/scripts/upstream/extract.js <file_path>
+python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/brain_audit.py <file_path>
 ```
 
 Use the `**Session date (use for journal/tasks):**` line as SESSION_DATE for everything. Never use today's date.
@@ -79,7 +79,7 @@ Never invent a `chat/...`, `session/...`, or `transcript/...` path that doesn't 
 
 Once classified to a folder/file by `4b`, also tag with one of: `world-fact`, `belief`, `observation`, `experience`.
 
-Apply the same heuristics as the `remember` skill (or call `scripts/upstream/schema.js detectType` for the same logic):
+Apply the same heuristics as the `remember` skill (or call `kaizen-brain detect` for the same logic):
 
 1. Contains a date or "met with" / "called" → **experience** (Journal entry)
 2. "we decided" / "going with" / "chose X over Y" → **world-fact**
@@ -94,7 +94,7 @@ This skill does NOT trigger consolidation, reflection, or promotion. Those are t
 After every Write/Edit on a brain file in this skill (steps 4c/4d), run:
 
 ```bash
-node ${CLAUDE_PLUGIN_ROOT}/scripts/upstream/schema.js validate <filepath>
+python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/memory_schema.py validate <filepath>
 ```
 
 Output `{changed, addedFields, addedSections, warnings}`. Surface any `warnings` in the final report. Skip on Inbox/Tasks/Archive (validator returns passthrough). Aim to emit complete frontmatter on first write so the validator is a no-op.
@@ -104,7 +104,7 @@ Output `{changed, addedFields, addedSections, warnings}`. Surface any `warnings`
 Before creating a new `Notes/<slug>.md`, check for an existing similar belief/world-fact:
 
 ```bash
-node ${CLAUDE_PLUGIN_ROOT}/scripts/upstream/append-evidence.js find-similar {brain} <slug> <belief|world-fact>
+python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/brain.py append-evidence find-similar {brain} <slug> <belief|world-fact>
 ```
 
 **No match** → create new (Step 4a).
@@ -117,14 +117,14 @@ Read the existing file (body + `evidence:`). Decide which of three branches appl
 
 1. **Same direction (re-affirms existing claim)** → append positive evidence:
    ```bash
-   node ${CLAUDE_PLUGIN_ROOT}/scripts/upstream/append-evidence.js append <filepath> '{"source":"Journal/<SESSION_DATE>.md","quote":"<verbatim>","date":"<SESSION_DATE>"}'
+   python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/brain.py append-evidence append <filepath> '{"source":"Journal/<SESSION_DATE>.md","quote":"<verbatim>","date":"<SESSION_DATE>"}'
    ```
    Increments `sources_count`, appends to `evidence:`, refuses duplicate sources.
 
 2. **Opposite direction (contradicts existing claim)** → append counter-evidence + log:
    ```bash
-   node ${CLAUDE_PLUGIN_ROOT}/scripts/upstream/append-evidence.js append-counter <filepath> '{"source":"Journal/<SESSION_DATE>.md","quote":"<verbatim>","date":"<SESSION_DATE>"}'
-   node ${CLAUDE_PLUGIN_ROOT}/scripts/upstream/evolution-log.js CONTRADICT "<filepath> counter from Journal/<SESSION_DATE>.md"
+   python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/brain.py append-evidence append-counter <filepath> '{"source":"Journal/<SESSION_DATE>.md","quote":"<verbatim>","date":"<SESSION_DATE>"}'
+   python3 ${CLAUDE_PLUGIN_ROOT}/scripts/evolution_log.py CONTRADICT "<filepath> counter from Journal/<SESSION_DATE>.md"
    ```
    Appends to `counter_evidence:`, leaves `sources_count` alone, auto-flips `freshness: contradicted` when counter entries exceed positive ones.
 
@@ -164,7 +164,7 @@ Analyze session for: user corrections, stated preferences, repeated workflows, c
 ## Step 5: Mark Processed
 
 ```bash
-node ${CLAUDE_PLUGIN_ROOT}/scripts/upstream/extract.js --source <source> --mark-processed <session_id>
+python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/brain_audit.py --source <source> --mark-processed <session_id>
 ```
 
 ## Step 6: Auto-promote (once per batch)
@@ -172,7 +172,7 @@ node ${CLAUDE_PLUGIN_ROOT}/scripts/upstream/extract.js --source <source> --mark-
 After all sessions in this batch have been processed, run promote.js a single time so `Persona.md ## Top Beliefs` reflects everything that just landed:
 
 ```bash
-node ${CLAUDE_PLUGIN_ROOT}/scripts/upstream/promote.js
+python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/brain_promote.py
 ```
 
 Bulk extraction often pushes many beliefs over the threshold at once — surface the deltas (promoted/demoted) in the report below.

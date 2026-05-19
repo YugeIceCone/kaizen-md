@@ -141,10 +141,10 @@ PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$(cd "$_LIB_DIR/../../.." 2>/dev/null && pwd)
 if [ -d "$PLUGIN_ROOT/skills" ]; then
     SKILL_COUNT=$(find "$PLUGIN_ROOT/skills" -maxdepth 2 -name "SKILL.md" | wc -l)
     log_pass "plugin skills: $SKILL_COUNT bundled"
-    # Spot-check critical scripts
-    for f in "$PLUGIN_ROOT/scripts/upstream/build-index.js" "$PLUGIN_ROOT/scripts/upstream/extract.js"; do
+    # Spot-check critical scripts (Python ports of the upstream remember tooling)
+    for f in "$PLUGIN_ROOT/skills/workflow/scripts/build_index.py" "$PLUGIN_ROOT/skills/workflow/scripts/brain_audit.py"; do
         if [ -f "$f" ]; then log_pass "$(basename $f) present"
-        else log_skip "$(basename $f) missing (remember tooling won't work)"; fi
+        else log_skip "$(basename $f) missing (brain tooling won't work)"; fi
     done
 elif [ -d "$_LIB_DIR/../references" ]; then
     log_skip "standalone install (no plugin bundle)"

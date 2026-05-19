@@ -251,7 +251,7 @@
       "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/config.py:*)",
       "Bash(bash ${CLAUDE_PLUGIN_ROOT}/hooks/*.sh:*)",
       "Bash(bash ${CLAUDE_PLUGIN_ROOT}/hooks/claude/*.sh:*)",
-      "Bash(node ${CLAUDE_PLUGIN_ROOT}/scripts/*.js:*)",
+      "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/scripts/*.py:*)",
       "Read(${CLAUDE_PLUGIN_ROOT}/**)",
       "Read(.kaizen/**)",
       "Read(.workflow/**)",
