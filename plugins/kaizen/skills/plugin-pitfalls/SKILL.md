@@ -360,7 +360,7 @@ mv ~/.claude/skills/tdd/SKILL.md ~/.claude/skills/tdd/SKILL.md.disabled
 mv ~/.claude/skills/tdd/SKILL.md.disabled ~/.claude/skills/tdd/SKILL.md
 ```
 
-(The `kaizen` plugin's `/kaizen:disable-dupes` automates this — but the mechanism is universal.)
+(The `kaizen-disable-dupes` bin automates this — but the mechanism is universal.)
 
 ### Prevention
 

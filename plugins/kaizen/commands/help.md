@@ -7,7 +7,7 @@ allowed-tools: ["AskUserQuestion", "Bash(${CLAUDE_PLUGIN_ROOT}/bin/kaizen-help-g
 
 # /kaizen:help
 
-Static taxonomy of all 47 `/kaizen:*` commands. **One screen, zero bash
+Static taxonomy of all 45 `/kaizen:*` commands. **One screen, zero bash
 execution.** For full per-command docs use `kaizen help <name>`. Auto-
 generated from `commands/*.md` frontmatter via `kaizen-help-gen`.
 
@@ -76,19 +76,17 @@ dispatch the same way.
 | `workflow` | Workflow-shape config — default scope × run-mode × disciplines × threshold. Three  |
 | `migrate` | Migrate from loose skills / separate plugins / non-canonical layouts to canonical  |
 
-## plugin-meta (10)
+## plugin-meta (8)
 
 | Command | Does |
 |---|---|
 | `setup` | Unified plugin setup. No-args wizard (install/uninstall/health/maintenance) or dir |
-| `bootstrap` | Pre-warm uv-managed Python venvs for the plugin (loc, onboard, daemon, MCP servers |
 | `update` | Single-command plugin maintenance - git pull marketplace + refresh CC plugin cache |
 | `daemon` | Manage kaizen auto-daemon - cron-driven worker, hash-compares source↔cache, valida |
 | `backup` | Snapshot workflow state (.kaizen/, .kaizen.toml, optionally brain + project memory |
 | `publish` | Publish plugin/marketplace to GitHub. Full lifecycle - gh auth | remote create | p |
 | `health` | Diagnostic health check - broken symlinks, missing scripts, schema mismatch, hook  |
 | `status` | Plugin install state at a glance - config, gate state, backlog summary, active wor |
-| `disable-dupes` | Find and reversibly disable duplicate skills (loose ~/.claude/skills/X vs bundled  |
 | `plugin-development` | Hub for kaizen plugin-dev work. Verbs - intake | workflow | validate | rules | dis |
 
 ## discovery/search (8)

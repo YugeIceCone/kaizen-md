@@ -312,7 +312,7 @@ intents:
       - { kind: phrase, pattern: "(set up|setup) (the )?(kaizen )?(plugin|gate)", case_insensitive: true }
       - { kind: phrase, pattern: "bootstrap (the )?(kaizen )?plugin", case_insensitive: true }
     action:
-      suggest: "/kaizen:setup install  # or /kaizen:bootstrap for the uv venv warm-up"
+      suggest: "/kaizen:setup install  # or kaizen-bootstrap bin for the uv venv warm-up"
       subcommand: setup
       confidence: 0.85
 

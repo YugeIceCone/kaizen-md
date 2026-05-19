@@ -209,9 +209,9 @@ After the branch's question chain is answered, assemble the
 | Yes (dry-run)        | `--dry-run`          |
 | No (apply)           | `--execute` (or omit for default) |
 
-| Q6 answer (maintenance) | Slash dispatched              |
+| Q6 answer (maintenance) | Dispatched                    |
 |-------------------------|-------------------------------|
-| Hygiene                 | `/kaizen:hygiene`             |
+| Hygiene                 | `kaizen-hygiene` bin          |
 | Update                  | `/kaizen:update`              |
 | Backup                  | `/kaizen:backup create`       |
 | Cache CRUD              | `/kaizen:setup cache`         |
@@ -267,11 +267,24 @@ or change scope after the initial install.
 
 ## Maintenance dispatch — why it's not a subcommand
 
-Hygiene / update / backup are existing first-class slashes
-(`/kaizen:hygiene`, `/kaizen:update`, `/kaizen:backup`). The super-menu
-routes there rather than wrapping them; setup.sh stays focused on
+Hygiene / update / backup are first-class concerns. update + backup
+keep slashes (`/kaizen:update`, `/kaizen:backup`); hygiene retired
+its slash in the cat-2 consolidation — the super-menu now dispatches
+the `kaizen-hygiene` bin directly. setup.sh stays focused on
 install/uninstall/cache. This keeps each tool's permissions narrow and
 its surface independently testable.
+
+## Folded surface (formerly separate slashes)
+
+Two install-time slashes folded into setup; bins remain:
+
+| Concern | Bin (direct) | Use case |
+|---|---|---|
+| Pre-warm uv venvs | `kaizen-bootstrap [--check\|--list]` | One-shot venv warm; auto-runs as part of `setup --enable-all` — was `/kaizen:bootstrap` |
+| Disable duplicate skills | `kaizen-disable-dupes` | One-off install fix; rename `SKILL.md` ↔ `SKILL.md.disabled` — was `/kaizen:disable-dupes` |
+
+`disable-dupes` is functionally `setup repair` territory — invoke
+the bin directly when you spot a loose-side duplicate.
 
 ## The cache subcommand
 

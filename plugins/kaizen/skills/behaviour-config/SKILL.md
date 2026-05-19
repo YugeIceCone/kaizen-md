@@ -135,7 +135,7 @@ Or via `kaizen-brain capture "<text>"` if the rule is also a stated preference w
 
 ## Disabling a rule
 
-Same trick as `/kaizen:disable-dupes`: rename the file.
+Same trick as `kaizen-disable-dupes`: rename the file.
 
 ```bash
 mv ~/.claude/.kaizen/brain/Notes/<rule>.md ~/.claude/.kaizen/brain/Notes/<rule>.md.disabled
