@@ -225,12 +225,16 @@ class TestBrainDriftGate(unittest.TestCase):
         self._tmp.cleanup()
 
     def _env(self):
+        # Point the expected-import-not-fired check at a non-existent
+        # CLAUDE.md so it skips silently (this fixture doesn't seed one).
         return {
             "KAIZEN_BRAIN_DIR":             str(self.brain),
             "KAIZEN_BETTER_MEMORY_DIR":     str(self.memory),
             "KAIZEN_AUTO_LOAD_PATH":        str(self.auto_load),
             "KAIZEN_GATES_DIR":             str(self.gates),
             "KAIZEN_AUTO_LOAD_PINS_PATH":   str(self.pins),
+            "KAIZEN_CLAUDE_MD_PATH":        str(self.root / "absent-CLAUDE.md"),
+            "KAIZEN_INSTRUCTIONS_LOADED_LOG": str(self.root / "absent.jsonl"),
         }
 
     def test_clean_state_no_findings(self):
@@ -306,6 +310,109 @@ class TestBrainDriftGate(unittest.TestCase):
         self.assertIn("pin-missing-note", kinds)
         msgs = " ".join(f.message for f in findings)
         self.assertIn("pref-does-not-exist", msgs)
+
+
+class TestExpectedImportNotFired(unittest.TestCase):
+    """brain-drift gate enrichment: detect CLAUDE.md @imports that
+    never showed up in the InstructionsLoaded jsonl audit.
+
+    A common silent failure: user adds `@~/some/path.md` to CLAUDE.md
+    but the file is missing / declined / path-mistyped. Claude Code
+    tolerates the bad import (leaves it as literal text) — no error
+    surfaces. The hook never fires for that path, so the jsonl shows
+    its absence. This rule catches it pre-commit.
+    """
+
+    def setUp(self):
+        self.gk = _load("gatekeeper_test_eif", _GATEKEEPER)
+        self._tmp = tempfile.TemporaryDirectory()
+        self.root = Path(self._tmp.name)
+        self.claude_md = self.root / "CLAUDE.md"
+        self.jsonl = self.root / "loaded.jsonl"
+        self.brain = self.root / "brain"
+        self.brain.mkdir()
+        # Minimal Persona so other rules don't trip
+        (self.brain / "Persona.md").write_text(
+            "# Persona\n\n## Directives\n\n- **X.** See [[Notes/x]].\n",
+            encoding="utf-8")
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    def _env(self):
+        # Sandbox every drift surface so we test ONLY the new rule.
+        return {
+            "KAIZEN_CLAUDE_MD_PATH":           str(self.claude_md),
+            "KAIZEN_INSTRUCTIONS_LOADED_LOG":  str(self.jsonl),
+            "KAIZEN_BRAIN_DIR":                str(self.brain),
+            "KAIZEN_BETTER_MEMORY_DIR":        str(self.root / "memory"),
+            "KAIZEN_AUTO_LOAD_PATH":           str(self.root / "auto-load.md"),
+            "KAIZEN_GATES_DIR":                str(self.root / "gates"),
+            "KAIZEN_AUTO_LOAD_PINS_PATH":      str(self.root / "pins.json"),
+        }
+
+    def test_no_claude_md_no_findings(self):
+        # File absent → rule silent
+        from unittest.mock import patch
+        with patch.dict(os.environ, self._env()):
+            findings = self.gk._gate_brain_drift("staged", _REPO_ROOT)
+        kinds = [f.rule_id for f in findings]
+        self.assertNotIn("expected-import-not-fired", kinds)
+
+    def test_no_imports_no_findings(self):
+        self.claude_md.write_text("# CLAUDE\n\nno imports here\n")
+        self.jsonl.write_text("")  # empty audit
+        from unittest.mock import patch
+        with patch.dict(os.environ, self._env()):
+            findings = self.gk._gate_brain_drift("staged", _REPO_ROOT)
+        kinds = [f.rule_id for f in findings]
+        self.assertNotIn("expected-import-not-fired", kinds)
+
+    def test_all_imports_fired_no_findings(self):
+        target = self.root / "imported.md"
+        target.write_text("imported content")
+        self.claude_md.write_text(f"# CLAUDE\n\n@{target}\n")
+        # Audit shows the import fired
+        import json as _json
+        self.jsonl.write_text(_json.dumps({
+            "ts": "2026-05-19T00:00:00Z",
+            "file_path": str(target),
+            "memory_type": "User",
+            "load_reason": "include",
+        }) + "\n")
+        from unittest.mock import patch
+        with patch.dict(os.environ, self._env()):
+            findings = self.gk._gate_brain_drift("staged", _REPO_ROOT)
+        kinds = [f.rule_id for f in findings]
+        self.assertNotIn("expected-import-not-fired", kinds)
+
+    def test_missing_import_surfaces_warn(self):
+        # CLAUDE.md @imports an existing file that the audit never recorded
+        target = self.root / "missed.md"
+        target.write_text("imported content")
+        self.claude_md.write_text(f"# CLAUDE\n\n@{target}\n")
+        self.jsonl.write_text("")  # nothing fired
+        from unittest.mock import patch
+        with patch.dict(os.environ, self._env()):
+            findings = self.gk._gate_brain_drift("staged", _REPO_ROOT)
+        kinds = [f.rule_id for f in findings]
+        self.assertIn("expected-import-not-fired", kinds)
+        msg = " ".join(f.message for f in findings)
+        self.assertIn("missed.md", msg)
+
+    def test_missing_import_target_not_flagged(self):
+        """A typo-path @import (file doesn't exist) is a DIFFERENT
+        problem (not load-fired-vs-not). This rule only flags paths
+        that DO exist on disk but the audit didn't see fire."""
+        self.claude_md.write_text("# CLAUDE\n\n@/does/not/exist.md\n")
+        self.jsonl.write_text("")
+        from unittest.mock import patch
+        with patch.dict(os.environ, self._env()):
+            findings = self.gk._gate_brain_drift("staged", _REPO_ROOT)
+        kinds = [f.rule_id for f in findings]
+        # Should NOT surface — different concern (missing file, not
+        # missing load event).
+        self.assertNotIn("expected-import-not-fired", kinds)
 
 
 class TestGatekeeperCollisionResistance(unittest.TestCase):

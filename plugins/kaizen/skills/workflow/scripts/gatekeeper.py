@@ -521,6 +521,96 @@ def _gate_menu_lint(scope: str, repo_root: Path) -> list[GateFinding]:
     return out
 
 
+def _top_level_imports(claude_md_text: str, base_dir: Path) -> list[Path]:
+    """Return resolved Paths of top-level `@import` directives in
+    a CLAUDE.md body. Same resolution rules as _expand_imports but
+    NO recursion — top level only.
+    """
+    out: list[Path] = []
+    for m in _IMPORT_LINE_RE.finditer(claude_md_text):
+        raw = m.group(1)
+        if raw.startswith("~/"):
+            target = Path.home() / raw[2:]
+        elif raw.startswith("/"):
+            target = Path(raw)
+        else:
+            target = base_dir / raw
+        try:
+            out.append(target.resolve())
+        except OSError:
+            continue
+    return out
+
+
+def _loaded_file_paths_set() -> set[str]:
+    """Set of file_paths from the InstructionsLoaded jsonl. Empty when
+    the log is absent / unreadable / not yet seeded."""
+    log_env = os.environ.get("KAIZEN_INSTRUCTIONS_LOADED_LOG")
+    if log_env:
+        path = Path(log_env).expanduser()
+    else:
+        base = os.environ.get("KAIZEN_DIR") or (Path.home() / ".claude" / ".kaizen")
+        path = Path(base) / "instructions-loaded.jsonl"
+    if not path.is_file():
+        return set()
+    seen: set[str] = set()
+    try:
+        for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                entry = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            fp = entry.get("file_path")
+            if isinstance(fp, str) and fp:
+                # Normalize: resolve symlinks so comparisons match.
+                try:
+                    seen.add(str(Path(fp).resolve()))
+                except OSError:
+                    seen.add(fp)
+    except OSError:
+        return set()
+    return seen
+
+
+def _check_expected_imports_fired() -> list[GateFinding]:
+    """Detect @imports in CLAUDE.md whose targets exist on disk but the
+    InstructionsLoaded audit never recorded loading them."""
+    target_env = os.environ.get("KAIZEN_CLAUDE_MD_PATH")
+    claude_md = (Path(target_env).expanduser() if target_env
+                 else Path.home() / ".claude" / "CLAUDE.md")
+    if not claude_md.is_file():
+        return []
+    try:
+        text = claude_md.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return []
+    expected = _top_level_imports(text, claude_md.parent)
+    # Filter: only paths that EXIST on disk (broken / typo paths are
+    # a different concern — Claude Code tolerates them silently, but
+    # they're not a "didn't fire" signal).
+    expected_existing = [p for p in expected if p.is_file()]
+    if not expected_existing:
+        return []
+    fired = _loaded_file_paths_set()
+    out: list[GateFinding] = []
+    for p in expected_existing:
+        if str(p) not in fired:
+            out.append(GateFinding(
+                gate="brain-drift", severity="warn",
+                rule_id="expected-import-not-fired",
+                message=(f"{claude_md} @imports {p.name} but the "
+                         "InstructionsLoaded audit never recorded it "
+                         "loading. Either the import was declined (run "
+                         "Claude Code once + approve), or the path "
+                         "is wrong. File exists on disk; just no load "
+                         "event for it."),
+            ))
+    return out
+
+
 # ─── Sub-gate: brain-drift ───────────────────────────────────────────
 
 
@@ -602,6 +692,10 @@ def _gate_brain_drift(scope: str, repo_root: Path) -> list[GateFinding]:
                     ))
         except (ImportError, OSError):
             pass
+
+    # (4a) Expected @import didn't fire — uses Phase A's
+    # InstructionsLoaded jsonl to detect silent install failures.
+    out.extend(_check_expected_imports_fired())
 
     # (4) Pin references a Note that doesn't exist
     if pins_path.is_file() and brain_dir.is_dir():
