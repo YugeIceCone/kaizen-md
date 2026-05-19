@@ -429,6 +429,67 @@
       "committed_at": null,
       "parked_reason": null,
       "probe_output": null
+    },
+    {
+      "id": "BK-023",
+      "section": "done",
+      "title": "kaizen:backlog → auto-loaded ledger in CC memory dir (token-efficient, no roundtrip)",
+      "ref": null,
+      "probe": "Compact backlog summary auto-written to ~/.claude/projects/<slug>/memory/backlog_ledger.md on every save_store; agent reads from auto-loaded context instead of calling 'kaizen backlog list'",
+      "verify": "TDD: (a) save_store side-effect writes backlog_ledger.md with counts header + active items + recent done; (b) format is byte-stable across redundant saves; (c) write is atomic (tempfile+rename); (d) ledger updates within one save call. Path resolves via project_memory_dir helper. Existing 'kaizen backlog list' surface preserved unchanged.",
+      "tags": [
+        "backlog",
+        "memory",
+        "token-efficient",
+        "auto-load"
+      ],
+      "created": "2026-05-19",
+      "started_at": null,
+      "committed": "HEAD",
+      "committed_at": "2026-05-19T21:13:16Z",
+      "parked_reason": null,
+      "probe_output": null
+    },
+    {
+      "id": "BK-024",
+      "section": "next_up",
+      "title": "kaizen — project vs global metadata scope discipline (audit + lint)",
+      "ref": null,
+      "probe": "Every kaizen feature that persists state declares its scope: project (per-repo, lives in .kaizen/ or <repo>-slug memory) vs global (user-wide, lives in ~/.claude/.kaizen/ or ~/.claude/projects/default/memory). Lint catches features that write to the wrong scope (e.g. project-scoped data leaking to global path).",
+      "verify": "(a) Survey existing persisted-state features (backlog, handoff store, brain, dxm, trace, gold, intent, inbox) — document scope for each in a domain/state-scopes.yaml lens manifest. (b) Add iron-law: every script that writes state must resolve its path via _paths.py and the path must be tagged project|global in the manifest. (c) BK-023 ledger declares scope=project (per-repo memory dir, NOT default/memory). (d) Integration test: feature writes go to the declared scope only — no cross-scope bleed.",
+      "tags": [
+        "scope",
+        "metadata",
+        "lint",
+        "iron-law"
+      ],
+      "created": "2026-05-19",
+      "started_at": null,
+      "committed": null,
+      "committed_at": null,
+      "parked_reason": null,
+      "probe_output": null
+    },
+    {
+      "id": "BK-025",
+      "section": "next_up",
+      "title": "SessionStart auto-discovery → QA the user (in-flight items, stale state, drift)",
+      "ref": null,
+      "probe": "On SessionStart, a discovery hook surveys local state (in_flight backlog items, uncommitted changes, stale handoff per BK-021, pending TaskList tasks, recent gold drops) and surfaces a tight QA prompt (AskUserQuestion or one-line summary) asking 'resume X?' or 'pivot?' — no manual /handoff resume needed",
+      "verify": "(a) Hook script gathers: in_flight backlog count + IDs, last handoff age + verdict, uncommitted file count, pending tasks; (b) emits a single envelope with 'discoveries' and 'recommended_action'; (c) surfaces via SessionStart additionalContext (one short block, not 30KB); (d) when nothing pending, hook is a silent no-op (KISS — don't talk if nothing to say); (e) integration test: prime fixtures, fire hook, assert envelope shape + content; (f) wired via plugin.json hooks section",
+      "tags": [
+        "session-start",
+        "hook",
+        "discovery",
+        "qa",
+        "handoff"
+      ],
+      "created": "2026-05-19",
+      "started_at": null,
+      "committed": null,
+      "committed_at": null,
+      "parked_reason": null,
+      "probe_output": null
     }
   ],
   "decisions": []
