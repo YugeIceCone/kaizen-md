@@ -256,7 +256,7 @@ intents:
       - { kind: phrase, pattern: "what.{0,5}(untested|uncovered)", case_insensitive: true }
       - { kind: phrase, pattern: "coverage (gap|report)", case_insensitive: true }
     action:
-      suggest: "/kaizen:coverage gaps  # 1:1 script ↔ test-file presence"
+      suggest: "kaizen-coverage gaps  # 1:1 script ↔ test-file presence (bin; slash folded into /kaizen:audit)"
       subcommand: coverage
       confidence: 0.85
 
@@ -334,7 +334,7 @@ intents:
       - { kind: phrase, pattern: "(broken )?(symlinks?|missing scripts?)", case_invariant: true, case_insensitive: true }
       - { kind: phrase, pattern: "(clean|hygiene|cleanup) (the )?plugin", case_insensitive: true }
     action:
-      suggest: "/kaizen:health  # broken symlinks / missing scripts / schema drift  → /kaizen:hygiene to clean"
+      suggest: "/kaizen:health  # broken symlinks / missing scripts / schema drift  → kaizen-hygiene bin to clean"
       subcommand: health
       confidence: 0.8
 

@@ -7,7 +7,7 @@ allowed-tools: ["AskUserQuestion", "Bash(${CLAUDE_PLUGIN_ROOT}/bin/kaizen-help-g
 
 # /kaizen:help
 
-Static taxonomy of all 53 `/kaizen:*` commands. **One screen, zero bash
+Static taxonomy of all 49 `/kaizen:*` commands. **One screen, zero bash
 execution.** For full per-command docs use `kaizen help <name>`. Auto-
 generated from `commands/*.md` frontmatter via `kaizen-help-gen`.
 
@@ -20,7 +20,7 @@ the wizard and emit the corresponding slice directly.
 
 **Q1 — Which domain?** (single-select; 4 options + Other)
 
-- `audit/quality` (10)
+- `audit/quality` (8)
 - `workflow` (5)
 - `observability` (6)
 - `brain/memory` (3)
@@ -34,7 +34,7 @@ to render just that cluster's sub-table. For `Other`, run a
 follow-up `AskUserQuestion` over the overflow clusters, then
 dispatch the same way.
 
-## audit/quality (10)
+## audit/quality (8)
 
 | Command | Does |
 |---|---|
@@ -43,10 +43,8 @@ dispatch the same way.
 | `gatekeeper` | Unified kaizen gate. Aggregates iron-laws + etu anti-patterns + karpathy diff scan |
 | `precommit` | Dry-run pre-commit gate against staged - surfaces blocks/warns/skips without commi |
 | `review` | Fast diff-time code review (HEAD vs base). Runs analyzers, returns severity-tagged |
-| `coverage` | 1:1 code-to-test mapper for the kaizen plugin. Walks scripts/ excluding _<x>.py pr |
 | `karpathy-check` | Karpathy 4-principle review on staged changes (or --last-commit). Checks complexit |
 | `vibe-check` | Vibe-coding discipline checklist on staged diff. Combines /kaizen:precommit dry-ru |
-| `self-audit` | Plugin self-audit. Default - mechanical pipeline (validator, metrics-coverage, ski |
 | `ci-gate` | Local CI-equivalent merge gate. bash/python/json/SKILL.md syntax + iron-laws codeg |
 
 ## observability (6)
@@ -78,7 +76,7 @@ dispatch the same way.
 | `workflow` | Workflow-shape config — default scope × run-mode × disciplines × threshold. Three  |
 | `migrate` | Migrate from loose skills / separate plugins / non-canonical layouts to canonical  |
 
-## plugin-meta (12)
+## plugin-meta (10)
 
 | Command | Does |
 |---|---|
@@ -86,12 +84,10 @@ dispatch the same way.
 | `bootstrap` | Pre-warm uv-managed Python venvs for the plugin (loc, onboard, daemon, MCP servers |
 | `update` | Single-command plugin maintenance - git pull marketplace + refresh CC plugin cache |
 | `daemon` | Manage kaizen auto-daemon - cron-driven worker, hash-compares source↔cache, valida |
-| `hygiene` | Plugin hygiene checks + safe auto-cleanups. 5 checks - prune old cache, prune back |
 | `backup` | Snapshot workflow state (.kaizen/, .kaizen.toml, optionally brain + project memory |
 | `publish` | Publish plugin/marketplace to GitHub. Full lifecycle - gh auth | remote create | p |
 | `health` | Diagnostic health check - broken symlinks, missing scripts, schema mismatch, hook  |
 | `status` | Plugin install state at a glance - config, gate state, backlog summary, active wor |
-| `surface` | MCP+hooks registry. `list` enumerates servers + hooks; `validate` flags drift betw |
 | `disable-dupes` | Find and reversibly disable duplicate skills (loose ~/.claude/skills/X vs bundled  |
 | `plugin-development` | Hub for kaizen plugin-dev work. Verbs - intake | workflow | validate | rules | dis |
 
