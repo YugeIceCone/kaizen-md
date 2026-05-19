@@ -417,6 +417,138 @@ def write_project_rules(persona_text: str,
     return [str(p) for p in written]
 
 
+# ─── Phase M: path-scoped brain Notes → .claude/rules/ ──────────────
+
+
+_FM_BLOCK_RE = re.compile(r"\A---\n(.*?)\n---\n", re.S)
+_FM_LIST_INLINE_RE = re.compile(r"^paths:\s*\[(.*?)\]", re.M)
+_FM_LIST_BLOCK_RE = re.compile(
+    r"^paths:\s*\n((?:[ \t]+-\s*['\"]?[^\n'\"]+['\"]?\s*(?:\n|$))+)",
+    re.M,
+)
+
+
+def _parse_note_paths(fm_text: str) -> list[str]:
+    """Extract the `paths:` list from a Note's YAML frontmatter.
+
+    Handles two YAML forms (no PyYAML dep):
+    - inline: `paths: ["src/**/*.py", "tests/**/*.py"]`
+    - block:  `paths:\\n  - 'src/**/*.py'\\n  - 'tests/**/*.py'`
+
+    Returns empty list when the field is absent / malformed.
+    """
+    m = _FM_LIST_INLINE_RE.search(fm_text)
+    if m:
+        inner = m.group(1).strip()
+        if not inner:
+            return []
+        return [s.strip().strip("'\"") for s in inner.split(",") if s.strip()]
+    m = _FM_LIST_BLOCK_RE.search(fm_text)
+    if m:
+        out = []
+        for line in m.group(1).splitlines():
+            line = line.strip()
+            if line.startswith("- "):
+                out.append(line[2:].strip().strip("'\""))
+        return out
+    return []
+
+
+def scan_path_scoped_notes(brain_root: Path) -> list[dict]:
+    """Walk brain Notes/ and return entries with `paths:` frontmatter.
+
+    Opt-in: only Notes that explicitly declare `paths:` are returned.
+    Notes without it stay brain-only (avoid flooding project rule dirs).
+
+    Returns: list of ``{slug, paths, text, note_path}`` where ``text``
+    is the body (post-frontmatter) for inclusion in the rule.
+    """
+    notes_dir = Path(brain_root) / "Notes"
+    if not notes_dir.is_dir():
+        return []
+    out: list[dict] = []
+    for p in sorted(notes_dir.glob("*.md")):
+        try:
+            raw = p.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        m = _FM_BLOCK_RE.match(raw)
+        if not m:
+            continue
+        fm_text = m.group(1)
+        # Try strict-ish parse: must look well-formed (no unterminated quote)
+        if fm_text.count('"') % 2 or fm_text.count("'") % 2:
+            continue
+        paths = _parse_note_paths(fm_text)
+        if not paths:
+            continue
+        body = raw[m.end():].lstrip("\n")
+        out.append({
+            "slug":      p.stem,
+            "paths":     paths,
+            "text":      body,
+            "note_path": str(p),
+        })
+    return out
+
+
+def write_note_rules(brain_root: Path, project_root: Path) -> list[str]:
+    """Emit path-scoped brain Notes as ``<project>/.claude/rules/note-<slug>.md``.
+
+    Each rule includes the Note's body + a `paths:` frontmatter copied
+    from the Note's own frontmatter. The ``note-`` filename prefix
+    namespaces these against directive gates (which use plain
+    `<slug>.md`).
+
+    Prunes obsolete: removes daemon-authored `note-*.md` rules whose
+    backing Note no longer declares `paths:`. Hand-authored
+    `note-*.md` files (no marker) are preserved.
+
+    Returns the list of written file paths.
+    """
+    notes = scan_path_scoped_notes(Path(brain_root))
+    rules_dir = Path(project_root) / ".claude" / "rules"
+    rules_dir.mkdir(parents=True, exist_ok=True)
+
+    written: list[Path] = []
+    current_slugs: set[str] = set()
+    for note in notes:
+        slug = note["slug"]
+        current_slugs.add(slug)
+        path = rules_dir / f"note-{slug}.md"
+        paths_yaml = ", ".join(f'"{p}"' for p in note["paths"])
+        rule_body = (
+            f"<!-- {_DAEMON_MARKER}. Do NOT edit. "
+            f"Backs brain Note: {slug}. -->\n"
+            f"{note['text']}"
+        )
+        fingerprint = _fingerprint(rule_body)
+        full = (
+            f"---\n"
+            f"paths: [{paths_yaml}]\n"
+            f"---\n"
+            f"{fingerprint}"
+            f"{rule_body}"
+        )
+        _atomic_write(path, full)
+        written.append(path)
+
+    for p in rules_dir.glob("note-*.md"):
+        if p.stem.removeprefix("note-") in current_slugs:
+            continue
+        try:
+            head = p.read_text(encoding="utf-8", errors="replace")[:300]
+        except OSError:
+            continue
+        if _DAEMON_MARKER in head:
+            try:
+                p.unlink()
+            except OSError:
+                pass
+
+    return [str(p) for p in written]
+
+
 def run_auto_load(state: dict) -> tuple[bool, str, str]:
     """Daemon job: read Persona, build + atomically write auto-load.md.
 
