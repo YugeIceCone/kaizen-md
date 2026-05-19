@@ -23,6 +23,9 @@ import time as _time
 from pathlib import Path
 
 _SCRIPT_DIR = Path(__file__).resolve().parent
+sys.path.insert(0, str(_SCRIPT_DIR))
+
+import _index_kit  # noqa: E402 — shared indexer primitives (drift-gated job factory)
 
 # Throttle thresholds (seconds). Tuned per job cost:
 #   brain-promote   — 24h  (cheap-ish, but inbox drains don't need to be hourly)
@@ -94,31 +97,31 @@ def _brain_notes_hash() -> str:
     return h.hexdigest()[:16]
 
 
-def run_brain_index(state: dict) -> tuple[bool, str, str]:
-    """(Re)build brain.db when Notes/ has drifted since last tick.
-
-    State carries ``brain_notes_hash``. On successful reindex, the new
-    hash is stamped — failure leaves the old hash so next tick retries.
-    """
-    action = "brain-index"
-    if _disabled("KAIZEN_DAEMON_BRAIN_INDEX_DISABLE"):
-        return True, "disabled via env", action
-    current = _brain_notes_hash()
-    prior = state.get("brain_notes_hash", "")
-    if current and current == prior:
-        return True, f"no drift (hash={current})", action
+def _regen_brain_index_subprocess() -> None:
+    """Shell out to ``brain_index.py index``; raise on non-zero rc so the
+    drift-job factory leaves the state hash un-stamped on failure."""
     script = _SCRIPT_DIR / "brain_index.py"
     result = subprocess.run(
         [_python(), str(script), "index", "--json"],
         capture_output=True, text=True, timeout=300,
     )
-    ok = result.returncode == 0
-    if ok:
-        state["brain_notes_hash"] = current
-    msg = f"reindex ({prior or 'none'} → {current}) rc={result.returncode}"
-    if not ok and result.stderr:
-        msg += f" stderr={result.stderr.strip()[:200]}"
-    return ok, msg, action
+    if result.returncode != 0:
+        stderr = result.stderr.strip()[:200] if result.stderr else ""
+        raise RuntimeError(f"rc={result.returncode} stderr={stderr}")
+
+
+# Composed via ``_index_kit.daemon_drift_job`` — preserves the
+# ``brain_notes_hash`` state key (not the factory default
+# ``brain_index_hash``) so existing daemon state files round-trip.
+# Lambdas late-bind ``_brain_notes_hash`` / ``_regen_brain_index_subprocess``
+# so test monkey-patches against the module attribute still apply.
+run_brain_index = _index_kit.daemon_drift_job(
+    action_key="brain-index",
+    disable_env="KAIZEN_DAEMON_BRAIN_INDEX_DISABLE",
+    hash_fn=lambda: _brain_notes_hash(),
+    regen_fn=lambda: _regen_brain_index_subprocess(),
+    state_hash_key="brain_notes_hash",
+)
 
 
 def _memory_dir_hash() -> str:
