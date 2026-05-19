@@ -36,10 +36,10 @@ def _plugin_root() -> Path:
     env = os.environ.get("KAIZEN_PLUGIN_ROOT")
     if env:
         return Path(os.path.expandvars(env)).expanduser()
-    # Sibling-walk: this script lives at skills/workflow/scripts/, so
-    # plugin root is three parents up.
+    # Sibling-walk: this script lives at scripts/io/, so
+    # plugin root is two parents up.
     here = Path(__file__).resolve().parent
-    return here.parent.parent.parent
+    return here.parent.parent
 
 
 # Category classifier — folder/filename → human label. First match wins.

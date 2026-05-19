@@ -21,7 +21,7 @@ import unittest
 from pathlib import Path
 
 _KZ_DIR = Path(__file__).resolve().parent.parent
-_IO_PY = _KZ_DIR / "skills/workflow/scripts/io.py"
+_IO_PY = _KZ_DIR / "scripts/io/io.py"
 
 
 class _ReadBase(unittest.TestCase):

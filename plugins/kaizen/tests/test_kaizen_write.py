@@ -16,7 +16,7 @@ import unittest
 from pathlib import Path
 
 _KZ_DIR = Path(__file__).resolve().parent.parent
-_SCRIPTS = _KZ_DIR / "skills/workflow/scripts"
+_SCRIPTS = _KZ_DIR / "scripts/io"
 _WRITE_PY = _SCRIPTS / "kaizen_write.py"
 
 

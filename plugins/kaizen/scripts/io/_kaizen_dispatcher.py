@@ -51,7 +51,7 @@ import time
 from pathlib import Path
 
 _SCRIPT_DIR = Path(__file__).resolve().parent
-_PLUGIN_ROOT = _SCRIPT_DIR.parent.parent.parent  # plugins/kaizen/
+_PLUGIN_ROOT = _SCRIPT_DIR.parent.parent  # plugins/kaizen/
 _BIN_DIR = _PLUGIN_ROOT / "bin"
 _COMMANDS_DIR = _PLUGIN_ROOT / "commands"
 
@@ -364,7 +364,7 @@ def _emit_trace_event(phase: str, sub: str, sub_args: list[str],
                       exit_code: int | None = None) -> None:
     """Best-effort: write a kaizen-trace event. Silent on any failure
     so the dispatcher never blocks on telemetry."""
-    trace_py = _SCRIPT_DIR / "trace.py"
+    trace_py = _PLUGIN_ROOT / "skills" / "workflow" / "scripts" / "trace.py"
     if not trace_py.is_file():
         return
     payload = {

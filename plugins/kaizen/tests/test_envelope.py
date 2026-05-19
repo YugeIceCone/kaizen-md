@@ -17,7 +17,7 @@ from pathlib import Path
 _REPO_ROOT = Path(__file__).resolve().parents[3]
 _SCRIPTS = _REPO_ROOT / "plugins/kaizen/skills/workflow/scripts"
 _SCHEMA = _REPO_ROOT / "plugins/kaizen/assets/schemas/tool-output.schema.json"
-_ENVELOPE = _SCRIPTS / "_envelope.py"
+_ENVELOPE = _REPO_ROOT / "plugins/kaizen/scripts/io/_envelope.py"
 
 
 def _load(name: str, path: Path):
