@@ -179,6 +179,8 @@
       "Bash(uv run --script ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/symbol_search_mcp.py:*)",
       "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/cleanup_worktrees.py:*)",
       "Bash(${CLAUDE_PLUGIN_ROOT}/bin/kaizen-cleanup-worktrees:*)",
+      "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/parallel_dispatch_audit.py:*)",
+      "Bash(${CLAUDE_PLUGIN_ROOT}/bin/kaizen-parallel-dispatch-audit:*)",
       "Bash(uv run --script ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/config_mcp.py:*)",
       "Bash(bash ${CLAUDE_PLUGIN_ROOT}/hooks/claude/userprompt-skills-reminder.sh:*)",
       "Bash(bash ${CLAUDE_PLUGIN_ROOT}/hooks/claude/userprompt-classify.sh:*)",

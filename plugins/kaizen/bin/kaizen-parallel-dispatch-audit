@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# kaizen-parallel-dispatch-audit — pre-flight audit for parallel-branches plan.yaml.
+# Symlinked to ~/.local/bin/kaizen-parallel-dispatch-audit by /kaizen:install.
+
+set -uo pipefail
+_SCRIPT_REAL="$(readlink -f "${BASH_SOURCE[0]}" 2>/dev/null \
+  || python3 -c 'import os,sys; print(os.path.realpath(sys.argv[1]))' "${BASH_SOURCE[0]}")"
+_BIN_DIR="$(cd "$(dirname "$_SCRIPT_REAL")" && pwd)"
+# shellcheck source=../skills/workflow/scripts/_plugin_root.sh
+source "$_BIN_DIR/../skills/workflow/scripts/_plugin_root.sh"
+PLUGIN_ROOT="$(kaizen_plugin_root)" || {
+    echo "kaizen-parallel-dispatch-audit: plugin root unresolved" >&2
+    exit 1
+}
+exec python3 "$PLUGIN_ROOT/skills/workflow/scripts/parallel_dispatch_audit.py" "$@"
