@@ -1,4 +1,13 @@
-"""Tests for the forked-skill wire-up (code-tour / karpathy / self-improving)."""
+"""Tests for the forked-skill wire-up.
+
+Originally asserted that code-tour / self-improving / karpathy each
+shipped a slash command. Post-category-2 cleanup, code-tour +
+self-improving no longer have slashes (the skills + bins still
+ship); the test asserts the new shape:
+  - the SKILL.md exists (agent reaches via Skill tool)
+  - the slash form is retired (no commands/<name>.md)
+karpathy keeps its parent bin contract (still user-facing).
+"""
 
 from __future__ import annotations
 
@@ -9,47 +18,37 @@ from pathlib import Path
 
 _KZ_DIR = Path(__file__).resolve().parent.parent
 _COMMANDS = _KZ_DIR / "commands"
+_SKILLS = _KZ_DIR / "skills"
 _BIN = _KZ_DIR / "bin"
 
 
-class TestCodeTourCommand(unittest.TestCase):
-    def setUp(self):
-        self.cmd = _COMMANDS / "code-tour.md"
+class TestCodeTourSkill(unittest.TestCase):
+    """code-tour: skill survives the slash retirement."""
 
-    def test_command_file_exists(self):
-        self.assertTrue(self.cmd.is_file())
+    def test_skill_body_exists(self):
+        skill = _SKILLS / "code-tour" / "SKILL.md"
+        self.assertTrue(skill.is_file(), f"missing: {skill}")
 
-    def test_frontmatter_has_name_and_argument_hint(self):
-        text = self.cmd.read_text(encoding="utf-8")
-        m = re.match(r"^---\n(.*?)\n---\n", text, re.DOTALL)
-        self.assertIsNotNone(m)
-        fm = m.group(1)
-        self.assertIn("name: code-tour", fm)
-        self.assertIn("argument-hint:", fm)
-
-    def test_body_references_skill_and_domain_yamls(self):
-        body = self.cmd.read_text(encoding="utf-8")
-        self.assertIn("Skill(kaizen:code-tour)", body)
-        self.assertIn("personas.yaml", body)
-        self.assertIn("depths.yaml", body)
+    def test_domain_yamls_intact(self):
+        for stem in ("personas", "depths"):
+            p = _SKILLS / "code-tour" / "domain" / f"{stem}.yaml"
+            self.assertTrue(p.is_file(), f"missing: {p}")
 
 
-class TestSelfImprovingCommand(unittest.TestCase):
-    def setUp(self):
-        self.cmd = _COMMANDS / "self-improving.md"
 
-    def test_command_file_exists(self):
-        self.assertTrue(self.cmd.is_file())
+class TestSelfImprovingSkill(unittest.TestCase):
+    """self-improving: skill survives; slash retired (daemon-driven)."""
 
-    def test_subcommands_documented(self):
-        body = self.cmd.read_text(encoding="utf-8")
-        for sub in ("review", "promote", "extract", "health"):
-            self.assertIn(f"### `{sub}", body,
-                          f"subcommand {sub!r} not documented")
+    def test_skill_body_exists(self):
+        skill = _SKILLS / "self-improving" / "SKILL.md"
+        self.assertTrue(skill.is_file(), f"missing: {skill}")
 
-    def test_links_writing_skills_for_extract(self):
-        body = self.cmd.read_text(encoding="utf-8")
-        self.assertIn("Skill(kaizen:writing-skills)", body)
+    def test_skill_documents_subcommands(self):
+        body = (_SKILLS / "self-improving" / "SKILL.md").read_text(encoding="utf-8")
+        for sub in ("review", "promote"):
+            self.assertIn(sub, body,
+                          f"subcommand {sub!r} not documented in skill body")
+
 
 
 class TestKarpathyParentBin(unittest.TestCase):

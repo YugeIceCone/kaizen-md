@@ -7,7 +7,7 @@ allowed-tools: ["AskUserQuestion", "Bash(${CLAUDE_PLUGIN_ROOT}/bin/kaizen-help-g
 
 # /kaizen:help
 
-Static taxonomy of all 55 `/kaizen:*` commands. **One screen, zero bash
+Static taxonomy of all 53 `/kaizen:*` commands. **One screen, zero bash
 execution.** For full per-command docs use `kaizen help <name>`. Auto-
 generated from `commands/*.md` frontmatter via `kaizen-help-gen`.
 
@@ -21,7 +21,7 @@ the wizard and emit the corresponding slice directly.
 **Q1 — Which domain?** (single-select; 4 options + Other)
 
 - `audit/quality` (10)
-- `workflow` (6)
+- `workflow` (5)
 - `observability` (6)
 - `brain/memory` (3)
 - Other (overflow: plugin-meta / discovery/search / intent/session / dev-aids)
@@ -68,14 +68,13 @@ dispatch the same way.
 | `self-improving` | Curate Claude Code auto-memory into durable project knowledge. `review` flags prom |
 | `gold` | Incidental-discovery + learnings tracker. Captures mid-work "ha!" moments before t |
 
-## workflow (6)
+## workflow (5)
 
 | Command | Does |
 |---|---|
 | `backlog` | Project backlog (JSON-sourced, .md generated). Verbs - list | in_flight | next_up  |
 | `handoff` | Session handoff doc. `create` wraps the current session into YAML + indexes it; `r |
 | `loop` | Self-correcting Ralph loop - cross-CLI. No-args 2-question wizard (iteration budge |
-| `flow` | Async Node+Flow demo pipeline over the current workspace. 4 nodes (ReadBacklog → D |
 | `workflow` | Workflow-shape config — default scope × run-mode × disciplines × threshold. Three  |
 | `migrate` | Migrate from loose skills / separate plugins / non-canonical layouts to canonical  |
 
@@ -96,7 +95,7 @@ dispatch the same way.
 | `disable-dupes` | Find and reversibly disable duplicate skills (loose ~/.claude/skills/X vs bundled  |
 | `plugin-development` | Hub for kaizen plugin-dev work. Verbs - intake | workflow | validate | rules | dis |
 
-## discovery/search (9)
+## discovery/search (8)
 
 | Command | Does |
 |---|---|
@@ -104,7 +103,6 @@ dispatch the same way.
 | `onboard` | Semantic index for codebase search. SQLite + sentence-transformers. Project-scoped |
 | `knowledge` | Semantic search over brain notes + plans + backlog + workflow schemas. SQLite + se |
 | `claude-docs` | Semantic search over local Claude API/Code/SDK docs mirror. Verbs - bootstrap | up |
-| `code-tour` | Scaffold a CodeTour .tour walkthrough - persona-targeted, step-by-step, file+line  |
 | `scrape` | Scrape + synthesize web content into a semantic SQLite index. PocketFlow async pip |
 | `models` | Ollama-backed local model management. list | pull | show | delete | copy + embed/c |
 | `browser` | Manage Playwright-backed MCP browser server (navigate/click/type/screenshot/extrac |

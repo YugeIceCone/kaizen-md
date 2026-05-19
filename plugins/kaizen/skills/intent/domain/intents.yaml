@@ -170,7 +170,7 @@ intents:
   # the relevant flow.
 
   - id: code-tour-suggest
-    description: User wants a code walkthrough — suggest /kaizen:code-tour.
+    description: User wants a code walkthrough — suggest the code-tour skill.
     triggers:
       - { kind: phrase, pattern: "walk (me|us) (through|over)", case_insensitive: true }
       - { kind: phrase, pattern: "(tour|walkthrough) (this|that|the) (codebase|repo|pr|module|change)", case_insensitive: true }
@@ -178,7 +178,7 @@ intents:
       - { kind: phrase, pattern: "(write|create|build).*tour for", case_insensitive: true }
       - { kind: phrase, pattern: "(explain|show me) how (this|that|the).*works", case_insensitive: true }
     action:
-      suggest: "/kaizen:code-tour  # scaffold a persona-targeted .tour walkthrough"
+      suggest: "Load Skill(kaizen:code-tour) to scaffold a persona-targeted .tour walkthrough"
       subcommand: code-tour
       confidence: 0.8
 
@@ -389,7 +389,7 @@ intents:
       - { kind: phrase, pattern: "semantic (search|index) (over|of)", case_insensitive: true }
       - { kind: phrase, pattern: "(code )?tour", case_insensitive: true }
     action:
-      suggest: "/kaizen:onboard <repo>  # semantic SQLite index; pair with /kaizen:code-tour for narrated walkthrough"
+      suggest: "/kaizen:onboard <repo>  # semantic SQLite index; pair with Skill(kaizen:code-tour) for a narrated walkthrough"
       subcommand: onboard
       confidence: 0.8
 

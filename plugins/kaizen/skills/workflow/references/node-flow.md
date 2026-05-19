@@ -265,8 +265,7 @@ upstream's surface is broader than the plugin's needs.
 ## Cross-references
 
 - Source: `scripts/flow.py`
-- Slash command: `/kaizen:flow [workspace_root]` (runs the reference example)
-- Bash wrapper: `bin/kaizen-flow`
+- Bash wrapper: `bin/kaizen-flow` (the slash form was retired — bin remains as the educational reference + smoke target)
 - Upstream: [the-pocket/pocketflow](https://github.com/the-pocket/pocketflow) (the original 100-line LLM framework)
 - Shodan's port: `crates/retrieval/src/runtime/{flow,node}.rs` — same shape in Rust, with sync nodes + a `FlowRunner` orchestrator
 - Related skill: see `skills/workflow/SKILL.md` § "Engine + Modes + Nodes" for the broader discipline that motivates Node+Flow as the canonical LLM-orchestration shape across kaizen + shodan
