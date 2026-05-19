@@ -65,6 +65,8 @@ from typing import Optional
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR))
+# MIGRATION BRIDGE — until indexers move back / consumers move forward
+sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "scripts" / "indexers"))
 
 try:
     from fastmcp import FastMCP

@@ -10,7 +10,7 @@ import unittest
 from pathlib import Path
 
 _KZ = Path(__file__).resolve().parent.parent
-_claude_docs_index = _KZ / "skills/workflow/scripts/claude_docs_index.py"
+_claude_docs_index = _KZ / "scripts/indexers/claude_docs_index.py"
 
 
 class TestScriptClaudeDocsIndex(unittest.TestCase):

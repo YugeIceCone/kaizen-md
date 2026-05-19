@@ -35,7 +35,13 @@ echo "  ✓ uv $(uv --version 2>/dev/null | awk '{print $2}')"
 # Every PEP-723 `uv run --script` file under skills/ (workflow/scripts/
 # plus any skill-scoped scripts/).
 _uv_scripts() {
-    grep -rl '^# /// script' "$PLUGIN_ROOT/skills" --include='*.py' 2>/dev/null | sort
+    # Search BOTH legacy skills/workflow/scripts/ AND the migrated
+    # scripts/ top-level (post-DOMAIN-1 layout). The two locations
+    # coexist during the per-domain migration.
+    {
+        grep -rl '^# /// script' "$PLUGIN_ROOT/skills" --include='*.py' 2>/dev/null
+        grep -rl '^# /// script' "$PLUGIN_ROOT/scripts" --include='*.py' 2>/dev/null
+    } | sort -u
 }
 
 if [ "$MODE" = "--check" ]; then

@@ -6,4 +6,4 @@ argument-hint: [index|reindex|search "<query>"|stats|get <id>|path|clear]
 
 # kaizen knowledge
 
-!`uv run --script ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/knowledge_index.py ${ARGUMENTS:-stats}`
+!`uv run --script ${CLAUDE_PLUGIN_ROOT}/scripts/indexers/knowledge_index.py ${ARGUMENTS:-stats}`

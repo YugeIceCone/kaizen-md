@@ -18,6 +18,7 @@ from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parent.parent / "skills" / "workflow" / "scripts"
 sys.path.insert(0, str(SCRIPT_DIR))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts" / "indexers"))
 
 
 def _setup_repo(tmpdir: Path, *, live_rows: list[str], archive_rows: list[str] | None = None):

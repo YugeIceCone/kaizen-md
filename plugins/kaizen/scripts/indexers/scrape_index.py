@@ -91,6 +91,8 @@ from typing import Any
 
 _SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(_SCRIPT_DIR))
+# MIGRATION BRIDGE — until helpers move from skills/workflow/scripts/ → scripts/
+sys.path.insert(0, str(_SCRIPT_DIR.parents[1] / "skills" / "workflow" / "scripts"))
 import _paths as _p  # noqa: E402
 import config as _cfg  # noqa: E402
 

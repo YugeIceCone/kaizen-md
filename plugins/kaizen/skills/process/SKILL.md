@@ -23,7 +23,7 @@ Only use Bash for running Node.js scripts. Use Read/Write/Edit/Glob/Grep for all
 
 1. Read `$KAIZEN_BRAIN_DIR` env var (fallback `~/.claude/.kaizen/brain`). Call this `{brain}`.
 2. If missing → tell user to run `kaizen-brain seed` (or skip the init step entirely and let `kaizen-brain capture` greenfield on first write) and stop.
-3. Run: `python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/build_index.py`
+3. Run: `python3 ${CLAUDE_PLUGIN_ROOT}/scripts/indexers/build_index.py`
 4. Read output — this is your map of everything that exists.
 
 ## Step 1b: Load User Instructions

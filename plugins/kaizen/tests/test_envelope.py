@@ -48,7 +48,7 @@ _RETROFIT_TOOLS = [
     ("metrics top",     [str(_SCRIPTS / "metrics.py"), "top", "--json"]),
     ("metrics path",    [str(_SCRIPTS / "metrics.py"), "path"]),
     ("trace stats",     [str(_SCRIPTS / "trace.py"), "stats"]),
-    ("loc-index report", [str(_SCRIPTS / "loc_index.py"), "report", "--json"]),
+    ("loc-index report", [str(_REPO_ROOT / "plugins/kaizen/scripts/indexers/loc_index.py"), "report", "--json"]),
     # Phase D — observe / scrape / manifests / handoff / drift / config / docs_flow
     ("observe layers",   [str(_SCRIPTS / "observe.py"), "layers"]),
     ("observe stats",    [str(_SCRIPTS / "observe.py"), "stats"]),

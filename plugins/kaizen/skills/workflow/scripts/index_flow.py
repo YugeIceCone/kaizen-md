@@ -65,6 +65,8 @@ from pathlib import Path
 
 _SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(_SCRIPT_DIR))
+# MIGRATION BRIDGE — until indexers move back / consumers move forward
+sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "scripts" / "indexers"))
 
 import flow as _flow  # noqa: E402
 import onboard_index as _oi  # noqa: E402

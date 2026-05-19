@@ -74,6 +74,8 @@ from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR))
+# MIGRATION BRIDGE — until helpers move from skills/workflow/scripts/ → scripts/
+sys.path.insert(0, str(SCRIPT_DIR.parents[1] / "skills" / "workflow" / "scripts"))
 import _paths as _p  # noqa: E402
 import _embed as _kz_embed  # noqa: E402
 import _chunk as _kz_chunk  # noqa: E402

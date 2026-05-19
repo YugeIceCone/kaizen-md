@@ -27,7 +27,7 @@ Immediate capture: when the user says "remember this", "save this", "brain dump"
 ### Step 1: Get Knowledge Index
 
 ```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/build_index.py --compact
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/indexers/build_index.py --compact
 ```
 
 Use this to prevent duplicates and enable smart linking.

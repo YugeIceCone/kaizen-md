@@ -366,7 +366,7 @@ if [ "${KAIZEN_PLUGIN_INDEX_DISABLE:-}" != "1" ]; then
         echo "  ∘ plugin index already seeded ($_PLUGIN_ROOT_IDX/.kaizen/loc.db)"
     elif [ -d "$_PLUGIN_ROOT_IDX" ]; then
         echo "  ▸ seeding plugin loc index ($_PLUGIN_ROOT_IDX)..."
-        python3 "$_SCRIPT_DIR/loc_index.py" index --root "$_PLUGIN_ROOT_IDX" \
+        python3 "$_SCRIPT_DIR/../../../scripts/indexers/loc_index.py" index --root "$_PLUGIN_ROOT_IDX" \
             >/dev/null 2>&1 \
             && echo "  ✓ plugin loc index seeded" \
             || echo "  ! plugin loc index seed failed (non-fatal)"

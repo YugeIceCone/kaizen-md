@@ -8,7 +8,7 @@ argument-hint: [bootstrap|update|index|reindex|search "<query>"|stats|get <id>|p
 
 Semantic search over a local Claude docs mirror (Claude API, Code, MCP, Agent SDK).
 
-!`uv run --script ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/claude_docs_index.py $ARGUMENTS`
+!`uv run --script ${CLAUDE_PLUGIN_ROOT}/scripts/indexers/claude_docs_index.py $ARGUMENTS`
 
 Claude can also query this surface programmatically (no slash command needed) via the `kaizen-claude-docs` MCP server:
 

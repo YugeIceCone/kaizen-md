@@ -105,6 +105,8 @@ from typing import Any
 
 _SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(_SCRIPT_DIR))
+# MIGRATION BRIDGE — until indexers move back / consumers move forward
+sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "scripts" / "indexers"))
 
 # flow.py provides the AsyncNode/AsyncFlow primitives (see
 # references/node-flow.md). Local import to keep search_flow runnable

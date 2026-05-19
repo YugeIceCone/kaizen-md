@@ -217,10 +217,12 @@ def _run_index_refresh() -> tuple[bool, str]:
     root = _p.plugin_index_root()
     scripts = scripts_dir()
     results = []
+    # Migrated indexers live at plugins/kaizen/scripts/indexers/ now.
+    indexers = plugin_src() / "scripts" / "indexers"
     for label, argv in (
-        ("loc", ["python3", str(scripts / "loc_index.py"),
+        ("loc", ["python3", str(indexers / "loc_index.py"),
                  "index", "--root", str(root)]),
-        ("onboard", ["uv", "run", "--script", str(scripts / "onboard_index.py"),
+        ("onboard", ["uv", "run", "--script", str(indexers / "onboard_index.py"),
                      "index", "--root", str(root)]),
     ):
         try:

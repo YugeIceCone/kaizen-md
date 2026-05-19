@@ -104,7 +104,7 @@ Includes the regen script (one-line walk that rebuilds the table). Roadmap secti
 - `skills/workflow/scripts/metrics.py` — inline `_emit` → `emitter()` (DRY)
 - `skills/workflow/scripts/roadmap_status.py` — same DRY
 - `skills/workflow/scripts/trace.py` — retrofitted `cmd_stats`
-- `skills/workflow/scripts/loc_index.py` — retrofitted 3 sites
+- `scripts/indexers/loc_index.py` — retrofitted 3 sites
 - `tests/test_envelope.py` — `_RETROFIT_TOOLS` extended 8 → 10 + new `TestEmitterFactory` (3 tests)
 - `skills/efficient-tool-use/references/envelope-retrofit.md` — NEW inventory doc
 
@@ -1282,7 +1282,7 @@ Plugin unit-test count: 121 → 137. Pipeline: 30/30.
 ### Files
 
 ```
-skills/workflow/scripts/scrape_index.py    (+135 LOC: recommendations + smart picker + recommend subcommand)
+scripts/indexers/scrape_index.py    (+135 LOC: recommendations + smart picker + recommend subcommand)
 bin/kaizen-scrape                         (recommend added to stdlib-only fast path)
 commands/scrape.md                        (subcommand table)
 tests/test_scrape_recommend.py            (new, 16 tests)
@@ -1781,7 +1781,7 @@ Three kaizen patterns composed into one command:
 2. **[ScrapeGraphAI](https://github.com/scrapegraphai/scrapegraph-ai)** — `SmartScraperGraph(prompt, source, config).run()` for LLM-driven extraction.
 3. **Kaizen indexer** — same SQLite + `sentence-transformers` (`all-MiniLM-L6-v2`, 384-dim) shape as trace / knowledge / onboard.
 
-**Pipeline** (`skills/workflow/scripts/scrape_index.py`, ~530 LOC):
+**Pipeline** (`scripts/indexers/scrape_index.py`, ~530 LOC):
 
 ```
 FetchURLs → ScrapeFanOut → Synthesize → EmbedAndPersist
@@ -1856,7 +1856,7 @@ Single-edit principle preserved — change the model in one place to retune ever
 ### Surface — new files
 
 - `commands/scrape.md` — slash command + LLM provider docs + pipeline diagram.
-- `skills/workflow/scripts/scrape_index.py` — pipeline + indexer (530 LOC, PEP 723 inline metadata).
+- `scripts/indexers/scrape_index.py` — pipeline + indexer (530 LOC, PEP 723 inline metadata).
 - `bin/kaizen-scrape` — shell shim (count 25 → 26).
 - `assets/schemas/scrape-item.schema.json` — JSON Schema mirror.
 
@@ -2308,7 +2308,7 @@ Knowledge RAG over the non-trace corpus + Self-RAG retrieval discipline skill. S
 
 ### Added — `knowledge_index.py` (semantic search over brain / plans / backlog / schemas / persona)
 
-`skills/workflow/scripts/knowledge_index.py` — sibling of `trace_index.py`. Same architecture (SQLite + sentence-transformers + 384-dim cosine), same model (`all-MiniLM-L6-v2`), same privacy defaults (signature embedding only; body opt-in via `--embed-body`). PEP 723 inline metadata pins CPU torch, mirroring the v1.12.0 trace-index pattern — uv-managed venv, no system-pip pollution.
+`scripts/indexers/knowledge_index.py` — sibling of `trace_index.py`. Same architecture (SQLite + sentence-transformers + 384-dim cosine), same model (`all-MiniLM-L6-v2`), same privacy defaults (signature embedding only; body opt-in via `--embed-body`). PEP 723 inline metadata pins CPU torch, mirroring the v1.12.0 trace-index pattern — uv-managed venv, no system-pip pollution.
 
 **Five source iterators:**
 
@@ -2349,7 +2349,7 @@ Iron Laws: never retrieve and then ignore; never claim a convention you didn't v
 
 ### Permissions
 
-`plugin.json` allows `python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/knowledge_index.py:*` for the slash command's embedded `!` invocation.
+`plugin.json` allows `python3 ${CLAUDE_PLUGIN_ROOT}/scripts/indexers/knowledge_index.py:*` for the slash command's embedded `!` invocation.
 
 ### First-time setup
 

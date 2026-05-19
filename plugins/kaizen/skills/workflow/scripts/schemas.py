@@ -366,7 +366,7 @@ class KaizenBrainRule:
 # ─── CodeFile (v1.20.0+) ─────────────────────────────────────────────
 #
 # `<repo>/.kaizen/onboard.db` rows. Producer + consumer:
-# skills/workflow/scripts/onboard_index.py.
+# scripts/indexers/onboard_index.py.
 
 
 VALID_CODE_LANGUAGES = frozenset(
@@ -407,7 +407,7 @@ class CodeFile:
 # ─── ScrapeItem (v1.24.0+) ───────────────────────────────────────────
 #
 # `~/.claude/.kaizen/indexes/scrape/index.db` rows. Producer + consumer:
-# skills/workflow/scripts/scrape_index.py. Built from a SmartScraperGraph
+# scripts/indexers/scrape_index.py. Built from a SmartScraperGraph
 # extraction passed through a PocketFlow async pipeline.
 
 

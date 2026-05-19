@@ -41,7 +41,7 @@ If no flag → run all three phases in order.
 
 1. Read `$KAIZEN_BRAIN_DIR` (fallback `~/.claude/.kaizen/brain`). Call this `{brain}`.
 2. If missing → tell user to run `/kaizen:init` and stop.
-3. Run: `python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/build_index.py --compact` to get the brain index. Use throughout to resolve entities and prevent duplicates.
+3. Run: `python3 ${CLAUDE_PLUGIN_ROOT}/scripts/indexers/build_index.py --compact` to get the brain index. Use throughout to resolve entities and prevent duplicates.
 4. Load thresholds + auto_promote flag:
    ```bash
    node -e "const {loadEvolutionConfig} = require('${CLAUDE_PLUGIN_ROOT}/scripts/config'); console.log(JSON.stringify(loadEvolutionConfig()));"

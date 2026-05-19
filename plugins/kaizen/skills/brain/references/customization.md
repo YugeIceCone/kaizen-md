@@ -139,7 +139,7 @@ Bypass any brain hook: `KAIZEN_BRAIN_DISABLE=1`.
 
 ## 9. Search + index
 
-`skills/workflow/scripts/build_index.py` is the SQLite + sentence-transformers index over Notes / Projects / People / Areas.
+`scripts/indexers/build_index.py` is the SQLite + sentence-transformers index over Notes / Projects / People / Areas.
 
 | Want to change | Edit |
 |---|---|

@@ -279,16 +279,16 @@ if [ "$WITH_INDEX" -eq 1 ] || [ "$WITH_BROWSER" -eq 1 ] || [ "$WITH_DAEMON" -eq 
   if [ "$WITH_INDEX" -eq 1 ]; then
     # knowledge index — incremental over brain notes + plans + schemas + persona
     step_stream "index Remember knowledge surface" \
-      "uv run --script '$PLUGIN_ROOT/skills/workflow/scripts/knowledge_index.py' index"
+      "uv run --script '$PLUGIN_ROOT/scripts/indexers/knowledge_index.py' index"
 
     # trace-search index — incremental over the trace event log
     step_stream "index trace event log" \
-      "uv run --script '$PLUGIN_ROOT/skills/workflow/scripts/trace_index.py' index"
+      "uv run --script '$PLUGIN_ROOT/scripts/indexers/trace_index.py' index"
 
     # onboard index — semantic index of this project's source files
     if [ "$IS_GIT_REPO" -eq 1 ]; then
       step_stream "index project codebase" \
-        "cd '$REPO_ROOT' && uv run --script '$PLUGIN_ROOT/skills/workflow/scripts/onboard_index.py' index"
+        "cd '$REPO_ROOT' && uv run --script '$PLUGIN_ROOT/scripts/indexers/onboard_index.py' index"
     else
       skip_step "index project codebase" "not in a git repo"
     fi
