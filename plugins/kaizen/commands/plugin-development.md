@@ -185,7 +185,7 @@ verb.
 
 ## Folded surface (formerly separate slashes)
 
-Four slashes folded here across the cat-2 consolidation — bins stay reachable:
+Four bins are reachable directly:
 
 | Concern | Bin (direct) | Use case |
 |---|---|---|
