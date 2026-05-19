@@ -1,6 +1,6 @@
 ---
 name: ci-gate
-description: "Local CI-equivalent merge gate. bash/python/json/SKILL.md syntax + iron-laws codegen drift + optional test suite. Run before commit. Args - --full."
+description: "Local CI-equivalent merge gate. bash/python/json/SKILL.md syntax + iron-laws codegen drift + optional test suite. Run before commit. Triggers - \"ci gate\", \"run merge gate\", \"pre-merge checks\"."
 argument-hint: "[--full | --syntax-only]"
 ---
 
