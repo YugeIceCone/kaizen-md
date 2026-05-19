@@ -10,6 +10,7 @@ Adapter (daemon job): reads Persona, writes auto-load.md atomically.
 """
 import os
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -530,6 +531,110 @@ class TestProjectRules(unittest.TestCase):
                         "pref-no-deletions.md").read_text()
             self.assertEqual(content1, content2,
                 "re-run on same input produces byte-identical files")
+
+
+class TestExternalRuleFiles(unittest.TestCase):
+    """Phase F: cross-tool rule compat.
+
+    Detects AGENTS.md (used by other agents) + .cursorrules + .windsurfrules
+    in project root. For each, emits a `<project>/.claude/rules/external-<name>.md`
+    with `paths: ["**/*"]` frontmatter and an @import to the external file.
+
+    Lets multi-tool repos share rules without per-tool duplication.
+    Opt-in by the file existing; daemon never modifies the external files.
+    """
+
+    def test_no_external_files_writes_nothing(self):
+        import auto_load as al
+        with tempfile.TemporaryDirectory() as td:
+            project = Path(td)
+            written = al.write_external_rule_imports(project)
+        self.assertEqual(written, [])
+
+    def test_detects_agents_md(self):
+        import auto_load as al
+        with tempfile.TemporaryDirectory() as td:
+            project = Path(td)
+            (project / "AGENTS.md").write_text("# Agent instructions\n")
+            written = al.write_external_rule_imports(project)
+            rule = project / ".claude" / "rules" / "external-agents.md"
+            self.assertEqual(len(written), 1)
+            self.assertTrue(rule.is_file())
+            content = rule.read_text()
+            # YAML frontmatter on line 1
+            self.assertTrue(content.startswith("---\n"))
+            self.assertIn("paths:", content)
+            # Import points at the external file
+            self.assertIn("@AGENTS.md", content)
+
+    def test_detects_cursorrules(self):
+        import auto_load as al
+        with tempfile.TemporaryDirectory() as td:
+            project = Path(td)
+            (project / ".cursorrules").write_text("cursor rule body\n")
+            written = al.write_external_rule_imports(project)
+            rule = project / ".claude" / "rules" / "external-cursorrules.md"
+            self.assertTrue(rule.is_file())
+            self.assertIn("@.cursorrules", rule.read_text())
+
+    def test_detects_windsurfrules(self):
+        import auto_load as al
+        with tempfile.TemporaryDirectory() as td:
+            project = Path(td)
+            (project / ".windsurfrules").write_text("windsurf rule body\n")
+            written = al.write_external_rule_imports(project)
+            rule = project / ".claude" / "rules" / "external-windsurfrules.md"
+            self.assertTrue(rule.is_file())
+            self.assertIn("@.windsurfrules", rule.read_text())
+
+    def test_multiple_externals_emit_separately(self):
+        import auto_load as al
+        with tempfile.TemporaryDirectory() as td:
+            project = Path(td)
+            (project / "AGENTS.md").write_text("a")
+            (project / ".cursorrules").write_text("c")
+            (project / ".windsurfrules").write_text("w")
+            written = al.write_external_rule_imports(project)
+        self.assertEqual(len(written), 3)
+
+    def test_idempotent_re_run(self):
+        import auto_load as al
+        with tempfile.TemporaryDirectory() as td:
+            project = Path(td)
+            (project / "AGENTS.md").write_text("a")
+            al.write_external_rule_imports(project)
+            c1 = (project / ".claude" / "rules" /
+                  "external-agents.md").read_text()
+            al.write_external_rule_imports(project)
+            c2 = (project / ".claude" / "rules" /
+                  "external-agents.md").read_text()
+        self.assertEqual(c1, c2)
+
+    def test_prunes_when_external_file_removed(self):
+        """If user removes AGENTS.md, the matching rule should be pruned."""
+        import auto_load as al
+        with tempfile.TemporaryDirectory() as td:
+            project = Path(td)
+            (project / "AGENTS.md").write_text("a")
+            al.write_external_rule_imports(project)
+            rule = (project / ".claude" / "rules" / "external-agents.md")
+            self.assertTrue(rule.is_file())
+            # Remove the external file → next call prunes the rule
+            (project / "AGENTS.md").unlink()
+            al.write_external_rule_imports(project)
+            self.assertFalse(rule.is_file())
+
+    def test_preserves_hand_authored_external_rules(self):
+        """Hand-authored external-*.md files (no daemon marker) preserved."""
+        import auto_load as al
+        with tempfile.TemporaryDirectory() as td:
+            project = Path(td)
+            rules_dir = project / ".claude" / "rules"
+            rules_dir.mkdir(parents=True)
+            (rules_dir / "external-custom.md").write_text(
+                "---\npaths: ['**/*']\n---\nmy own rule\n")
+            al.write_external_rule_imports(project)
+            self.assertTrue((rules_dir / "external-custom.md").is_file())
 
 
 if __name__ == "__main__":

@@ -549,6 +549,88 @@ def write_note_rules(brain_root: Path, project_root: Path) -> list[str]:
     return [str(p) for p in written]
 
 
+# ─── Phase F: cross-tool rule compat ────────────────────────────────
+
+
+# Map of external rule file → slug used in the emitted rule filename.
+# AGENTS.md is the cross-agent convention (Cursor / Aider / Windsurf
+# upstream); .cursorrules + .windsurfrules are tool-specific files
+# many repos already ship.
+_EXTERNAL_RULE_FILES: list[tuple[str, str]] = [
+    ("AGENTS.md",       "external-agents.md"),
+    (".cursorrules",    "external-cursorrules.md"),
+    (".windsurfrules",  "external-windsurfrules.md"),
+]
+
+
+def write_external_rule_imports(project_root: Path) -> list[str]:
+    """Phase F: emit `.claude/rules/external-<name>.md` for each
+    detected cross-tool rule file in ``project_root``.
+
+    Each emitted rule:
+    - Has `paths: ["**/*"]` frontmatter (always-load for the project)
+    - Body contains `@<external-file>` so Claude Code's @import
+      mechanism pulls the external content into context — no
+      duplication, no manual sync.
+
+    Pruning: removes `external-*.md` rule files whose backing external
+    file no longer exists, but only if the rule carries the daemon
+    marker (hand-authored `external-*.md` preserved).
+
+    Idempotent re-run produces byte-identical output (fingerprint
+    stable for stable content).
+
+    Returns the list of written rule file paths.
+    """
+    project_root = Path(project_root)
+    rules_dir = project_root / ".claude" / "rules"
+    rules_dir.mkdir(parents=True, exist_ok=True)
+
+    written: list[Path] = []
+    current_slugs: set[str] = set()
+    for ext_name, rule_basename in _EXTERNAL_RULE_FILES:
+        ext_path = project_root / ext_name
+        if not ext_path.is_file():
+            continue
+        rule_slug = rule_basename.removesuffix(".md")
+        current_slugs.add(rule_slug)
+        rule_path = rules_dir / rule_basename
+        rule_body = (
+            f"<!-- {_DAEMON_MARKER}. Do NOT edit. "
+            f"Backs external rule file: {ext_name}. -->\n"
+            f"<!-- The @import below pulls the external file's content "
+            f"into context. Edit the external file directly. -->\n"
+            f"@{ext_name}\n"
+        )
+        fingerprint = _fingerprint(rule_body)
+        full = (
+            f"---\n"
+            f'paths: ["**/*"]\n'
+            f"---\n"
+            f"{fingerprint}"
+            f"{rule_body}"
+        )
+        _atomic_write(rule_path, full)
+        written.append(rule_path)
+
+    # Prune daemon-authored external-*.md rules whose external file
+    # no longer exists. Hand-authored ones (no marker) are preserved.
+    for p in rules_dir.glob("external-*.md"):
+        if p.stem in current_slugs:
+            continue
+        try:
+            head = p.read_text(encoding="utf-8", errors="replace")[:300]
+        except OSError:
+            continue
+        if _DAEMON_MARKER in head:
+            try:
+                p.unlink()
+            except OSError:
+                pass
+
+    return [str(p) for p in written]
+
+
 def run_auto_load(state: dict) -> tuple[bool, str, str]:
     """Daemon job: read Persona, build + atomically write auto-load.md.
 
