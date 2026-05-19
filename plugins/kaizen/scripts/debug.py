@@ -661,6 +661,92 @@ def cmd_tail(args) -> int:
         return 0
 
 
+# ─── smoke: exercise every kaizen-* bin with --help ─────────────────
+
+
+# Bins that need user input / run long / mutate state / interactive.
+# Excluded from --help smoke (they'd hang or do work).
+_SMOKE_BIN_DENY: frozenset = frozenset({
+    "kaizen-setup", "kaizen-bootstrap", "kaizen-update", "kaizen-publish",
+    "kaizen-uninstall", "kaizen-setup-local-llm", "kaizen-refresh-cache",
+    "kaizen-disable-skill", "kaizen-enable-all", "kaizen-browser",
+    "kaizen-daemon", "kaizen-watch", "kaizen-trace-proxy", "kaizen-loop",
+    "kaizen-fg",
+})
+
+
+def _plugin_bin_dir() -> Path:
+    """Resolve plugin/bin from this script's location (scripts/debug.py
+    → plugin_root → bin/)."""
+    return Path(__file__).resolve().parent.parent / "bin"
+
+
+def cmd_smoke(args) -> int:
+    """Walk bin/kaizen-* and invoke each with --help. Failures surface
+    rc + stderr. Skips interactive / long-running bins per _SMOKE_BIN_DENY."""
+    bin_dir = _plugin_bin_dir()
+    bins = sorted(bin_dir.glob("kaizen-*"))
+    results = []
+    passed = failed = skipped = 0
+    for b in bins:
+        name = b.name
+        if name in _SMOKE_BIN_DENY:
+            skipped += 1
+            results.append({"name": name, "ok": True, "skipped": True})
+            continue
+        try:
+            r = subprocess.run(
+                [str(b), "--help"],
+                capture_output=True, text=True, timeout=10,
+                env={**os.environ},
+            )
+        except subprocess.TimeoutExpired:
+            failed += 1
+            results.append({"name": name, "ok": False, "rc": -1,
+                             "error": "timeout (10s)"})
+            continue
+        except Exception as e:
+            failed += 1
+            results.append({"name": name, "ok": False, "rc": -1,
+                             "error": f"{type(e).__name__}: {e}"})
+            continue
+        # Many bins return rc=2 on --help (argparse default for missing
+        # required arg). Treat rc 0 / 1 / 2 as PASS unless stderr looks
+        # like a Python/bash crash.
+        stderr = r.stderr or ""
+        bad_signals = ("Traceback (most recent call last)",
+                       "ModuleNotFoundError", "ImportError:",
+                       "SyntaxError:", "command not found",
+                       "No such file or directory")
+        crashed = any(s in stderr for s in bad_signals)
+        ok = (r.returncode in (0, 1, 2)) and not crashed
+        entry = {"name": name, "ok": ok, "rc": r.returncode}
+        if not ok:
+            entry["error"] = stderr.strip() or r.stdout.strip() or "(no output)"
+            failed += 1
+        else:
+            passed += 1
+        results.append(entry)
+
+    envelope = {"passed": passed, "failed": failed, "skipped": skipped,
+                "results": results}
+    if args.json:
+        print(json.dumps(envelope, indent=2))
+        return 0 if failed == 0 else 2
+    # Human-readable
+    print(f"\n[kaizen-debug smoke] passed={passed}  failed={failed}  skipped={skipped}")
+    for r in results:
+        if r.get("skipped"):
+            continue
+        marker = "✓" if r["ok"] else "✗"
+        print(f"  {marker} {r['name']:42s} rc={r.get('rc', '?')}")
+        if not r["ok"]:
+            err = r.get("error", "").splitlines()
+            if err:
+                print(f"      {err[0]}")
+    return 0 if failed == 0 else 2
+
+
 # ─── CLI ─────────────────────────────────────────────────────────────
 
 
@@ -700,6 +786,13 @@ def main(argv: list[str] | None = None) -> int:
 
     p_tail = sub.add_parser("tail", help="live-monitor stderr logs")
     p_tail.set_defaults(func=cmd_tail)
+
+    p_smoke = sub.add_parser(
+        "smoke",
+        help="exercise every kaizen-* bin with --help; surface failures",
+    )
+    p_smoke.add_argument("--json", action="store_true")
+    p_smoke.set_defaults(func=cmd_smoke)
 
     args = p.parse_args(argv)
     return args.func(args)

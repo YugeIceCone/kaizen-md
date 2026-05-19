@@ -22,7 +22,18 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "io"))
 import _envelope  # noqa: E402
 
 _emit = _envelope.emitter("kaizen-silent-fail", tool_version="1.0.0")
-_DEFAULT_TRACE_LOG = Path.home() / ".claude/.kaizen/trace/events.jsonl"
+
+
+def _default_trace_log() -> Path:
+    """Canonical trace log via _paths SSOT; legacy fallback for old installs."""
+    try:
+        import _paths  # noqa: E402
+        return Path(_paths.TRACE_FILE).expanduser()
+    except (ImportError, AttributeError):
+        return Path.home() / ".claude/.kaizen/indexes/trace/events.jsonl"
+
+
+_DEFAULT_TRACE_LOG = _default_trace_log()
 _THRESHOLD_PCT = 50.0
 
 

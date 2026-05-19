@@ -22,7 +22,19 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "io"))
 import _envelope  # noqa: E402
 
 _emit = _envelope.emitter("kaizen-hook-cascade", tool_version="1.0.0")
-_DEFAULT_LOG = Path.home() / ".claude/.kaizen/trace/events.jsonl"
+
+
+def _default_log() -> Path:
+    """Resolve the trace log via the canonical _paths SSOT.
+    Fallback to legacy default for very-old installs without _paths."""
+    try:
+        import _paths  # noqa: E402  (sys.path includes scripts/io above)
+        return Path(_paths.TRACE_FILE).expanduser()
+    except (ImportError, AttributeError):
+        return Path.home() / ".claude/.kaizen/indexes/trace/events.jsonl"
+
+
+_DEFAULT_LOG = _default_log()
 
 
 def scan(*, trace_log: Path, window_seconds: int = 2) -> dict:
