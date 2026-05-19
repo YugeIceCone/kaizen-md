@@ -18,12 +18,17 @@ wrong tier creates parallel implementations + drift.
 Drive `/workflow schema=<name>` multi-stage routines. Each schema
 declares stages, gates, transitions.
 
-Location: `plugins/kaizen/schemas/<routine>/schema.yaml`
+Location: `plugins/kaizen/schemas/<routine>/schema.yaml` (plugin-shipped)
+or `~/.claude/.kaizen/schemas/<routine>/schema.yaml` (user-installed extensions).
+
+Plugin-shipped routines (authoritative list: `ls plugins/kaizen/schemas/`):
 
 | Routine | When |
 |---|---|
 | `kaizen-default` | Default workflow |
 | `audit` | Periodic comprehensive audit |
+| `boy-scout` | Boy-scout inline cleanup pattern |
+| `consolidate` | Slash / module consolidation routine |
 | `debug-with-pdb` | Debug-driven workflow |
 | `fix-bug` | Bug-fix routine |
 | `harden` | Hardening + verification |
@@ -33,17 +38,23 @@ Location: `plugins/kaizen/schemas/<routine>/schema.yaml`
 | `plugin-development` | 8-stage TDD plugin-dev routine |
 | `ralph-loop` | Self-correcting loop |
 | `refactor` | Refactor routine |
+| `review` | Diff-time review routine |
 | `shim-and-sweep` | Shim + sweep pattern |
 | `spec-driven` | Spec → impl routine |
-| `onion-tdd-strict` | Onion-DDD + TDD discipline |
+
+User-installed extensions (examples — actual set is per-user):
+
+| Routine | When |
+|---|---|
+| `onion-tdd-strict` | Onion-DDD + TDD discipline (Persona Directive) |
 
 Validation: `kaizen-schema validate <name>` (or `workflow_runner.py show <name>`).
 
 ### Tier 2 — per-skill domain configs (declarative behavior)
 
 Each skill that's schema-driven keeps a `domain/` dir with YAML
-configs (and optionally JSON Schemas to validate them). 32 such
-yaml configs across the plugin.
+configs (and optionally JSON Schemas to validate them). Live count
+via `find plugins/kaizen/skills -path '*/domain/*.yaml'`.
 
 Examples:
 - `skills/iron-laws/domain/iron-laws.yaml` — the iron-law registry
@@ -64,7 +75,7 @@ JSON Schema in `domain/schemas/<name>.schema.json`.
 ### Tier 3 — per-skill data schemas (runtime types)
 
 JSON Schemas that validate runtime data structures the skill produces
-or consumes. 49 such schemas across the plugin.
+or consumes. Live count via `find plugins/kaizen -name '*.schema.json'`.
 
 Examples:
 - `skills/brain/domain/schemas/memory-entry.schema.json` — auto-memory entry shape
