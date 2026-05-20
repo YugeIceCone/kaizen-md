@@ -2,7 +2,7 @@
 name: plugin-development
 description: "Hub for kaizen plugin-dev work. Verbs - intake | workflow | validate | rules | dispatch | audit | surface | cluster. Triggers - "add a kaizen feature", "plugin-dev workflow", "validate feature", "iron laws", "intake checklist"."
 argument-hint: "[intake [<work-type>] | workflow | validate | rules | dispatch <task> | audit | surface | cluster <name> | (no args = load skill)]"
-allowed-tools: ["AskUserQuestion", "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/plugin-development/scripts/validate.py:*)", "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/plugin-development/scripts/intake.py:*)", "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/scripts/workflow/workflow_runner.py:*)", "Bash(${CLAUDE_PLUGIN_ROOT}/bin/kaizen-iron-laws:*)", "Bash(${CLAUDE_PLUGIN_ROOT}/bin/kaizen-rubric:*)", "Bash(${CLAUDE_PLUGIN_ROOT}/bin/kaizen-gatekeeper:*)", "Bash(${CLAUDE_PLUGIN_ROOT}/bin/kaizen-surface:*)"]
+allowed-tools: ["AskUserQuestion", "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/scripts/plugin_development/validate.py:*)", "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/scripts/plugin_development/intake.py:*)", "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/plugin-development/scripts/validate.py:*)", "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/plugin-development/scripts/intake.py:*)", "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/scripts/workflow/workflow_runner.py:*)", "Bash(${CLAUDE_PLUGIN_ROOT}/bin/kaizen-iron-laws:*)", "Bash(${CLAUDE_PLUGIN_ROOT}/bin/kaizen-rubric:*)", "Bash(${CLAUDE_PLUGIN_ROOT}/bin/kaizen-gatekeeper:*)", "Bash(${CLAUDE_PLUGIN_ROOT}/bin/kaizen-surface:*)"]
 ---
 
 # /kaizen:plugin-development

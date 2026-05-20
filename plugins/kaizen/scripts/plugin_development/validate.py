@@ -2,9 +2,10 @@
 """kaizen plugin-development validator.
 
 Walks a feature's filesystem footprint and checks it against the
-canonical shape in ``../domain/feature-shape.yaml`` + iron laws in
-``../../iron-laws/domain/iron-laws.yaml`` (owned by the ``iron-laws``
-skill) + wiring checklist in ``../domain/wiring-checklist.yaml``.
+canonical shape in ``../../schemas/plugin-development/feature-shape.yaml``
++ iron laws in ``../../schemas/iron-laws/iron-laws.yaml`` (owned by
+the ``iron-laws`` skill) + wiring checklist in
+``../../schemas/plugin-development/wiring-checklist.yaml``.
 
 ## CLI
 
@@ -245,18 +246,14 @@ def staged_features() -> list[str]:
                 feat = parts[1]
                 if feat not in VENDORED_SKILLS:
                     features.add(feat)
-        # skills/workflow/scripts/<feature>*.py — feature is the prefix
-        # before _index / _mcp / _audit / _promote / _evolve
-        if rest.startswith("skills/workflow/scripts/"):
-            fname = rest[len("skills/workflow/scripts/"):]
-            stem = fname.rsplit(".", 1)[0]
-            stem = stem.lstrip("_")  # _<feature>.py → <feature>
-            # Strip operation suffix
-            for op in ("_index", "_mcp", "_audit", "_promote", "_evolve"):
-                if stem.endswith(op):
-                    stem = stem[: -len(op)]
-                    break
-            features.add(stem)
+        # scripts/<cluster>/<file>.py — cluster name is the feature
+        # post DOMAIN-shells sweep; backing code now lives at
+        # plugins/kaizen/scripts/<feature>/ rather than the retired
+        # plugins/kaizen/skills/workflow/scripts/ pool.
+        if rest.startswith("scripts/"):
+            parts = rest.split("/")
+            if len(parts) >= 2 and parts[1] and parts[1] != "__pycache__":
+                features.add(parts[1])
         # commands/<feature>.md
         if rest.startswith("commands/"):
             cm = rest[len("commands/"):]

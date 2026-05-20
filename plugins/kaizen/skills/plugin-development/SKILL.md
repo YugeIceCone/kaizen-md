@@ -26,35 +26,38 @@ shape proven across:
 
 ## Schema-driven — the prose is NOT the source of truth
 
-The authoritative declarations live in `domain/`:
+The authoritative declarations live in `schemas/plugin-development/`:
 
 | File | What it declares |
 |---|---|
-| `domain/feature-shape.yaml` | The file slots + per-slot `required` / `when` predicates |
-| `domain/wiring-checklist.yaml` | Per-artifact wiring entries (plugin.json permissions, hooks.json events, bin chmod, etc.) |
-| `domain/schemas/feature.schema.json` | JSONSchema for optional `schemas/<feature>/manifest.yaml` |
+| `schemas/plugin-development/feature-shape.yaml` | The file slots + per-slot `required` / `when` predicates |
+| `schemas/plugin-development/wiring-checklist.yaml` | Per-artifact wiring entries (plugin.json permissions, hooks.json events, bin chmod, etc.) |
+| `schemas/plugin-development/schemas/feature.schema.json` | JSONSchema for optional `schemas/<feature>/manifest.yaml` |
 
 The **iron laws** moved to their own skill — see `kaizen:iron-laws`
 (registry at `schemas/iron-laws/iron-laws.yaml`, plus a checker,
-CLI, and MCP server). `scripts/validate.py` still surfaces iron-law
-violations by delegating to that skill's checker.
+CLI, and MCP server). `scripts/plugin_development/validate.py` still
+surfaces iron-law violations by delegating to that skill's checker.
 
 The prose below explains the WHY; the yaml encodes the WHAT.
-`scripts/validate.py` reads the yaml directly and reports
-violations. **When prose and yaml disagree, yaml wins.**
+`scripts/plugin_development/validate.py` reads the yaml directly and
+reports violations. **When prose and yaml disagree, yaml wins.**
 
 ## Enforcement (the skill is not skippable)
 
 Four layers:
 
-1. **`scripts/validate.py`** — run manually or as a pre-commit
+1. **`scripts/plugin_development/validate.py`** — run manually or as a pre-commit
    gate hook:
    ```bash
-   python3 plugins/kaizen/skills/plugin-development/scripts/validate.py --all
-   python3 plugins/kaizen/skills/plugin-development/scripts/validate.py --staged
-   python3 plugins/kaizen/skills/plugin-development/scripts/validate.py --feature brain
+   python3 plugins/kaizen/scripts/plugin_development/validate.py --all
+   python3 plugins/kaizen/scripts/plugin_development/validate.py --staged
+   python3 plugins/kaizen/scripts/plugin_development/validate.py --feature brain
    ```
-   Exit codes: `0` clean, `1` soft warnings, `2` hard failures.
+   The shim path `skills/plugin-development/scripts/validate.py`
+   still works (forwards to the canonical), but new code should
+   target the canonical above. Exit codes: `0` clean, `1` soft
+   warnings, `2` hard failures.
 
 2. **Persona ## Top Beliefs** entry `pref-kaizen-plugin-dev` —
    loads at every session start. When the user is editing
@@ -112,9 +115,8 @@ indices, some path-canonicalization helpers). When the user reminds
 you "edit at workspace/kaizen-md", they mean: use the workspace path
 for ALL writes.
 
-See the project-memory entry
-`~/.claude/projects/-home-cherry86-workspace-shodan/memory/feedback_kaizen_plugin_canonical_path.md`
-for the user's stated preference.
+The user's stated preference: address writes through the workspace
+path, not the symlink.
 
 ---
 
@@ -128,13 +130,13 @@ own atomic commit using the [phased-work commit template](../../../../.claude/.k
 ```text
 plugins/kaizen/
 ├── skills/<feature>/
-│   ├── SKILL.md                       (1) navigable guide
-│   └── domain/                        (2) schema-driven yaml
-│       ├── <thing>.yaml
-│       ├── <thing-2>.yaml
-│       └── schemas/
-│           └── <type>.schema.json
-├── skills/workflow/scripts/
+│   └── SKILL.md                       (1) navigable guide
+├── schemas/<feature>/                 (2) schema-driven yaml — feature's domain root
+│   ├── <thing>.yaml
+│   ├── <thing-2>.yaml
+│   └── schemas/
+│       └── <type>.schema.json
+├── scripts/<feature>/
 │   ├── _<feature>.py                  (3) core primitives + paths + config
 │   ├── <feature>.py                   (4) capture/main flow + CLI
 │   ├── <feature>_index.py             (5) SQLite + (optional) semantic index
@@ -764,10 +766,10 @@ Add one entry per Python script + one per hook script:
 {
   "permissions": {
     "allow": [
-      "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/<feature>.py:*)",
-      "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/<feature>_index.py:*)",
-      "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/<feature>_<op>.py:*)",
-      "Bash(uv run --script ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/<feature>_mcp.py:*)",
+      "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/scripts/<feature>/<feature>.py:*)",
+      "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/scripts/<feature>/<feature>_index.py:*)",
+      "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/scripts/<feature>/<feature>_<op>.py:*)",
+      "Bash(uv run --script ${CLAUDE_PLUGIN_ROOT}/scripts/<feature>/<feature>_mcp.py:*)",
       "Bash(bash ${CLAUDE_PLUGIN_ROOT}/hooks/claude/<feature>-<event>.sh:*)"
     ]
   }
@@ -857,7 +859,7 @@ a brain-sourced override per [`behaviour-config`](../behaviour-config/SKILL.md).
 
 `brain.py` shouldn't import `loc_index.py`. Each feature owns its
 core; cross-feature integration goes through MCP tools or shared
-helpers in `skills/workflow/scripts/_*` (private modules). The
+helpers in `scripts/util/_*` (private modules). The
 `_embed.py` / `_sqlite.py` / `_paths.py` / `_progress.py` shared
 helpers are the only legitimate cross-feature imports.
 
@@ -973,9 +975,10 @@ For a new feature `xyz`, drop these files in one PR / phased commits:
 
 ```bash
 F=xyz
-mkdir -p plugins/kaizen/schemas/$F/schemas
-touch plugins/kaizen/skills/$F/{SKILL.md,domain/types.yaml,domain/routing.yaml,domain/schemas/note.schema.json}
-touch plugins/kaizen/skills/workflow/scripts/{_$F.py,$F.py,${F}_index.py,${F}_mcp.py}
+mkdir -p plugins/kaizen/schemas/$F/schemas plugins/kaizen/scripts/$F
+touch plugins/kaizen/skills/$F/SKILL.md
+touch plugins/kaizen/schemas/$F/{types.yaml,routing.yaml,schemas/note.schema.json}
+touch plugins/kaizen/scripts/$F/{_$F.py,$F.py,${F}_index.py,${F}_mcp.py}
 touch plugins/kaizen/hooks/claude/$F-session-end.sh
 touch plugins/kaizen/commands/$F.md
 touch plugins/kaizen/bin/kaizen-$F plugins/kaizen/bin/kaizen-$F-index

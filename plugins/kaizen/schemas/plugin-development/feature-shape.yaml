@@ -5,7 +5,7 @@
 # `when` predicate evaluated against the feature's manifest.
 #
 # Used by:
-#   skills/plugin-development/scripts/validate.py
+#   scripts/plugin_development/validate.py
 #     — checks a touched feature against this shape and reports gaps
 #
 # Updated alongside the SKILL.md prose so the schema and the prose
@@ -20,15 +20,15 @@ slots:
     role: "navigable guide — Iron Law header + content"
     why: "Routing target for the Skill tool; must declare triggers."
 
-  - id: skill-domain-yaml
-    path_pattern: "skills/<feature>/domain/*.yaml"
+  - id: feature-domain-yaml
+    path_pattern: "schemas/<feature>/*.yaml"
     required: false
     when: feature_has_routing_or_taxonomy
-    role: "schema-driven config (yaml)"
+    role: "schema-driven config (yaml) at the feature's schema root"
     why: "Routing decisions / type taxonomies / convention catalogs live in yaml so users edit without touching code."
 
-  - id: skill-domain-schemas
-    path_pattern: "skills/<feature>/domain/schemas/*.schema.json"
+  - id: feature-json-schemas
+    path_pattern: "schemas/<feature>/schemas/*.schema.json"
     required: false
     when: feature_writes_validatable_artifacts
     role: "JSONSchema for written artifacts"
@@ -38,11 +38,11 @@ slots:
     path_pattern: "skills/<feature>/scripts/*.py"
     required: false
     when: feature_has_skill_scoped_tooling
-    role: "skill-private helpers (validators / generators)"
-    why: "Per-skill tooling that doesn't belong in workflow/scripts (e.g. a schema validator)."
+    role: "skill-private helpers (validators / generators) — or MIGRATION BRIDGE shims forwarding to the cluster"
+    why: "Per-skill tooling that doesn't belong in a shared script cluster. Also the home for migration-bridge shims after files relocate to scripts/<cluster>/."
 
   - id: core
-    path_pattern: "skills/workflow/scripts/_<feature>.py"
+    path_pattern: "scripts/<feature>/_<feature>.py"
     required: false
     when: feature_has_core_split
     role: "private core — paths/config/primitives/no side effects"
@@ -57,25 +57,25 @@ slots:
       core. See predicate `feature_has_core_split`."
 
   - id: public-cli
-    path_pattern: "skills/workflow/scripts/<feature>.py"
+    path_pattern: "scripts/<feature>/<feature>.py"
     required: false
     when: feature_exposes_cli
     role: "argparse CLI + main Node+Flow assembly"
 
   - id: indexer
-    path_pattern: "skills/workflow/scripts/<feature>_index.py"
+    path_pattern: "scripts/<feature>/<feature>_index.py"
     required: false
     when: feature_needs_search
     role: "SQLite + (optional) semantic search; KAIZEN_<F>_DB env"
 
   - id: specialized-flows
-    path_pattern: "skills/workflow/scripts/<feature>_<op>.py"
+    path_pattern: "scripts/<feature>/<feature>_<op>.py"
     required: false
     when: feature_has_multiple_ops
     role: "one file per operation (audit/promote/evolve/...) — each owns one flow"
 
   - id: mcp-server
-    path_pattern: "skills/workflow/scripts/<feature>_mcp.py"
+    path_pattern: "scripts/<feature>/<feature>_mcp.py"
     required: false
     when: feature_exposes_mcp
     role: "FastMCP shebang script with PEP-723 dep block"
@@ -117,12 +117,12 @@ slots:
       have no scripts to test."
 
 # Conditional predicates — evaluated against the feature manifest
-# (a yaml file at skills/<feature>/domain/manifest.yaml when present;
+# (a yaml file at schemas/<feature>/manifest.yaml when present;
 # otherwise inferred from filesystem presence of slot files).
 predicates:
   feature_has_backing_code:
-    description: "Feature has Python scripts at skills/workflow/scripts/<feature>*.py or _<feature>.py."
-    detect: "any of {_<feature>.py, <feature>.py, <feature>_*.py} in skills/workflow/scripts/"
+    description: "Feature has Python scripts at scripts/<feature>/<feature>*.py or _<feature>.py."
+    detect: "any of {_<feature>.py, <feature>.py, <feature>_*.py} in scripts/<feature>/"
   feature_has_core_split:
     description: |
       Feature has a core/public split — it ships a <feature>.py
@@ -131,19 +131,19 @@ predicates:
       (MCP-only: audit; op-modules-only: loop; the script-host
       skill: workflow) does NOT need a _<feature>.py and its tests
       live in differently-named files.
-    detect: "skills/workflow/scripts/_<feature>.py OR skills/workflow/scripts/<feature>.py exists"
+    detect: "scripts/<feature>/_<feature>.py OR scripts/<feature>/<feature>.py exists"
   feature_has_routing_or_taxonomy:
     description: "Feature classifies / routes inputs (e.g. brain's entity-types)."
-    detect: "any *.yaml in skills/<feature>/domain/"
+    detect: "any *.yaml in schemas/<feature>/"
   feature_writes_validatable_artifacts:
     description: "Feature creates/edits files with structured frontmatter."
     detect: "manifest declares writes_artifacts: true"
   feature_has_skill_scoped_tooling:
-    description: "Feature ships utilities scoped to the skill (validators, generators)."
+    description: "Feature ships utilities scoped to the skill (validators, generators, or migration-bridge shims)."
     detect: "any *.py in skills/<feature>/scripts/"
   feature_exposes_cli:
     description: "Feature has a user-facing CLI / slash-command surface."
-    detect: "skills/workflow/scripts/<feature>.py contains an argparse main"
+    detect: "scripts/<feature>/<feature>.py contains an argparse main"
   feature_needs_search:
     description: "Feature persists data and supports search/filter queries."
     detect: "manifest declares uses_sqlite: true OR <feature>_index.py exists"
@@ -152,7 +152,7 @@ predicates:
     detect: "2+ files match <feature>_*.py (excluding _index, _mcp)"
   feature_exposes_mcp:
     description: "Feature exposes operations as MCP tools."
-    detect: "<feature>_mcp.py exists"
+    detect: "scripts/<feature>/<feature>_mcp.py exists"
   feature_uses_lifecycle_events:
     description: "Feature responds to CC lifecycle events (SessionStart/End/etc.)."
     detect: "hooks/claude/<feature>-*.sh exists"

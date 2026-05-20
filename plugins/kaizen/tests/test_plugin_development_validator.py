@@ -62,6 +62,24 @@ class TestValidatorSmoke(unittest.TestCase):
         # rc==0 (clean) or 1 (soft only); MUST NOT be 2 (hard)
         self.assertIn(rc, (0, 1), f"brain validation hard-failed:\n{out}")
 
+    def test_validator_does_not_expect_pre_phase5_paths(self):
+        """Regression: feature-shape.yaml must NOT have path_patterns
+        rooted at the Phase-5-retired directories (skills/workflow/scripts/
+        or skills/<feature>/domain/). The validator reads these and
+        reports false-positive missing slots for every modern feature."""
+        rc, out = _run("--feature", "brain")
+        dead_substrings = (
+            "skills/workflow/scripts/",
+            "skills/brain/domain/",
+        )
+        offenders = [s for s in dead_substrings if s in out]
+        if offenders:
+            self.fail(
+                "validator output references pre-Phase-5 path(s): "
+                + ", ".join(offenders)
+                + f"\nfull output:\n{out}"
+            )
+
 
 class TestValidatorAll(unittest.TestCase):
     def test_all_discovers_plugin_originals_excludes_vendored(self):
