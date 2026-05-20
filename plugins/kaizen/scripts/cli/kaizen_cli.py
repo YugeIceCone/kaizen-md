@@ -49,10 +49,11 @@ import os
 import re
 import subprocess
 import sys
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-import _bootstrap  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 import time
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import _bootstrap  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 
 _SCRIPT_DIR = Path(__file__).resolve().parent
 _PLUGIN_ROOT = _SCRIPT_DIR.parent.parent  # plugins/kaizen/
