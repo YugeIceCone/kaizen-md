@@ -73,6 +73,14 @@ laws:
     detect: "skills/workflow/scripts/<feature>_<op>.py with argparse main but no bin/kaizen-<feature>-<op> AND no `# consolidated-cli-parent: <X>` header pointing at an existing bin/kaizen-<X>"
     why: "Without a wrapper, kaizen-<feature>-<op> is 'command not found' from shell. See brain commit 2cfd234 + bin-wrapper hotfix. The consolidated-CLI exemption (v1.40+) lets multi-verb tools collapse to one wrapper without losing iron-law coverage."
 
+  - id: cli-naming-consistency
+    statement: "When a CLI script ships both `argparse.ArgumentParser(prog=\"...\")` and `_envelope.emitter(\"...\", ...)`, the two values must agree. They are two surfaces of the same tool name (one for --help, one for trace events); silent disagreement after a rename means --help prints one name and trace events carry another. Captures the 3-way naming-drift class (bin / prog / emitter) at the prog↔emitter axis; bin↔prog enforcement is reserved for a stricter follow-up after pre-existing drift is cleaned up."
+    severity: soft
+    enforcement: auto
+    check: cli_naming_consistency
+    detect: "any plugins/kaizen/scripts/**/*.py (non-underscore) with both an `ArgumentParser(prog=\"X\")` literal AND an `_envelope.emitter(\"Y\", ...)` literal where X != Y"
+    why: "Surfaced 2026-05-20: 7 internal-disagreement files (docs_flow / index_flow / search_flow / observe / trace / config / loop_state) had `prog=\"<file>.py\"` literals while their emitters carried the proper `kaizen-<feature>` tool-name. --help printed the raw filename; trace events carried the canonical name; the two disagreed silently. See [[Notes/pref-3-way-naming-drift-class]]. Soft severity intentional — pre-existing drift is real; this law surfaces it without breaking the gate until the cleanup PR lands."
+
   - id: plugin-manifest-permissions
     statement: "New script + hook entries land with matching plugin.json permission lines in the same commit."
     severity: hard

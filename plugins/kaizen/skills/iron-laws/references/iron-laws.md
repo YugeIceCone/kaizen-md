@@ -14,7 +14,7 @@ The non-negotiable rules for kaizen-plugin-original development. This file is a 
 
 ## Summary
 
-33 laws — 19 auto, 14 manual.
+34 laws — 20 auto, 14 manual.
 
 | id | severity | enforcement | check |
 |---|---|---|---|
@@ -25,6 +25,7 @@ The non-negotiable rules for kaizen-plugin-original development. This file is a 
 | `lazy-heavy-deps` | soft | auto | `lazy_heavy_deps` |
 | `sandbox-tests` | hard | auto | `sandbox_tests` |
 | `bin-wrapper-per-cli` | hard | auto | `bin_wrapper_per_cli` |
+| `cli-naming-consistency` | soft | auto | `cli_naming_consistency` |
 | `plugin-manifest-permissions` | hard | auto | `plugin_manifest_permissions` |
 | `hook-bypass-knob` | hard | auto | `hook_bypass_knob` |
 | `claude-md-no-volatile-data` | hard | auto | `claude_md_no_volatile_data` |
@@ -119,6 +120,16 @@ Each CLI script gets its own bin/kaizen-* wrapper. /kaizen:setup symlinks bin/ i
 **Detect:** skills/workflow/scripts/<feature>_<op>.py with argparse main but no bin/kaizen-<feature>-<op> AND no `# consolidated-cli-parent: <X>` header pointing at an existing bin/kaizen-<X>
 
 **Why:** Without a wrapper, kaizen-<feature>-<op> is 'command not found' from shell. See brain commit 2cfd234 + bin-wrapper hotfix. The consolidated-CLI exemption (v1.40+) lets multi-verb tools collapse to one wrapper without losing iron-law coverage.
+
+### `cli-naming-consistency` (soft · auto)
+
+When a CLI script ships both `argparse.ArgumentParser(prog="...")` and `_envelope.emitter("...", ...)`, the two values must agree. They are two surfaces of the same tool name (one for --help, one for trace events); silent disagreement after a rename means --help prints one name and trace events carry another. Captures the 3-way naming-drift class (bin / prog / emitter) at the prog↔emitter axis; bin↔prog enforcement is reserved for a stricter follow-up after pre-existing drift is cleaned up.
+
+**Check:** `cli_naming_consistency` (in `_iron_laws.py`)
+
+**Detect:** any plugins/kaizen/scripts/**/*.py (non-underscore) with both an `ArgumentParser(prog="X")` literal AND an `_envelope.emitter("Y", ...)` literal where X != Y
+
+**Why:** Surfaced 2026-05-20: 7 internal-disagreement files (docs_flow / index_flow / search_flow / observe / trace / config / loop_state) had `prog="<file>.py"` literals while their emitters carried the proper `kaizen-<feature>` tool-name. --help printed the raw filename; trace events carried the canonical name; the two disagreed silently. See [[Notes/pref-3-way-naming-drift-class]]. Soft severity intentional — pre-existing drift is real; this law surfaces it without breaking the gate until the cleanup PR lands.
 
 ### `plugin-manifest-permissions` (hard · auto)
 

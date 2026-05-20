@@ -318,6 +318,42 @@ def check_paired_tests(ctx: CheckContext) -> list[Finding]:
     return out
 
 
+_PROG_RE = re.compile(r'ArgumentParser\s*\([^)]*?\bprog\s*=\s*"([^"]+)"')
+_EMITTER_RE = re.compile(r'_envelope\.emitter\s*\(\s*"([^"]+)"')
+
+
+def check_cli_naming_consistency(ctx: CheckContext) -> list[Finding]:
+    """When a CLI script ships both `ArgumentParser(prog="X")` and
+    `_envelope.emitter("Y", ...)`, X must equal Y. Otherwise --help
+    prints one tool-name and trace events carry another — the 3-way
+    naming-drift class (bin / prog / emitter) at the prog↔emitter axis.
+
+    Walks plugins/kaizen/scripts/**/*.py (non-underscore). Only emits a
+    finding when BOTH a prog and an emitter literal exist AND they
+    disagree; missing either is silently OK (no opinion). Multiple
+    prog literals (sub-parsers) are tolerated — only the set of unique
+    prog values has to be a singleton matching the emitter value."""
+    out: list[Finding] = []
+    for p in ctx.plugin_files("scripts/**/*.py"):
+        if p.name.startswith("_") or "__pycache__" in str(p):
+            continue
+        text = p.read_text(encoding="utf-8", errors="ignore")
+        progs = set(_PROG_RE.findall(text))
+        emitters = set(_EMITTER_RE.findall(text))
+        if not progs or not emitters:
+            continue
+        if len(progs) == 1 and progs == emitters:
+            continue
+        # Disagreement: either size mismatch or differing values.
+        out.append(Finding(
+            "cli-naming-consistency", "soft",
+            f"prog={sorted(progs)} disagrees with "
+            f"emitter={sorted(emitters)} — rename one to match the other "
+            f"so --help and trace events carry the same tool name",
+            ctx.rel(p)))
+    return out
+
+
 def check_bin_wrapper_per_cli_strict(ctx: CheckContext) -> list[Finding]:
     new = [c for c in ctx.added_under("plugins/kaizen/skills/workflow/scripts/")
            if c.endswith(".py") and not Path(c).name.startswith("_")]
@@ -718,6 +754,7 @@ CHECKS = {
     "lazy_heavy_deps": check_lazy_heavy_deps,
     "sandbox_tests": check_sandbox_tests,
     "bin_wrapper_per_cli": check_bin_wrapper_per_cli,
+    "cli_naming_consistency": check_cli_naming_consistency,
     "plugin_manifest_permissions": check_plugin_manifest_permissions,
     "hook_bypass_knob": check_hook_bypass_knob,
     "claude_md_no_volatile_data": check_claude_md_no_volatile_data,
