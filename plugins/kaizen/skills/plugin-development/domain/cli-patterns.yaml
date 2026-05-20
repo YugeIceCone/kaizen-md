@@ -68,7 +68,7 @@ patterns:
       in a variable name silently expands to '' and the script
       continues. -e adds exit-on-error; sometimes omitted when the
       script has its own error-handling.
-    detect: "grep -rl 'set -uo pipefail\\|set -euo pipefail' plugins/kaizen/scripts/ plugins/kaizen/hooks/"
+    detect: "grep -rl pipefail plugins/kaizen/scripts/ plugins/kaizen/hooks/"
     iron_law: null
 
   - id: bin-wrapper-exec
@@ -79,7 +79,7 @@ patterns:
       own argparse + version. KISS: no Python startup in the wrapper.
       Optional uv-venv routing for heavy-dep verbs (numpy, sentence-
       transformers) — see bin/kaizen-brain (index/evolve route via uv).
-    detect: "grep -l 'exec python3\\|exec uv run' plugins/kaizen/bin/*"
+    detect: "grep -lE 'exec (python3|uv run)' plugins/kaizen/bin/*"
     iron_law: bin-wrapper-per-cli
 
   - id: consolidated-cli-parent

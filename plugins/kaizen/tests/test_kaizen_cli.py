@@ -204,6 +204,17 @@ class TestPatternsSubcommand(unittest.TestCase):
             self.assertIn(known_id, r.stdout,
                           f"missing canonical pattern: {known_id}")
 
+    def test_patterns_refresh_dry_run_reports_drift(self):
+        """`kaizen patterns --refresh --dry-run` reports outcome
+        without writing the file. Two valid response shapes:
+        'no change (N patterns scanned)' OR an itemized per-pattern
+        delta when drift is present."""
+        r = subprocess.run([str(_BIN_KAIZEN), "patterns", "--refresh", "--dry-run"],
+                            capture_output=True, text=True, timeout=30)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertRegex(r.stdout,
+                          r"(?i)(no change|would update|0 patterns updated)")
+
     def test_patterns_json_returns_structured_catalog(self):
         r = subprocess.run([str(_BIN_KAIZEN), "patterns", "--json"],
                             capture_output=True, text=True, timeout=10)

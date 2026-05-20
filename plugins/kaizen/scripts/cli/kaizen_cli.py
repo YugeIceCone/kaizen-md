@@ -387,7 +387,86 @@ def _load_patterns_catalog() -> dict:
         return {"version": 1, "patterns": out}
 
 
+def _find_repo_root() -> Path:
+    """Walk up from this script until .git/ is found — the detect:
+    recipes use repo-relative paths (plugins/kaizen/...)."""
+    cur = Path(__file__).resolve()
+    for _ in range(8):
+        if (cur / ".git").is_dir():
+            return cur
+        if cur.parent == cur:
+            break
+        cur = cur.parent
+    return Path.cwd()
+
+
+def _refresh_pattern_counts(dry_run: bool = False) -> int:
+    """Re-run each pattern's detect: recipe and update its count: in
+    place. Returns the number of patterns whose count changed."""
+    import re as _re
+    text = _PATTERNS_YAML.read_text(encoding="utf-8")
+    ids = _re.findall(r"  - id:\s+(\S+)", text)
+    detects = _re.findall(r"    detect:\s+(.+)", text)
+    counts_before = {pid: int(m) for pid, m in
+                       zip(ids, _re.findall(r"    count:\s+(\d+)", text))}
+    repo_root = _find_repo_root()
+    updates: dict[str, int] = {}
+    for pid, dt in zip(ids, detects):
+        dt = dt.strip().strip("'\"")
+        full = "shopt -s globstar; " + dt + " 2>/dev/null | wc -l"
+        r = subprocess.run(["bash", "-c", full], cwd=repo_root,
+                            capture_output=True, text=True, timeout=30)
+        try:
+            n = int((r.stdout.strip() or "0").splitlines()[-1])
+            updates[pid] = n
+        except (ValueError, IndexError):
+            continue
+
+    changed = []
+    for pid, new_n in updates.items():
+        old_n = counts_before.get(pid, -1)
+        if new_n != old_n:
+            changed.append((pid, old_n, new_n))
+
+    if not dry_run:
+        # Patch counts in place — per-block regex replace
+        def _replace(match):
+            block = match.group(0)
+            pid_m = _re.search(r"id:\s+(\S+)", block)
+            if pid_m and pid_m.group(1) in updates:
+                return _re.sub(r"(    count:\s+)\d+",
+                                rf"\g<1>{updates[pid_m.group(1)]}", block)
+            return block
+        new_text = _re.sub(r"  - id:.*?(?=  - id:|$)", _replace, text,
+                            flags=_re.DOTALL)
+        if new_text != text:
+            _PATTERNS_YAML.write_text(new_text, encoding="utf-8")
+
+    return changed, len(updates)
+
+
 def cmd_patterns(args: argparse.Namespace) -> int:
+    if getattr(args, "refresh", False):
+        changed, total = _refresh_pattern_counts(dry_run=args.dry_run)
+        if args.dry_run:
+            if not changed:
+                print(f"kaizen patterns --refresh --dry-run: no change "
+                      f"({total} patterns scanned)")
+                return 0
+            print(f"kaizen patterns --refresh --dry-run: would update "
+                  f"{len(changed)}/{total} patterns:")
+            for pid, old, new in changed:
+                print(f"  {pid:<28}  {old} → {new}  ({new - old:+d})")
+            return 0
+        if not changed:
+            print(f"kaizen patterns --refresh: no change "
+                  f"({total} patterns at zero drift)")
+            return 0
+        print(f"kaizen patterns --refresh: updated {len(changed)}/{total} patterns")
+        for pid, old, new in changed:
+            print(f"  {pid:<28}  {old} → {new}  ({new - old:+d})")
+        return 0
+
     catalog = _load_patterns_catalog()
     if args.json:
         print(json.dumps(catalog, indent=2, default=str))
@@ -488,7 +567,12 @@ def main(argv: list[str]) -> int:
         return cmd_version(argparse.Namespace())
     if cmd == "patterns":
         parser = argparse.ArgumentParser(prog="kaizen patterns")
-        parser.add_argument("--json", action="store_true")
+        parser.add_argument("--json", action="store_true",
+                             help="machine-readable catalog dump")
+        parser.add_argument("--refresh", action="store_true",
+                             help="re-run detect: recipes + update count fields in cli-patterns.yaml")
+        parser.add_argument("--dry-run", action="store_true",
+                             help="with --refresh: report drift without writing")
         ns = parser.parse_args(argv[1:])
         return cmd_patterns(ns)
     if cmd in ("-h", "--help"):
