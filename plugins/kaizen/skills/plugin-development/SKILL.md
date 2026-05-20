@@ -834,7 +834,7 @@ a multi-verb consolidated parent in the same commit.
 `skills/superpowers/*` (14 entries) are from
 [`superpowers`](https://github.com/obra/superpowers).
 
-`skills/init/`, `skills/remember/`, `skills/process/`,
+`skills/init/`, `skills/brain-dump/`, `skills/process/`,
 `skills/evolve/`, `skills/reflect/`, `skills/synthesize/`,
 `skills/status/` are from the retired remember-md plugin.
 

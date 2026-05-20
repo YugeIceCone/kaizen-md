@@ -1,6 +1,6 @@
 ---
 name: self-improving
-description: Curate Claude Code auto-memory into durable knowledge — promote MEMORY.md entries to CLAUDE.md / brain Notes, extract recurring solutions into reusable kaizen skills. Triggers on "review memory", "promote this learning", "extract a skill from", "graduate this pattern", "what has Claude learned", "memory health", "curate auto-memory", "self-improve". Implements the `self-analyze` workflow stage + `self-improving` routine. Pairs with `kaizen:remember` / `kaizen:evolve` / `kaizen:reflect`.
+description: Curate Claude Code auto-memory into durable knowledge — promote MEMORY.md entries to CLAUDE.md / brain Notes, extract recurring solutions into reusable kaizen skills. Triggers on "review memory", "promote this learning", "extract a skill from", "graduate this pattern", "what has Claude learned", "memory health", "curate auto-memory", "self-improve". Implements the `self-analyze` workflow stage + `self-improving` routine. Pairs with `kaizen:brain-dump` / `kaizen:evolve` / `kaizen:reflect`.
 version: 1.1.0
 tags: [memory, curation, promotion, self-improvement, brain, rules, workflow]
 ---
@@ -15,7 +15,7 @@ Claude Code's auto-memory (v2.1.32+) automatically records project patterns, deb
 
 The brain / memory stack already has:
 
-- **`kaizen:remember`** — explicit single-thought save: `/kaizen:remember <thought>` to inbox
+- **`kaizen:brain-dump`** — explicit single-thought save: `/kaizen:brain-dump <thought>` to inbox
 - **`kaizen:process`** — mine unprocessed session jsonls into beliefs
 - **`kaizen:evolve`** — weekly LLM-driven consolidation/reflection
 - **`kaizen:reflect`** — think and consolidate
@@ -98,9 +98,9 @@ When a workflow recurs ≥3 times and warrants automation, extract it into a new
 - Promotion velocity (notes promoted in last N days)
 - Stale candidates (notes with `sources_count=1` older than 30 days)
 
-### remember — explicit save (delegates to `kaizen:remember`)
+### remember — explicit save (delegates to `kaizen:brain-dump`)
 
-Don't duplicate. Use `/kaizen:remember <thought>` directly — that skill already owns capture.
+Don't duplicate. Use `/kaizen:brain-dump <thought>` directly — that skill already owns capture.
 
 ## Sub-agents (for parallel dispatch)
 
@@ -127,7 +127,7 @@ Both are dispatched via the Task tool with `subagent_type=general-purpose` and t
 
 ## Related kaizen skills
 
-- `kaizen:remember` — capture inbox
+- `kaizen:brain-dump` — capture inbox
 - `kaizen:process` — mine sessions for capture candidates
 - `kaizen:evolve` — weekly LLM-driven consolidation
 - `kaizen:reflect` — think

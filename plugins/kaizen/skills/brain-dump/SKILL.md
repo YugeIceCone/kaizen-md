@@ -1,9 +1,13 @@
 ---
-name: remember
-description: Capture knowledge to your Second Brain when triggered by "remember this", "save this", or "brain dump"
+name: brain-dump
+description: Manual agent-walkthrough for Second Brain capture — step-by-step pipeline (index check → REMEMBER.md rules → parse → journal-first → epistemic-type tag → L2 write). Companion to `brain` (the CLI-driven umbrella); use this when you want explicit control over each step or when `kaizen-brain capture` doesn't fit the shape. Triggers on "remember this", "save this", "brain dump", "brain-dump", "manual capture", "save to brain step by step".
 ---
 
-# Remember — Brain Dump Skill
+# brain-dump — manual Second Brain capture walkthrough
+
+Sibling of `Skill(brain)`. brain is the CLI-driven umbrella
+(`kaizen-brain capture`); brain-dump is the explicit step-by-step
+walkthrough for agents that want to drive capture manually.
 
 Immediate capture: when the user says "remember this", "save this", "brain dump", etc., route content to the right place in the Second Brain.
 

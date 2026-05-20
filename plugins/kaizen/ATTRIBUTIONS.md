@@ -60,7 +60,7 @@ Three skills absorbed in kaizen v1.32.0 and refactored to schema-driven shape in
 - **Original author:** alirezarezvani — https://github.com/alirezarezvani
 - **Original source:** [github.com/alirezarezvani/claude-code-skills](https://github.com/alirezarezvani/claude-code-skills)
 - **License:** per upstream repo
-- **Notes:** `karpathy` is the largest divergence — kaizen added the `principles.yaml` declarative form + `principle.schema.json` + 4 stdlib-only diff-level Python scanners + the `kaizen-karpathy-reviewer` sub-agent. `self-improving` was rewired to consume kaizen's existing brain + project memory without duplicating `kaizen:remember` / `kaizen:status` ownership.
+- **Notes:** `karpathy` is the largest divergence — kaizen added the `principles.yaml` declarative form + `principle.schema.json` + 4 stdlib-only diff-level Python scanners + the `kaizen-karpathy-reviewer` sub-agent. `self-improving` was rewired to consume kaizen's existing brain + project memory without duplicating `kaizen:brain-dump` / `kaizen:status` ownership.
 
 ## Originally based on `remember` by Gabi Fratica
 

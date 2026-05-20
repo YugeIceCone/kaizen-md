@@ -79,5 +79,5 @@ sub_flows:
 
 # Sub-flows intentionally NOT included (delegate to existing kaizen skills):
 delegates_to:
-  remember: kaizen:remember
+  remember: kaizen:brain-dump
   status: kaizen:status
