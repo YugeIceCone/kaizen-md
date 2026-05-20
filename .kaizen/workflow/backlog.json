@@ -1211,7 +1211,7 @@
     },
     {
       "id": "BK-064",
-      "section": "next_up",
+      "section": "done",
       "title": "Semantic learning-detector — content-based trigger for self-improving review",
       "ref": "remember-port-2026-05-20",
       "probe": "Today stop_self_improving_review.py fires the curation nudge every N Stops (default 5) — a time/counter trigger, not a content trigger. Result: nudges fire even when there are no learnings to extract; or stay quiet when a rich session would have benefited from immediate review. Wanted: a checker that scans recent session jsonl + auto-memory + dxm trace for learning candidates (pattern recurrence ≥2 sessions, novel decisions captured, repeated corrections, gold-marked patterns) and triggers the review ONLY when content warrants it. Re-use existing primitives: brain_audit's discovery output, intent_routing.yaml for semantic detection, dxm trace events, learning_log.py if it exists.",
@@ -1225,8 +1225,8 @@
       ],
       "created": "2026-05-20",
       "started_at": null,
-      "committed": null,
-      "committed_at": null,
+      "committed": "HEAD",
+      "committed_at": "2026-05-20T09:55:10Z",
       "parked_reason": null,
       "probe_output": null
     }
