@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://raw.githubusercontent.com/YugeIceCone/kaizen-md/main/plugins/kaizen/skills/workflow/domain/schemas/workflow-config.schema.json",
+  "$id": "https://raw.githubusercontent.com/YugeIceCone/kaizen-md/main/plugins/kaizen/schemas/workflow/schemas/workflow-config.schema.json",
   "title": "kaizen workflow-config",
   "description": "Persistent per-repo / user-global workflow-shape defaults — read by /kaizen:workflow, /kaizen:session-mode (as fallback), and downstream hooks.",
   "type": "object",

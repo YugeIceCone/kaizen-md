@@ -199,7 +199,7 @@ the durable files.
 
 ## Schema
 
-JSON Schema: `skills/workflow/domain/schemas/workflow-config.schema.json`
+JSON Schema: `schemas/workflow/schemas/workflow-config.schema.json`
 (version 1). Required field: `version`. All others optional — partial
 configs are valid (set only what you want to override).
 

@@ -87,7 +87,7 @@ When a workflow recurs ≥3 times and warrants automation, extract it into a new
 
 1. Identify the trigger phrases the user actually uses
 2. Author SKILL.md with kaizen frontmatter conventions (name / description / triggers)
-3. Add to `skills/workflow/domain/routines.yaml` if it becomes a routine stage
+3. Add to `schemas/workflow/routines.yaml` if it becomes a routine stage
 4. Cross-link from related kaizen skills
 5. Run codegen + smoke /reload-plugins
 
@@ -140,7 +140,7 @@ Promoted in v1.1.0 to a first-class workflow citizen at two levels:
 
 ### System level — the `self-improving` routine
 
-Declared in `skills/workflow/domain/routines.yaml` as a hardcoded routine. Stage chain:
+Declared in `schemas/workflow/routines.yaml` as a hardcoded routine. Stage chain:
 
 ```
 explore → self-analyze → review → create-plan → create-tasks → execute-tasks → report

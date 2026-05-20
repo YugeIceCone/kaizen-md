@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Kaizen intent router — load + lookup + match against
-`skills/workflow/domain/intent_routing.yaml`.
+`schemas/workflow/intent_routing.yaml`.
 
 Replaces the prose `code-router` SKILL.md. The yaml is the single source
 of truth; this script is the only piece of code that loads it. Skill
@@ -41,7 +41,7 @@ from _yaml import validate as _check  # noqa: E402
 
 DOMAIN_DIR = (
     Path(__file__).resolve().parent.parent.parent
-    / "skills" / "workflow" / "domain"
+    / "schemas" / "workflow"
 )
 INTENT_YAML = DOMAIN_DIR / "intent_routing.yaml"
 INTENT_SCHEMA = DOMAIN_DIR / "schemas" / "intent_routing.schema.json"

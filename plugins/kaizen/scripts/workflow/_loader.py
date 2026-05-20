@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Kaizen workflow — yaml domain loader.
 
-Loads + validates skills/workflow/domain/{routines.yaml, git-discipline.yaml}
+Loads + validates schemas/workflow/{routines.yaml, git-discipline.yaml}
 against their JSON Schemas. Exposes a small CLI for shell consumers (workflow.sh,
 pre-commit.sh) and a Python API for codegen.py + tests.
 
@@ -34,7 +34,7 @@ from _yaml import validate as _check  # noqa: E402
 
 DOMAIN_DIR = (
     Path(__file__).resolve().parent.parent.parent
-    / "skills" / "workflow" / "domain"
+    / "schemas" / "workflow"
 )
 ROUTINES_YAML = DOMAIN_DIR / "routines.yaml"
 GIT_DISCIPLINE_YAML = DOMAIN_DIR / "git-discipline.yaml"

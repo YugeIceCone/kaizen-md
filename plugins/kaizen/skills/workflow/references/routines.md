@@ -1,6 +1,6 @@
 <!-- DO NOT HAND-EDIT.
 
-Generated from skills/workflow/domain/routines.yaml by
+Generated from schemas/workflow/routines.yaml by
 scripts/workflow/codegen.py.
 
 To change content, edit the yaml and run:

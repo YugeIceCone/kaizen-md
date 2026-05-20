@@ -2,7 +2,7 @@
 """kaizen-axis-runner — declarative YAML-as-axis loader + dispatcher.
 
 A coverage axis can be declared as a YAML file under
-`skills/workflow/domain/axes/<name>.yaml`:
+`schemas/workflow/axes/<name>.yaml`:
 
     name: trailing-ws
     scan_spec:
@@ -46,9 +46,9 @@ import _envelope  # noqa: E402
 _emit = _envelope.emitter("kaizen-axis-runner", tool_version="1.0.0")
 _PLUGIN_ROOT = _SCRIPT_DIR.parents[1]
 _SCHEMA_PATH = (
-    _PLUGIN_ROOT / "skills/workflow/domain/schemas/axis.schema.json"
+    _PLUGIN_ROOT / "schemas/workflow/schemas/axis.schema.json"
 )
-_AXES_DIR = _PLUGIN_ROOT / "skills/workflow/domain/axes"
+_AXES_DIR = _PLUGIN_ROOT / "schemas/workflow/axes"
 
 # --- YAML loader (graceful-fallback) ---------------------------------------
 

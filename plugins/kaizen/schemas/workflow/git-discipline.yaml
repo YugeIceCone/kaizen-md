@@ -366,5 +366,5 @@ claude_md_invariants:
     - "Will this still be true in 6 months?"
     - "Does this prescribe behavior, or describe state?"
     - "Does this reference a specific commit, date, or LOC number?"
-  project_agnostic_meta_path: "skills/workflow/domain/git-discipline.yaml"
+  project_agnostic_meta_path: "schemas/workflow/git-discipline.yaml"
   project_specific_path: "<project>/CLAUDE.md"

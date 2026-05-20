@@ -213,7 +213,7 @@ class TestSchemaValidity(unittest.TestCase):
 
     def test_schema_exists_and_parses(self):
         schema_path = (
-            _KZ_DIR / "skills/workflow/domain/schemas/workflow-config.schema.json"
+            _KZ_DIR / "schemas/workflow/schemas/workflow-config.schema.json"
         )
         self.assertTrue(schema_path.is_file())
         data = json.loads(schema_path.read_text())
@@ -222,7 +222,7 @@ class TestSchemaValidity(unittest.TestCase):
 
     def test_schema_enumerates_thresholds_25_50_75_85(self):
         schema_path = (
-            _KZ_DIR / "skills/workflow/domain/schemas/workflow-config.schema.json"
+            _KZ_DIR / "schemas/workflow/schemas/workflow-config.schema.json"
         )
         data = json.loads(schema_path.read_text())
         thr = data["properties"]["auto_handoff_threshold"]["anyOf"][0]["enum"]

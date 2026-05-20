@@ -1,6 +1,6 @@
 <!-- DO NOT HAND-EDIT.
 
-Generated from skills/workflow/domain/git-discipline.yaml by
+Generated from schemas/workflow/git-discipline.yaml by
 scripts/workflow/codegen.py.
 
 To change content, edit the yaml and run:

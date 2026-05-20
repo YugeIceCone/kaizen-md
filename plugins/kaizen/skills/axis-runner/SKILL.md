@@ -1,6 +1,6 @@
 ---
 name: axis-runner
-description: Declarative YAML-as-axis runner. Use to add a new coverage axis without writing a standalone Python file — declare it in `skills/workflow/domain/axes/<name>.yaml` with a scan_spec (grep / ast-rule / file-coverage) + verdict_rule, then run via `kaizen-axis-runner run --axis <name>`. Triggers on "new coverage axis", "declarative axis", "yaml axis", "subsume coverage script", "kaizen-axis-runner". The runner loads → validates against axis.schema.json (jsonschema graceful) → dispatches by scan_spec.type → emits canonical envelope.
+description: Declarative YAML-as-axis runner. Use to add a new coverage axis without writing a standalone Python file — declare it in `schemas/workflow/axes/<name>.yaml` with a scan_spec (grep / ast-rule / file-coverage) + verdict_rule, then run via `kaizen-axis-runner run --axis <name>`. Triggers on "new coverage axis", "declarative axis", "yaml axis", "subsume coverage script", "kaizen-axis-runner". The runner loads → validates against axis.schema.json (jsonschema graceful) → dispatches by scan_spec.type → emits canonical envelope.
 ---
 
 # kaizen axis-runner
@@ -53,7 +53,7 @@ trying `<stem>`, `<stem>.yaml`, `<stem>.yml`) OR an absolute path.
 ## Axis YAML shape
 
 Source-of-truth schema:
-`skills/workflow/domain/schemas/axis.schema.json`.
+`schemas/workflow/schemas/axis.schema.json`.
 
 ```yaml
 name: trailing-ws                   # kebab-case identifier
@@ -107,8 +107,8 @@ The runner mounts under the kaizen MCP gateway as
 
 | File | Purpose |
 |---|---|
-| `skills/workflow/domain/schemas/axis.schema.json` | JSON Schema SSOT (oneOf 3 scan-spec variants) |
-| `skills/workflow/domain/axes/*.yaml`              | Declared axes |
+| `schemas/workflow/schemas/axis.schema.json` | JSON Schema SSOT (oneOf 3 scan-spec variants) |
+| `schemas/workflow/axes/*.yaml`              | Declared axes |
 | `skills/workflow/scripts/axis_runner.py`          | Loader + dispatcher + CLI |
 | `skills/workflow/scripts/axis_runner_rules.py`    | Pure-fn rule library |
 | `scripts/mcp/axis_runner_mcp.py`                  | FastMCP wrapper |

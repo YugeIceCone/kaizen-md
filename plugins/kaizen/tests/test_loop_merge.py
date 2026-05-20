@@ -31,7 +31,7 @@ HOOK_CODEX = PLUGIN_ROOT / "hooks" / "codex" / "stop-ralph.sh"
 LOOP_BIN = PLUGIN_ROOT / "bin" / "kaizen-loop"
 WORKFLOW_COMMAND = PLUGIN_ROOT / "commands" / "workflow.md"
 RALPH_SCHEMA = PLUGIN_ROOT / "schemas" / "ralph-loop" / "schema.yaml"
-ROUTINES_YAML = PLUGIN_ROOT / "skills" / "workflow" / "domain" / "routines.yaml"
+ROUTINES_YAML = PLUGIN_ROOT / "schemas" / "workflow" / "routines.yaml"
 HOOKS_JSON = PLUGIN_ROOT / "hooks" / "hooks.json"
 
 class TestFlagAliases(unittest.TestCase):

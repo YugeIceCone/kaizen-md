@@ -14,7 +14,7 @@ Iron-laws:
   - creates the file with the canonical 4-column header if absent
   - row format: `| YYYY-MM-DD | <kind> | <loc> | <summary> |`
 
-Schema at skills/workflow/domain/schemas/architecture-log-row.schema.json
+Schema at schemas/workflow/schemas/architecture-log-row.schema.json
 is the source of truth; this module mirrors its rules in stdlib regex
 checks (no jsonschema dep — keeps the gate's pre-commit footprint tiny).
 """

@@ -51,7 +51,7 @@ plugins/kaizen/
 | A new **skill** | `skills/<name>/SKILL.md` with YAML frontmatter (`name`, `description`, `metadata.version`) | Auto-discovered. Body MUST be read in full by callers (write the trigger phrases in `description` clearly). |
 | A new **iron law** | `skills/iron-laws/domain/iron-laws.yaml` (yaml entry) + `skills/workflow/scripts/_iron_laws.py::check_<name>()` if `enforcement: auto` | Regenerate the reference: `python3 skills/iron-laws/application/codegen.py`. Tests in `tests/test_iron_laws.py`. |
 | A new **anti-pattern (efficient-tool-use)** | `skills/efficient-tool-use/domain/anti-patterns.yaml` (yaml entry with `id`, `tool`, `bad_pattern`, `why_bad`, `replacement`, `severity`, optional `detect` regex) | The pre-commit etu gate auto-picks it up. Add a `# noqa: etu` test case if false-positive prone. |
-| A new **workflow routine** | `skills/workflow/domain/routines.yaml` (`routines:` array) + each new stage to `stage_skill_map` | `python3 scripts/workflow/codegen.py` regenerates `references/routines.md`. Tests in `scripts/workflow/_tests.py`. |
+| A new **workflow routine** | `schemas/workflow/routines.yaml` (`routines:` array) + each new stage to `stage_skill_map` | `python3 scripts/workflow/codegen.py` regenerates `references/routines.md`. Tests in `scripts/workflow/_tests.py`. |
 | A new **assets/schema** | `assets/schemas/<name>.schema.json` | Add a consumer (validator script). Orphan schemas trip `kaizen-surface validate`. |
 
 ## Editing existing things (what to touch where)
@@ -68,7 +68,7 @@ plugins/kaizen/
 | Add a new gate to pre-commit | Edit `scripts/git-hooks/pre-commit.sh` (Check N+1) OR add to gatekeeper sub-gates (Python) | Iron-laws checker is Check 7.5; gatekeeper pre-flight is Check 7.6 — model new ones after these |
 | Change which etu severity blocks | `skills/efficient-tool-use/domain/anti-patterns.yaml::severity` (error / warn / info) | error → PreToolUse `ask`; warn/info → systemMessage |
 | Add a tool to the canonical envelope | Import `_envelope.emitter(tool="kaizen-X")`, swap `print(json.dumps(...))` → `_emit(...)`. Append to `_RETROFIT_TOOLS` in `tests/test_envelope.py`. | See `skills/efficient-tool-use/references/envelope-retrofit.md` for the full inventory + pattern |
-| Add a routine stage | `skills/workflow/domain/routines.yaml::stage_skill_map` + routine's `stages:` list | Codegen + drift-check via `codegen.py --check` |
+| Add a routine stage | `schemas/workflow/routines.yaml::stage_skill_map` + routine's `stages:` list | Codegen + drift-check via `codegen.py --check` |
 
 ## Current limitations (what bites and how to work around)
 
@@ -150,7 +150,7 @@ There's no automated release script. `kaizen publish release vX.Y.Z` is for the 
 | All MCP tools | `skills/workflow/scripts/*_mcp.py` (`kaizen-surface list --kind mcp` to enumerate) |
 | All hooks | `hooks/hooks.json` (`kaizen-surface list --kind hooks` to enumerate) |
 | All iron laws | `skills/iron-laws/domain/iron-laws.yaml` (`kaizen iron-laws list --json` to enumerate) |
-| All workflow routines | `skills/workflow/domain/routines.yaml` (`kaizen workflow list` to enumerate) |
+| All workflow routines | `schemas/workflow/routines.yaml` (`kaizen workflow list` to enumerate) |
 | All etu anti-patterns | `skills/efficient-tool-use/domain/anti-patterns.yaml` |
 | Envelope schema | `assets/schemas/tool-output.schema.json` |
 | Envelope retrofit status | `skills/efficient-tool-use/references/envelope-retrofit.md` |

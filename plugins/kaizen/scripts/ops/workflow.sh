@@ -75,7 +75,7 @@ json_set_scalar() {
 # ---------- routines ----------
 #
 # v1.31.0+ — Stage sequences and verb-detection are sourced from
-# skills/workflow/domain/routines.yaml via the application-layer loader.
+# schemas/workflow/routines.yaml via the application-layer loader.
 # This eliminates the previous duplication (bash case statement, prose
 # routines.md, schemas yamls, SKILL.md narrative all saying the same thing).
 #

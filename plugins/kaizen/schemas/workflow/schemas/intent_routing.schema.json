@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://kaizen.invalid/schemas/intent_routing.schema.json",
   "title": "Kaizen intent routing catalog",
-  "description": "Validates skills/workflow/domain/intent_routing.yaml — the single source of truth for the code-router skill.",
+  "description": "Validates schemas/workflow/intent_routing.yaml — the single source of truth for the code-router skill.",
   "type": "object",
   "required": ["routes", "disambiguation", "composition", "limits", "elsewhere", "invocation_protocol"],
   "additionalProperties": false,

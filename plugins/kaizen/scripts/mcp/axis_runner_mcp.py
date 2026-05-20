@@ -49,7 +49,7 @@ def _run_cli(*args: str) -> dict:
 
 @mcp.tool()
 async def list_axes() -> dict:
-    """List declarative axis YAML stems under skills/workflow/domain/axes/.
+    """List declarative axis YAML stems under schemas/workflow/axes/.
     Returns the canonical envelope with `data.axes: [...]`."""
     return await asyncio.to_thread(_run_cli, "list")
 

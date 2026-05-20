@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://kaizen.invalid/schemas/git-rules.schema.json",
   "title": "Kaizen git workflow discipline",
-  "description": "Validates skills/workflow/domain/git-discipline.yaml — project-agnostic git workflow rules consumed by pre-commit.sh + commit-msg.sh + backlog.py.",
+  "description": "Validates schemas/workflow/git-discipline.yaml — project-agnostic git workflow rules consumed by pre-commit.sh + commit-msg.sh + backlog.py.",
   "type": "object",
   "required": ["commit_format", "sizing_thresholds", "pre_commit_gates", "pre_deletion_belief"],
   "additionalProperties": true,

@@ -83,7 +83,7 @@ Examples:
 - `skills/brainstorming/domain/schemas/idea.schema.json` — brainstorm result shape
 - `skills/chatlog/domain/schemas/triggers.schema.json`
 - `skills/parallel-branches/schemas/{chunk,master-plan,merge-action,chunk-ledger,backlog-fragment,perms-fragment,progress-fragment}.schema.json`
-- `skills/workflow/domain/schemas/architecture-log-row.schema.json`
+- `schemas/workflow/schemas/architecture-log-row.schema.json`
 - `assets/schemas/kaizen-config.schema.json` — plugin TOML config shape
 
 Validation: `jsonschema` Python library (used in tests + at runtime).

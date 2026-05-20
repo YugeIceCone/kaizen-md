@@ -8,8 +8,8 @@ version: 2.0.0
 
 This skill unifies the two layers of kaizen's workflow surface:
 
-1. **Discipline** — *how* to commit code: sizing model, pre-commit gates, architecture log, plan files, BACKLOG. Project-agnostic rules from `domain/git-discipline.yaml`.
-2. **Orchestration** — *what* multi-stage routine to run end-to-end: `audit`, `build-feature`, `fix-bug`, `refactor`, `migrate`, `harden`, `batch-migrate`, `self-improving`, `custom` (hardcoded) plus 8 schema-driven routines (`kaizen-default`, `debug-with-pdb`, `mcp-build`, `minimalist`, `spec-driven`, `onion-tdd-strict`, `ralph-loop`, `shim-and-sweep`). Routines are declared in `domain/routines.yaml` and run via `scripts/ops/workflow.sh` (or the `mcp__plugin_kaizen_kaizen-workflow__*` MCP tools).
+1. **Discipline** — *how* to commit code: sizing model, pre-commit gates, architecture log, plan files, BACKLOG. Project-agnostic rules from `schemas/workflow/git-discipline.yaml`.
+2. **Orchestration** — *what* multi-stage routine to run end-to-end: `audit`, `build-feature`, `fix-bug`, `refactor`, `migrate`, `harden`, `batch-migrate`, `self-improving`, `custom` (hardcoded) plus 8 schema-driven routines (`kaizen-default`, `debug-with-pdb`, `mcp-build`, `minimalist`, `spec-driven`, `onion-tdd-strict`, `ralph-loop`, `shim-and-sweep`). Routines are declared in `schemas/workflow/routines.yaml` and run via `scripts/ops/workflow.sh` (or the `mcp__plugin_kaizen_kaizen-workflow__*` MCP tools).
 
 Discipline + orchestration overlap — every routine's `execute-tasks` stage commits code under the discipline rules. The yaml schemas make that overlap explicit.
 
@@ -17,33 +17,43 @@ Discipline + orchestration overlap — every routine's `execute-tasks` stage com
 
 Skip nothing. The sizing model, the pre-commit gate list, the routine catalog, and the stage-to-skill mapping only hold together. Skimming to the "Quick reference" table without reading the discipline section produces gates that pass syntactically while violating the rules they exist to enforce.
 
-## Onion-DDD layout inside this skill
+## Onion-DDD layout (post-consolidation)
 
 ```
-skills/workflow/
-├── SKILL.md                          (presentation — narrative + concept primer)
-├── domain/                           (pure data; no behavior)
-│   ├── routines.yaml                 (17 routines: 9 hardcoded + 8 schema-driven)
-│   ├── git-discipline.yaml           (12 pre-commit gates + sizing + format)
-│   └── schemas/
-│       ├── routine.schema.json
-│       └── git-rules.schema.json
-├── application/                      (placeholder — code moved to scripts/workflow/ in v1.40)
-│   ├── _loader.py                    (yaml → typed dict, JSON Schema validated)
-│   ├── codegen.py                    (regenerates references/{routines,git-discipline}.md)
-│   └── _tests.py                     (17 tests)
-└── references/                       (generated docs + hand-written orchestration/gates)
+skills/workflow/                      (presentation only — pure docs)
+├── SKILL.md                          (narrative + concept primer)
+├── agents/openai.yaml                (router agent interface)
+└── references/                       (12 .md — 3 generated + 9 hand-written)
 
-Post-v1.40 layout — adapters live at <plugin>/scripts/<cluster>/ outside this skill:
-  scripts/ops/workflow.sh             (state machine; reads routines.yaml via _loader)
-  scripts/mcp/workflow_mcp.py         (9 MCP tools wrapping workflow.sh)
-  scripts/git-hooks/pre-commit.sh     (reads git-discipline.yaml)
-  scripts/install/refresh-cache.sh    (invokes codegen.py before sync)
+schemas/workflow/                     (the data domain — moved out of the skill)
+├── routines.yaml                     (17 routines: 9 hardcoded + 8 schema-driven)
+├── git-discipline.yaml               (13 pre-commit gates + sizing + format)
+├── intent_routing.yaml               (code-router routes/disambiguation/composition)
+├── axes/reference_demo.yaml          (declarative-axis demo)
+└── schemas/                          (6 JSON Schemas validating the sibling yamls)
+    ├── routine.schema.json
+    ├── git-rules.schema.json
+    ├── intent_routing.schema.json
+    ├── axis.schema.json
+    ├── architecture-log-row.schema.json
+    └── workflow-config.schema.json
+
+scripts/workflow/                     (application + adapters)
+├── _loader.py                        (yaml → typed dict, JSON Schema validated)
+├── codegen.py                        (regenerates references/{routines,git-discipline,code-router}.md)
+├── route_intent.py                   (intent_routing.yaml loader + CLI)
+├── workflow_runner.py                (state machine; reads routines.yaml)
+└── flow.py                           (AsyncNode/AsyncFlow primitive)
+
+scripts/{ops,mcp,git-hooks,install}/  (cluster-specific entry points)
+  ops/workflow.sh                     (bash front-end to workflow_runner.py)
+  mcp/workflow_mcp.py                 (9 MCP tools)
+  git-hooks/pre-commit.sh             (reads schemas/workflow/git-discipline.yaml)
+  install/refresh-cache.sh            (invokes codegen.py before sync)
 ```
 
-`references/` contents: `routines.md` + `git-discipline.md` + `code-router.md` (GENERATED via `scripts/workflow/codegen.py`); `orchestration.md`, `gates.md`, `node-flow.md`, `integration.md`, `hooks-config.md`, `plugin-root-resolution.md`, `plugin-surface-map.md`, `mermaid-flowchart-api.md`, `backlog-template.md` (HAND-written).
-
-Dependency direction: presentation → application → domain. Adapters → application → domain. No reverse edges. New rules go in `domain/`; new behavior in `application/`; new I/O in `scripts/`.
+Dependency direction: `presentation → application → domain`. Adapters
+(scripts/) live OUTSIDE the skill; the skill itself is presentation-pure.
 
 ## Routine catalog (Quick reference)
 
@@ -86,7 +96,7 @@ Full sizing rules + worked examples: `references/git-discipline.md` (generated f
 
 ## Pre-commit gates (13)
 
-The pre-commit hook iterates `domain/git-discipline.yaml::pre_commit_gates[]` in order. Each gate is one of `error` (block), `warn` (notify), or `info` (log). Highlights:
+The pre-commit hook iterates `schemas/workflow/git-discipline.yaml::pre_commit_gates[]` in order. Each gate is one of `error` (block), `warn` (notify), or `info` (log). Highlights:
 
 - **`compile_barrier`** — `cargo check` / `tsc --noEmit` / `mypy` / `go build`. Cached by staged-sha; only runs when content changed.
 - **`backlog_schema_valid` + `backlog_md_in_sync`** — backlog.json validates; backlog.md not hand-edited.
@@ -180,7 +190,7 @@ Each links to the corresponding `kaizen:*` skill (kaizen:solid, kaizen:kiss, etc
 
 To add a routine (e.g., a custom CI verification flow):
 
-1. Add an entry to `domain/routines.yaml`. Set `kind: hardcoded` if verb-detected, `kind: schema` if opt-in via `schema=<name>`.
+1. Add an entry to `schemas/workflow/routines.yaml`. Set `kind: hardcoded` if verb-detected, `kind: schema` if opt-in via `schema=<name>`.
 2. Add stage names to the catalog if any are new.
 3. Update the `coding_skills:` cross-link if applicable.
 4. Run `python3 scripts/workflow/codegen.py` (or just `refresh-cache.sh`) — regenerates `references/routines.md`.
@@ -198,7 +208,7 @@ No bash editing needed. Adding a routine = editing yaml.
 
 ## Bash invocation discipline
 
-CC's permission matcher reprompts on certain compound shapes even when `Bash(*)` is globally allowed. Six rules in `domain/git-discipline.yaml::bash_invocation_discipline` minimize reprompts AND keep destructive ops isolated for clearer audit:
+CC's permission matcher reprompts on certain compound shapes even when `Bash(*)` is globally allowed. Six rules in `schemas/workflow/git-discipline.yaml::bash_invocation_discipline` minimize reprompts AND keep destructive ops isolated for clearer audit:
 
 1. **`rm_in_isolation` (hard)** — never combine `rm` / `rm -rf` with other ops in one Bash call
 2. **`export_over_envprefix` (soft)** — `export VAR=1; cmd` over `VAR=1 cmd` inline

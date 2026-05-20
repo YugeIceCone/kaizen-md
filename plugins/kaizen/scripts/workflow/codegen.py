@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Kaizen workflow — codegen for human-readable references.
 
-Reads skills/workflow/domain/{routines.yaml, git-discipline.yaml} and
+Reads schemas/workflow/{routines.yaml, git-discipline.yaml} and
 regenerates skills/workflow/references/{routines.md, git-discipline.md}
 so the yaml stays the single source of truth.
 
@@ -36,7 +36,7 @@ REFS_DIR = (
 )
 GENERATED_HEADER = """<!-- DO NOT HAND-EDIT.
 
-Generated from skills/workflow/domain/{source}.yaml by
+Generated from schemas/workflow/{source}.yaml by
 scripts/workflow/codegen.py.
 
 To change content, edit the yaml and run:
@@ -243,7 +243,7 @@ def _render_intent_routing() -> str:
     out.append(
         "Routes code-quality and architectural questions to the appropriate "
         "`coding-skills:<name>` skill. Source-of-truth: "
-        "`skills/workflow/domain/intent_routing.yaml`. Loader / matcher / CLI: "
+        "`schemas/workflow/intent_routing.yaml`. Loader / matcher / CLI: "
         "`scripts/workflow/route_intent.py`.\n\n"
     )
 

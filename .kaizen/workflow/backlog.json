@@ -1125,7 +1125,7 @@
       "section": "done",
       "title": "Migrate axis-runner files to consolidated-plugin paths when sweep lands",
       "ref": null,
-      "probe": "axis_runner.py + axis_runner_rules.py currently live in skills/workflow/scripts/ (legacy mega-dir); axis.schema.json + reference_demo.yaml live in skills/workflow/domain/{schemas,axes}/ (workflow-owned). When the consolidated-plugin restructure lands, move axis_runner.py + axis_runner_rules.py to scripts/quality/ (matches sibling AST-axes) and axis.schema.json + reference_demo.yaml to skills/axis-runner/domain/{schemas,axes}/ (skill-owned).",
+      "probe": "axis_runner.py + axis_runner_rules.py currently live in skills/workflow/scripts/ (legacy mega-dir); axis.schema.json + reference_demo.yaml live in schemas/workflow/{schemas,axes}/ (workflow-owned). When the consolidated-plugin restructure lands, move axis_runner.py + axis_runner_rules.py to scripts/quality/ (matches sibling AST-axes) and axis.schema.json + reference_demo.yaml to skills/axis-runner/domain/{schemas,axes}/ (skill-owned).",
       "verify": "ls plugins/kaizen/scripts/quality/axis_runner.py plugins/kaizen/skills/axis-runner/domain/schemas/axis.schema.json — both files at new paths; bin symlinks updated; gateway.py SUBSERVERS still mounts axis_runner_mcp; kaizen-tests green.",
       "tags": [],
       "created": "2026-05-20",

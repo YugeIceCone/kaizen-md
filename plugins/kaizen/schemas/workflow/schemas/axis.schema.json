@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://kaizen.invalid/schemas/axis.schema.json",
   "title": "Kaizen declarative axis",
-  "description": "Validates skills/workflow/domain/axes/<name>.yaml — declarative coverage-axis spec dispatched by kaizen-axis-runner. One axis YAML = one scan-spec (grep | ast-rule | file-coverage) + a verdict rule. The loader subsumes simple standalone-Python axes per blueprint /tmp/axis-runner.blueprint.json item-02.",
+  "description": "Validates schemas/workflow/axes/<name>.yaml — declarative coverage-axis spec dispatched by kaizen-axis-runner. One axis YAML = one scan-spec (grep | ast-rule | file-coverage) + a verdict rule. The loader subsumes simple standalone-Python axes per blueprint /tmp/axis-runner.blueprint.json item-02.",
   "type": "object",
   "required": ["name", "scan_spec", "verdict_rule"],
   "additionalProperties": false,

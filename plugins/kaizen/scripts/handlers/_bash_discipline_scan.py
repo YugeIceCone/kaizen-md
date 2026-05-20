@@ -3,7 +3,7 @@
 
 Reads a bash command (from --command, --stdin, or argv) and reports
 advisory warnings when it violates the rules declared in
-skills/workflow/domain/git-discipline.yaml::bash_invocation_discipline.
+schemas/workflow/git-discipline.yaml::bash_invocation_discipline.
 
 Stdlib-only. Pure function — no I/O side effects.
 
@@ -41,7 +41,7 @@ import re
 import sys
 
 # Pattern definitions — kept in-sync with
-# skills/workflow/domain/git-discipline.yaml::bash_invocation_discipline.rules
+# schemas/workflow/git-discipline.yaml::bash_invocation_discipline.rules
 # IDs match the yaml.rules[].id field.
 
 _RM_RE = re.compile(r"\brm\s+(-[rRfF]+\s+|--recursive\s+|--force\s+)*[^\s|;&]+")

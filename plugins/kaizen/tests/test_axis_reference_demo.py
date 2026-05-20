@@ -15,7 +15,7 @@ import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 sys.path.insert(0, str(_KZ / "scripts/io"))
 
 _REFERENCE_YAML = (
-    _KZ / "skills/workflow/domain/axes/reference_demo.yaml"
+    _KZ / "schemas/workflow/axes/reference_demo.yaml"
 )
 
 class TestReferenceDemoAxis(unittest.TestCase):

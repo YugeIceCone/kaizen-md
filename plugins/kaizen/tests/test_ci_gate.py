@@ -29,13 +29,13 @@ class TestCiGate(unittest.TestCase):
 
 class TestCiGateRoutineWiring(unittest.TestCase):
     def test_stage_skill_map_has_ci_gate(self):
-        text = (PLUGIN / "skills" / "workflow" / "domain" / "routines.yaml").read_text()
+        text = (PLUGIN / "schemas" / "workflow" / "routines.yaml").read_text()
         self.assertIn("ci-gate: kaizen:ci-gate", text)
 
     def test_code_landing_routines_include_ci_gate_stage(self):
         import yaml  # PyYAML is a CI dependency
         data = yaml.safe_load(
-            (PLUGIN / "skills" / "workflow" / "domain" / "routines.yaml").read_text())
+            (PLUGIN / "schemas" / "workflow" / "routines.yaml").read_text())
         by_name = {r["name"]: r for r in data["routines"]}
         for routine in ("build-feature", "fix-bug", "refactor", "migrate", "harden"):
             self.assertIn("ci-gate", by_name[routine]["stages"],

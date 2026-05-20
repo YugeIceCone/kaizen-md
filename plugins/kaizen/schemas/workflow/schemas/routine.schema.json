@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://kaizen.invalid/schemas/routine.schema.json",
   "title": "Kaizen routines catalog",
-  "description": "Validates skills/workflow/domain/routines.yaml — the single source of truth for kaizen workflow routines.",
+  "description": "Validates schemas/workflow/routines.yaml — the single source of truth for kaizen workflow routines.",
   "type": "object",
   "required": ["routines"],
   "additionalProperties": false,

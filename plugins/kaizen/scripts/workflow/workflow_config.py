@@ -27,7 +27,7 @@ When ``--scope`` is omitted, **project** is the default for set/reset
 (writes land near the code), **project-with-global-fallback** for get/show
 (reads merge project on top of global).
 
-Schema: ``skills/workflow/domain/schemas/workflow-config.schema.json``.
+Schema: ``schemas/workflow/schemas/workflow-config.schema.json``.
 Override the project file via ``KAIZEN_WORKFLOW_CONFIG_PATH`` (test sandbox).
 """
 

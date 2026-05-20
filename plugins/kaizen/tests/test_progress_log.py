@@ -269,7 +269,7 @@ class TestRegenJsonl(_AppendBase):
 
 class TestSchemaFilePresent(unittest.TestCase):
     def test_schema_file_exists(self):
-        schema = _KZ_DIR / "skills/workflow/domain/schemas/architecture-log-row.schema.json"
+        schema = _KZ_DIR / "schemas/workflow/schemas/architecture-log-row.schema.json"
         self.assertTrue(schema.is_file(),
                          f"schema not at {schema} — should ship with the feature")
         data = json.loads(schema.read_text(encoding="utf-8"))
