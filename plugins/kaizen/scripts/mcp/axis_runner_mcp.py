@@ -10,7 +10,7 @@ Tools:
   run_axis(name)     → canonical envelope from running one axis
   report(name)       → alias for run_axis (mirrors coverage_mcp shape)
 
-Wraps `skills/workflow/scripts/axis_runner.py` — same logic the
+Wraps `scripts/quality/axis_runner.py` — same logic the
 `kaizen-axis-runner` CLI runs. Mirrors `coverage_mcp.py` shape: one
 small subprocess wrapper per verb, JSON in / JSON out.
 

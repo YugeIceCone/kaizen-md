@@ -130,9 +130,9 @@ done
 [ "$miss" = "0" ] || fail "SKILL.md frontmatter"
 ok "SKILL.md frontmatter"
 
-# 5. iron-laws codegen drift gate
-if [ -f plugins/kaizen/skills/iron-laws/application/codegen.py ]; then
-  python3 plugins/kaizen/skills/iron-laws/application/codegen.py --check \
+# 5. iron-laws codegen drift gate (canonical post-consolidation path)
+if [ -f plugins/kaizen/scripts/iron-laws/codegen.py ]; then
+  python3 plugins/kaizen/scripts/iron-laws/codegen.py --check \
     || fail "iron-laws codegen drift (run codegen.py to regenerate)"
   ok "iron-laws codegen in sync"
 fi

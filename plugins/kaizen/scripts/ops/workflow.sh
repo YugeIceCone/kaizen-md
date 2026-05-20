@@ -79,19 +79,21 @@ json_set_scalar() {
 # This eliminates the previous duplication (bash case statement, prose
 # routines.md, schemas yamls, SKILL.md narrative all saying the same thing).
 #
-# Loader path resolution: workflow.sh is currently shipped from
-# skills/workflow/scripts/ (legacy) but the loader sits under
-# skills/workflow/application/. Phase 5 of the workflow-merge plan
-# moves this script under skills/workflow/scripts/; until then we
-# walk up to find the new application/ dir.
+# Loader path resolution post-consolidation: workflow.sh lives at
+# scripts/ops/ and the loader lives at scripts/workflow/. Legacy
+# fallbacks kept for tarball / dev-checkout variants where the layout
+# might still be transitional.
 
 _kz_loader() {
-  # Locate application/_loader.py — relative path stable across the merge.
+  # Canonical: scripts/ops/workflow.sh → ../workflow/_loader.py
   local d
-  d="$(dirname "$0")/../../workflow/application/_loader.py"
+  d="$(dirname "$0")/../workflow/_loader.py"
   [ -f "$d" ] && { echo "$d"; return 0; }
-  # Fallback: when this script has been moved under skills/workflow/scripts/
+  # Legacy 1: skills/workflow/scripts/workflow.sh → ../application/_loader.py
   d="$(dirname "$0")/../application/_loader.py"
+  [ -f "$d" ] && { echo "$d"; return 0; }
+  # Legacy 2: skills/workflow/scripts/workflow.sh older shape
+  d="$(dirname "$0")/../../workflow/application/_loader.py"
   [ -f "$d" ] && { echo "$d"; return 0; }
   return 1
 }
