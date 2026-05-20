@@ -1009,7 +1009,7 @@
     },
     {
       "id": "BK-053",
-      "section": "next_up",
+      "section": "done",
       "title": "Regression test: kaizen-brain promote-belief auto-prefixes Notes/",
       "ref": "self-improving-review-followup-2026-05-20",
       "probe": "kaizen-brain promote-belief pref-foo (bare slug, no Notes/ prefix) writes line as '[[Notes/pref-foo.md]]' not '[[pref-foo.md]]'. Pre-fix (committed): bare slug got promoted without Notes/ prefix, breaking Persona Top Beliefs format consistency AND defeating the idempotency check (same note re-promoted under different format counts as new). Fix landed in scripts/brain/brain.py — auto-prefixes Notes/ when missing.",
@@ -1020,14 +1020,14 @@
       ],
       "created": "2026-05-20",
       "started_at": null,
-      "committed": null,
-      "committed_at": null,
+      "committed": "b1491f0",
+      "committed_at": "2026-05-20T06:16:13Z",
       "parked_reason": null,
       "probe_output": null
     },
     {
       "id": "BK-054",
-      "section": "next_up",
+      "section": "done",
       "title": "Regression test: bin/kaizen-brain dispatches index verb to scripts/indexers/build_index.py",
       "ref": "self-improving-review-followup-2026-05-20",
       "probe": "kaizen-brain index --help / search / stats actually invokes scripts/indexers/build_index.py (not the non-existent scripts/brain/brain_index.py). Pre-fix (committed): bin wrapper assumed brain_index.py would live alongside brain_evolve.py and built script path with brain_${verb}.py uniformly; broke index verb. Fix landed: per-verb path map (index → indexers/build_index.py; evolve → brain/brain_evolve.py).",
@@ -1039,8 +1039,8 @@
       ],
       "created": "2026-05-20",
       "started_at": null,
-      "committed": null,
-      "committed_at": null,
+      "committed": "8fe7a4f",
+      "committed_at": "2026-05-20T06:16:13Z",
       "parked_reason": null,
       "probe_output": null
     },
@@ -1143,6 +1143,25 @@
       "probe": "Three real findings from kaizen-reviewer + kaizen-karpathy-reviewer on axis-runner branch: (1) axis_runner.py lacks --json flag that 17 sibling scripts/quality/ CLIs declare (convention drift; functionally OK since envelope is JSON-by-default); (2) test_axis_runner_mcp.py lines 51-57 + 59-63 use conditional 'if data in envelope' asserts that hide subprocess failures — replace with unconditional asserts; (3) axis_runner.py docstring lines 56-62 contradicts itself about PyYAML fallback ('not attempted'); add try/except around import with clear sys.exit message; (4) axis_runner_rules.py:101-106 'del params' is YAGNI signal — drop the parameter until a second AST rule consumes it (schema stays open).",
       "verify": "axis_runner.py argparse exposes --json action='store_true'; test_axis_runner_mcp.py asserts assertIn('data', envelope) unconditionally; PyYAML import fails fast with friendly message when missing; run_ast_rule signature no longer takes params (or has at least one consumer).",
       "tags": [],
+      "created": "2026-05-20",
+      "started_at": null,
+      "committed": null,
+      "committed_at": null,
+      "parked_reason": null,
+      "probe_output": null
+    },
+    {
+      "id": "BK-061",
+      "section": "next_up",
+      "title": "Fix test_plugin_root::test_module_callable_via_main — legacy shim missing __main__ print",
+      "ref": "BK-054-followup-2026-05-20",
+      "probe": "python3 plugins/kaizen/skills/workflow/scripts/_plugin_root.py prints the resolved plugin root path to stdout. Pre-bug (current): shim loads canonical via importlib.spec_from_file_location but the __main__ block of the canonical is NOT re-triggered (importlib doesn't fire __name__=='__main__' for loaded specs), so stdout is empty and test_plugin_root.test_module_callable_via_main fails the .is_file() assertion at line 155. Fix: shim's bottom block should call _mod.plugin_root() and print() after exec_module, mirroring the canonical's __main__ behavior.",
+      "verify": "python3 -m unittest plugins.kaizen.tests.test_plugin_root.TestContract.test_module_callable_via_main passes; plus the legacy shim's stdout matches canonical's stdout when both invoked directly.",
+      "tags": [
+        "test-fix",
+        "migration-followup",
+        "plugin-root"
+      ],
       "created": "2026-05-20",
       "started_at": null,
       "committed": null,
