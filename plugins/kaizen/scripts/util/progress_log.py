@@ -86,6 +86,63 @@ def _atomic_append(path: Path, row: str) -> None:
     atomic_append_line(path, row)
 
 
+# Row parser — the .md and .jsonl form must round-trip cleanly.
+# `| YYYY-MM-DD | <kind> | <loc> | <summary> |` → {"date","scope","delta","summary"}.
+# Field names diverge between the two surfaces (kind/loc in .md, scope/delta in
+# .jsonl) for back-compat with the pre-existing progress.jsonl shape.
+_ROW_RE = re.compile(
+    r"^\|\s*(\d{4}-\d{2}-\d{2})\s*\|\s*([^|]+?)\s*\|\s*([^|]+?)\s*\|\s*(.+?)\s*\|\s*$"
+)
+
+
+def _parse_md_rows(text: str) -> list[dict]:
+    rows: list[dict] = []
+    for line in text.splitlines():
+        m = _ROW_RE.match(line)
+        if not m:
+            continue
+        rows.append({
+            "date":    m.group(1),
+            "scope":   m.group(2),
+            "delta":   m.group(3),
+            "summary": m.group(4),
+        })
+    return rows
+
+
+def _render_jsonl(rows: list[dict]) -> str:
+    return "".join(json.dumps(r, ensure_ascii=False) + "\n" for r in rows)
+
+
+def _cmd_regen(args: argparse.Namespace) -> int:
+    md_path = Path(args.file)
+    if not md_path.is_file():
+        sys.stderr.write(f"progress_log: file not found: {md_path}\n")
+        return 1
+    rows = _parse_md_rows(md_path.read_text(encoding="utf-8"))
+    new_blob = _render_jsonl(rows)
+    jsonl_path = md_path.with_suffix(".jsonl")
+    existing = jsonl_path.read_bytes() if jsonl_path.exists() else b""
+    if existing == new_blob.encode("utf-8"):
+        sys.stdout.write(f"progress_log: in sync ({len(rows)} rows)\n")
+        return 0
+    if args.dry_run:
+        sys.stderr.write(
+            f"progress_log: drift — {len(rows)} rows in {md_path.name} vs "
+            f"{len(existing.splitlines())} in {jsonl_path.name} (re-run without --dry-run to fix)\n"
+        )
+        return 0
+    jsonl_path.parent.mkdir(parents=True, exist_ok=True)
+    # Atomic write: write to a sibling temp + rename (avoids torn writes if
+    # the regen is interrupted mid-flight).
+    tmp = jsonl_path.with_suffix(".jsonl.tmp")
+    tmp.write_text(new_blob, encoding="utf-8")
+    tmp.replace(jsonl_path)
+    sys.stdout.write(
+        f"progress_log: regen → {jsonl_path.name} ({len(rows)} rows)\n")
+    return 0
+
+
 def _cmd_append(args: argparse.Namespace) -> int:
     if args.stdin:
         try:
@@ -129,6 +186,15 @@ def main(argv: list[str] | None = None) -> int:
     pa.add_argument("--stdin", action="store_true",
                      help="read JSON payload from stdin instead of CLI flags")
     pa.set_defaults(fn=_cmd_append)
+
+    pr = sub.add_parser(
+        "regen",
+        help="parse progress.md and rewrite the sibling progress.jsonl in place",
+    )
+    pr.add_argument("--file", required=True, help="path to progress.md")
+    pr.add_argument("--dry-run", action="store_true",
+                     help="report drift between .md and .jsonl without writing")
+    pr.set_defaults(fn=_cmd_regen)
 
     args = p.parse_args(argv)
     if not getattr(args, "fn", None):

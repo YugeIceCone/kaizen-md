@@ -201,6 +201,72 @@ class TestAppendCanonicalRowFormat(_AppendBase):
                           "| 2026-05-18 | feat | +220 | exact-shape check |")
 
 
+class TestRegenJsonl(_AppendBase):
+    """`regen` verb walks progress.md and rewrites progress.jsonl as a
+    line-per-row mirror. Lets the .jsonl stay in sync without manual edits."""
+
+    def test_regen_creates_jsonl_sibling(self):
+        self.log.write_text(
+            "# Architecture Log\n\n"
+            "| Date | Kind | ΔLOC | Summary |\n"
+            "|------|------|------|---------|\n"
+            "| 2026-05-17 | feat | +100 | first row |\n"
+            "| 2026-05-18 | fix | +5 -2 | second row — with em-dash |\n",
+            encoding="utf-8",
+        )
+        r = self._run("regen", "--file", str(self.log))
+        self.assertEqual(r.returncode, 0, r.stderr)
+        jsonl = self.log.with_suffix(".jsonl")
+        self.assertTrue(jsonl.is_file())
+        lines = [json.loads(ln) for ln in jsonl.read_text().splitlines() if ln.strip()]
+        self.assertEqual(len(lines), 2)
+        self.assertEqual(lines[0], {"date": "2026-05-17", "scope": "feat",
+                                     "delta": "+100", "summary": "first row"})
+        self.assertEqual(lines[1]["summary"], "second row — with em-dash")
+
+    def test_regen_is_idempotent(self):
+        self.log.write_text(
+            "# Architecture Log\n\n"
+            "| Date | Kind | ΔLOC | Summary |\n"
+            "|------|------|------|---------|\n"
+            "| 2026-05-17 | feat | +100 | row |\n",
+            encoding="utf-8",
+        )
+        self._run("regen", "--file", str(self.log))
+        first = self.log.with_suffix(".jsonl").read_bytes()
+        self._run("regen", "--file", str(self.log))
+        second = self.log.with_suffix(".jsonl").read_bytes()
+        self.assertEqual(first, second)
+
+    def test_regen_dry_run_reports_drift(self):
+        self.log.write_text(
+            "# Architecture Log\n\n"
+            "| Date | Kind | ΔLOC | Summary |\n"
+            "|------|------|------|---------|\n"
+            "| 2026-05-17 | feat | +1 | a |\n",
+            encoding="utf-8",
+        )
+        # No .jsonl yet → drift
+        r = self._run("regen", "--file", str(self.log), "--dry-run")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertFalse(self.log.with_suffix(".jsonl").exists())
+        self.assertIn("drift", r.stdout.lower() + r.stderr.lower())
+
+    def test_regen_skips_header_and_blank_rows(self):
+        self.log.write_text(
+            "# Architecture Log\n\n"
+            "| Date | Kind | ΔLOC | Summary |\n"
+            "|------|------|------|---------|\n"
+            "\n"
+            "| 2026-05-18 | feat | +1 | a |\n",
+            encoding="utf-8",
+        )
+        self._run("regen", "--file", str(self.log))
+        jsonl = self.log.with_suffix(".jsonl")
+        lines = [ln for ln in jsonl.read_text().splitlines() if ln.strip()]
+        self.assertEqual(len(lines), 1)
+
+
 class TestSchemaFilePresent(unittest.TestCase):
     def test_schema_file_exists(self):
         schema = _KZ_DIR / "skills/workflow/domain/schemas/architecture-log-row.schema.json"
