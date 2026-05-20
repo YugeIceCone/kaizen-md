@@ -15,6 +15,7 @@ from pathlib import Path
 _REPO_ROOT = Path(__file__).resolve().parents[3]
 _KAIZEN_CLI = _REPO_ROOT / "plugins/kaizen/scripts/cli/kaizen_cli.py"
 _BIN_KAIZEN = _REPO_ROOT / "plugins/kaizen/bin/kaizen"
+_BIN_KAIZEN_BRAIN = _REPO_ROOT / "plugins/kaizen/bin/kaizen-brain"
 
 
 def _load(name: str, path: Path):
@@ -307,6 +308,38 @@ class TestTimeMode(unittest.TestCase):
         # Timing line goes to stderr
         self.assertIn("completed in", r.stderr)
         self.assertIn("ms", r.stderr)
+
+
+class TestBrainBinDispatch(unittest.TestCase):
+    """BK-054: bin/kaizen-brain routes the `index` and `evolve` verbs to
+    their actual script locations (`scripts/indexers/build_index.py` and
+    `scripts/brain/brain_evolve.py`) — NOT to the uniform
+    `scripts/brain/brain_${verb}.py` shape that would yield the
+    non-existent `scripts/brain/brain_index.py`.
+
+    Subprocess-tested via the bin wrapper directly so the path map in
+    the shell-side `case` block is the unit under test."""
+
+    def test_brain_index_help_dispatches_to_build_index(self):
+        r = subprocess.run([str(_BIN_KAIZEN_BRAIN), "index", "--help"],
+                           capture_output=True, text=True, timeout=15)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        # build_index.py's argparse prog name is `kaizen-build-index` —
+        # presence in --help proves the bin wrapper executed the right
+        # script (a hypothetical brain_index.py would not produce this).
+        self.assertIn("kaizen-build-index", r.stdout)
+
+    def test_brain_default_verb_help_stays_on_brain_py(self):
+        """Negative pair: non-uv-dispatched verbs (capture / status /
+        etc.) must NOT route through the uv-script path. `--help` on the
+        top-level wrapper proves the python3 fallback in the `case` block."""
+        r = subprocess.run([str(_BIN_KAIZEN_BRAIN), "--help"],
+                           capture_output=True, text=True, timeout=15)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        # brain.py exposes capture / status / detect / path verbs in its
+        # top-level argparse — kaizen-build-index would not.
+        self.assertIn("capture", r.stdout)
+        self.assertNotIn("kaizen-build-index", r.stdout)
 
 
 if __name__ == "__main__":
