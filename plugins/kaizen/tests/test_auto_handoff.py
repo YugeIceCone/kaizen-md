@@ -243,8 +243,8 @@ class TestRubricLoads(_Sandbox):
     def test_signals_computed_correctly(self):
         """Validates the signal computer in auto_handoff."""
         import importlib, sys as _sys
-        _sys.path.insert(0,
-            "/home/cherry86/workspace/kaizen-md/plugins/kaizen/skills/workflow/scripts")
+        _sys.path.insert(0, str(Path(__file__).resolve().parent))
+        import _kaizen_paths  # noqa: F401 -- adds scripts/<cluster>/ to sys.path
         # Re-import to pick up any module cache reset
         if "auto_handoff" in _sys.modules:
             del _sys.modules["auto_handoff"]
