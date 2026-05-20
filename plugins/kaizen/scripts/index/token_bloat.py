@@ -235,8 +235,10 @@ def estimate_fire_count(finding: dict) -> int:
     for prefix, evt in _LIFECYCLE_BY_PREFIX:
         if path.startswith(prefix):
             return _fires_for(evt)
-    # YAML auto-handoff templates fire on Stop
-    if "auto-handoff" in path and finding.get("kind") == "yaml-template":
+    # YAML auto-handoff templates fire on Stop. Post-merger the auto-*
+    # yamls live at schemas/handoff/auto-*.yaml (was schemas/auto-handoff/).
+    if (("auto-handoff" in path or "/handoff/auto-" in path)
+            and finding.get("kind") == "yaml-template"):
         return _fires_for("Stop")
     # SKILL.md / agents / commands — count handled separately
     # (would need PreToolUse Skill / Task payload inspection)

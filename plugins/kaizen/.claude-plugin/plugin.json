@@ -219,7 +219,6 @@
       "Bash(bash ${CLAUDE_PLUGIN_ROOT}/bin/kaizen-plugin-docs:*)",
       "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/scripts/chatlog/chatlog.py:*)",
       "Bash(bash ${CLAUDE_PLUGIN_ROOT}/bin/kaizen-chatlog:*)",
-      "Bash(bash ${CLAUDE_PLUGIN_ROOT}/bin/kaizen-auto-handoff:*)",
       "Bash(bash ${CLAUDE_PLUGIN_ROOT}/bin/kaizen-skill-suggest:*)",
       "Bash(bash ${CLAUDE_PLUGIN_ROOT}/bin/kaizen-context-notifier:*)",
       "Bash(bash ${CLAUDE_PLUGIN_ROOT}/bin/kaizen-statusline-dxm:*)",
