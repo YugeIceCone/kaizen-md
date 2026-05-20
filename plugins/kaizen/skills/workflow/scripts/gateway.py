@@ -101,6 +101,9 @@ SUBSERVERS: list[tuple[str, str]] = [
     # Phase 14 — positional token addressing (BK-051: tokens_mcp was
     # built complete with tests but never wired into the gateway)
     ("tokens", "tokens_mcp"),
+    # Phase 15 — declarative coverage-axis runner (#161). Subsumes
+    # simple standalone-Python axes via YAML scan-spec dispatch.
+    ("axis_runner", "axis_runner_mcp"),
 ]
 
 gw = FastMCP("kaizen")
