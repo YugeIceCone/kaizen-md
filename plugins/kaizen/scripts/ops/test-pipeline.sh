@@ -16,8 +16,9 @@ set -uo pipefail
 
 _SCRIPT_REAL_DIR="$(cd "$(dirname "$(python3 -c "import os,sys; print(os.path.realpath(sys.argv[1]))" "${BASH_SOURCE[0]}")")" && pwd)"
 
-# Plugin root (scripts/ → workflow/ → skills/ → kaizen plugin root)
-PLUGIN_ROOT="$(cd "$_SCRIPT_REAL_DIR/../../.." && pwd)"
+# Plugin root — resolved via shared helper (no fragile ../.. counting).
+source "$_SCRIPT_REAL_DIR/../util/_plugin_root.sh"
+PLUGIN_ROOT="$(kaizen_plugin_root)"
 HOOKS_DIR="$PLUGIN_ROOT/hooks/claude"
 GW_SCRIPTS="$_SCRIPT_REAL_DIR"
 

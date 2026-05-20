@@ -9,7 +9,9 @@
 set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PLUGIN_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
+# Plugin root — resolved via shared helper (no fragile ../.. counting).
+source "$SCRIPT_DIR/../util/_plugin_root.sh"
+PLUGIN_ROOT="$(kaizen_plugin_root)"
 
 REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null) || {
     echo "vibe-check: not in a git repo" >&2
