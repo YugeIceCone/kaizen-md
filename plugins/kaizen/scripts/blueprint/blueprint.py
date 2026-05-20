@@ -135,17 +135,59 @@ def _render_item_md(item: dict) -> str:
 
 # ─── helpers ────────────────────────────────────────────────────────────
 
+def _auto_discover_plan() -> str | None:
+    """Walk .kaizen/docs/ for the master plan, falling back to any
+    blueprint index. Priority groups (first non-empty wins; within a
+    group sort by mtime descending):
+
+      1. .kaizen/docs/<topic>/plan.{json,yaml}          ← workflow plans
+      2. .kaizen/docs/plans/*.{json,yaml}                ← legacy flat
+      3. .kaizen/docs/<topic>/blueprint.{json,yaml}      ← session-bundle indexes
+
+    The priority ensures a fresh session picks the active workflow
+    plan (e.g. unify-artifact-generation.json) over a leaf brainstorm-
+    bundle index whose mtime happened to be more recent."""
+    cur = Path.cwd().resolve()
+    docs_dir = None
+    while cur != cur.parent:
+        candidate = cur / ".kaizen" / "docs"
+        if candidate.is_dir():
+            docs_dir = candidate
+            break
+        cur = cur.parent
+    if docs_dir is None:
+        return None
+
+    groups: list[list[Path]] = [
+        list(docs_dir.glob("*/plan.json"))
+        + list(docs_dir.glob("*/plan.yaml"))
+        + list(docs_dir.glob("*/plan.yml")),
+        list(docs_dir.glob("plans/*.json"))
+        + list(docs_dir.glob("plans/*.yaml")),
+        list(docs_dir.glob("*/blueprint.json"))
+        + list(docs_dir.glob("*/blueprint.yaml")),
+    ]
+    for group in groups:
+        if group:
+            group.sort(key=lambda p: p.stat().st_mtime, reverse=True)
+            return str(group[0])
+    return None
+
+
 def _resolve_file(args_file: str | None) -> str | None:
-    """Resolve the target plan file: explicit arg wins, else cached active.
-    Returns None if neither is available (caller should error)."""
+    """Resolve the target plan file. Priority:
+      1. Explicit `args_file` argument
+      2. Cached active plan (st.get_active())
+      3. Auto-discovery — most recent plan.{json,yaml} under .kaizen/docs/
+    Returns None only when no plan can be found anywhere."""
     if args_file:
         return args_file
     active = st.get_active()
-    if active is None:
-        return None
-    # The active entry doesn't carry its own path; pull from cache state.
-    state = st._read_cache()
-    return state.get("active")
+    if active is not None:
+        state = st._read_cache()
+        return state.get("active")
+    # Fresh session fallback — find the most recent plan
+    return _auto_discover_plan()
 
 
 # ─── subcommands ────────────────────────────────────────────────────────

@@ -370,6 +370,70 @@ class TestResume(unittest.TestCase):
             self.assertIsNone(bp.resume(p))
 
 
+class TestAutoDiscover(unittest.TestCase):
+    """Fresh-session auto-discovery — single command kicks off the plan."""
+
+    def _run(self, *args, env=None) -> tuple[int, str, str]:
+        result = subprocess.run(
+            ["python3", str(SCRIPTS / "blueprint.py"), *args],
+            capture_output=True, text=True, timeout=15,
+            env=env or os.environ.copy(),
+        )
+        return result.returncode, result.stdout, result.stderr
+
+    def test_resume_in_fresh_session_finds_plan_topic_folder(self):
+        with tempfile.TemporaryDirectory() as td:
+            tdp = Path(td)
+            (tdp / ".kaizen" / "docs" / "2026-05-20-feature-x").mkdir(parents=True)
+            plan_path = tdp / ".kaizen" / "docs" / "2026-05-20-feature-x" / "plan.json"
+            plan_path.write_text(json.dumps(_fresh_plan([
+                {"id": "07", "kind": "task-list", "title": "L",
+                 "status": "active", "links": {},
+                 "tasks": [{"id": "07.1", "subject": "go", "status": "pending"}]},
+            ])))
+            env = os.environ.copy()
+            env["KAIZEN_BLUEPRINT_STATE"] = str(tdp / "state.json")
+            # Run CLI from a subdir of the fake repo — auto-discovery should
+            # walk up and find .kaizen/docs/.
+            result = subprocess.run(
+                ["python3", str(SCRIPTS / "blueprint.py"), "resume"],
+                cwd=str(tdp), env=env, capture_output=True, text=True,
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn("07.1", result.stdout)
+
+    def test_auto_discover_prefers_plan_over_blueprint(self):
+        with tempfile.TemporaryDirectory() as td:
+            tdp = Path(td)
+            # Create both — a brainstorm-bundle blueprint AND a workflow plan
+            (tdp / ".kaizen" / "docs" / "2026-05-19-brainstorm").mkdir(parents=True)
+            (tdp / ".kaizen" / "docs" / "2026-05-20-master").mkdir(parents=True)
+            (tdp / ".kaizen" / "docs" / "2026-05-19-brainstorm" / "blueprint.json").write_text(
+                json.dumps(_fresh_plan([
+                    {"id": "01", "kind": "brainstorm", "title": "BS",
+                     "status": "shipped", "links": {}}
+                ])))
+            (tdp / ".kaizen" / "docs" / "2026-05-20-master" / "plan.json").write_text(
+                json.dumps(_fresh_plan([
+                    {"id": "01", "kind": "plan", "title": "Master",
+                     "status": "active", "links": {}}
+                ])))
+            env = os.environ.copy()
+            env["KAIZEN_BLUEPRINT_STATE"] = str(tdp / "state.json")
+            result = subprocess.run(
+                ["python3", str(SCRIPTS / "blueprint.py"), "state",
+                 "--json"],
+                cwd=str(tdp), env=env, capture_output=True, text=True,
+            )
+            # State alone won't trigger discovery; show triggers via _resolve_file
+            result = subprocess.run(
+                ["python3", str(SCRIPTS / "blueprint.py"), "show", "--id", "01"],
+                cwd=str(tdp), env=env, capture_output=True, text=True,
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn("Master", result.stdout)
+
+
 class TestCli(unittest.TestCase):
     """End-to-end CLI smoke."""
 
