@@ -21,13 +21,10 @@ import unittest
 from pathlib import Path
 
 _KZ_DIR = Path(__file__).resolve().parent.parent
-_VALIDATE = (
-    _KZ_DIR
-    / "skills"
-    / "plugin-development"
-    / "scripts"
-    / "validate.py"
-)
+# Post-consolidation: validate.py lives at scripts/plugin_development/.
+# Legacy path skills/plugin-development/scripts/validate.py still works as
+# a MIGRATION BRIDGE shim, but tests target the canonical location.
+_VALIDATE = _KZ_DIR / "scripts" / "plugin_development" / "validate.py"
 
 
 def _run(*args, expect_rc=None):

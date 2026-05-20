@@ -39,7 +39,7 @@ import json, os, sys
 from pathlib import Path
 
 PLUGIN_ROOT = Path(sys.argv[1])
-INTAKE = PLUGIN_ROOT / "skills/plugin-development/scripts/intake.py"
+INTAKE = PLUGIN_ROOT / "scripts/plugin_development/intake.py"
 CHECKLIST = PLUGIN_ROOT / "skills/plugin-development/domain/intake-checklist.yaml"
 
 def _emit(obj):

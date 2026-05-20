@@ -251,6 +251,8 @@
       "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/scripts/lint/lint_fix_dispatch.py:*)",
       "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/scripts/lint/lint_fix_prefs.py:*)",
       "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/scripts/lint/lint_fix_setup.py:*)",
+      "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/scripts/plugin_development/validate.py:*)",
+      "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/scripts/plugin_development/intake.py:*)",
       "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/plugin-development/scripts/validate.py:*)",
       "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/plugin-development/scripts/intake.py:*)",
       "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/*.py:*)",
