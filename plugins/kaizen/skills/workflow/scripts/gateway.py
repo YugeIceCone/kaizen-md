@@ -98,6 +98,9 @@ SUBSERVERS: list[tuple[str, str]] = [
     ("surface", "surface_mcp"),
     # Phase 13 — diagnostic surface
     ("debug", "debug_mcp"),
+    # Phase 14 — positional token addressing (BK-051: tokens_mcp was
+    # built complete with tests but never wired into the gateway)
+    ("tokens", "tokens_mcp"),
 ]
 
 gw = FastMCP("kaizen")

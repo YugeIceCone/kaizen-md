@@ -48,6 +48,14 @@ class TestGatewayComposition(unittest.TestCase):
         for srv in ("brain", "metrics"):
             self.assertIn(srv, names, f"{srv} should be mounted in phase 3")
 
+    def test_gateway_mounts_tokens(self):
+        """BK-051: tokens_mcp was built complete (218 LOC + passing tests)
+        but never wired into SUBSERVERS. Regression guard for the orphan
+        class — every *_mcp.py with passing tests should be mounted."""
+        import gateway
+        names = {name for name, _ in gateway.MOUNTED}
+        self.assertIn("tokens", names, "tokens_mcp should be mounted")
+
     def test_search_transform_applied(self):
         import gateway
         self.assertTrue(gateway.SEARCH_TRANSFORM_APPLIED,
