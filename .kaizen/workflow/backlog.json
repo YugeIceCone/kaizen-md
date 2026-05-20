@@ -1119,6 +1119,36 @@
       "committed_at": null,
       "parked_reason": null,
       "probe_output": null
+    },
+    {
+      "id": "BK-059",
+      "section": "parked",
+      "title": "Migrate axis-runner files to consolidated-plugin paths when sweep lands",
+      "ref": null,
+      "probe": "axis_runner.py + axis_runner_rules.py currently live in skills/workflow/scripts/ (legacy mega-dir); axis.schema.json + reference_demo.yaml live in skills/workflow/domain/{schemas,axes}/ (workflow-owned). When the consolidated-plugin restructure lands, move axis_runner.py + axis_runner_rules.py to scripts/quality/ (matches sibling AST-axes) and axis.schema.json + reference_demo.yaml to skills/axis-runner/domain/{schemas,axes}/ (skill-owned).",
+      "verify": "ls plugins/kaizen/scripts/quality/axis_runner.py plugins/kaizen/skills/axis-runner/domain/schemas/axis.schema.json — both files at new paths; bin symlinks updated; gateway.py SUBSERVERS still mounts axis_runner_mcp; kaizen-tests green.",
+      "tags": [],
+      "created": "2026-05-20",
+      "started_at": null,
+      "committed": null,
+      "committed_at": null,
+      "parked_reason": null,
+      "probe_output": null
+    },
+    {
+      "id": "BK-060",
+      "section": "next_up",
+      "title": "axis-runner polish: --json flag + tighten MCP test asserts + fix PyYAML docstring + drop unused params",
+      "ref": null,
+      "probe": "Three real findings from kaizen-reviewer + kaizen-karpathy-reviewer on axis-runner branch: (1) axis_runner.py lacks --json flag that 17 sibling scripts/quality/ CLIs declare (convention drift; functionally OK since envelope is JSON-by-default); (2) test_axis_runner_mcp.py lines 51-57 + 59-63 use conditional 'if data in envelope' asserts that hide subprocess failures — replace with unconditional asserts; (3) axis_runner.py docstring lines 56-62 contradicts itself about PyYAML fallback ('not attempted'); add try/except around import with clear sys.exit message; (4) axis_runner_rules.py:101-106 'del params' is YAGNI signal — drop the parameter until a second AST rule consumes it (schema stays open).",
+      "verify": "axis_runner.py argparse exposes --json action='store_true'; test_axis_runner_mcp.py asserts assertIn('data', envelope) unconditionally; PyYAML import fails fast with friendly message when missing; run_ast_rule signature no longer takes params (or has at least one consumer).",
+      "tags": [],
+      "created": "2026-05-20",
+      "started_at": null,
+      "committed": null,
+      "committed_at": null,
+      "parked_reason": null,
+      "probe_output": null
     }
   ],
   "decisions": []
