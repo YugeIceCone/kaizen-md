@@ -194,13 +194,17 @@ def score_file(path: Path) -> dict:
     }
 
 def scan_scripts(root: Path | None = None) -> list[dict]:
-    """Score every .py file under skills/workflow/scripts/."""
+    """Score every .py file under scripts/<cluster>/ (post DOMAIN-shells
+    sweep — the skills/workflow/scripts/ shim collection was retired)."""
     root = root or _plugin_root()
-    if not scripts_dir.is_dir():
+    scripts_root = root / "scripts"
+    if not scripts_root.is_dir():
         return []
     results = []
-    for p in sorted(scripts_dir.glob("*.py")):
+    for p in sorted(scripts_root.rglob("*.py")):
         if p.name.startswith("__"):  # __init__.py / __pycache__
+            continue
+        if "__pycache__" in p.parts:
             continue
         results.append(score_file(p))
     # Sort: bad first, then by score asc within each verdict
