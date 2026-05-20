@@ -1342,7 +1342,7 @@
     },
     {
       "id": "BK-071",
-      "section": "next_up",
+      "section": "done",
       "title": "kaizen-gatekeeper sub-gates crash with NameError: name 'script' is not defined (7 axes)",
       "ref": null,
       "probe": "kaizen-gatekeeper check --all triggers token-bloat, code-to-test-coverage, schema-coverage, name-quality-coverage, frontmatter-coverage, slash-collision, menu-lint sub-gates — all 7 emit 'NameError: name script is not defined' and report gate-crashed. The CLI returns the warn but the actual axis checks never run, so any drift in those axes goes undetected.",
@@ -1351,7 +1351,7 @@
       "created": "2026-05-20",
       "started_at": null,
       "committed": null,
-      "committed_at": null,
+      "committed_at": "2026-05-20T17:13:10Z",
       "parked_reason": null,
       "probe_output": null
     },
