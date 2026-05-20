@@ -2,8 +2,8 @@
 #
 # Single source of truth for kaizen workflow routines.
 # Consumed by:
-#   - skills/workflow/scripts/workflow.sh::routine_stages() (via _loader.py)
-#   - skills/workflow/scripts/workflow.sh::verb_matched_explicitly() (trigger_words)
+#   - scripts/ops/workflow.sh::routine_stages() (via _loader.py)
+#   - scripts/ops/workflow.sh::verb_matched_explicitly() (trigger_words)
 #   - skills/workflow/application/codegen.py (regenerates references/routines.md)
 #   - scripts/mcp/workflow_mcp.py (workflow_list_schemas tool)
 #

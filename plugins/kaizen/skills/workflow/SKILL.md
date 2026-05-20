@@ -9,7 +9,7 @@ version: 2.0.0
 This skill unifies the two layers of kaizen's workflow surface:
 
 1. **Discipline** — *how* to commit code: sizing model, pre-commit gates, architecture log, plan files, BACKLOG. Project-agnostic rules from `domain/git-discipline.yaml`.
-2. **Orchestration** — *what* multi-stage routine to run end-to-end: `audit`, `build-feature`, `fix-bug`, `refactor`, `migrate`, `harden`, `batch-migrate` (hardcoded) plus 6 schema-driven routines (`kaizen-default`, `debug-with-pdb`, `mcp-build`, `minimalist`, `spec-driven`, `onion-tdd-strict`). Routines are declared in `domain/routines.yaml` and run via `scripts/workflow.sh` (or the `mcp__plugin_kaizen_kaizen-workflow__*` MCP tools).
+2. **Orchestration** — *what* multi-stage routine to run end-to-end: `audit`, `build-feature`, `fix-bug`, `refactor`, `migrate`, `harden`, `batch-migrate`, `self-improving`, `custom` (hardcoded) plus 8 schema-driven routines (`kaizen-default`, `debug-with-pdb`, `mcp-build`, `minimalist`, `spec-driven`, `onion-tdd-strict`, `ralph-loop`, `shim-and-sweep`). Routines are declared in `domain/routines.yaml` and run via `scripts/ops/workflow.sh` (or the `mcp__plugin_kaizen_kaizen-workflow__*` MCP tools).
 
 Discipline + orchestration overlap — every routine's `execute-tasks` stage commits code under the discipline rules. The yaml schemas make that overlap explicit.
 
@@ -23,32 +23,31 @@ Skip nothing. The sizing model, the pre-commit gate list, the routine catalog, a
 skills/workflow/
 ├── SKILL.md                          (presentation — narrative + concept primer)
 ├── domain/                           (pure data; no behavior)
-│   ├── routines.yaml                 (14 routines: 8 hardcoded + 6 schema-driven)
+│   ├── routines.yaml                 (17 routines: 9 hardcoded + 8 schema-driven)
 │   ├── git-discipline.yaml           (12 pre-commit gates + sizing + format)
 │   └── schemas/
 │       ├── routine.schema.json
 │       └── git-rules.schema.json
-├── application/                      (loaders + codegen)
+├── application/                      (loaders + codegen — MIGRATION BRIDGES to scripts/workflow/)
 │   ├── _loader.py                    (yaml → typed dict, JSON Schema validated)
 │   ├── codegen.py                    (regenerates references/{routines,git-discipline}.md)
 │   └── _tests.py                     (17 tests)
-├── scripts/                          (adapters — shell + MCP wrappers)
-│   ├── workflow.sh                   (state machine; reads routines.yaml via _loader)
-│   ├── workflow_mcp.py               (9 MCP tools wrapping workflow.sh)
-│   ├── pre-commit.sh                 (reads git-discipline.yaml)
-│   └── refresh-cache.sh              (invokes codegen.py before sync)
-└── references/
-    ├── routines.md                   (GENERATED — do not hand-edit)
-    ├── git-discipline.md             (GENERATED — do not hand-edit)
-    ├── orchestration.md              (hand-written: subagent dispatch, hooks)
-    └── gates.md                      (hand-written: gate.requires semantics)
+└── references/                       (generated docs + hand-written orchestration/gates)
+
+Post-v1.40 layout — adapters live at <plugin>/scripts/<cluster>/ outside this skill:
+  scripts/ops/workflow.sh             (state machine; reads routines.yaml via _loader)
+  scripts/mcp/workflow_mcp.py         (9 MCP tools wrapping workflow.sh)
+  scripts/git-hooks/pre-commit.sh     (reads git-discipline.yaml)
+  scripts/install/refresh-cache.sh    (invokes codegen.py before sync)
 ```
+
+`references/` contents: `routines.md` + `git-discipline.md` + `code-router.md` (GENERATED via `application/codegen.py`); `orchestration.md`, `gates.md`, `node-flow.md`, `integration.md`, `hooks-config.md`, `plugin-root-resolution.md`, `plugin-surface-map.md`, `mermaid-flowchart-api.md`, `backlog-template.md` (HAND-written).
 
 Dependency direction: presentation → application → domain. Adapters → application → domain. No reverse edges. New rules go in `domain/`; new behavior in `application/`; new I/O in `scripts/`.
 
 ## Routine catalog (Quick reference)
 
-The 14 routines, by kind. See `references/routines.md` (generated) for the full per-routine breakdown including stage descriptions and coding-skills cross-links.
+The 17 routines, by kind. See `references/routines.md` (generated) for the full per-routine breakdown including stage descriptions and coding-skills cross-links.
 
 | Routine | Kind | Trigger words | Stages |
 |---|---|---|---|
@@ -59,6 +58,7 @@ The 14 routines, by kind. See `references/routines.md` (generated) for the full 
 | `migrate` | hardcoded | migrate, upgrade, "port to" | research → explore → analyze → create-plan → create-tasks → execute-tasks → simplify → review → validate |
 | `harden` | hardcoded | harden, secure, "threat model" | explore → audit → analyze → create-plan → create-tasks → execute-tasks → simplify → review → validate |
 | `batch-migrate` | hardcoded | "batch migrate", "across all", "sweep " | research → explore → detect-stack → analyze → batch-fanout → report |
+| `self-improving` | hardcoded | "self-improve", "curate memory", "review memory", "promote learning", "graduate this", "memory health" | explore → self-analyze → review → create-plan → create-tasks → execute-tasks → report |
 | `custom` | hardcoded | (user-pinned via skill=NAME) | (empty) |
 | `kaizen-default` | schema | (schema=kaizen-default) | research → explore → analyze → plan → tasks → execute → review → validate |
 | `debug-with-pdb` | schema | (schema=debug-with-pdb) | reproduce → isolate → inspect → hypothesize → verify-cause → fix → regression → postmortem → investigate-deeper |
@@ -66,6 +66,8 @@ The 14 routines, by kind. See `references/routines.md` (generated) for the full 
 | `minimalist` | schema | (schema=minimalist) | specs → tasks |
 | `spec-driven` | schema | (schema=spec-driven) | analyze → design → tasks → decisions → implement → validate → reflect → handoff |
 | `onion-tdd-strict` | schema (user) | (schema=onion-tdd-strict) | audit → design-layers → red-test → green-impl → refactor → adapters → composition → supervisor → trace-wire → verify |
+| `ralph-loop` | schema | "ralph", "ralph loop", "self-correcting loop", "iterate until", "stop-hook loop" | start → iterate → verify |
+| `shim-and-sweep` | schema | "carve", "carve out", "split crate", "shim", "deferred deletion", "borg-loop", "shim and sweep" | explore → analyze → characterize → create-plan → create-tasks → carve-with-shim → migrate-callers → drift-check → sweep → validate |
 
 Verb-detection: lowercase the prompt, iterate `routines.yaml` entries in declaration order, return the first routine whose `trigger_words` substring-match. `batch-migrate` comes before `migrate` in the yaml so "batch migrate all files" routes correctly. Unmatched prompts default to `build-feature`.
 

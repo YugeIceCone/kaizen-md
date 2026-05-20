@@ -13,7 +13,7 @@
 
 ## Checklist
 
-- [ ] `bash plugins/kaizen/skills/kaizen/scripts/test-pipeline.sh` → 29/29 (or more) pass
+- [ ] `bash plugins/kaizen/scripts/ops/test-pipeline.sh` → 29/29 (or more) pass
 - [ ] New scripts pass `bash -n`
 - [ ] `/kaizen:doctor` reports healthy (or expected warnings only)
 - [ ] CHANGELOG.md `[Unreleased]` entry added

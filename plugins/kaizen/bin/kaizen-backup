@@ -9,4 +9,4 @@ _SCRIPT_REAL="$(readlink -f "${BASH_SOURCE[0]}" 2>/dev/null \
 _BIN_DIR="$(cd "$(dirname "$_SCRIPT_REAL")" && pwd)"
 PLUGIN_ROOT="$(cd "$_BIN_DIR/.." && pwd)"
 
-exec bash "$PLUGIN_ROOT/skills/workflow/scripts/backup.sh" "$@"
+exec bash "$PLUGIN_ROOT/scripts/ops/backup.sh" "$@"

@@ -65,7 +65,7 @@ plugins/kaizen/
 | Add an MCP tool to "always visible" | `scripts/mcp/gateway.py::CURATED_CORE` list | Default tool budget ~15; consider what to drop |
 | Make a hook non-blocking | Return `{}` from the hook (or `systemMessage` not `permissionDecision: ask`) | PreToolUse `ask` blocks until user confirms; SystemMessage just surfaces a warning |
 | Bypass a check temporarily | Set the documented `KAIZEN_<X>_DISABLE=1` env var per command | See `kaizen iron-laws show hook-bypass-knob` |
-| Add a new gate to pre-commit | Edit `skills/workflow/scripts/pre-commit.sh` (Check N+1) OR add to gatekeeper sub-gates (Python) | Iron-laws checker is Check 7.5; gatekeeper pre-flight is Check 7.6 — model new ones after these |
+| Add a new gate to pre-commit | Edit `scripts/git-hooks/pre-commit.sh` (Check N+1) OR add to gatekeeper sub-gates (Python) | Iron-laws checker is Check 7.5; gatekeeper pre-flight is Check 7.6 — model new ones after these |
 | Change which etu severity blocks | `skills/efficient-tool-use/domain/anti-patterns.yaml::severity` (error / warn / info) | error → PreToolUse `ask`; warn/info → systemMessage |
 | Add a tool to the canonical envelope | Import `_envelope.emitter(tool="kaizen-X")`, swap `print(json.dumps(...))` → `_emit(...)`. Append to `_RETROFIT_TOOLS` in `tests/test_envelope.py`. | See `skills/efficient-tool-use/references/envelope-retrofit.md` for the full inventory + pattern |
 | Add a routine stage | `skills/workflow/domain/routines.yaml::stage_skill_map` + routine's `stages:` list | Codegen + drift-check via `codegen.py --check` |

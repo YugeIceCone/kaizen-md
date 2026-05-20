@@ -35,13 +35,13 @@ kaizen-tests --pattern "test_brain*"
 kaizen-tests bench --top-n 10
 
 # End-to-end smoke pipeline (TAP-style, sandboxes in /tmp/gwtest-*)
-bash plugins/kaizen/skills/workflow/scripts/test-pipeline.sh
+bash plugins/kaizen/scripts/ops/test-pipeline.sh
 
 # Plugin health diagnostic
-bash plugins/kaizen/skills/workflow/scripts/health.sh
+bash plugins/kaizen/scripts/ops/health.sh
 
 # Install the plugin into a project (dogfooding — sets local core.hooksPath)
-bash plugins/kaizen/skills/workflow/scripts/install.sh
+bash plugins/kaizen/scripts/install/setup.sh
 
 # Lint
 ruff check plugins/kaizen/skills/workflow/scripts/

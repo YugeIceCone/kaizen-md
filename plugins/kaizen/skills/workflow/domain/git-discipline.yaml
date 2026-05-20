@@ -1,9 +1,9 @@
 # yaml-language-server: $schema=./schemas/git-rules.schema.json
 #
 # Project-agnostic git workflow discipline. Single source of truth for:
-#   - skills/workflow/scripts/pre-commit.sh    (gate enforcement)
-#   - skills/workflow/scripts/backlog.py       (sizing thresholds)
-#   - skills/workflow/scripts/commit-msg.sh    (commit-format validation)
+#   - scripts/git-hooks/pre-commit.sh          (gate enforcement)
+#   - scripts/backlog/backlog.py               (sizing thresholds)
+#   - scripts/git-hooks/commit-msg.sh          (commit-format validation)
 #   - skills/workflow/application/codegen.py   (regenerates references/git-discipline.md)
 #
 # Rules here are derived from the kaizen plugin's pre-merge workflow SKILL.md

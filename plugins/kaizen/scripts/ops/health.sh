@@ -88,8 +88,21 @@ echo ""
 
 # ─── Section 3: Scripts ───────────────────────────────────────────────
 echo "${BOLD}[ scripts ]${RESET}"
-for s in backlog.py pre-commit.sh commit-msg.sh setup.sh migrate.sh backup.sh status.sh disable-skill.sh test-pipeline.sh health.sh; do
-    p="$_LIB_DIR/$s"
+# DOMAIN-shells Wave A/B split the ops cluster across multiple dirs;
+# entries are <name>:<path-relative-to-this-script>.
+for entry in \
+    "backlog.py:../backlog/backlog.py" \
+    "pre-commit.sh:../git-hooks/pre-commit.sh" \
+    "commit-msg.sh:../git-hooks/commit-msg.sh" \
+    "setup.sh:../install/setup.sh" \
+    "migrate.sh:../migrate/migrate.sh" \
+    "backup.sh:backup.sh" \
+    "status.sh:status.sh" \
+    "disable-skill.sh:../install/disable-skill.sh" \
+    "test-pipeline.sh:test-pipeline.sh" \
+    "health.sh:health.sh"; do
+    s="${entry%%:*}"
+    p="$_LIB_DIR/${entry#*:}"
     if [ -x "$p" ]; then
         log_pass "$s"
     elif [ -f "$p" ]; then

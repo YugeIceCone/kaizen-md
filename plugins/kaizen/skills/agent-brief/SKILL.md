@@ -31,7 +31,7 @@ If neither: this skill doesn't apply — kaizen isn't here.
 
 ### 1. Pre-commit gate (12 checks)
 
-Path: `<plugin>/skills/workflow/scripts/pre-commit.sh` symlinked to `<repo>/.kaizen/hooks/pre-commit`.
+Path: `<plugin>/scripts/git-hooks/pre-commit.sh` symlinked to `<repo>/.kaizen/hooks/pre-commit`.
 
 | # | Check | Block / Warn / Skip |
 |---|---|---|
