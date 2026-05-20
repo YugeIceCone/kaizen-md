@@ -1288,6 +1288,27 @@
       "committed_at": null,
       "parked_reason": null,
       "probe_output": null
+    },
+    {
+      "id": "BK-068",
+      "section": "next_up",
+      "title": "Extend shim-and-sweep SKILL.md with Python-specific patterns (after 2nd occurrence)",
+      "ref": "self-improving-review-2026-05-20",
+      "probe": "Three patterns surfaced during the 2026-05-20 v1.40 consolidation arc that add to the existing shim-and-sweep skill body. Tracked as project-memory candidates (sources_count=1) pending second occurrence per the skill's anti-pattern guard ('promote only what recurs ≥2 sessions'). Patterns: (1) bulk-shim-sweep-fails-via-sys-modules-cascade — Python-specific failure mode + safe per-consumer-audit protocol; (2) dual-behavior-shim-uv-script-and-import — branched body for uv-script + library hybrid (gateway.py); (3) extract-unique-value-before-retiring-orphans — function-by-function audit before deletion (brain_codegen + brain_validator precedent).",
+      "verify": "On second occurrence (next shim-sweep or orphan-retirement arc): graduate the 3 project-memory entries to ~/.claude/.kaizen/brain/Notes/pref-*.md AND extend skills/shim-and-sweep/SKILL.md with: (a) a new 'Python-specific pitfalls' section covering the sys.modules cascade, (b) the 'Dual-behavior shim' row added to the per-language Shim shapes table, (c) the extract-before-retire discipline appended to the 'When to use this' section. Update Persona Top Beliefs ranks via kaizen-brain rank.",
+      "tags": [
+        "skill",
+        "shim-and-sweep",
+        "promotion",
+        "memory",
+        "deferred"
+      ],
+      "created": "2026-05-20",
+      "started_at": null,
+      "committed": null,
+      "committed_at": null,
+      "parked_reason": null,
+      "probe_output": null
     }
   ],
   "decisions": []
