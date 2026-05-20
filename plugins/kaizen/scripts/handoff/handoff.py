@@ -1015,6 +1015,26 @@ def _cmd_scaffold(args) -> int:
     # hand-typing pass (prior session's handoff had 60+ SHAs typed manually).
     completed = mined.get("completed_tasks") or []
     all_window_shas = _auto_tag_commits(repo, changed, since=since) if changed else []
+
+    # Cap the synthetic files list so very-long sessions don't push the
+    # handoff body to thousands of lines. The 2026-05-20 handoff was 1779
+    # lines partly because its synthetic entry listed 200+ paths. Default
+    # cap = 50 (env-tunable); the overflow line records the truncation.
+    files_cap = int(os.environ.get("KAIZEN_HANDOFF_FILES_CAP", "50"))
+
+    def _render_files_lines(paths: list[str]) -> list[str]:
+        out = ["    files:"]
+        if files_cap > 0 and len(paths) > files_cap:
+            for p in paths[:files_cap]:
+                out.append(f"      - {p}")
+            out.append(
+                f"      # ... +{len(paths) - files_cap} more (capped at "
+                f"KAIZEN_HANDOFF_FILES_CAP={files_cap})")
+        else:
+            for p in paths:
+                out.append(f"      - {p}")
+        return out
+
     if completed:
         body_lines.append("done_this_session:")
         for task in completed:
@@ -1029,16 +1049,12 @@ def _cmd_scaffold(args) -> int:
                 "  - task: (git-touched files this session)")
             body_lines.append(
                 f"    commits: [{', '.join(all_window_shas)}]")
-            body_lines.append("    files:")
-            for p in changed:
-                body_lines.append(f"      - {p}")
+            body_lines += _render_files_lines(changed)
     elif changed:
         body_lines.append("done_this_session:")
         body_lines.append("  - task: TBD (scaffolded — agent fills)")
         body_lines.append(f"    commits: [{', '.join(all_window_shas)}]")
-        body_lines.append("    files:")
-        for p in changed:
-            body_lines.append(f"      - {p}")
+        body_lines += _render_files_lines(changed)
     else:
         body_lines.append("done_this_session: []")
 

@@ -488,5 +488,60 @@ class TestScaffoldFiltersNonExistentPaths(ScaffoldBase):
         self.assertNotIn("files: [a.py, b.py, c.py]", body)
 
 
+class TestScaffoldFilesCapped(ScaffoldBase):
+    """Long sessions can push the synthetic git-touched entry to 200+
+    paths — that single block was responsible for ~half of the 1779-line
+    2026-05-20 handoff. The scaffolder caps at KAIZEN_HANDOFF_FILES_CAP
+    (default 50) and emits a comment line recording the truncation."""
+
+    def test_files_capped_at_default_with_overflow_line(self):
+        # 60 files; default cap is 50. The cap only narrows the synthetic
+        # done_this_session entry — the per-project files: map at the
+        # bottom stays complete (verify uses it for file-existence
+        # checks; truncating would defeat the verify contract).
+        for i in range(60):
+            self._commit(f"f{i:02d}.py", "x\n")
+        r = self._run(
+            "--session", "many",
+            "--goal", "lots", "--now", "next",
+            "--since", "2000-01-01",
+            "--at", "2026-05-20_03-00", "--json",
+        )
+        self.assertEqual(r.returncode, 0, r.stderr)
+        body = Path(json.loads(r.stdout)["data"]["yaml_path"]).read_text()
+        # Extract just the done_this_session block (the synthetic entry's home).
+        synthetic_block = body.split("blockers:")[0]
+        # First 50 paths present in the synthetic block.
+        self.assertIn("\n      - f00.py", synthetic_block)
+        self.assertIn("\n      - f49.py", synthetic_block)
+        # Path 50+ absent FROM THE SYNTHETIC BLOCK; overflow comment present.
+        self.assertNotIn("\n      - f50.py", synthetic_block)
+        self.assertIn(
+            "# ... +10 more (capped at KAIZEN_HANDOFF_FILES_CAP=50)",
+            synthetic_block,
+        )
+
+    def test_files_cap_disabled_via_env_zero(self):
+        for i in range(5):
+            self._commit(f"f{i}.py", "x\n")
+        env = os.environ.copy()
+        env["KAIZEN_HANDOFF_FILES_CAP"] = "0"
+        r = subprocess.run(
+            [sys.executable, str(_HANDOFF_PY), "scaffold",
+             "--session", "nocap",
+             "--goal", "x", "--now", "y",
+             "--since", "2000-01-01",
+             "--at", "2026-05-20_03-00", "--json"],
+            capture_output=True, text=True, timeout=30,
+            cwd=str(self.repo), env=env,
+        )
+        self.assertEqual(r.returncode, 0, r.stderr)
+        body = Path(json.loads(r.stdout)["data"]["yaml_path"]).read_text()
+        # All 5 present, no overflow comment
+        for i in range(5):
+            self.assertIn(f"\n      - f{i}.py", body)
+        self.assertNotIn("more (capped", body)
+
+
 if __name__ == "__main__":
     unittest.main()
