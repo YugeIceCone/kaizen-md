@@ -23,8 +23,10 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from _loader import load_laws  # noqa: E402
 
-_APP_DIR = Path(__file__).resolve().parent
-REF_PATH = _APP_DIR.parent / "references" / "iron-laws.md"
+# References live with the skill (skills/iron-laws/references/), not in
+# scripts/. Output target follows the skill, not the Python location.
+_PLUGIN_ROOT = Path(__file__).resolve().parent.parent.parent
+REF_PATH = _PLUGIN_ROOT / "skills" / "iron-laws" / "references" / "iron-laws.md"
 
 GENERATED_HEADER = """<!-- DO NOT HAND-EDIT.
 
