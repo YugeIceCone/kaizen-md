@@ -51,7 +51,7 @@ plugins/kaizen/
 | A new **skill** | `skills/<name>/SKILL.md` with YAML frontmatter (`name`, `description`, `metadata.version`) | Auto-discovered. Body MUST be read in full by callers (write the trigger phrases in `description` clearly). |
 | A new **iron law** | `skills/iron-laws/domain/iron-laws.yaml` (yaml entry) + `skills/workflow/scripts/_iron_laws.py::check_<name>()` if `enforcement: auto` | Regenerate the reference: `python3 skills/iron-laws/application/codegen.py`. Tests in `tests/test_iron_laws.py`. |
 | A new **anti-pattern (efficient-tool-use)** | `skills/efficient-tool-use/domain/anti-patterns.yaml` (yaml entry with `id`, `tool`, `bad_pattern`, `why_bad`, `replacement`, `severity`, optional `detect` regex) | The pre-commit etu gate auto-picks it up. Add a `# noqa: etu` test case if false-positive prone. |
-| A new **workflow routine** | `skills/workflow/domain/routines.yaml` (`routines:` array) + each new stage to `stage_skill_map` | `python3 skills/workflow/application/codegen.py` regenerates `references/routines.md`. Tests in `skills/workflow/application/_tests.py`. |
+| A new **workflow routine** | `skills/workflow/domain/routines.yaml` (`routines:` array) + each new stage to `stage_skill_map` | `python3 scripts/workflow/codegen.py` regenerates `references/routines.md`. Tests in `scripts/workflow/_tests.py`. |
 | A new **assets/schema** | `assets/schemas/<name>.schema.json` | Add a consumer (validator script). Orphan schemas trip `kaizen-surface validate`. |
 
 ## Editing existing things (what to touch where)
@@ -105,7 +105,7 @@ plugins/kaizen/
 
 8. **`git commit` fails with "vendored skill modified".** The `no-modify-vendored` iron-law's detect list is now EMPTY (retired 2026-05-17). If this fires, check `skills/iron-laws/domain/iron-laws.yaml::no-modify-vendored` — someone may have re-added entries.
 
-9. **You changed `routines.yaml` and `codegen.py --check` fails.** Re-run `python3 skills/workflow/application/codegen.py` to regenerate `references/routines.md`. The check guards against drift between yaml + rendered markdown.
+9. **You changed `routines.yaml` and `codegen.py --check` fails.** Re-run `python3 scripts/workflow/codegen.py` to regenerate `references/routines.md`. The check guards against drift between yaml + rendered markdown.
 
 10. **A subprocess call works locally but fails in tests.** Tests run from `_REPO_ROOT` (set via `Path(__file__).resolve().parents[3]`). Use `cwd=_REPO_ROOT` in `subprocess.run` calls. See `tests/test_envelope.py` for the pattern.
 
@@ -121,7 +121,7 @@ plugins/kaizen/
 | Gatekeeper aggregate | `kaizen-gatekeeper check --all` |
 | Plugin-development validator | `python3 plugins/kaizen/skills/plugin-development/scripts/validate.py` |
 | Codegen drift (iron-laws) | `python3 plugins/kaizen/skills/iron-laws/application/codegen.py --check` |
-| Codegen drift (workflow) | `python3 plugins/kaizen/skills/workflow/application/codegen.py --check` |
+| Codegen drift (workflow) | `python3 plugins/kaizen/scripts/workflow/codegen.py --check` |
 | Hot-path hook performance | `kaizen metrics top --kind hook` |
 | etu scanner self-test | `python3 plugins/kaizen/skills/efficient-tool-use/application/etu_scan.py --all` |
 

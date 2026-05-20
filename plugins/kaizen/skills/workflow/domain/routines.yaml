@@ -4,11 +4,11 @@
 # Consumed by:
 #   - scripts/ops/workflow.sh::routine_stages() (via _loader.py)
 #   - scripts/ops/workflow.sh::verb_matched_explicitly() (trigger_words)
-#   - skills/workflow/application/codegen.py (regenerates references/routines.md)
+#   - scripts/workflow/codegen.py (regenerates references/routines.md)
 #   - scripts/mcp/workflow_mcp.py (workflow_list_schemas tool)
 #
 # DO NOT hand-edit the regenerated references/routines.md. Edit this yaml,
-# then run `application/codegen.py` (or refresh-cache.sh, which calls it).
+# then run `scripts/workflow/codegen.py` (or refresh-cache.sh, which calls it).
 
 # Routing defaults — backstop when the prompt matches no routine and when
 # get_stages() is called with an unknown routine name. Pulled out of bash
@@ -47,14 +47,14 @@ defaults:
 #      their canonical implementers but currently are not:
 #          (none — no canonical stage is shadowed by an unmapped short form)
 #
-# To audit: `python3 application/_loader.py validate` validates this yaml;
+# To audit: `python3 scripts/workflow/_loader.py validate` validates this yaml;
 # the comment here is the design-intent record for "why is X used in a
 # routine but not in stage_skill_map". A scanner verifying "all stages
 # resolve" should consult both this map AND the schema-routine yamls.
 #
 # Consumed by:
-#   - skills/workflow/application/_loader.py::get_skill_for_stage()
-#   - skills/workflow/application/codegen.py (renders the stage→skill table
+#   - scripts/workflow/_loader.py::get_skill_for_stage()
+#   - scripts/workflow/codegen.py (renders the stage→skill table
 #     into references/routines.md and references/orchestration.md)
 #   - kaizen agents that dispatch a stage subagent (looks up implementer)
 #

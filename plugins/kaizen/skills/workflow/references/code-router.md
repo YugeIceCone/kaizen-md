@@ -1,16 +1,16 @@
 <!-- DO NOT HAND-EDIT.
 
 Generated from skills/workflow/domain/intent_routing.yaml by
-skills/workflow/application/codegen.py.
+scripts/workflow/codegen.py.
 
 To change content, edit the yaml and run:
-    python3 skills/workflow/application/codegen.py
+    python3 scripts/workflow/codegen.py
 or rely on refresh-cache.sh which invokes codegen before sync.
 -->
 
 # Code-principle routing
 
-Routes code-quality and architectural questions to the appropriate `coding-skills:<name>` skill. Source-of-truth: `skills/workflow/domain/intent_routing.yaml`. Loader / matcher / CLI: `skills/workflow/application/route_intent.py`.
+Routes code-quality and architectural questions to the appropriate `coding-skills:<name>` skill. Source-of-truth: `skills/workflow/domain/intent_routing.yaml`. Loader / matcher / CLI: `scripts/workflow/route_intent.py`.
 
 ## Intent → skill
 

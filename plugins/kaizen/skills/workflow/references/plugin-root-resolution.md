@@ -29,16 +29,20 @@ synced when one changes.
 ### Bash — `scripts/util/_plugin_root.sh`
 
 ```bash
+# From plugins/kaizen/hooks/claude/<HOOK>.sh:
 _HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "$_HOOK_DIR/../scripts/util/_plugin_root.sh"
+source "$_HOOK_DIR/../../scripts/util/_plugin_root.sh"
 PLUGIN_ROOT="$(kaizen_plugin_root)" || exit 0
 ```
+
+Adjust the `..` depth for callers at other locations (e.g. `../util/`
+from a sibling `scripts/git-hooks/X.sh`).
 
 `kaizen_plugin_root` prints the path on stdout and returns 0; on
 failure it prints nothing and returns 1. Hook scripts should `exit 0`
 on unresolved root (best-effort — never block the host).
 
-### Python — `skills/workflow/scripts/_plugin_root.py`
+### Python — `scripts/io/_plugin_root.py`
 
 ```python
 from _plugin_root import plugin_root

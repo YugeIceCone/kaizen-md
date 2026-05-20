@@ -3,7 +3,7 @@
 
 Loads + validates skills/efficient-tool-use/domain/anti-patterns.yaml
 against skills/efficient-tool-use/domain/schemas/anti-pattern.schema.json.
-Mirrors skills/karpathy/application/_loader.py + skills/workflow/application/_loader.py.
+Mirrors skills/karpathy/application/_loader.py + scripts/workflow/_loader.py.
 
 ## CLI
 

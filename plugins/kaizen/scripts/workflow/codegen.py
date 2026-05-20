@@ -37,10 +37,10 @@ REFS_DIR = (
 GENERATED_HEADER = """<!-- DO NOT HAND-EDIT.
 
 Generated from skills/workflow/domain/{source}.yaml by
-skills/workflow/application/codegen.py.
+scripts/workflow/codegen.py.
 
 To change content, edit the yaml and run:
-    python3 skills/workflow/application/codegen.py
+    python3 scripts/workflow/codegen.py
 or rely on refresh-cache.sh which invokes codegen before sync.
 -->
 
@@ -244,7 +244,7 @@ def _render_intent_routing() -> str:
         "Routes code-quality and architectural questions to the appropriate "
         "`coding-skills:<name>` skill. Source-of-truth: "
         "`skills/workflow/domain/intent_routing.yaml`. Loader / matcher / CLI: "
-        "`skills/workflow/application/route_intent.py`.\n\n"
+        "`scripts/workflow/route_intent.py`.\n\n"
     )
 
     out.append("## Intent → skill\n\n")

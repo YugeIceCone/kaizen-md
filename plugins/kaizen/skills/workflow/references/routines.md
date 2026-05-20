@@ -1,10 +1,10 @@
 <!-- DO NOT HAND-EDIT.
 
 Generated from skills/workflow/domain/routines.yaml by
-skills/workflow/application/codegen.py.
+scripts/workflow/codegen.py.
 
 To change content, edit the yaml and run:
-    python3 skills/workflow/application/codegen.py
+    python3 scripts/workflow/codegen.py
 or rely on refresh-cache.sh which invokes codegen before sync.
 -->
 

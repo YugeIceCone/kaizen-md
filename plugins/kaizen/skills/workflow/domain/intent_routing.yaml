@@ -4,13 +4,13 @@
 # (formerly the `code-router` skill).
 #
 # Consumed by:
-#   - skills/workflow/application/route_intent.py (lookup + CLI + match)
-#   - skills/workflow/application/codegen.py (regenerates the user-facing
+#   - scripts/workflow/route_intent.py (lookup + CLI + match)
+#   - scripts/workflow/codegen.py (regenerates the user-facing
 #     references/code-router.md from this yaml + the disambiguation /
 #     composition tables below)
 #
 # DO NOT hand-edit references/code-router.md. Edit this yaml, then run
-# `application/codegen.py` (or refresh-cache.sh, which calls it).
+# `scripts/workflow/codegen.py` (or refresh-cache.sh, which calls it).
 
 routes:
   - id: yagni

@@ -41,7 +41,7 @@ Post-v1.40 layout — adapters live at <plugin>/scripts/<cluster>/ outside this 
   scripts/install/refresh-cache.sh    (invokes codegen.py before sync)
 ```
 
-`references/` contents: `routines.md` + `git-discipline.md` + `code-router.md` (GENERATED via `application/codegen.py`); `orchestration.md`, `gates.md`, `node-flow.md`, `integration.md`, `hooks-config.md`, `plugin-root-resolution.md`, `plugin-surface-map.md`, `mermaid-flowchart-api.md`, `backlog-template.md` (HAND-written).
+`references/` contents: `routines.md` + `git-discipline.md` + `code-router.md` (GENERATED via `scripts/workflow/codegen.py`); `orchestration.md`, `gates.md`, `node-flow.md`, `integration.md`, `hooks-config.md`, `plugin-root-resolution.md`, `plugin-surface-map.md`, `mermaid-flowchart-api.md`, `backlog-template.md` (HAND-written).
 
 Dependency direction: presentation → application → domain. Adapters → application → domain. No reverse edges. New rules go in `domain/`; new behavior in `application/`; new I/O in `scripts/`.
 
@@ -183,7 +183,7 @@ To add a routine (e.g., a custom CI verification flow):
 1. Add an entry to `domain/routines.yaml`. Set `kind: hardcoded` if verb-detected, `kind: schema` if opt-in via `schema=<name>`.
 2. Add stage names to the catalog if any are new.
 3. Update the `coding_skills:` cross-link if applicable.
-4. Run `python3 application/codegen.py` (or just `refresh-cache.sh`) — regenerates `references/routines.md`.
+4. Run `python3 scripts/workflow/codegen.py` (or just `refresh-cache.sh`) — regenerates `references/routines.md`.
 5. Run `python3 application/_tests.py` — should still pass.
 6. For `kind: schema`, also create `schemas/<name>/schema.yaml` with the detailed artifact/gate/branch declaration. Run `workflow_runner.py validate <name>`.
 

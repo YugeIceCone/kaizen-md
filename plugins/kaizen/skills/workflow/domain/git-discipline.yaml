@@ -4,7 +4,7 @@
 #   - scripts/git-hooks/pre-commit.sh          (gate enforcement)
 #   - scripts/backlog/backlog.py               (sizing thresholds)
 #   - scripts/git-hooks/commit-msg.sh          (commit-format validation)
-#   - skills/workflow/application/codegen.py   (regenerates references/git-discipline.md)
+#   - scripts/workflow/codegen.py   (regenerates references/git-discipline.md)
 #
 # Rules here are derived from the kaizen plugin's pre-merge workflow SKILL.md
 # plus the project-agnostic sections of host project CLAUDE.md files. Project-
