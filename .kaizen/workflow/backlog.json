@@ -858,7 +858,7 @@
       "section": "next_up",
       "title": "kaizen:intent — deep dig + analyze the intent system",
       "ref": null,
-      "probe": "Audit covers: every intent rule in skills/intent/domain/intents.yaml — trigger quality (false-positive rate), action shape (suggest vs subcommand), confidence calibration. Surface dead rules + stale subcommand references (e.g. /kaizen:code-tour after cat-2 retirement). Cross-check intent suggestions against the live commands/* surface",
+      "probe": "Audit covers: every intent rule in schemas/intent/intents.yaml — trigger quality (false-positive rate), action shape (suggest vs subcommand), confidence calibration. Surface dead rules + stale subcommand references (e.g. /kaizen:code-tour after cat-2 retirement). Cross-check intent suggestions against the live commands/* surface",
       "verify": "(a) Survey all rules in intents.yaml + count by action.subcommand. (b) Run each trigger against trace.jsonl sample data to measure firing rate. (c) Flag any suggest: string mentioning a retired slash. (d) Confidence-calibration: rules with high confidence that rarely fire (or never fire) — candidates for retirement/refinement. (e) Cross-check that every action.subcommand resolves to a live commands/<name>.md OR to a skill. Output deliverable to .kaizen/audits/intent-audit-<ts>.{md,jsonl}.",
       "tags": [
         "intent",

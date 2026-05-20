@@ -35,7 +35,7 @@ import _bootstrap  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 import _sqlite as _kz_sqlite  # noqa: E402  — shared SQLite open/meta helpers
 
 PLUGIN_ROOT = SCRIPT_DIR.parent.parent  # scripts/handoff/ → plugins/kaizen/
-DOMAIN_DIR = PLUGIN_ROOT / "skills" / "handoff" / "domain"
+DOMAIN_DIR = PLUGIN_ROOT / "schemas" / "handoff"
 
 # Mirrors domain/handoff.yaml::status — kept here too so the store can
 # coerce defensively without a yaml load on the hot path.

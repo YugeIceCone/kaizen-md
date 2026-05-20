@@ -188,7 +188,7 @@ class TestSlashCommandInventory(unittest.TestCase):
 
 class TestPatternsSubcommand(unittest.TestCase):
     """`kaizen patterns` exposes the canonical CLI-patterns catalog
-    (declared in skills/plugin-development/domain/cli-patterns.yaml)."""
+    (declared in schemas/plugin-development/cli-patterns.yaml)."""
 
     def test_patterns_runs_clean(self):
         r = subprocess.run([str(_BIN_KAIZEN), "patterns"],

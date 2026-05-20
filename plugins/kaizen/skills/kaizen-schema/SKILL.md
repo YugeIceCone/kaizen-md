@@ -57,13 +57,13 @@ configs (and optionally JSON Schemas to validate them). Live count
 via `find plugins/kaizen/skills -path '*/domain/*.yaml'`.
 
 Examples:
-- `skills/iron-laws/domain/iron-laws.yaml` — the iron-law registry
-- `skills/brain/domain/routing.yaml` — capture-flow routing rules
-- `skills/brainstorming/domain/brainstorm-rubric.yaml` — scoring rubric
-- `skills/plugin-development/domain/feature-shape.yaml` — canonical feature slots
-- `skills/plugin-development/domain/intake-checklist.yaml` — which skills to load per work-type
-- `skills/chatlog/domain/examples.yaml`
-- `skills/agent-formatting/domain/dispatch-rubric.yaml`
+- `schemas/iron-laws/iron-laws.yaml` — the iron-law registry
+- `schemas/brain/routing.yaml` — capture-flow routing rules
+- `schemas/brainstorming/brainstorm-rubric.yaml` — scoring rubric
+- `schemas/plugin-development/feature-shape.yaml` — canonical feature slots
+- `schemas/plugin-development/intake-checklist.yaml` — which skills to load per work-type
+- `schemas/chatlog/examples.yaml`
+- `schemas/agent-formatting/dispatch-rubric.yaml`
 
 These yamls are SSOT for their domain. Code (Python loaders, generators)
 reads them; markdown explains them. Don't duplicate yaml content in
@@ -78,10 +78,10 @@ JSON Schemas that validate runtime data structures the skill produces
 or consumes. Live count via `find plugins/kaizen -name '*.schema.json'`.
 
 Examples:
-- `skills/brain/domain/schemas/memory-entry.schema.json` — auto-memory entry shape
-- `skills/brain/domain/schemas/note.schema.json` — brain Note frontmatter
-- `skills/brainstorming/domain/schemas/idea.schema.json` — brainstorm result shape
-- `skills/chatlog/domain/schemas/triggers.schema.json`
+- `schemas/brain/schemas/memory-entry.schema.json` — auto-memory entry shape
+- `schemas/brain/schemas/note.schema.json` — brain Note frontmatter
+- `schemas/brainstorming/schemas/idea.schema.json` — brainstorm result shape
+- `schemas/chatlog/schemas/triggers.schema.json`
 - `skills/parallel-branches/schemas/{chunk,master-plan,merge-action,chunk-ledger,backlog-fragment,perms-fragment,progress-fragment}.schema.json`
 - `schemas/workflow/schemas/architecture-log-row.schema.json`
 - `assets/schemas/kaizen-config.schema.json` — plugin TOML config shape

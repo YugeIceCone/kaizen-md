@@ -382,13 +382,13 @@ else
 fi
 
 # ─── Check 7.5: iron-laws checker (kaizen-md plugin repo only) ───────
-# The iron-laws registry (skills/iron-laws/domain/iron-laws.yaml) is the
+# The iron-laws registry (schemas/iron-laws/iron-laws.yaml) is the
 # single source of truth for the kaizen-plugin iron laws; _iron_laws.py
 # is its checker. Run it over the staged diff when committing IN the
 # kaizen-md repo. Consumer repos have no plugins/kaizen/ tree — the
 # checker is a no-op there, so we skip the subprocess entirely.
 IRON_LAWS_CLI="$_SCRIPT_REAL_DIR/iron_laws.py"
-if [ -f "$REPO_ROOT/plugins/kaizen/skills/iron-laws/domain/iron-laws.yaml" ] \
+if [ -f "$REPO_ROOT/plugins/kaizen/schemas/iron-laws/iron-laws.yaml" ] \
    && [ -f "$IRON_LAWS_CLI" ]; then
     IRON_OUT=$(python3 "$IRON_LAWS_CLI" check --staged 2>&1)
     IRON_RC=$?
@@ -420,7 +420,7 @@ fi
 # Disabled with KAIZEN_GATEKEEPER_DISABLE=1 (hook-bypass-knob iron-law).
 GATEKEEPER_PY="$_SCRIPT_REAL_DIR/gatekeeper.py"
 if [ -z "${KAIZEN_GATEKEEPER_DISABLE:-}" ] \
-   && [ -f "$REPO_ROOT/plugins/kaizen/skills/iron-laws/domain/iron-laws.yaml" ] \
+   && [ -f "$REPO_ROOT/plugins/kaizen/schemas/iron-laws/iron-laws.yaml" ] \
    && [ -f "$GATEKEEPER_PY" ] \
    && command -v python3 >/dev/null 2>&1; then
     GK_OUT=$(python3 "$GATEKEEPER_PY" check --staged --json 2>/dev/null)

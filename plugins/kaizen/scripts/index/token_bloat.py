@@ -460,8 +460,8 @@ def scan_all(root: Path | None = None) -> list[dict]:
     root = root or _plugin_root()
     findings: list[dict] = []
 
-    # YAML reason_template blocks
-    for p in (root / "skills").rglob("domain/*.yaml"):
+    # YAML reason_template blocks (post-consolidation: schemas/<X>/*.yaml)
+    for p in (root / "schemas").rglob("*.yaml"):
         findings.extend(_scan_yaml_template(p, root))
 
     # SKILL.md sizes
@@ -1151,8 +1151,8 @@ def _read_last_history_findings() -> list[dict]:
 def _load_split_rubric() -> dict:
     """Load the section-split rubric. Stdlib YAML-subset parser; falls
     back to PyYAML when available for safety on edge cases."""
-    # scripts/index/ → plugins/kaizen/ + skills/token-bloat/domain/
-    p = (_SCRIPT_DIR.parents[1] / "skills" / "token-bloat" / "domain" /
+    # scripts/index/ → plugins/kaizen/ + schemas/token-bloat/
+    p = (_SCRIPT_DIR.parents[1] / "schemas" / "token-bloat" /
          "split-rubric.yaml")
     if not p.is_file():
         return {"version": 1, "rules": []}

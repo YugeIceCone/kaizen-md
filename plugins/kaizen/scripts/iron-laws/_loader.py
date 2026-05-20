@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """iron-laws — domain loader.
 
-Loads + schema-validates `skills/iron-laws/domain/iron-laws.yaml` — the
+Loads + schema-validates `schemas/iron-laws/iron-laws.yaml` — the
 single source of truth for the kaizen plugin's iron laws. Every other
 surface (codegen, the checker, validate.py, the pre-commit gate, the MCP
 server) reads the registry through this module; none parse the yaml
@@ -23,10 +23,10 @@ from pathlib import Path
 
 import yaml
 
-# Domain stays at skills/iron-laws/domain/; only the .py adapter migrated.
+# Domain stays at schemas/iron-laws/; only the .py adapter migrated.
 DOMAIN_DIR = (
     Path(__file__).resolve().parent.parent.parent
-    / "skills" / "iron-laws" / "domain"
+    / "schemas" / "iron-laws"
 )
 IRON_LAWS_YAML = DOMAIN_DIR / "iron-laws.yaml"
 SCHEMA_PATH = DOMAIN_DIR / "schemas" / "iron-law.schema.json"

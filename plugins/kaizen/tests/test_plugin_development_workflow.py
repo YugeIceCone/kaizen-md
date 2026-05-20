@@ -98,9 +98,9 @@ class TestIntakeChecklistSchema(unittest.TestCase):
     """The intake-checklist.yaml must validate against its paired
     schema. Catches drift if either evolves without the other."""
 
-    _CHECKLIST = (_KZ_DIR / "skills/plugin-development/domain"
+    _CHECKLIST = (_KZ_DIR / "schemas/plugin-development"
                             / "intake-checklist.yaml")
-    _SCHEMA = (_KZ_DIR / "skills/plugin-development/domain/schemas"
+    _SCHEMA = (_KZ_DIR / "schemas/plugin-development/schemas"
                           / "intake-checklist.schema.json")
 
     def test_files_present(self):

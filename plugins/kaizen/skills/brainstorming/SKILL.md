@@ -227,7 +227,7 @@ skill emits a typed JSONL alongside the prose spec:
   plans/<date>-<topic>.md       narrative spec (existing)
 
 Each idea row validates against
-`plugins/kaizen/skills/brainstorming/domain/schemas/idea.schema.json`
+`plugins/kaizen/schemas/brainstorming/schemas/idea.schema.json`
 and carries:
 
 - `auto_bucket` — assigned by `brainstorm-rubric.yaml` via

@@ -65,7 +65,7 @@ plugins/kaizen/skills/workflow/scripts/
 
 `skills/<feature>/domain/<feature>.yaml` declares the feature's
 subcommand → schema map. Validated against
-`skills/schema-driven-cli/domain/schemas/feature-manifest.schema.json`.
+`schemas/schema-driven-cli/schemas/feature-manifest.schema.json`.
 
 ```yaml
 version: 2
@@ -250,7 +250,7 @@ When a subcommand has a classifier or rubric, prefer the
 import schema_cli
 _RUBRIC = schema_cli.BucketWalker.from_yaml(
     Path(__file__).resolve().parent.parent.parent
-    / "skills" / "handoff" / "domain" / "outcome-rubric.yaml"
+    / "schemas" / "handoff" / "outcome-rubric.yaml"
 )
 
 def assess(signals: dict) -> str:
@@ -342,9 +342,9 @@ no-op.
 
 The handoff feature is the reference consumer:
 
-- Manifest: `skills/handoff/domain/handoff.yaml` (v2)
-- Schemas: `skills/handoff/domain/schemas/*.schema.json`
-- Rule yaml: `skills/handoff/domain/outcome-rubric.yaml`
+- Manifest: `schemas/handoff/handoff.yaml` (v2)
+- Schemas: `schemas/handoff/schemas/*.schema.json`
+- Rule yaml: `schemas/handoff/outcome-rubric.yaml`
 - CLI: `scripts/handoff/handoff.py`
 
 Read those four files end-to-end after this skill before applying the

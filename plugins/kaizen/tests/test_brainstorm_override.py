@@ -18,7 +18,7 @@ import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 import brainstorm  # noqa: E402
 
 _SCRIPT = _KZ / "scripts/util/brainstorm.py"
-_RUBRIC = _KZ / "skills/brainstorming/domain/brainstorm-rubric.yaml"
+_RUBRIC = _KZ / "schemas/brainstorming/brainstorm-rubric.yaml"
 
 class TestBrainstormOverride(unittest.TestCase):
     def test_manual_bucket_set_preserves_auto(self):

@@ -33,7 +33,7 @@ Read-only orientation agent. Spawned to map a codebase area + return a tight str
 
 1. **Layout sweep** — walk the requested area (`Glob` / `Grep`); produce a directory tree with file counts + per-file role hints (extension + first-line classification).
 2. **Entry-point inventory** — locate `main()`, `if __name__ == "__main__":`, `argparse` setups, `__init__.py` exports. List them.
-3. **Pattern identification** — match against canonical kaizen shapes (skill / command / mcp / hook — see `plugins/kaizen/skills/plugin-development/domain/cli-patterns.yaml`). Classify each file by its semantic role.
+3. **Pattern identification** — match against canonical kaizen shapes (skill / command / mcp / hook — see `plugins/kaizen/schemas/plugin-development/cli-patterns.yaml`). Classify each file by its semantic role.
 4. **Dependency edges** — for Python: `ast.Import` / `ast.ImportFrom` walk gives the import graph. For shell: `source` / `exec` lines.
 5. **Surface summary** — bin wrappers / commands / hooks / MCPs / tests touched by this area.
 

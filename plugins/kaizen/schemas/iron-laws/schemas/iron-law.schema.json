@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "kaizen iron-laws registry",
-  "description": "Schema for skills/iron-laws/domain/iron-laws.yaml — the single source of truth for the kaizen plugin's iron laws.",
+  "description": "Schema for schemas/iron-laws/iron-laws.yaml — the single source of truth for the kaizen plugin's iron laws.",
   "type": "object",
   "required": ["version", "laws"],
   "additionalProperties": false,

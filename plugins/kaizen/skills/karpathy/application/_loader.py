@@ -2,7 +2,7 @@
 
 Application-layer loader migrated alongside the karpathy scanner scripts
 (complexity_checker / diff_surgeon / etc.) per the v1.40+ consolidation.
-Domain yaml stays at skills/karpathy/domain/.
+Domain yaml stays at schemas/karpathy/.
 """
 from __future__ import annotations
 

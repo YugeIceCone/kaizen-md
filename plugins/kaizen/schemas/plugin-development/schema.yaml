@@ -2,8 +2,8 @@
 #
 # Plugin-development workflow — declarative routine for building a
 # new kaizen-plugin feature end-to-end. The 13-slot canonical
-# feature shape (skills/plugin-development/domain/feature-shape.yaml)
-# + the 13 iron-laws (skills/iron-laws/domain/iron-laws.yaml) +
+# feature shape (schemas/plugin-development/feature-shape.yaml)
+# + the 13 iron-laws (schemas/iron-laws/iron-laws.yaml) +
 # TDD discipline, distilled into 8 ordered stages.
 #
 # Pair with /kaizen:plugin-development workflow or
@@ -33,7 +33,7 @@ artifacts:
     requires: []
     description: |
       Stage 1 — pick the feature name + identify which of the 13
-      canonical slots apply. Reads skills/plugin-development/domain/
+      canonical slots apply. Reads schemas/plugin-development/
       feature-shape.yaml::slots. Outputs a per-feature manifest:
       kebab-name, owned slots, deferred slots (with reason), public
       surface (slash command? bin? MCP?), tier (1 must-ship / 2

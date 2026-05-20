@@ -26,7 +26,7 @@ PocketFlow AsyncNode graph through the canonical sequence:
    ReportNode           ← surface what landed where
 
 The flow reads its routing decisions from
-``skills/brain/domain/routing.yaml`` via ``_brain.Config``. Behaviour
+``schemas/brain/routing.yaml`` via ``_brain.Config``. Behaviour
 is fully schema-driven; the node bodies are bookkeeping over the
 yaml-declared rules.
 

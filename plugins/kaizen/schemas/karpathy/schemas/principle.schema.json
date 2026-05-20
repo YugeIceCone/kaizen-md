@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://kaizen.invalid/karpathy/schemas/principle.schema.json",
   "title": "Karpathy principles catalog",
-  "description": "Validates skills/karpathy/domain/principles.yaml — the canonical declarative form of Karpathy's 4 coding principles.",
+  "description": "Validates schemas/karpathy/principles.yaml — the canonical declarative form of Karpathy's 4 coding principles.",
   "type": "object",
   "required": ["principles"],
   "additionalProperties": true,

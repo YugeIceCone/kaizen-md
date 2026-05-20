@@ -35,7 +35,7 @@ The authoritative declarations live in `domain/`:
 | `domain/schemas/feature.schema.json` | JSONSchema for optional `skills/<feature>/domain/manifest.yaml` |
 
 The **iron laws** moved to their own skill — see `kaizen:iron-laws`
-(registry at `skills/iron-laws/domain/iron-laws.yaml`, plus a checker,
+(registry at `schemas/iron-laws/iron-laws.yaml`, plus a checker,
 CLI, and MCP server). `scripts/validate.py` still surfaces iron-law
 violations by delegating to that skill's checker.
 

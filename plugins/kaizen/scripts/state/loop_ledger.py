@@ -64,13 +64,13 @@ DEFAULT_MAX_AGE_HOURS = None  # disabled by default; yaml sets 12
 
 def _load_automation_yaml() -> dict:
     """Schema+yaml+json driven: read defaults from
-    skills/loop/domain/automation.yaml. Stdlib-only minimal parser
+    schemas/loop/automation.yaml. Stdlib-only minimal parser
     sufficient for our flat schema. Returns {} on any failure (env
     vars + hardcoded defaults still apply).
     """
     here = Path(__file__).resolve()
     # scripts/state/loop_ledger.py → parents[2] = plugin_root.
-    yaml_path = here.parents[2] / "skills" / "loop" / "domain" / "automation.yaml"
+    yaml_path = here.parents[2] / "schemas" / "loop" / "automation.yaml"
     if not yaml_path.is_file():
         return {}
     try:

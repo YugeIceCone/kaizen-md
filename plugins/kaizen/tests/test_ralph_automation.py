@@ -225,7 +225,7 @@ class TestSchemaYamlDrivenDefaults(unittest.TestCase):
 
     def test_schema_validates_shipped_yaml(self):
         """JSON Schema for automation.yaml exists + the shipped yaml conforms."""
-        schema_path = _KZ_DIR / "skills/loop/domain/schemas/automation.schema.json"
+        schema_path = _KZ_DIR / "schemas/loop/schemas/automation.schema.json"
         self.assertTrue(schema_path.is_file(),
                          f"missing schema: {schema_path}")
         schema = json.loads(schema_path.read_text())

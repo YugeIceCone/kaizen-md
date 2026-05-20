@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """kaizen-iron-laws — CLI over the iron-laws registry.
 
-The registry (`skills/iron-laws/domain/iron-laws.yaml`) is the single
+The registry (`schemas/iron-laws/iron-laws.yaml`) is the single
 source of truth. This CLI reads it through the iron-laws skill's
 `_loader`, runs the `_iron_laws` checker, and drives `codegen`.
 

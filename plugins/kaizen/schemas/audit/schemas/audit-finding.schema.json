@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/YugeIceCone/kaizen-md/skills/audit/domain/schemas/audit-finding.schema.json",
+  "$id": "https://github.com/YugeIceCone/kaizen-md/schemas/audit/schemas/audit-finding.schema.json",
   "title": "Audit finding",
   "description": "One concrete bug-candidate or boundary-violation surfaced during /kaizen:audit. The audit report is a JSON array of these (or a markdown rendering of one). Distinct from plugin-self-audit/finding.schema.json (which is about plugin-internal audit checkpoints) — this schema is for the user-facing audit of a project's code under review.",
   "type": "object",

@@ -10,7 +10,7 @@
 """kaizen iron-laws MCP — query + check the iron-laws registry mid-session.
 
 Wraps the iron-laws single-source-of-truth registry
-(`skills/iron-laws/domain/iron-laws.yaml`) so Claude can consult the
+(`schemas/iron-laws/iron-laws.yaml`) so Claude can consult the
 laws and run the checker as MCP tools instead of shelling out.
 
 ## Tools
@@ -66,7 +66,7 @@ mcp = FastMCP("kaizen-iron-laws")
 async def iron_laws_list() -> list[dict]:
     """Every iron law — id / severity / enforcement / check / statement.
 
-    The registry (skills/iron-laws/domain/iron-laws.yaml) is the single
+    The registry (schemas/iron-laws/iron-laws.yaml) is the single
     source of truth; this returns it schema-validated."""
     return await asyncio.to_thread(_loader.load_laws)
 

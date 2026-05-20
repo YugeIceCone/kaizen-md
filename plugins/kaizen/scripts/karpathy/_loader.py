@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """kaizen karpathy — yaml domain loader.
 
-Loads + validates skills/karpathy/domain/principles.yaml against
-skills/karpathy/domain/schemas/principle.schema.json. Closes the
+Loads + validates schemas/karpathy/principles.yaml against
+schemas/karpathy/schemas/principle.schema.json. Closes the
 orphan-schema gap (schema existed but had no validator).
 
 ## CLI
@@ -36,11 +36,11 @@ try:
 except ImportError:
     _HAS_JSONSCHEMA = False
 
-# Domain yaml stays with the skill (skills/karpathy/domain/); only the
+# Domain yaml stays with the skill (schemas/karpathy/); only the
 # .py adapter migrated to scripts/karpathy/.
 DOMAIN_DIR = (
     Path(__file__).resolve().parent.parent.parent
-    / "skills" / "karpathy" / "domain"
+    / "schemas" / "karpathy"
 )
 PRINCIPLES_YAML = DOMAIN_DIR / "principles.yaml"
 PRINCIPLE_SCHEMA = DOMAIN_DIR / "schemas" / "principle.schema.json"

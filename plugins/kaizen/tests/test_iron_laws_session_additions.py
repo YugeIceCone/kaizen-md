@@ -25,7 +25,7 @@ import yaml
 
 _LAWS_YAML = (
     Path(__file__).resolve().parent.parent
-    / "skills/iron-laws/domain/iron-laws.yaml"
+    / "schemas/iron-laws/iron-laws.yaml"
 )
 
 _NEW_LAW_IDS = {

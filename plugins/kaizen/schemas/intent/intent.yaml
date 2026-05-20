@@ -9,7 +9,7 @@ description: >-
   kaizen actions.
 
 paths:
-  intents_file: "skills/intent/domain/intents.yaml"
+  intents_file: "schemas/intent/intents.yaml"
   intents_file_env: "KAIZEN_INTENTS_FILE"
 
 subcommands:

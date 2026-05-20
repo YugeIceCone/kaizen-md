@@ -63,7 +63,7 @@ SKILL_DIR = PLUGIN_ROOT / "skills" / "plugin-development"
 DOMAIN_DIR = SKILL_DIR / "domain"
 REPO_ROOT = PLUGIN_ROOT.parent.parent   # kaizen-md repo root
 # iron-laws.yaml lives with its own skill (skills/iron-laws/).
-IRON_LAWS_YAML = PLUGIN_ROOT / "skills" / "iron-laws" / "domain" / "iron-laws.yaml"
+IRON_LAWS_YAML = PLUGIN_ROOT / "schemas" / "iron-laws" / "iron-laws.yaml"
 
 # ─── Minimal YAML loader (stdlib-only) ───────────────────────────────
 

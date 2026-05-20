@@ -208,22 +208,22 @@ class TestIntentUserPromptHook(IntentScanBase):
 
 class TestIntentSchemasPresent(unittest.TestCase):
     def test_match_out_schema_exists(self):
-        p = _KZ_DIR / "skills/intent/domain/schemas/match-out.schema.json"
+        p = _KZ_DIR / "schemas/intent/schemas/match-out.schema.json"
         self.assertTrue(p.is_file(), f"missing {p}")
         json.loads(p.read_text())
 
     def test_suggest_out_schema_exists(self):
-        p = _KZ_DIR / "skills/intent/domain/schemas/suggest-out.schema.json"
+        p = _KZ_DIR / "schemas/intent/schemas/suggest-out.schema.json"
         self.assertTrue(p.is_file(), f"missing {p}")
         json.loads(p.read_text())
 
     def test_list_out_schema_exists(self):
-        p = _KZ_DIR / "skills/intent/domain/schemas/list-out.schema.json"
+        p = _KZ_DIR / "schemas/intent/schemas/list-out.schema.json"
         self.assertTrue(p.is_file(), f"missing {p}")
         json.loads(p.read_text())
 
     def test_match_in_schema_exists(self):
-        p = _KZ_DIR / "skills/intent/domain/schemas/match-in.schema.json"
+        p = _KZ_DIR / "schemas/intent/schemas/match-in.schema.json"
         self.assertTrue(p.is_file(), f"missing {p}")
         json.loads(p.read_text())
 

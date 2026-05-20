@@ -2,7 +2,7 @@
 
 The `assess` subcommand computes mechanical signals from a handoff
 YAML, walks the BucketWalker rubric at
-`skills/handoff/domain/outcome-rubric.yaml`, and returns a typed
+`schemas/handoff/outcome-rubric.yaml`, and returns a typed
 recommendation envelope. When the rubric falls through (no rule
 matches), it returns `NEEDS_AGENT` so the calling agent picks
 qualitatively.
@@ -23,7 +23,7 @@ from pathlib import Path
 _KZ_DIR = Path(__file__).resolve().parent.parent
 _SCRIPTS = _KZ_DIR / "scripts/handoff"
 _HANDOFF_PY = _SCRIPTS / "handoff.py"
-_DOMAIN = _KZ_DIR / "skills/handoff/domain"
+_DOMAIN = _KZ_DIR / "schemas/handoff"
 _RUBRIC = _DOMAIN / "outcome-rubric.yaml"
 
 sys.path.insert(0, str(_SCRIPTS))

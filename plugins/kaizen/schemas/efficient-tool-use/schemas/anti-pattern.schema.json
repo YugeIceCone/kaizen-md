@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/YugeIceCone/kaizen-md/skills/efficient-tool-use/domain/schemas/anti-pattern.schema.json",
+  "$id": "https://github.com/YugeIceCone/kaizen-md/schemas/efficient-tool-use/schemas/anti-pattern.schema.json",
   "title": "Efficient tool-use anti-pattern catalog",
-  "description": "Validates skills/efficient-tool-use/domain/anti-patterns.yaml — the canonical list of shell-toolbox anti-patterns. Consumed by any future scanner script that wants to grep staged scripts for these patterns as a pre-commit check.",
+  "description": "Validates schemas/efficient-tool-use/anti-patterns.yaml — the canonical list of shell-toolbox anti-patterns. Consumed by any future scanner script that wants to grep staged scripts for these patterns as a pre-commit check.",
   "type": "object",
   "required": ["anti_patterns"],
   "additionalProperties": false,

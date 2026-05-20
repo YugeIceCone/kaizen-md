@@ -85,7 +85,7 @@ their own subcommands above.
 
 ## Schema
 
-Lives at `skills/brain/domain/`:
+Lives at `schemas/brain/`:
 
 - `entity-types.yaml` — 4 types + target dirs + required frontmatter +
   detection triggers + priority order

@@ -34,7 +34,7 @@ data future scope-discipline lints will walk (BK-024, ML-005, ML-006).
 
 ## Manifest
 
-Source of truth: `skills/memory-ledger/domain/memory-surfaces.yaml`.
+Source of truth: `schemas/memory-ledger/memory-surfaces.yaml`.
 Add a new surface there before shipping a feature that persists state.
 
 ## Bypass
@@ -57,5 +57,5 @@ Four memory + continuity bins are the canonical capture/inspect verbs. Bins, ski
 | Active work tracker | `kaizen-backlog` | list / add / start / tick / done / park / unpark / decision / render / verify / show — was `/kaizen:backlog` |
 
 All four are already declared surfaces in
-`skills/memory-ledger/domain/memory-surfaces.yaml`; this fold puts the
+`schemas/memory-ledger/memory-surfaces.yaml`; this fold puts the
 verb invocation alongside the catalog instead of in a separate slash.

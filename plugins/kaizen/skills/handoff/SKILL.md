@@ -19,7 +19,7 @@ If the user's intent is ambiguous, ask which one.
 ## Lens contract — the v2 manifest
 
 Every subcommand declares its input + output schemas in
-`skills/handoff/domain/handoff.yaml` (v2 manifest). The runtime
+`schemas/handoff/handoff.yaml` (v2 manifest). The runtime
 (`scripts/rules/schema_cli.py`, the "lens") validates I/O
 before each call. Agents discover the contract by reading the manifest:
 

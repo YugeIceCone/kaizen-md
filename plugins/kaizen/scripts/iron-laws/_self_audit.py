@@ -17,7 +17,7 @@ from pathlib import Path
 SCRIPT_DIR = Path(__file__).resolve().parent
 PLUGIN_ROOT = SCRIPT_DIR.parent.parent  # scripts/iron-laws → plugins/kaizen
 REPO_ROOT = PLUGIN_ROOT.parent.parent           # kaizen-md repo
-DOMAIN_DIR = PLUGIN_ROOT / "skills" / "plugin-self-audit" / "domain"
+DOMAIN_DIR = PLUGIN_ROOT / "schemas" / "plugin-self-audit"
 
 # Severity ordering matches audit-pipeline.yaml::severity_order
 SEVERITY_ORDER = ("info", "low", "medium", "high", "critical")

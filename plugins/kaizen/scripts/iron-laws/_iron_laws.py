@@ -3,10 +3,10 @@
 
 One `check_<name>(ctx)` function per `enforcement: auto` iron law, plus
 the `CHECKS` dispatch registry and `run_checks()`. Each check translates
-its law's `detect:` predicate (in `skills/iron-laws/domain/iron-laws.yaml`)
+its law's `detect:` predicate (in `schemas/iron-laws/iron-laws.yaml`)
 into a grep / AST / git-diff / filesystem test and returns `Finding`s.
 
-The registry (`skills/iron-laws/domain/iron-laws.yaml`) is the single
+The registry (`schemas/iron-laws/iron-laws.yaml`) is the single
 source of truth — this module *references* it via the iron-laws skill's
 `_loader`; it does not duplicate law metadata.
 

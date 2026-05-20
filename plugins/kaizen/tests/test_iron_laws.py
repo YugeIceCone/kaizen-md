@@ -14,7 +14,7 @@ import unittest
 from pathlib import Path
 
 _PLUGIN_ROOT = Path(__file__).resolve().parent.parent
-_DOMAIN = _PLUGIN_ROOT / "skills" / "iron-laws" / "domain"
+_DOMAIN = _PLUGIN_ROOT / "schemas" / "iron-laws"
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import _kaizen_paths  # noqa: F401, E402 — adds scripts/<cluster>/ to sys.path
 

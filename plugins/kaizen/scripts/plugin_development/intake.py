@@ -29,10 +29,10 @@ import sys
 from pathlib import Path
 
 _SCRIPT_DIR = Path(__file__).resolve().parent
-# Domain yaml stays with the skill (skills/plugin-development/domain/);
+# Domain yaml stays with the skill (schemas/plugin-development/);
 # only the .py adapter migrated to scripts/plugin_development/.
 _PLUGIN_ROOT = _SCRIPT_DIR.parent.parent
-_CHECKLIST = _PLUGIN_ROOT / "skills" / "plugin-development" / "domain" / "intake-checklist.yaml"
+_CHECKLIST = _PLUGIN_ROOT / "schemas" / "plugin-development" / "intake-checklist.yaml"
 
 def _load_yaml(path: Path) -> dict:
     try:

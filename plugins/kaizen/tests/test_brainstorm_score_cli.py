@@ -16,7 +16,7 @@ from pathlib import Path
 
 _KZ = Path(__file__).resolve().parent.parent
 _SCRIPT = _KZ / "scripts/util/brainstorm.py"
-_RUBRIC = _KZ / "skills/brainstorming/domain/brainstorm-rubric.yaml"
+_RUBRIC = _KZ / "schemas/brainstorming/brainstorm-rubric.yaml"
 
 
 def _run(*args, env_extra=None):

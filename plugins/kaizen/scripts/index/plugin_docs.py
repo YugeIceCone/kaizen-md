@@ -77,7 +77,7 @@ def classify_kind(path: Path) -> Optional[str]:
         return "skill"
     if re.search(r"/skills/[^/]+/references/[^/]+\.md$", s):
         return "reference"
-    if re.search(r"/skills/[^/]+/domain/", s) and (
+    if re.search(r"/schemas/[^/]+/", s) and (
         s.endswith(".yaml") or s.endswith(".json")
     ):
         return "domain"

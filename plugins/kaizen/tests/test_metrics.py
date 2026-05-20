@@ -266,7 +266,7 @@ class TestSkipDetection(MetricsBase):
              "data": {"ident": "plugins/kaizen/skills/brain/SKILL.md"}},
             {"ts": "2026-05-14T00:00:01Z", "evt": "PreToolUse-Write",
              "tool": "Write", "sid": "s1",
-             "data": {"ident": "plugins/kaizen/skills/brain/domain/x.yaml"}},
+             "data": {"ident": "plugins/kaizen/schemas/brain/x.yaml"}},
         ])
         skips = metrics.detect_skips(sid="s1")
         brain_skip = next(s for s in skips if s["skill"] == "brain")

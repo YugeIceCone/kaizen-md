@@ -22,7 +22,7 @@ def _plugin_root_default() -> Path:
     return _SCRIPT_DIR.parents[1]
 
 def scan(*, plugin_root: Path) -> dict:
-    schemas = sorted(plugin_root.glob("skills/*/domain/schemas/*.json"))
+    schemas = sorted(plugin_root.glob("schemas/*/schemas/*.json"))
     py_blob = ""
     scripts_dir = plugin_root / "scripts"
     if scripts_dir.is_dir():

@@ -2,7 +2,7 @@
 
 Backs the v1.34+ Python port of the retired remember plugin
 (~/.claude/local-marketplaces/remember-md-retired-...). Loads
-schema + routing yaml from skills/brain/domain/, provides:
+schema + routing yaml from schemas/brain/, provides:
 
 - ``Config``         — paths, types, routing rules
 - ``detect_type``    — heuristic classifier (world-fact / belief /
@@ -44,11 +44,11 @@ sys.path.insert(0, str(_SCRIPT_DIR))
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import _bootstrap  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 
-# Domain yaml lives at skills/brain/domain/ — resolve from plugin root.
+# Domain yaml lives at schemas/brain/ — resolve from plugin root.
 # Was .parent.parent.parent (skills/workflow/scripts/ depth); now .parent.parent
 # (scripts/brain/ depth after DOMAIN-3 migration).
 _PLUGIN_ROOT = _SCRIPT_DIR.parent.parent  # plugins/kaizen
-_DOMAIN_DIR = _PLUGIN_ROOT / "skills" / "brain" / "domain"
+_DOMAIN_DIR = _PLUGIN_ROOT / "schemas" / "brain"
 
 # ─── TOML / YAML loaders ──────────────────────────────────────────────
 

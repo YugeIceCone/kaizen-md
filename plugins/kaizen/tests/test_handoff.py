@@ -98,7 +98,7 @@ class TestModuleAndDomain(unittest.TestCase):
             self.skipTest("PyYAML not installed")
         import yaml
         d = yaml.safe_load(
-            (_KZ_DIR / "skills/handoff/domain/handoff.yaml").read_text())
+            (_KZ_DIR / "schemas/handoff/handoff.yaml").read_text())
         # Bumped to v2 when the lens skill landed — the manifest now
         # declares subcommands → schema map; status/outcome live as
         # documentation-only sections (authoritative in _handoff.py).
@@ -112,7 +112,7 @@ class TestModuleAndDomain(unittest.TestCase):
 
     def test_record_schema_valid(self):
         s = json.loads(
-            (_KZ_DIR / "skills/handoff/domain/schemas/handoff-record.schema.json")
+            (_KZ_DIR / "schemas/handoff/schemas/handoff-record.schema.json")
             .read_text())
         self.assertEqual(
             s["required"],

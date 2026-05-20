@@ -20,7 +20,7 @@ from pathlib import Path
 _KZ_DIR = Path(__file__).resolve().parent.parent
 _SCRIPTS = _KZ_DIR / "scripts/handoff"
 _HANDOFF_PY = _SCRIPTS / "handoff.py"
-_DOMAIN = _KZ_DIR / "skills/handoff/domain"
+_DOMAIN = _KZ_DIR / "schemas/handoff"
 
 
 class ScaffoldBase(unittest.TestCase):

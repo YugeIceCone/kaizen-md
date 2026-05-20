@@ -1,7 +1,7 @@
 """Tests for kaizen-memory-ledger — catalog + status + flow verbs.
 
 The ledger is observability-only over the declarative manifest at
-skills/memory-ledger/domain/memory-surfaces.yaml. v1 scope:
+schemas/memory-ledger/memory-surfaces.yaml. v1 scope:
   - catalog: print every declared surface as a typed envelope
   - status: sample each surface on disk; flag missing
   - flow:   render the continuity-of-session flow phase-by-phase
@@ -20,7 +20,7 @@ from pathlib import Path
 
 _KZ = Path(__file__).resolve().parent.parent
 _LEDGER_PY = _KZ / "scripts" / "memory_ledger" / "memory_ledger.py"
-_MANIFEST = _KZ / "skills" / "memory-ledger" / "domain" / "memory-surfaces.yaml"
+_MANIFEST = _KZ / "schemas" / "memory-ledger" / "memory-surfaces.yaml"
 
 
 def _run(*args: str) -> subprocess.CompletedProcess:

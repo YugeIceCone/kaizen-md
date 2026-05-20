@@ -93,7 +93,7 @@ work_types:
     triggers: ["dispatch subagent", "which agent", "subagent type"]
     skills:
       - plugin:agent-formatting    # dispatch-rubric pattern
-      # The dispatch-rubric itself: skills/agent-formatting/domain/dispatch-rubric.yaml
+      # The dispatch-rubric itself: schemas/agent-formatting/dispatch-rubric.yaml
 
   - id: schema-or-config
     triggers: ["schema", "config yaml", "feature manifest", "domain yaml"]

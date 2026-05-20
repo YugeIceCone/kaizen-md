@@ -81,7 +81,7 @@ Plus the original `scripts/*.js` (build-index, extract, schema, promote, append-
 
   **Consolidation status (2026-05-17+):** the live implementation is
   now [`skills/brain/`](skills/brain/SKILL.md) — a Python rewrite with
-  schema-driven domain yamls (`skills/brain/domain/schemas/note.schema.json`),
+  schema-driven domain yamls (`schemas/brain/schemas/note.schema.json`),
   Node+Flow async engine (PocketFlow `AsyncNode`), MCP-exposed tools,
   and SessionStart/UserPromptSubmit/SessionEnd hooks. The 5 originally-
   upstream skills (`remember/`, `process/`, `evolve/`, `status/`, `init/`)

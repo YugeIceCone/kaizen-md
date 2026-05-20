@@ -2,7 +2,7 @@
 itself against its own canonical shape + iron laws + adoption signals.
 
 Drives a PocketFlow AsyncFlow from the schema declaration in
-``skills/plugin-self-audit/domain/audit-pipeline.yaml``. Mechanical
+``schemas/plugin-self-audit/audit-pipeline.yaml``. Mechanical
 stages run real checks; skill stages emit checkpoint Findings the
 agent applies after the report.
 

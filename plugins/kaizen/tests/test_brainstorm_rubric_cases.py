@@ -17,7 +17,7 @@ sys.path.insert(0, str(_KZ / "scripts/rules"))
 
 import schema_cli  # noqa: E402
 
-_RUBRIC = _KZ / "skills/brainstorming/domain/brainstorm-rubric.yaml"
+_RUBRIC = _KZ / "schemas/brainstorming/brainstorm-rubric.yaml"
 
 def _walker():
     return schema_cli.BucketWalker.from_yaml(_RUBRIC)

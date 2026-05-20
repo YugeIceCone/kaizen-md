@@ -169,7 +169,7 @@ stages:
       - "plugins/kaizen/"
     focus: |
       Check for: deviations from the canonical feature shape
-      (skills/plugin-development/domain/feature-shape.yaml — authoritative
+      (schemas/plugin-development/feature-shape.yaml — authoritative
       slot list), inconsistent module naming (some use _<feature>,
       some don't), mismatched env-var prefixes (KAIZEN_X vs REMEMBER_Y).
 

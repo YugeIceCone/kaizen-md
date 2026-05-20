@@ -10,7 +10,7 @@
 #   scripts/memory_ledger/memory_ledger.py {catalog | status | flow}
 #
 # Schema enforced by:
-#   skills/memory-ledger/domain/schemas/memory-surfaces.schema.json
+#   schemas/memory-ledger/schemas/memory-surfaces.schema.json
 #
 # Scope discipline (per BK-024):
 #   - project: per-repo state; lives in <repo>/.kaizen/ or

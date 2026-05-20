@@ -1,7 +1,7 @@
 """Phase E: schema validation for Note / memory-entry frontmatter.
 
 Single declarative schema at
-``skills/brain/domain/schemas/memory-entry.schema.json`` validates
+``schemas/brain/schemas/memory-entry.schema.json`` validates
 brain Notes, brain Inbox drafts, and project-memory entries — all
 share the same frontmatter shape.
 
@@ -24,7 +24,7 @@ class TestSchemaFileExists(unittest.TestCase):
     """The schema must exist at the canonical location + be valid JSON."""
 
     def test_schema_file_is_valid_json(self):
-        schema_path = (ROOT / "skills" / "brain" / "domain" /
+        schema_path = (ROOT / "schemas" / "brain" /
                        "schemas" / "memory-entry.schema.json")
         self.assertTrue(schema_path.is_file(),
                          f"schema missing at {schema_path}")

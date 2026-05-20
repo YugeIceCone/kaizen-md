@@ -63,7 +63,7 @@ Full rule body in `[[Notes/pref-kaizen-plugin-dev]]`. Key points:
   `python3 plugins/kaizen/skills/plugin-development/scripts/validate.py --staged`
   before staging.
 - **Never edit vendored skills** (hard rule). The vendored list is in
-  `skills/iron-laws/domain/iron-laws.yaml::no-modify-vendored` and
+  `schemas/iron-laws/iron-laws.yaml::no-modify-vendored` and
   `ATTRIBUTIONS.md`.
 
 ## Dispatching subagents
@@ -92,7 +92,7 @@ Consequences for any commit:
 
 ### Canonical feature shape
 
-Source-of-truth: `skills/plugin-development/domain/feature-shape.yaml`
+Source-of-truth: `schemas/plugin-development/feature-shape.yaml`
 (the yaml wins). Each feature lands files across the slots defined
 there: skill body / domain config / private core (`_<feature>.py`) /
 public CLI (`<feature>.py`) / indexer / MCP server / hooks / commands /
@@ -108,7 +108,7 @@ wrappers) → `references/` (generated docs — regenerate via
 
 ### Iron laws (hard = commit-blocking)
 
-Source-of-truth: `skills/iron-laws/domain/iron-laws.yaml`. Inspect via
+Source-of-truth: `schemas/iron-laws/iron-laws.yaml`. Inspect via
 `kaizen-iron-laws list` or `kaizen-iron-laws check --staged`. Hard laws
 include `bin-wrapper-per-cli`, `plugin-manifest-permissions`,
 `hook-bypass-knob`, `sandbox-tests`.

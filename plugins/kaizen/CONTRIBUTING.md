@@ -8,7 +8,7 @@ The `kaizen` plugin eats its own dogfood — contributions go through the same g
 > checklist that this CONTRIBUTING.md assumes you've absorbed. The iron
 > laws now live in their own [`iron-laws`](skills/iron-laws/SKILL.md)
 > skill — registry + checker + CLI + MCP. Schema at
-> [`skills/plugin-development/domain/`](skills/plugin-development/domain/);
+> [`schemas/plugin-development/`](schemas/plugin-development/);
 > validate with
 > `python3 skills/plugin-development/scripts/validate.py --staged`.
 
@@ -89,7 +89,7 @@ The bundles are now treated as plugin-original derivatives. Original-author attr
 
 **Adding a NEW upstream-vendored skill.** If kaizen ever wires in fresh upstream-tracked content, restore the discipline:
 
-1. Add the skill dir name to the `VENDORED` set in `plugins/kaizen/skills/workflow/scripts/_iron_laws.py` (and document in `skills/iron-laws/domain/iron-laws.yaml::no-modify-vendored`).
+1. Add the skill dir name to the `VENDORED` set in `plugins/kaizen/skills/workflow/scripts/_iron_laws.py` (and document in `schemas/iron-laws/iron-laws.yaml::no-modify-vendored`).
 2. Mirror via `cp -rp` from the upstream cache, never hand-edit.
 3. Re-sync via `git commit -m "bundle-refresh: pull <upstream> @ <sha>"`.
 

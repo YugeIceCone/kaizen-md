@@ -40,7 +40,7 @@ from pathlib import Path
 
 PLUGIN_ROOT = Path(sys.argv[1])
 INTAKE = PLUGIN_ROOT / "scripts/plugin_development/intake.py"
-CHECKLIST = PLUGIN_ROOT / "skills/plugin-development/domain/intake-checklist.yaml"
+CHECKLIST = PLUGIN_ROOT / "schemas/plugin-development/intake-checklist.yaml"
 
 def _emit(obj):
     print(json.dumps(obj))

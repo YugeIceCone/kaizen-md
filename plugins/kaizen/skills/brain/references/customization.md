@@ -37,7 +37,7 @@ Schema is loaded by `_brain.parse_note()` and enforced by `scripts/brain/brain_s
 
 ## 3. Entity types — how thoughts get classified
 
-`skills/brain/domain/entity-types.yaml` is the SSOT for the four
+`schemas/brain/entity-types.yaml` is the SSOT for the four
 epistemic categories (`world-fact / belief / observation / experience`)
 and their detection rules.
 
@@ -53,7 +53,7 @@ and their detection rules.
 
 ## 4. Routing — which tier a thought lands in (brain vs project-memory)
 
-`skills/brain/domain/routing.yaml` is the SSOT for the tier-selection logic.
+`schemas/brain/routing.yaml` is the SSOT for the tier-selection logic.
 
 | Want to change | Edit |
 |---|---|
@@ -190,7 +190,7 @@ Set in shell, in `~/.claude/settings.json::env`, or per-command.
 export KAIZEN_BRAIN_DIR=/path/to/your/brain
 
 # Add a new world-fact trigger phrase
-$EDITOR plugins/kaizen/skills/brain/domain/entity-types.yaml
+$EDITOR plugins/kaizen/schemas/brain/entity-types.yaml
 # → types[0].triggers: append your phrase
 
 # Tighten promotion (require 3 sources, not 2)

@@ -9,7 +9,7 @@ emits one `audit-report.schema.json`-conforming aggregate. Computes:
   - counts.{p0,p1,p2,p3,applied,trailed,reported_only}
   - recommended_next_step
 
-Both schemas live at `skills/audit/domain/schemas/`. The reporter
+Both schemas live at `schemas/audit/schemas/`. The reporter
 validates input findings AND output report at the boundary (when
 `jsonschema` is available; degrades gracefully like the workflow + karpathy
 + etu loaders).
@@ -37,9 +37,9 @@ import sys
 import uuid
 from pathlib import Path
 
-# Domain yaml stays at skills/audit/domain/; only the .py adapter migrated.
+# Domain yaml stays at schemas/audit/; only the .py adapter migrated.
 _PLUGIN_ROOT = Path(__file__).resolve().parent.parent.parent
-_DOMAIN_DIR = _PLUGIN_ROOT / "skills" / "audit" / "domain"
+_DOMAIN_DIR = _PLUGIN_ROOT / "schemas" / "audit"
 _FINDING_SCHEMA = _DOMAIN_DIR / "schemas" / "audit-finding.schema.json"
 _REPORT_SCHEMA = _DOMAIN_DIR / "schemas" / "audit-report.schema.json"
 

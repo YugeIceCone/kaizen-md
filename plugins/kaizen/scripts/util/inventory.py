@@ -767,8 +767,7 @@ def cmd_stats(args) -> int:
     return 0
 
 _CLI_PATTERNS_YAML = (Path(__file__).resolve().parents[2]
-                        / "skills" / "plugin-development"
-                        / "domain" / "cli-patterns.yaml")
+                        / "schemas" / "plugin-development" / "cli-patterns.yaml")
 
 def _load_cli_patterns() -> list[dict]:
     """Load cli-patterns.yaml catalog (stdlib regex fallback if pyyaml absent)."""

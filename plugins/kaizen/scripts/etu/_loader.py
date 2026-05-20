@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """kaizen efficient-tool-use — yaml domain loader.
 
-Loads + validates skills/efficient-tool-use/domain/anti-patterns.yaml
-against skills/efficient-tool-use/domain/schemas/anti-pattern.schema.json.
+Loads + validates schemas/efficient-tool-use/anti-patterns.yaml
+against schemas/efficient-tool-use/schemas/anti-pattern.schema.json.
 Mirrors skills/karpathy/application/_loader.py + scripts/workflow/_loader.py.
 
 ## CLI
@@ -39,7 +39,7 @@ except ImportError:
 
 DOMAIN_DIR = (
     Path(__file__).resolve().parent.parent.parent
-    / "skills" / "efficient-tool-use" / "domain"
+    / "schemas" / "efficient-tool-use"
 )
 ANTI_PATTERNS_YAML = DOMAIN_DIR / "anti-patterns.yaml"
 ANTI_PATTERN_SCHEMA = DOMAIN_DIR / "schemas" / "anti-pattern.schema.json"

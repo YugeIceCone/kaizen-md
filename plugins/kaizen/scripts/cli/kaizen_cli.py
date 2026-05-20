@@ -11,7 +11,7 @@ unchanged (still `bin/kaizen-<sub>` wrapper lookup) — what's new:
     the `bin/kaizen-*` CLI wrapper surface this dispatcher routes to)
   - `kaizen help <sub>` — full docstring pulled from the wrapper header
   - `kaizen patterns [--json]` — canonical CLI-patterns catalog
-    (sourced from skills/plugin-development/domain/cli-patterns.yaml)
+    (sourced from schemas/plugin-development/cli-patterns.yaml)
   - `kaizen --time <sub> [args]` — dispatch + wall-clock timing
   - `kaizen --trace <sub> [args]` — dispatch + kaizen-trace events
   - `kaizen <sub> [args]` — vanilla dispatch (execv, zero overhead)
@@ -338,8 +338,7 @@ def cmd_version(args: argparse.Namespace) -> int:
 # ─── kaizen patterns — canonical CLI-patterns catalog ────────────────
 
 _PATTERNS_YAML = (Path(__file__).resolve().parents[2]
-                    / "skills" / "plugin-development"
-                    / "domain" / "cli-patterns.yaml")
+                    / "schemas" / "plugin-development" / "cli-patterns.yaml")
 
 def _load_patterns_catalog() -> dict:
     """Parse the cli-patterns.yaml SSOT. Stdlib-only via a tiny YAML
@@ -457,7 +456,7 @@ def cmd_patterns(args: argparse.Namespace) -> int:
         return 0
     patterns = catalog.get("patterns", [])
     print(f"kaizen CLI patterns — {len(patterns)} canonical entries"
-          f"  (source: skills/plugin-development/domain/cli-patterns.yaml)")
+          f"  (source: schemas/plugin-development/cli-patterns.yaml)")
     print()
     for p in patterns:
         law = f"  [law: {p['iron_law']}]" if p.get("iron_law") else ""

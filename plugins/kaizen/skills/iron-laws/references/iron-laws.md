@@ -1,6 +1,6 @@
 <!-- DO NOT HAND-EDIT.
 
-Generated from skills/iron-laws/domain/iron-laws.yaml by
+Generated from schemas/iron-laws/iron-laws.yaml by
 skills/iron-laws/application/codegen.py.
 
 To change content, edit the yaml and run `kaizen-iron-laws render`
@@ -10,7 +10,7 @@ build if this file ever drifts from the yaml.
 
 # Iron Laws
 
-The non-negotiable rules for kaizen-plugin-original development. This file is a read-only copy of `skills/iron-laws/domain/iron-laws.yaml` (the single source of truth). `enforcement: auto` laws are machine-checked by `_iron_laws.py`; `manual` laws are listed + documented but not auto-checked.
+The non-negotiable rules for kaizen-plugin-original development. This file is a read-only copy of `schemas/iron-laws/iron-laws.yaml` (the single source of truth). `enforcement: auto` laws are machine-checked by `_iron_laws.py`; `manual` laws are listed + documented but not auto-checked.
 
 ## Summary
 

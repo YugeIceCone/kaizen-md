@@ -1,7 +1,7 @@
 """kaizen-intent — declarative intent → action automation.
 
 Sits on top of the dxm event stream + UserPromptSubmit text matching.
-Rules live in ``skills/intent/domain/intents.yaml`` (or
+Rules live in ``schemas/intent/intents.yaml`` (or
 ``KAIZEN_INTENTS_FILE``) and map triggers to suggested or
 auto-runnable actions.
 
@@ -73,9 +73,9 @@ def _intents_path() -> Path:
     env = os.environ.get("KAIZEN_INTENTS_FILE")
     if env:
         return Path(os.path.expandvars(env)).expanduser()
-    # Default: skills/intent/domain/intents.yaml
+    # Default: schemas/intent/intents.yaml
     plugin_root = _SCRIPT_DIR.parent.parent  # plugins/kaizen
-    return plugin_root / "skills" / "intent" / "domain" / "intents.yaml"
+    return plugin_root / "schemas" / "intent" / "intents.yaml"
 
 def _load_intents() -> list[dict]:
     path = _intents_path()

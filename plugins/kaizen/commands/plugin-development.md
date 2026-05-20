@@ -44,9 +44,9 @@ case "$ARGS" in
     "${CLAUDE_PLUGIN_ROOT}/bin/kaizen-iron-laws" list --json | head -80 ;;
   dispatch|dispatch\ *)
     echo "[plugin-development dispatch] agent-dispatch rubric:"
-    "${CLAUDE_PLUGIN_ROOT}/bin/kaizen-rubric" lint --rubric "${CLAUDE_PLUGIN_ROOT}/skills/agent-formatting/domain/dispatch-rubric.yaml"
+    "${CLAUDE_PLUGIN_ROOT}/bin/kaizen-rubric" lint --rubric "${CLAUDE_PLUGIN_ROOT}/schemas/agent-formatting/dispatch-rubric.yaml"
     echo ""
-    echo "Compute signals from the task description (binary 0/1) — see skills/agent-formatting/domain/dispatch-rubric.yaml header for the 9 signal names + regexes. Then:"
+    echo "Compute signals from the task description (binary 0/1) — see schemas/agent-formatting/dispatch-rubric.yaml header for the 9 signal names + regexes. Then:"
     echo "  kaizen rubric eval --rubric .../dispatch-rubric.yaml --signals '"'"'{\"tdd\":1, \"multi_phase\":1, ...}'"'"'"
     ;;
   audit|audit\ *)
@@ -122,7 +122,7 @@ options:
 ### After the user picks
 
 Map their label to the `work_types[].id` in
-`skills/plugin-development/domain/intake-checklist.yaml`:
+`schemas/plugin-development/intake-checklist.yaml`:
 
 | Label | id |
 |---|---|
@@ -171,8 +171,8 @@ correctly via the `bug-fix` triggers.
 - **Skill body** (`skills/plugin-development/SKILL.md`) — the authoritative prose; always-load via `Skill(plugin:plugin-development)`.
 - **Schema** (`schemas/plugin-development/schema.yaml`) — what `workflow` shows.
 - **Validator** (`skills/plugin-development/scripts/validate.py`) — what `validate` invokes.
-- **Iron-laws registry** (`skills/iron-laws/domain/iron-laws.yaml`) — what `rules` dumps.
-- **Dispatch rubric** (`skills/agent-formatting/domain/dispatch-rubric.yaml`) — what `dispatch` lints.
+- **Iron-laws registry** (`schemas/iron-laws/iron-laws.yaml`) — what `rules` dumps.
+- **Dispatch rubric** (`schemas/agent-formatting/dispatch-rubric.yaml`) — what `dispatch` lints.
 - **Gatekeeper** (`bin/kaizen-gatekeeper`) — what `audit` runs.
 - **Help.md** (`commands/help.md`) — what `cluster` greps.
 

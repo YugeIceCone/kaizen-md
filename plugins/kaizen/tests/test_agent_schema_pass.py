@@ -33,7 +33,7 @@ from pathlib import Path
 _KZ_DIR = Path(__file__).resolve().parent.parent
 _AGENTS_DIR = _KZ_DIR / "agents"
 _AGENT_SCHEMA = _KZ_DIR / "assets/schemas/agent.schema.json"
-_RUBRIC = _KZ_DIR / "skills/agent-formatting/domain/dispatch-rubric.yaml"
+_RUBRIC = _KZ_DIR / "schemas/agent-formatting/dispatch-rubric.yaml"
 
 
 def _parse_frontmatter(text: str) -> str:

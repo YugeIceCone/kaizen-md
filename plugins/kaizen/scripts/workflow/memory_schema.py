@@ -2,7 +2,7 @@
 
 Validates the frontmatter of brain Notes, brain Inbox drafts, and
 project-memory entries against
-``skills/brain/domain/schemas/memory-entry.schema.json``.
+``schemas/brain/schemas/memory-entry.schema.json``.
 
 Stdlib-only — implements just the subset of JSON Schema we use
 (required / type / enum / minLength / maxLength / minimum / maximum /
@@ -27,7 +27,7 @@ from pathlib import Path
 from typing import Any
 
 _SCRIPT_DIR = Path(__file__).resolve().parent
-_SCHEMA_PATH = (_SCRIPT_DIR.parent.parent / "skills" / "brain" / "domain" /
+_SCHEMA_PATH = (_SCRIPT_DIR.parent.parent / "schemas" / "brain" /
                 "schemas" / "memory-entry.schema.json")
 
 _SCHEMA_CACHE: dict | None = None

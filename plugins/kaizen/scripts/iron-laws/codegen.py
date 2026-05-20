@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """iron-laws — codegen for the human-readable reference.
 
-Reads skills/iron-laws/domain/iron-laws.yaml (via _loader) and regenerates
+Reads schemas/iron-laws/iron-laws.yaml (via _loader) and regenerates
 skills/iron-laws/references/iron-laws.md so the yaml stays the single
 source of truth and the markdown is a read-only copy.
 
@@ -30,7 +30,7 @@ REF_PATH = _PLUGIN_ROOT / "skills" / "iron-laws" / "references" / "iron-laws.md"
 
 GENERATED_HEADER = """<!-- DO NOT HAND-EDIT.
 
-Generated from skills/iron-laws/domain/iron-laws.yaml by
+Generated from schemas/iron-laws/iron-laws.yaml by
 skills/iron-laws/application/codegen.py.
 
 To change content, edit the yaml and run `kaizen-iron-laws render`
@@ -47,7 +47,7 @@ def _render() -> str:
     out: list[str] = [GENERATED_HEADER, "# Iron Laws\n\n"]
     out.append(
         "The non-negotiable rules for kaizen-plugin-original development. "
-        "This file is a read-only copy of `skills/iron-laws/domain/iron-laws.yaml` "
+        "This file is a read-only copy of `schemas/iron-laws/iron-laws.yaml` "
         "(the single source of truth). `enforcement: auto` laws are machine-checked "
         "by `_iron_laws.py`; `manual` laws are listed + documented but not auto-checked.\n\n"
     )

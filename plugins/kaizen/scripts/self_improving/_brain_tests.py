@@ -23,13 +23,13 @@ from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 _PLUGIN_ROOT = SCRIPT_DIR.parent.parent
-DOMAIN = _PLUGIN_ROOT / "skills" / "self-improving" / "domain"
+DOMAIN = _PLUGIN_ROOT / "schemas" / "self-improving"
 # Post-flatten: brain_codegen.py + brain_validator.py live alongside this file
 # (no nested brain/ subdir). BRAIN_TOOLS unused now — kept for API compat.
 BRAIN_TOOLS = SCRIPT_DIR
 # Canonical note schema lives in the brain skill (not self-improving) — single
 # source of truth for <KAIZEN_BRAIN_DIR>/Notes/*.md frontmatter.
-BRAIN_SCHEMA_DOMAIN = _PLUGIN_ROOT / "skills" / "brain" / "domain"
+BRAIN_SCHEMA_DOMAIN = _PLUGIN_ROOT / "schemas" / "brain"
 
 # Resolve brain root via the kaizen SSOT (v1.38.0+). KAIZEN_BRAIN_DIR
 # is the only env that resolves; default ~/.claude/.kaizen/brain.

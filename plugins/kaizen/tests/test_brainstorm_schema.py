@@ -10,8 +10,8 @@ from pathlib import Path
 
 _KZ = Path(__file__).resolve().parent.parent
 _SCRIPT = _KZ / "scripts/util/brainstorm.py"
-_RUBRIC = _KZ / "skills/brainstorming/domain/brainstorm-rubric.yaml"
-_SCHEMA = _KZ / "skills/brainstorming/domain/schemas/idea.schema.json"
+_RUBRIC = _KZ / "schemas/brainstorming/brainstorm-rubric.yaml"
+_SCHEMA = _KZ / "schemas/brainstorming/schemas/idea.schema.json"
 
 try:
     from jsonschema import validate as _validate

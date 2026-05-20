@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://raw.githubusercontent.com/YugeIceCone/kaizen-md/main/plugins/kaizen/skills/loop/domain/schemas/automation.schema.json",
+  "$id": "https://raw.githubusercontent.com/YugeIceCone/kaizen-md/main/plugins/kaizen/schemas/loop/schemas/automation.schema.json",
   "title": "kaizen loop-automation",
-  "description": "Schema for skills/loop/domain/automation.yaml — Ralph loop full-automation knobs (TTL / stuck-detection / session-boundary policy).",
+  "description": "Schema for schemas/loop/automation.yaml — Ralph loop full-automation knobs (TTL / stuck-detection / session-boundary policy).",
   "type": "object",
   "additionalProperties": false,
   "required": ["version", "ttl", "stuck", "session_boundary"],

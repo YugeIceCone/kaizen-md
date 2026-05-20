@@ -13,7 +13,7 @@ from pathlib import Path
 
 _KZ_DIR = Path(__file__).resolve().parent.parent
 _INTENT = _KZ_DIR / "scripts/intent/intent.py"
-_INTENTS_YAML = _KZ_DIR / "skills/intent/domain/intents.yaml"
+_INTENTS_YAML = _KZ_DIR / "schemas/intent/intents.yaml"
 
 
 def _suggest(text: str) -> dict | None:

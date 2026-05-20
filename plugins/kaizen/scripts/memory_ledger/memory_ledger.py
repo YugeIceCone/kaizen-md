@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """kaizen memory-ledger — catalog + status + flow over the memory
 & continuity-flow surfaces declared in
-skills/memory-ledger/domain/memory-surfaces.yaml.
+schemas/memory-ledger/memory-surfaces.yaml.
 
 Read-only observability. Owners (brain, backlog, handoff, gold, dxm,
 trace, inbox, chatlog) keep their existing CLIs — this surface
@@ -32,7 +32,7 @@ from pathlib import Path
 
 _SCRIPT_DIR = Path(__file__).resolve().parent
 _PLUGIN_ROOT = _SCRIPT_DIR.parent.parent
-_MANIFEST = _PLUGIN_ROOT / "skills" / "memory-ledger" / "domain" / "memory-surfaces.yaml"
+_MANIFEST = _PLUGIN_ROOT / "schemas" / "memory-ledger" / "memory-surfaces.yaml"
 
 def _load_manifest() -> dict:
     try:

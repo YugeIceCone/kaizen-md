@@ -18,7 +18,7 @@ contract only hang together as a whole.
 
 A rules engine that watches Claude Code's hook + tool surface for
 **intent signals** and recommends actions. Declarative rules live in
-`skills/intent/domain/intents.yaml`. Two trigger kinds today:
+`schemas/intent/intents.yaml`. Two trigger kinds today:
 
 1. **`phrase`** — regex match against text (typically a
    `UserPromptSubmit` body)

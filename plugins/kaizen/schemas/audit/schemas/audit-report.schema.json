@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/YugeIceCone/kaizen-md/skills/audit/domain/schemas/audit-report.schema.json",
+  "$id": "https://github.com/YugeIceCone/kaizen-md/schemas/audit/schemas/audit-report.schema.json",
   "title": "Audit report",
   "description": "Output of one /kaizen:audit run. Wraps a list of findings plus the run-level summary (verdict, scope, counts). Mirrors the markdown template in onion-ddd-workflow Part 2 and boy-scout-rule's discovery-time application protocol.",
   "type": "object",
