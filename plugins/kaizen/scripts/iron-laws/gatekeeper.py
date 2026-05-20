@@ -125,7 +125,7 @@ def _gate_iron_laws(scope: str, repo_root: Path) -> list[GateFinding]:
 
 
 def _gate_etu(scope: str, repo_root: Path) -> list[GateFinding]:
-    etu_dir = _PLUGIN_ROOT / "skills" / "efficient-tool-use" / "application"
+    etu_dir = _PLUGIN_ROOT / "scripts" / "etu"
     try:
         mod = _load_module("kaizen_etu_scan", etu_dir / "etu_scan.py")
     except ImportError as e:

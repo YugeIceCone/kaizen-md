@@ -11,7 +11,7 @@ from pathlib import Path
 
 _REPO_ROOT = Path(__file__).resolve().parents[3]
 _GATEKEEPER = _REPO_ROOT / "plugins/kaizen/scripts/iron-laws/gatekeeper.py"
-_ETU_SCAN = _REPO_ROOT / "plugins/kaizen/skills/efficient-tool-use/application/etu_scan.py"
+_ETU_SCAN = _REPO_ROOT / "plugins/kaizen/scripts/etu/etu_scan.py"
 
 
 def _load(name: str, path: Path):

@@ -1,70 +1,24 @@
-"""kaizen YAML + JSON-Schema helpers — shared loader for application/ modules.
+"""MIGRATION BRIDGE — _yaml moved to scripts/workflow/_yaml.py.
 
-Used by `_loader.py`, `route_intent.py`, and any consumer that needs to
-parse a domain yaml + validate it against a JSON Schema.
-
-Single source extracted in the H1 hygiene pass (was duplicated byte-
-identical across _loader and route_intent).
-
-## API
-
-    from _yaml import load_yaml, load_json, validate
-
-    data = load_yaml(Path("domain/routines.yaml"))
-    schema = load_json(Path("domain/schemas/routine.schema.json"))
-    validate(data, schema, source="routines.yaml")   # exits 2 on failure
-
-When `jsonschema` is unavailable (constrained CI sandboxes), `validate`
-prints a warning to stderr and returns without checking — matches the
-pre-H1 behavior of both loaders.
+Domain yaml + JSON schemas stay with the skill; only the .py adapter
+migrated as part of the v1.40+ scripts/<feature>/ consolidation.
 """
 from __future__ import annotations
 
-import json
+import importlib.util
 import sys
 from pathlib import Path
 
-try:
-    import yaml
-except ImportError:
-    sys.stderr.write("kaizen yaml helper: PyYAML required (pip install pyyaml)\n")
-    sys.exit(1)
+_PLUGIN_ROOT = Path(__file__).resolve().parents[3]
+_CANON_DIR = _PLUGIN_ROOT / "scripts/workflow"
+_LEGACY_DIR = Path(__file__).resolve().parent
+_CANONICAL = _CANON_DIR / "_yaml.py"
 
-try:
-    from jsonschema import validate as _validate, ValidationError as _ValidationError
-    _HAS_JSONSCHEMA = True
-except ImportError:
-    _HAS_JSONSCHEMA = False
+for _p in (_LEGACY_DIR, _CANON_DIR):
+    if str(_p) not in sys.path:
+        sys.path.insert(0, str(_p))
 
-
-def load_yaml(path: Path) -> dict:
-    """Parse a YAML file into a dict. Returns {} for empty file."""
-    with path.open("r", encoding="utf-8") as f:
-        return yaml.safe_load(f) or {}
-
-
-def load_json(path: Path) -> dict:
-    """Parse a JSON file (typically a JSON Schema)."""
-    with path.open("r", encoding="utf-8") as f:
-        return json.load(f)
-
-
-def validate(data: dict, schema_path: Path, source: str) -> None:
-    """Validate `data` against the JSON Schema at `schema_path`.
-
-    On failure: writes a structured error to stderr and `sys.exit(2)`.
-    On missing jsonschema dep: writes a warning to stderr and returns.
-    `source` is the human-readable name used in error messages."""
-    if not _HAS_JSONSCHEMA:
-        sys.stderr.write(f"[kaizen] jsonschema not installed; skipping validation of {source}\n")
-        return
-    schema = load_json(schema_path)
-    try:
-        _validate(data, schema)
-    except _ValidationError as e:
-        sys.stderr.write(
-            f"[kaizen] {source} failed schema validation:\n"
-            f"  {e.message}\n"
-            f"  at: {list(e.absolute_path)}\n"
-        )
-        sys.exit(2)
+_spec = importlib.util.spec_from_file_location("_yaml", _CANONICAL)
+_mod = importlib.util.module_from_spec(_spec)
+sys.modules["_yaml"] = _mod
+_spec.loader.exec_module(_mod)

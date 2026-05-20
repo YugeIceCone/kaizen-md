@@ -38,7 +38,7 @@ from _bash_discipline_scan import scan  # noqa: E402
 # the skill is absent (consumer repos that don't ship kaizen). Falls back
 # to no-op in that case so the gate never blocks on its own absence.
 _PLUGIN_ROOT = Path(__file__).resolve().parent.parent.parent
-_ETU_SCAN = _PLUGIN_ROOT / "skills" / "efficient-tool-use" / "application" / "etu_scan.py"
+_ETU_SCAN = _PLUGIN_ROOT / "scripts" / "etu" / "etu_scan.py"
 
 
 def _load_etu_scan_text():
