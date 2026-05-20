@@ -48,15 +48,16 @@ shims were transitional back-compat scaffolding. Retiring them:
 
 ### Phase 1 — Test path helper + RED baseline
 
-- [ ] Run `kaizen-tests` to establish baseline (must be green)
-- [ ] Build canonical→cluster map: for each shim basename, extract canonical
-      cluster from its `MIGRATION BRIDGE — X moved to scripts/<cluster>/X.py`
-      docstring; write to `/tmp/shim-map.json`
-- [ ] Write `plugins/kaizen/tests/_kaizen_paths.py` — adds every
-      `plugins/kaizen/scripts/<cluster>/` dir to `sys.path` on import.
-      Tests `import _kaizen_paths` once instead of hand-rolling sys.path inserts.
-- [ ] Single-test smoke: pick one test, replace its sys.path.insert with the
-      helper, run it in isolation to confirm canonical resolution.
+- [x] Run `kaizen-tests` to establish baseline (330/333 pass; 3 pre-existing
+      failures noted in test_setup_ralph_implicit_ledger — unrelated)
+- [x] Build canonical→cluster map: 18 clusters, 116 shims total. Written to
+      `/tmp/shim-clusters.json`.
+- [x] Write `plugins/kaizen/tests/_kaizen_paths.py` — auto-discovers all 36
+      `plugins/kaizen/scripts/<cluster>/` dirs (broader than the 18 with shims
+      since the helper is self-discovering — future-proof).
+- [x] Single-test smoke: test_atomic_write migrated to 2-line bootstrap
+      (`sys.path.insert(0, Path(__file__).parent); import _kaizen_paths`).
+      `import _atomic` resolves to `scripts/io/_atomic.py`. 13/13 pass.
 
 **Commit:** `chore(tests): add _kaizen_paths helper for canonical scripts/<cluster>/ resolution`
 
