@@ -1,10 +1,16 @@
 #!/usr/bin/env python3
-"""TDD: brain-automation tests. RED → GREEN.
+"""TDD: brain-automation tests for the self-improving skill.
 
-Tests:
+Post-retirement of brain_codegen + brain_validator (superseded by
+scripts/brain/brain_rank + brain_schema during the v1.40 remember-md
+port). What remains here:
+
   1. Notes frontmatter JSON Schema exists + validates real Notes
-  2. brain_validator.py exists + reports cleanly on the live brain
-  3. brain_codegen.py exists + regenerates Persona Top Beliefs from Notes
+     (verifies the canonical schema is present + has integrity).
+  2. brain_schema.check_links — cross-link audit (extracted from the
+     retired brain_validator::cmd_links).
+  3. brain_rank.belief_stats — belief distribution (extracted from
+     the retired brain_validator::cmd_belief_stats).
 """
 from __future__ import annotations
 
@@ -84,44 +90,43 @@ class TestNotesSchema(unittest.TestCase):
                 self.fail(f"{nf.name} failed validation: {e}")
 
 
-class TestBrainValidator(unittest.TestCase):
-    def setUp(self):
-        self.tool = BRAIN_TOOLS / "brain_validator.py"
+class TestBrainSchemaCheckLinks(unittest.TestCase):
+    """Post-retirement: brain_schema.check_links subsumed
+    brain_validator.cmd_links."""
 
-    def test_validator_exists(self):
-        self.assertTrue(self.tool.exists(), f"missing: {self.tool}")
+    def test_check_links_callable(self):
+        sys.path.insert(0, str(_PLUGIN_ROOT / "scripts" / "brain"))
+        import brain_schema
+        self.assertTrue(callable(brain_schema.check_links))
 
-    def test_validator_runs(self):
-        if not self.tool.exists():
-            self.skipTest("validator not yet written")
-        import subprocess
-        r = subprocess.run(
-            ["python3", str(self.tool), "validate"],
-            capture_output=True, text=True, timeout=10,
-        )
-        self.assertEqual(r.returncode, 0, f"validator exit {r.returncode}: {r.stderr}")
-        self.assertIn("OK", r.stdout, "validator output should contain OK")
+    def test_check_links_returns_expected_shape(self):
+        sys.path.insert(0, str(_PLUGIN_ROOT / "scripts" / "brain"))
+        import brain_schema
+        if not BRAIN.exists():
+            self.skipTest("brain not present on this machine")
+        out = brain_schema.check_links(BRAIN)
+        self.assertIn("refs_count", out)
+        self.assertIn("broken", out)
+        self.assertIsInstance(out["broken"], list)
 
 
-class TestBrainCodegen(unittest.TestCase):
-    def setUp(self):
-        self.tool = BRAIN_TOOLS / "brain_codegen.py"
+class TestBrainRankBeliefStats(unittest.TestCase):
+    """Post-retirement: brain_rank.belief_stats subsumed
+    brain_validator.cmd_belief_stats."""
 
-    def test_codegen_exists(self):
-        self.assertTrue(self.tool.exists())
+    def test_belief_stats_callable(self):
+        sys.path.insert(0, str(_PLUGIN_ROOT / "scripts" / "brain"))
+        import brain_rank
+        self.assertTrue(callable(brain_rank.belief_stats))
 
-    def test_codegen_persona_regen(self):
-        if not self.tool.exists() or not BRAIN.exists():
-            self.skipTest("dependencies missing")
-        import subprocess
-        # Codegen dry-run — should not error
-        r = subprocess.run(
-            ["python3", str(self.tool), "preview"],
-            capture_output=True, text=True, timeout=15,
-        )
-        self.assertEqual(r.returncode, 0, f"codegen preview failed: {r.stderr}")
-        # Output should contain the rebuilt Top Beliefs block
-        self.assertIn("Top Beliefs", r.stdout)
+    def test_belief_stats_returns_expected_shape(self):
+        sys.path.insert(0, str(_PLUGIN_ROOT / "scripts" / "brain"))
+        import brain_rank
+        if not BRAIN.exists():
+            self.skipTest("brain not present on this machine")
+        stats = brain_rank.belief_stats(BRAIN)
+        for key in ("count", "freshness", "sources_distribution", "confidence"):
+            self.assertIn(key, stats)
 
 
 if __name__ == "__main__":

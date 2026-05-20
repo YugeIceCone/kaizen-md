@@ -266,6 +266,41 @@ class TestValidateAndUpgrade(unittest.TestCase):
         self.assertIn("freshness: stable", text)
 
 
+class TestDryRun(unittest.TestCase):
+    """dry_run=True surfaces what would change without writing.
+
+    Closes the last unique-value bullet from self_improving/brain_validator
+    (which was read-only by design — never wrote)."""
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.brain = Path(self._tmp.name)
+        (self.brain / "Notes").mkdir()
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    def test_dry_run_reports_would_change_without_write(self):
+        p = self.brain / "Notes" / "pref-x.md"
+        original = "---\nname: pref-x\n---\n# body\n"
+        p.write_text(original, encoding="utf-8")
+        out = bs.validate_and_upgrade(
+            p, brain_root=self.brain, today="2026-05-20", dry_run=True
+        )
+        self.assertTrue(out["changed"], "should report would-change")
+        # File unmodified
+        self.assertEqual(p.read_text(), original)
+
+    def test_dry_run_on_clean_file_reports_no_change(self):
+        p = self.brain / "Notes" / "pref-y.md"
+        p.write_text(
+            "---\nname: pref-y\ntype: world-fact\nfreshness: stable\nsources_count: 1\n---\n# y\n",
+            encoding="utf-8",
+        )
+        out = bs.validate_and_upgrade(p, brain_root=self.brain, dry_run=True)
+        self.assertFalse(out["changed"])
+
+
 class TestCheckLinks(unittest.TestCase):
     """check_links(): audit [[ref]] cross-references in Persona + Notes.
 

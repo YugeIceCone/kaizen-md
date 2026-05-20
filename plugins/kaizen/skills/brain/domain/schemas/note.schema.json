@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/YugeIceCone/kaizen-md/skills/brain/domain/schemas/note.schema.json",
   "title": "Brain Note frontmatter",
-  "description": "Canonical schema for the YAML frontmatter of every Brain Note (~/.claude/.kaizen/brain/Notes/*.md, ~/.claude/.kaizen/brain/People/*.md, etc.). Validated by skills/self-improving/brain/validator.py and skills/self-improving/application/_brain_tests.py. Replaces the prior duplicate at skills/self-improving/domain/schemas/note.schema.json (removed) — that copy had drifted from this one in required fields and enum values.",
+  "description": "Canonical schema for the YAML frontmatter of every Brain Note (~/.claude/.kaizen/brain/Notes/*.md, ~/.claude/.kaizen/brain/People/*.md, etc.). Validated by scripts/brain/brain_schema.py::validate_and_upgrade (CLI: kaizen-brain schema-upgrade validate <path>) and tested via scripts/self_improving/_brain_tests.py. Replaces the prior duplicate at skills/self-improving/domain/schemas/note.schema.json (removed) — that copy had drifted from this one in required fields and enum values.",
   "type": "object",
   "required": ["created", "type"],
   "additionalProperties": true,

@@ -31,7 +31,7 @@ If you want to do X, edit Y.
 | Confidence range | Same — `properties.confidence.minimum/maximum` (currently 0.0–1.0) |
 | Freshness values | Same — `properties.freshness.enum` (fresh / stable / hardened / stale / archived) |
 
-Schema is loaded by `_brain.parse_note()` and enforced by the validator (`skills/self-improving/brain/validator.py`) + `application/_brain_tests.py`.
+Schema is loaded by `_brain.parse_note()` and enforced by `scripts/brain/brain_schema.py::validate_and_upgrade` (CLI: `kaizen-brain schema-upgrade validate <path>` + `check-links`) — invoked from `scripts/self_improving/_brain_tests.py`. Pre-port (v1.40), validation lived at `skills/self-improving/brain/validator.py` (retired).
 
 ---
 

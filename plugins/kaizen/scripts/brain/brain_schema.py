@@ -352,6 +352,7 @@ def validate_and_upgrade(
     *,
     brain_root: Optional[Path] = None,
     today: Optional[str] = None,
+    dry_run: bool = False,
 ) -> dict:
     """Validate + repair a single file. In-place atomic write when
     changes are needed.
@@ -360,7 +361,11 @@ def validate_and_upgrade(
     Mirrors upstream schema.js::validateAndUpgrade.
 
     Files outside brain → passthrough (no changes, no error).
-    Missing files → return blank result (no error)."""
+    Missing files → return blank result (no error).
+
+    ``dry_run=True`` skips the file write — useful for CI gates that
+    want to surface schema drift without auto-fixing. ``changed`` still
+    reports what WOULD change."""
     today_str = today or _dt.date.today().isoformat()
     result = {"changed": False, "added_fields": [], "added_sections": [], "warnings": []}
 
@@ -402,11 +407,14 @@ def validate_and_upgrade(
         result["added_sections"] = list(upgrade["added_sections"])
 
     if text != original:
-        # Atomic write: tempfile + rename.
-        tmp = filepath.with_suffix(filepath.suffix + ".tmp")
-        tmp.write_text(text, encoding="utf-8")
-        tmp.replace(filepath)
-        result["changed"] = True
+        if dry_run:
+            result["changed"] = True  # report-would-change without writing
+        else:
+            # Atomic write: tempfile + rename.
+            tmp = filepath.with_suffix(filepath.suffix + ".tmp")
+            tmp.write_text(text, encoding="utf-8")
+            tmp.replace(filepath)
+            result["changed"] = True
 
     return result
 
@@ -438,6 +446,8 @@ def main(argv: Optional[list[str]] = None) -> int:
                    help="brain root (default: $KAIZEN_BRAIN_DIR)")
     v.add_argument("--today", default=None,
                    help="override today's date (ISO yyyy-mm-dd)")
+    v.add_argument("--dry-run", action="store_true",
+                   help="report what would change without writing — CI-gate friendly")
     v.add_argument("--json", action="store_true",
                    help="emit structured envelope on stdout")
     cl = sub.add_parser("check-links",
@@ -467,7 +477,10 @@ def main(argv: Optional[list[str]] = None) -> int:
         sys.stdout.write(f"OK: {result['refs_count']} cross-references resolve\n")
         return 0
 
-    result = validate_and_upgrade(args.filepath, brain_root=brain, today=args.today)
+    result = validate_and_upgrade(
+        args.filepath, brain_root=brain, today=args.today,
+        dry_run=getattr(args, "dry_run", False),
+    )
 
     if args.json:
         _emit_json(result)
