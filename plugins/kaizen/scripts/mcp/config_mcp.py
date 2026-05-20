@@ -26,6 +26,9 @@ _HERE = Path(os.path.realpath(__file__)).parent
 if str(_HERE) not in sys.path:
     sys.path.insert(0, str(_HERE))
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import _bootstrap  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
+
 import config as _cfg  # noqa: E402
 
 mcp = FastMCP("config")
