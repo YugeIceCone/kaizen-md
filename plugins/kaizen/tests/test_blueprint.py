@@ -168,6 +168,94 @@ class TestOutFileWritesJson(_Base):
         self.assertEqual(d["items"][0]["title"], "P")
 
 
+class TestTasksBoundToTaskList(_Base):
+    """--task "subject" flags attach to the most-recent --task-list. Multiple
+    task-lists in one create call → each task-list owns its own tasks[]."""
+
+    def test_tasks_attach_to_preceding_task_list(self):
+        r = self._run(
+            "--project", "demo",
+            "--plan", "Root",
+            "--task-list", "Phase 1",
+            "--task", "RED test",
+            "--task", "GREEN impl",
+            "--no-session-meta",
+        )
+        self.assertEqual(r.returncode, 0, r.stderr)
+        d = json.loads(r.stdout)
+        # 02 is the task-list
+        tl = next(i for i in d["items"] if i["id"] == "02")
+        self.assertEqual(tl["kind"], "task-list")
+        self.assertEqual(len(tl["tasks"]), 2)
+        self.assertEqual(tl["tasks"][0]["id"], "02.1")
+        self.assertEqual(tl["tasks"][0]["subject"], "RED test")
+        self.assertEqual(tl["tasks"][0]["status"], "pending")
+        self.assertEqual(tl["tasks"][1]["id"], "02.2")
+        self.assertEqual(tl["tasks"][1]["subject"], "GREEN impl")
+
+    def test_multiple_task_lists_partition_tasks(self):
+        r = self._run(
+            "--project", "demo",
+            "--task-list", "Phase 1",
+            "--task", "P1.a",
+            "--task", "P1.b",
+            "--task-list", "Phase 2",
+            "--task", "P2.a",
+            "--no-session-meta",
+        )
+        d = json.loads(r.stdout)
+        phase1 = next(i for i in d["items"] if i["title"] == "Phase 1")
+        phase2 = next(i for i in d["items"] if i["title"] == "Phase 2")
+        self.assertEqual([t["subject"] for t in phase1["tasks"]],
+                          ["P1.a", "P1.b"])
+        self.assertEqual([t["subject"] for t in phase2["tasks"]],
+                          ["P2.a"])
+
+    def test_task_subject_at_agent_syntax_assigns_owner(self):
+        # "subject@agent-name" splits — agent goes into task.agent
+        r = self._run(
+            "--project", "demo",
+            "--task-list", "Phase 1",
+            "--task", "Write tests@kaizen-implementer",
+            "--task", "Review@kaizen-reviewer",
+            "--no-session-meta",
+        )
+        d = json.loads(r.stdout)
+        tl = d["items"][0]
+        self.assertEqual(tl["tasks"][0]["subject"], "Write tests")
+        self.assertEqual(tl["tasks"][0]["agent"], "kaizen-implementer")
+        self.assertEqual(tl["tasks"][1]["subject"], "Review")
+        self.assertEqual(tl["tasks"][1]["agent"], "kaizen-reviewer")
+
+    def test_task_before_any_task_list_errors(self):
+        # --task without a preceding --task-list is a usage error.
+        r = self._run(
+            "--project", "demo",
+            "--task", "orphan",
+            "--no-session-meta",
+        )
+        self.assertEqual(r.returncode, 2)
+        self.assertIn("--task", r.stderr.lower())
+
+
+class TestDispatchBlockOnTaskList(_Base):
+    """--dispatch "mode:concurrency" attaches a dispatch block to the
+    most-recent --task-list. Mode ∈ {sequential, parallel, waves}."""
+
+    def test_dispatch_attaches_to_task_list(self):
+        r = self._run(
+            "--project", "demo",
+            "--task-list", "Phase 1",
+            "--dispatch", "parallel:3",
+            "--task", "a", "--task", "b", "--task", "c",
+            "--no-session-meta",
+        )
+        self.assertEqual(r.returncode, 0, r.stderr)
+        d = json.loads(r.stdout)
+        tl = d["items"][0]
+        self.assertEqual(tl["dispatch"], {"mode": "parallel", "concurrency": 3})
+
+
 class TestNothingSpecifiedErrors(_Base):
     def test_no_items_exits_2(self):
         r = self._run("--project", "demo", "--no-session-meta")

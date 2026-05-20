@@ -138,7 +138,7 @@ def _build_item(seq: int, kind: str, title: str,
                  extra_tags: list[str]) -> dict:
     today = _today()
     tags = list(extra_tags)
-    return {
+    item: dict = {
         "id":          f"{seq:02d}",
         "kind":        kind,
         "title":       title,
@@ -162,6 +162,34 @@ def _build_item(seq: int, kind: str, title: str,
         "session_origin": None,
         "meta":        {},
     }
+    if kind == "task-list":
+        item["dispatch"] = None
+        item["agent"] = None
+    return item
+
+
+def _parse_task_subject(raw: str) -> tuple[str, str | None]:
+    """`subject@agent-name` → (subject, agent). Bare subject → (subject, None).
+    Only splits on the LAST `@` to allow `@` characters inside subjects."""
+    if "@" not in raw:
+        return raw, None
+    subj, _, agent = raw.rpartition("@")
+    if not subj or not agent:
+        return raw, None
+    return subj, agent
+
+
+def _parse_dispatch_spec(raw: str) -> dict:
+    """`mode:concurrency` → {mode, concurrency}. Bare `mode` → {mode}.
+    Raises ValueError on unknown mode."""
+    parts = raw.split(":", 1)
+    mode = parts[0].strip()
+    if mode not in ("sequential", "parallel", "waves"):
+        raise ValueError(f"unknown dispatch mode {mode!r}")
+    out: dict = {"mode": mode}
+    if len(parts) == 2 and parts[1].strip():
+        out["concurrency"] = int(parts[1].strip())
+    return out
 
 
 def _auto_link(items: list[dict]) -> None:
@@ -181,42 +209,103 @@ def _auto_link(items: list[dict]) -> None:
             root["links"]["children"].append(cid)
 
 
-def _collect_items_from_args(args: argparse.Namespace) -> list[dict]:
+def _collect_items_from_args(args: argparse.Namespace) -> tuple[list[dict], str | None]:
     """Walk argv-order across all --<kind> flag groups so item ids match
-    the order the user typed them.
+    the order the user typed them. Also binds --task and --dispatch to
+    the most-recent --task-list item.
+
+    Returns (items, error_message). error_message is non-None when the
+    argv is malformed (e.g. --task before any --task-list).
 
     argparse strips order across groups. We re-derive it by parsing argv
     once more — KISS, no custom Action class needed."""
-    order: list[tuple[str, str]] = []  # (schema_kind, title)
     extra_tags_by_kind = {flag: tags for flag, _, tags in _KIND_FLAGS}
     schema_kind_by_flag = {flag: kind for flag, kind, _ in _KIND_FLAGS}
+
+    items: list[dict] = []
+    seq = 1
+    active_task_list: dict | None = None
+    task_seq_per_list: dict[str, int] = {}
+
     argv = sys.argv[1:]
     i = 0
     while i < len(argv):
         a = argv[i]
-        if a.startswith("--"):
-            flag_name = a[2:]
-            if flag_name in schema_kind_by_flag:
-                if i + 1 < len(argv):
-                    title = argv[i + 1]
-                    order.append((flag_name, title))
-                    i += 2
-                    continue
+        if not a.startswith("--"):
+            i += 1
+            continue
+        flag_name = a[2:]
+
+        # Item-creating flags
+        if flag_name in schema_kind_by_flag:
+            if i + 1 >= len(argv):
+                i += 1
+                continue
+            title = argv[i + 1]
+            item = _build_item(
+                seq, schema_kind_by_flag[flag_name],
+                title, extra_tags_by_kind[flag_name],
+            )
+            items.append(item)
+            if item["kind"] == "task-list":
+                active_task_list = item
+                task_seq_per_list[item["id"]] = 1
+            seq += 1
+            i += 2
+            continue
+
+        # Task-bound flags
+        if flag_name == "task":
+            if active_task_list is None:
+                return [], (
+                    "--task must follow a --task-list flag — there's no "
+                    "task-list to attach to.")
+            if i + 1 >= len(argv):
+                i += 1
+                continue
+            subj, agent = _parse_task_subject(argv[i + 1])
+            list_id = active_task_list["id"]
+            n = task_seq_per_list[list_id]
+            active_task_list["tasks"].append({
+                "id":         f"{list_id}.{n}",
+                "subject":    subj,
+                "status":     "pending",
+                "agent":      agent,
+                "worktree":   None,
+                "chunk_id":   None,
+                "blocked_by": [],
+                "refs":       [],
+                "tags":       [],
+            })
+            task_seq_per_list[list_id] = n + 1
+            i += 2
+            continue
+
+        if flag_name == "dispatch":
+            if active_task_list is None:
+                return [], (
+                    "--dispatch must follow a --task-list flag — there's no "
+                    "task-list to attach to.")
+            if i + 1 >= len(argv):
+                i += 1
+                continue
+            try:
+                active_task_list["dispatch"] = _parse_dispatch_spec(argv[i + 1])
+            except ValueError as e:
+                return [], f"--dispatch: {e}"
+            i += 2
+            continue
+
         i += 1
 
-    items: list[dict] = []
-    seq = 1
-    for flag_name, title in order:
-        items.append(_build_item(
-            seq, schema_kind_by_flag[flag_name],
-            title, extra_tags_by_kind[flag_name],
-        ))
-        seq += 1
-    return items
+    return items, None
 
 
 def _cmd_create(args: argparse.Namespace) -> int:
-    items = _collect_items_from_args(args)
+    items, err = _collect_items_from_args(args)
+    if err:
+        sys.stderr.write(f"blueprint create: {err}\n")
+        return 2
     if not items:
         sys.stderr.write(
             "blueprint create: at least one --<kind> TITLE flag required "
@@ -285,6 +374,14 @@ def main(argv: list[str] | None = None) -> int:
     for flag_name, _, _ in _KIND_FLAGS:
         c.add_argument(f"--{flag_name}", action="append", default=[],
                         help=f"add a {flag_name!r} item (repeatable)")
+    # Task-bound flags — attach to the most-recent --task-list in argv order.
+    c.add_argument("--task", action="append", default=[],
+                    help="add a task to the most-recent --task-list. Syntax: "
+                         "`subject` or `subject@agent-name` (repeatable).")
+    c.add_argument("--dispatch", action="append", default=[],
+                    help="set the most-recent --task-list's dispatch hints. "
+                         "Syntax: `mode` or `mode:concurrency` where mode ∈ "
+                         "{sequential, parallel, waves}.")
     c.add_argument("--no-session-meta", action="store_true",
                     help="skip the session_meta block")
     c.add_argument("--no-auto-link", action="store_true",
