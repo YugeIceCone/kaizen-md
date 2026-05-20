@@ -24,9 +24,9 @@ import sys
 from pathlib import Path
 
 # Resolve brain root via the kaizen SSOT (v1.38.0+).
-# Post-migration: this file lives at scripts/self_improving/brain/validator.py.
+# Post-flatten: scripts/self_improving/brain_validator.py (depth 2 from plugin).
 SCRIPT_DIR = Path(__file__).resolve().parent
-_PLUGIN_ROOT = SCRIPT_DIR.parents[2]
+_PLUGIN_ROOT = SCRIPT_DIR.parents[1]
 sys.path.insert(0, str(_PLUGIN_ROOT / "scripts" / "io"))
 import _paths  # noqa: E402
 

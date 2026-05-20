@@ -26,8 +26,8 @@ import sys
 from pathlib import Path
 
 # Resolve brain root via the kaizen SSOT (v1.38.0+).
-# Post-migration: this file lives at scripts/self_improving/brain/codegen.py.
-_PLUGIN_ROOT = Path(__file__).resolve().parents[3]
+# Post-flatten: scripts/self_improving/brain_codegen.py (depth 2 from plugin).
+_PLUGIN_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(_PLUGIN_ROOT / "scripts" / "io"))
 import _paths  # noqa: E402
 

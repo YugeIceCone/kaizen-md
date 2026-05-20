@@ -489,5 +489,40 @@ class TestRunEndToEnd(unittest.TestCase):
         self.assertIn("pref-old.md", self.persona.read_text())
 
 
+class TestBeliefStats(unittest.TestCase):
+    """belief_stats(): distribution over freshness / sources / confidence.
+
+    Extracted from self_improving/brain_validator::cmd_belief_stats during
+    the consolidation arc."""
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.brain = Path(self._tmp.name)
+        (self.brain / "Notes").mkdir()
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    def test_empty_brain_returns_zero_count(self):
+        stats = br.belief_stats(self.brain)
+        self.assertEqual(stats["count"], 0)
+        self.assertIsNone(stats["confidence"])
+
+    def test_distribution_shape(self):
+        _write_belief(self.brain / "Notes", "pref-a", conf=0.95, sources=8, freshness="stable")
+        _write_belief(self.brain / "Notes", "pref-b", conf=0.80, sources=3, freshness="stable")
+        _write_belief(self.brain / "Notes", "pref-c", conf=0.70, sources=1, freshness="strengthening")
+        stats = br.belief_stats(self.brain)
+        self.assertEqual(stats["count"], 3)
+        self.assertEqual(stats["freshness"]["stable"], 2)
+        self.assertEqual(stats["freshness"]["strengthening"], 1)
+        self.assertEqual(stats["sources_distribution"][8], 1)
+        self.assertEqual(stats["sources_distribution"][3], 1)
+        self.assertEqual(stats["sources_distribution"][1], 1)
+        self.assertAlmostEqual(stats["confidence"]["min"], 0.70)
+        self.assertAlmostEqual(stats["confidence"]["max"], 0.95)
+        self.assertAlmostEqual(stats["confidence"]["avg"], (0.95 + 0.80 + 0.70) / 3)
+
+
 if __name__ == "__main__":
     unittest.main()

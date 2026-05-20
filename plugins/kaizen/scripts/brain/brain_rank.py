@@ -307,6 +307,51 @@ def load_evolution_config() -> dict:
     }
 
 
+# ─── Belief stats (extracted from self_improving/brain_validator) ────
+
+
+def belief_stats(brain_root: Path) -> dict:
+    """Distribution stats over the brain's belief Notes.
+
+    Returns::
+
+       {
+         "count": int,
+         "freshness": {label: count, ...},
+         "sources_distribution": {n: count, ...},
+         "confidence": {"min": float, "avg": float, "max": float} | None,
+       }
+
+    Useful for "is this brain mature enough to trust the auto-ranker?"
+    """
+    beliefs = find_beliefs(brain_root)
+    if not beliefs:
+        return {
+            "count": 0,
+            "freshness": {},
+            "sources_distribution": {},
+            "confidence": None,
+        }
+    freshness: dict[str, int] = {}
+    sources_dist: dict[int, int] = {}
+    confs: list[float] = []
+    for b in beliefs:
+        freshness[b["freshness"]] = freshness.get(b["freshness"], 0) + 1
+        s = int(b["sources_count"])
+        sources_dist[s] = sources_dist.get(s, 0) + 1
+        confs.append(float(b["confidence"]))
+    return {
+        "count": len(beliefs),
+        "freshness": dict(sorted(freshness.items())),
+        "sources_distribution": dict(sorted(sources_dist.items())),
+        "confidence": {
+            "min": min(confs),
+            "avg": sum(confs) / len(confs),
+            "max": max(confs),
+        },
+    }
+
+
 # ─── Orchestration ───────────────────────────────────────────────────
 
 
@@ -417,10 +462,29 @@ def main(argv: Optional[list[str]] = None) -> int:
                     help="brain root path (default: $KAIZEN_BRAIN_DIR)")
     ap.add_argument("--json", action="store_true",
                     help="emit structured envelope on stdout")
+    ap.add_argument("--stats", action="store_true",
+                    help="print belief distribution stats instead of ranking")
     args = ap.parse_args(argv)
 
     if os.environ.get("KAIZEN_BRAIN_RANK_DISABLE") == "1":
         sys.stderr.write("kaizen-brain-rank: disabled via KAIZEN_BRAIN_RANK_DISABLE=1\n")
+        return 0
+
+    if args.stats:
+        brain = args.brain or _brain.brain_root()
+        stats = belief_stats(brain)
+        if args.json:
+            _emit_json(stats)
+            return 0
+        sys.stdout.write(f"pref-*.md notes: {stats['count']}\n")
+        sys.stdout.write(f"freshness: {stats['freshness']}\n")
+        sys.stdout.write(f"sources distribution: {stats['sources_distribution']}\n")
+        conf = stats["confidence"]
+        if conf:
+            sys.stdout.write(
+                f"confidence: min={conf['min']:.2f} "
+                f"avg={conf['avg']:.2f} max={conf['max']:.2f}\n"
+            )
         return 0
 
     result = run(args.brain, dry_run=args.dry_run)

@@ -298,6 +298,52 @@ def append_missing_persona_sections(
     return {"text": new_text, "added_sections": missing}
 
 
+# ─── Cross-link health (extracted from self_improving/brain_validator) ─
+
+
+def check_links(brain_root: Path) -> dict:
+    """Find every ``[[ref]]`` in Persona.md + Notes/, verify each resolves
+    to a real file. Returns ``{refs_count, broken: [(src, ref), ...]}``.
+
+    A ref resolves if any of these exist:
+      - <brain>/Notes/<ref-without-md>.md
+      - <brain>/<ref-without-md>.md
+      - <brain>/<ref> (when ref includes a path segment like 'Journal/...')
+    """
+    if not brain_root.is_dir():
+        return {"refs_count": 0, "broken": []}
+    files: list[Path] = []
+    persona = brain_root / "Persona.md"
+    if persona.is_file():
+        files.append(persona)
+    notes_dir = brain_root / "Notes"
+    if notes_dir.is_dir():
+        files.extend(sorted(notes_dir.glob("*.md")))
+
+    refs: list[tuple[Path, str]] = []
+    for f in files:
+        try:
+            text = f.read_text(encoding="utf-8")
+        except OSError:
+            continue
+        for m in re.finditer(r"\[\[([A-Za-z0-9/_\-\.]+)\]\]", text):
+            refs.append((f, m.group(1)))
+
+    broken: list[tuple[str, str]] = []
+    for src, ref in refs:
+        name = ref[:-3] if ref.endswith(".md") else ref
+        candidates = [
+            brain_root / "Notes" / f"{name}.md",
+            brain_root / f"{name}.md",
+            brain_root / ref,
+        ]
+        if "/" in name:
+            candidates.append(brain_root / f"{name}.md")
+        if not any(c.is_file() for c in candidates):
+            broken.append((src.name, ref))
+    return {"refs_count": len(refs), "broken": broken}
+
+
 # ─── Public entry point ──────────────────────────────────────────────
 
 
@@ -394,6 +440,11 @@ def main(argv: Optional[list[str]] = None) -> int:
                    help="override today's date (ISO yyyy-mm-dd)")
     v.add_argument("--json", action="store_true",
                    help="emit structured envelope on stdout")
+    cl = sub.add_parser("check-links",
+                        help="audit [[ref]] cross-links across Persona + Notes")
+    cl.add_argument("--brain", type=Path, default=None,
+                    help="brain root (default: $KAIZEN_BRAIN_DIR)")
+    cl.add_argument("--json", action="store_true")
     args = ap.parse_args(argv)
 
     if os.environ.get("KAIZEN_BRAIN_SCHEMA_DISABLE") == "1":
@@ -401,6 +452,21 @@ def main(argv: Optional[list[str]] = None) -> int:
         return 0
 
     brain = args.brain or _brain.brain_root()
+
+    if args.cmd == "check-links":
+        result = check_links(brain)
+        if args.json:
+            _emit_json(result)
+            return 0
+        if result["broken"]:
+            sys.stdout.write(f"check-links: {len(result['broken'])} broken / "
+                             f"{result['refs_count']} refs\n")
+            for src, ref in result["broken"][:20]:
+                sys.stdout.write(f"  [BROKEN] {src} → [[{ref}]]\n")
+            return 2
+        sys.stdout.write(f"OK: {result['refs_count']} cross-references resolve\n")
+        return 0
+
     result = validate_and_upgrade(args.filepath, brain_root=brain, today=args.today)
 
     if args.json:

@@ -266,5 +266,41 @@ class TestValidateAndUpgrade(unittest.TestCase):
         self.assertIn("freshness: stable", text)
 
 
+class TestCheckLinks(unittest.TestCase):
+    """check_links(): audit [[ref]] cross-references in Persona + Notes.
+
+    Extracted from self_improving/brain_validator::cmd_links during the
+    consolidation arc."""
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.brain = Path(self._tmp.name)
+        (self.brain / "Notes").mkdir()
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    def test_empty_brain_returns_zero(self):
+        out = bs.check_links(self.brain)
+        self.assertEqual(out, {"refs_count": 0, "broken": []})
+
+    def test_resolves_notes_ref(self):
+        (self.brain / "Notes" / "pref-x.md").write_text(
+            "---\ntype: belief\n---\n# x\n", encoding="utf-8")
+        (self.brain / "Persona.md").write_text(
+            "# Persona\n\n## Top Beliefs\n\n1. [[Notes/pref-x]]\n", encoding="utf-8")
+        out = bs.check_links(self.brain)
+        self.assertEqual(out["refs_count"], 1)
+        self.assertEqual(out["broken"], [])
+
+    def test_flags_broken_ref(self):
+        (self.brain / "Persona.md").write_text(
+            "## Top Beliefs\n\n1. [[Notes/ghost]]\n", encoding="utf-8")
+        out = bs.check_links(self.brain)
+        self.assertEqual(out["refs_count"], 1)
+        self.assertEqual(len(out["broken"]), 1)
+        self.assertEqual(out["broken"][0][1], "Notes/ghost")
+
+
 if __name__ == "__main__":
     unittest.main()
