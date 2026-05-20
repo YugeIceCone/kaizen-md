@@ -1122,7 +1122,7 @@
     },
     {
       "id": "BK-059",
-      "section": "parked",
+      "section": "done",
       "title": "Migrate axis-runner files to consolidated-plugin paths when sweep lands",
       "ref": null,
       "probe": "axis_runner.py + axis_runner_rules.py currently live in skills/workflow/scripts/ (legacy mega-dir); axis.schema.json + reference_demo.yaml live in skills/workflow/domain/{schemas,axes}/ (workflow-owned). When the consolidated-plugin restructure lands, move axis_runner.py + axis_runner_rules.py to scripts/quality/ (matches sibling AST-axes) and axis.schema.json + reference_demo.yaml to skills/axis-runner/domain/{schemas,axes}/ (skill-owned).",
@@ -1130,8 +1130,8 @@
       "tags": [],
       "created": "2026-05-20",
       "started_at": null,
-      "committed": null,
-      "committed_at": null,
+      "committed": "HEAD",
+      "committed_at": "2026-05-20T08:43:23Z",
       "parked_reason": null,
       "probe_output": null
     },

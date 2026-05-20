@@ -25,8 +25,8 @@ import sys
 from pathlib import Path
 
 _SCRIPT = (
-    Path(__file__).resolve().parents[2]
-    / "skills" / "workflow" / "scripts" / "axis_runner.py"
+    Path(__file__).resolve().parents[1]
+    / "quality" / "axis_runner.py"
 )
 
 try:
