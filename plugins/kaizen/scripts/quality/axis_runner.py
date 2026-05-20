@@ -54,9 +54,9 @@ _AXES_DIR = _PLUGIN_ROOT / "skills/workflow/domain/axes"
 # --- YAML loader (graceful-fallback) ---------------------------------------
 
 def _load_yaml(path: Path) -> dict:
-    """Parse a YAML file. Prefers PyYAML; falls back to a tiny
-    flow-style parser is NOT attempted — axis YAML is small enough
-    that PyYAML is a hard requirement (already a kaizen dep)."""
+    """Parse a YAML file. PyYAML is required (kaizen-wide dep) —
+    no flow-style fallback. Axis YAML files are small + author-written;
+    PyYAML's parser is the only supported backend."""
     import yaml  # PyYAML — kaizen-wide dep
     with path.open("r", encoding="utf-8") as f:
         return yaml.safe_load(f) or {}
@@ -109,10 +109,7 @@ def _dispatch(spec: dict, *, root: Path) -> list[dict]:
     if t == "grep":
         return rules.run_grep(scan["pattern"], scan["glob"], root)
     if t == "ast-rule":
-        return rules.run_ast_rule(
-            scan["rule"], scan["glob"], root,
-            params=scan.get("params") or {},
-        )
+        return rules.run_ast_rule(scan["rule"], scan["glob"], root)
     if t == "file-coverage":
         return rules.run_file_coverage(
             scan["expected_glob"], scan["actual_glob"], root,
@@ -187,6 +184,9 @@ def main(argv: list[str] | None = None) -> int:
                        help="axis YAML path (absolute, or stem under domain/axes/)")
         p.add_argument("--root", default=None,
                        help="scan root (default: plugin root)")
+        p.add_argument("--json", action="store_true",
+                       help="emit JSON envelope (default; flag kept for "
+                            "convention parity with sibling scripts/quality/ CLIs)")
         p.set_defaults(func=_cmd_run)
 
     args = ap.parse_args(argv)

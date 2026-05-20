@@ -4,7 +4,7 @@
 Three dispatcher backends keyed by `scan_spec.type` in axis YAML:
 
   * `grep`           → `run_grep(pattern, glob, root) → list[dict]`
-  * `ast-rule`       → `run_ast_rule(rule, glob, root, params) → list[dict]`
+  * `ast-rule`       → `run_ast_rule(rule, glob, root) → list[dict]`
   * `file-coverage`  → `run_file_coverage(expected_glob, actual_glob, root) → list[dict]`
 
 Every fn returns a list of finding dicts with at least `path`. Pure
@@ -98,12 +98,8 @@ _AST_RULE_IMPLS = {
 }
 
 
-def run_ast_rule(rule: str, glob: str, root: Path | str,
-                 params: dict | None = None) -> list[dict]:
-    """Run a named AST rule across `root/<glob>`. `params` reserved for
-    future per-rule tuning; today's two rules ignore params (kept for
-    schema-driven extensibility)."""
-    del params  # reserved
+def run_ast_rule(rule: str, glob: str, root: Path | str) -> list[dict]:
+    """Run a named AST rule across `root/<glob>`."""
     root = Path(root)
     impl = _AST_RULE_IMPLS.get(rule)
     if impl is None:

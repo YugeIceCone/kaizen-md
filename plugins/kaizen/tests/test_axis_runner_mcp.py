@@ -52,15 +52,20 @@ class TestAxisRunnerMcp(unittest.TestCase):
         envelope = asyncio.run(self.mod.list_axes())
         self.assertIsInstance(envelope, dict)
         # Either a clean envelope OR an error dict — both valid
-        # signals to the agent surface.
-        if "data" in envelope:
-            self.assertIn("axes", envelope["data"])
+        # Unconditional: subprocess success is a precondition. A missing
+        # "data" key signals a real failure (conditional asserts hid it).
+        self.assertIn("data", envelope)
+        self.assertIn("axes", envelope["data"])
 
     def test_run_axis_returns_envelope_for_reference_demo(self):
-        envelope = asyncio.run(self.mod.run_axis("reference-demo"))
+        # axis stem must match the yaml filename — reference_demo.yaml,
+        # NOT "reference-demo" (the conditional `if "data" in envelope`
+        # hid this hyphen-vs-underscore bug before BK-060 tightened the
+        # asserts).
+        envelope = asyncio.run(self.mod.run_axis("reference_demo"))
         self.assertIsInstance(envelope, dict)
-        if "data" in envelope:
-            self.assertEqual(envelope["data"].get("axis"), "reference-demo")
+        self.assertIn("data", envelope)
+        self.assertEqual(envelope["data"].get("axis"), "reference-demo")
 
 
 if __name__ == "__main__":
