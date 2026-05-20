@@ -1,0 +1,153 @@
+# yaml-language-server: $schema=./schemas/audit-rubric.schema.json
+#
+# onion-tdd-strict — audit lens, encoded as a pattern-based rubric.
+#
+# Extracted from references/discipline.md Part 2 (Audit). Walked by a
+# future kaizen-onion-audit CLI: each rule's `pattern` is run as grep
+# (or ast-grep for `lang: ...` rules) over the glob; matches surface
+# as findings with the rule's `severity` + `fix_shape`.
+#
+# Source of truth — when the prose discipline diverges from this file,
+# update both. This yaml is the machine-checkable surface.
+
+version: 1
+
+# ─── Layer-placement violations ─────────────────────────────────────────────
+# Domain layer must be leaf-pure (stdlib + data primitives only).
+rules:
+  - id: domain-imports-framework
+    severity: P0
+    layer: domain
+    description: "Domain file imports a framework / runtime / IO library"
+    pattern: '^(use|import|from)\s+(sqlx|tokio|reqwest|axum|hyper|express|sqlalchemy|django)'
+    globs: ["**/domain/**/*.{rs,ts,py,js,go}"]
+    fix_shape: "Move the dependency to Infrastructure; expose a port (trait/interface) in Domain that the impl satisfies."
+
+  - id: domain-imports-serde-wire
+    severity: P1
+    layer: domain
+    description: "Domain imports serde::Deserialize / @JsonProperty / pydantic for HTTP wire format"
+    pattern: '(serde::Deserialize|@JsonProperty|pydantic\.BaseModel)'
+    globs: ["**/domain/**/*.{rs,ts,py,java}"]
+    fix_shape: "Entity stays plain; DTO in Application or Presentation handles the wire format."
+
+  - id: anemic-getter-setter-only
+    severity: P0
+    layer: domain
+    description: "Entity has only getters/setters, no behavior"
+    pattern: '^(struct|class|interface)\s+\w+\s*\{[^}]*(?:get_|set_|getter|setter)[^}]*\}$'
+    globs: ["**/domain/**/*.{rs,ts,py,java}"]
+    fix_shape: "Push invariants + state transitions onto the entity. Service becomes thin coordinator."
+
+  - id: repo-returns-orm-row
+    severity: P0
+    layer: domain
+    description: "Repository interface in Domain returns ORM-shaped types"
+    pattern: '(fn|method)\s+\w+\s*\([^)]*\)\s*->\s*.*(?:Row|FromRow|QueryResult|ResultSet)'
+    globs: ["**/domain/**/*.{rs,ts,py,java}"]
+    fix_shape: "Repository signature returns Domain entities. ORM-shape stays in Infrastructure adapter."
+
+  - id: application-constructs-adapter
+    severity: P1
+    layer: application
+    description: "Application service constructs a concrete adapter inside a use-case body"
+    pattern: '(Postgres|MySql|Redis|Http|S3)\w*::new\('
+    globs: ["**/application/**/*.{rs,ts,py,java}"]
+    fix_shape: "Inject the port via constructor / DI. Concrete adapter is built only at the composition root."
+
+  - id: controller-calls-repo
+    severity: P1
+    layer: presentation
+    description: "Controller / Presentation calls a Repository directly, skipping Application services"
+    pattern: '\b(repo|repository)\s*\.\s*(find|save|delete|update)'
+    globs: ["**/presentation/**/*.{rs,ts,py,java}", "**/controllers/**/*.{rs,ts,py,java}"]
+    fix_shape: "Add a Use Case / Application Service between Presentation and Repository. Controller's job is translate inbound → call use case."
+
+  - id: domain-service-calls-repo
+    severity: P0
+    layer: domain
+    description: "Domain Service calls a Repository (reaches outward)"
+    pattern: '\b(repo|repository)\s*\.\s*(find|save|delete)'
+    globs: ["**/domain/**/services/**/*.{rs,ts,py,java}", "**/domain_services/**/*.{rs,ts,py,java}"]
+    fix_shape: "Promote the repo call to an Application Service that loads aggregates + delegates cross-entity logic to the Domain Service."
+
+# ─── Cross-layer leaks ─────────────────────────────────────────────────────
+  - id: application-binds-framework
+    severity: P1
+    layer: application
+    description: "Application service signature uses a Presentation-framework type"
+    pattern: '(axum::Json|express\.Request|@RequestBody|HttpServletRequest)'
+    globs: ["**/application/**/*.{rs,ts,py,java}"]
+    fix_shape: "Application accepts plain command/DTO; Presentation maps from framework type → command."
+
+  - id: infrastructure-calls-application
+    severity: P1
+    layer: infrastructure
+    description: "Infrastructure adapter calls into Application services (wrong direction)"
+    pattern: '^(use|import|from)\s+.*application'
+    globs: ["**/infrastructure/**/*.{rs,ts,py,java}"]
+    fix_shape: "Infrastructure should depend only on Domain ports. If an infra event needs to fire an app flow, expose a port from Application that Infrastructure can call via inversion."
+
+  - id: presentation-skips-application
+    severity: P1
+    layer: presentation
+    description: "Presentation imports from Infrastructure directly (skips Application)"
+    pattern: '^(use|import|from)\s+.*infrastructure'
+    globs: ["**/presentation/**/*.{rs,ts,py,java}"]
+    fix_shape: "Route every Presentation → Infrastructure call through an Application Use Case."
+
+  - id: port-mimics-sdk
+    severity: P1
+    layer: application
+    description: "Port signature mirrors the vendor SDK shape (e.g. trait Db { execute(sql: String) -> Vec<Row> })"
+    pattern: '\b(execute|raw_query|prepare)\s*\(\s*[a-z_]+:\s*(String|&str)\s*\)'
+    globs: ["**/application/**/ports/**/*.{rs,ts,py,java}", "**/domain/**/ports/**/*.{rs,ts,py,java}"]
+    fix_shape: "Re-design the port from the consumer's call sites: domain operations (FindByEmail, ChargeCard), not SQL strings."
+
+  - id: query-handler-returns-entity
+    severity: P1
+    layer: application
+    description: "Query Handler returns a Domain entity (instead of a DTO)"
+    pattern: 'class\s+\w+QueryHandler.*->\s*\w+(?:Entity|Aggregate)'
+    globs: ["**/application/**/queries/**/*.{rs,ts,py,java}"]
+    fix_shape: "Map the entity to a Query DTO inside the handler. Domain shape stays out of Presentation."
+
+  - id: command-mutates-multiple-aggregates
+    severity: P1
+    layer: application
+    description: "Command Handler mutates two or more aggregates in one call"
+    pattern: '(?:agg1|aggregate1).save.*(?:agg2|aggregate2).save'
+    globs: ["**/application/**/commands/**/*.{rs,ts,py,java}"]
+    fix_shape: "Introduce a Domain Service (cross-entity rule) or a Saga / Process Manager (cross-aggregate eventual consistency). Don't merge the aggregates."
+
+# ─── Composition root smells ───────────────────────────────────────────────
+  - id: composition-root-scattered
+    severity: P1
+    layer: composition
+    description: "Concrete adapter constructed outside main / wire / DI"
+    pattern: '\b(Repo|Repository|Adapter|Gateway)::new\('
+    globs: ["**/*.{rs,ts,py,java}"]
+    exclude_globs: ["**/main.rs", "**/wire.{ts,go}", "**/composition_root.{py,java}", "**/tests/**"]
+    fix_shape: "Move construction to the composition root. Inject the result via DI."
+
+# ─── Shared-Kernel + Event-emission rules (Graça / Explicit Architecture) ──
+  - id: shared-kernel-holds-aggregate
+    severity: P0
+    layer: shared-kernel
+    description: "Shared Kernel holds an Aggregate or Service (should be value-objects + IDs + Events only)"
+    pattern: '\b(class|struct)\s+\w+(?:Aggregate|Service)'
+    globs: ["**/shared-kernel/**/*.{rs,ts,py,java}", "**/shared_kernel/**/*.{rs,ts,py,java}"]
+    fix_shape: "Move the aggregate/service to its owning bounded context. Other contexts reach via ACL."
+
+  - id: event-from-infrastructure
+    severity: P1
+    layer: infrastructure
+    description: "Application Event published from an Infrastructure adapter (not the Application Service that completed the use case)"
+    pattern: '(event_bus|publisher)\.publish\('
+    globs: ["**/infrastructure/**/*.{rs,ts,py,java}"]
+    exclude_globs: ["**/infrastructure/messaging/**", "**/infrastructure/events/**"]
+    fix_shape: "Emit the event from the Application Service that completed the use case. Infrastructure messaging adapter handles transport, not emission semantics."
+
+fallback:
+  bucket: clean
+  description: "No matching anti-pattern — file is consistent with Onion / DDD layering."

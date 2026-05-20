@@ -1,0 +1,105 @@
+# yaml-language-server: $schema=./schemas/memory-context.schema.json
+#
+# onion-tdd-strict — durable agent context.
+#
+# Source: references/discipline.md § "Red flags" + "Common
+# rationalizations" + "Common audit failure modes". These are the
+# psychological / process traps that produce wrong-architecture
+# decisions — encoded here so the routine + a future agent prompt-
+# context loader can surface them at decision points.
+#
+# Walked by:
+#   - onion-tdd-strict routine's `audit` stage gate (surface relevant
+#     red flags as the agent classifies findings)
+#   - kaizen-onion-audit CLI as advisory output alongside findings
+
+version: 1
+
+# ─── Red flags — STOP signals that route through the full chain ─────
+red_flags:
+  - id: cargo-toml-internal-dep-change
+    trigger: "About to edit a Cargo.toml / package.json / go.mod to add or remove an internal dep"
+    required_response: "Write a plan (create-plan), execute it (execute-plan), run verification commands."
+    severity: P0
+
+  - id: trait-interface-move
+    trigger: "About to move a trait / interface between crates / modules / packages"
+    required_response: "Plan the move with cycle-trap awareness. Verify dep-direction post-move."
+    severity: P0
+
+  - id: port-introduction
+    trigger: "About to introduce or remove a port (interface in Domain, impl in Infrastructure)"
+    required_response: "Confirm there are ≥2 concrete consumers (YAGNI gate). Write the contract test (RED) before the impl (GREEN)."
+    severity: P1
+
+  - id: layer-boundary-claim
+    trigger: "About to claim 'this layer no longer depends on that one' without running a check"
+    required_response: "Run the verify.yaml::dep-direction-outer-to-inner-only check. Mental verification is the failure mode the verification step prevents."
+    severity: P0
+
+  - id: cargo-check-only-evidence
+    trigger: "About to commit an architectural fix with only `cargo check` / `tsc --noEmit` as evidence"
+    required_response: "Run the verify.yaml claims relevant to the change. The type-checker accepts non-cyclic graphs that still violate dep-direction."
+    severity: P0
+
+# ─── Common rationalizations — anti-patterns + their reality ─────────
+rationalizations:
+  - excuse: "The audit findings are obvious enough to fix directly"
+    reality: "Obvious to write != obvious to sequence. The cycle trap bites improvised edits, not planned ones. Cost of a 3-line plan: ~3 minutes. Cost of an untracked deviation: a rollback."
+
+  - excuse: "It's just one file change"
+    reality: "Then the plan is one task. Same ~3 minutes. Benefit: caught risk-register entries + verification gate."
+
+  - excuse: "`cargo check` / `tsc --noEmit` passing means I'm done"
+    reality: "The compiler can't see 'depends inward only'. A compile-clean tree can still have a Domain → Infrastructure edge — the architectural violation Onion exists to prevent."
+
+  - excuse: "I already verified mentally that the dep direction is right"
+    reality: "Mental verification IS the failure mode the verification step exists to prevent. Run the grep."
+
+  - excuse: "The user told me to execute immediately, so I'll skip the plan"
+    reality: "'Execute immediately' means execute the plan immediately, not skip the plan. Plan + execute + verify is one atomic flow at execution time; the workflow is the structure, the user's 'immediately' is the cadence."
+
+  - excuse: "Coding-skills is for new feature work, not for moving existing code"
+    reality: |
+      Wrong frame. The most damaging Onion violations enter the codebase DURING
+      refactors:
+        - port lifted to Domain that no longer matches its sole impl (SOLID/LSP)
+        - trait duplicated across two infrastructure crates because the auditor
+          didn't grep first (DRY)
+        - port introduced 'for the future second consumer' that never arrives (YAGNI)
+      Coding-skills is precisely the discipline that catches these at edit time.
+
+  - excuse: "TDD doesn't apply to relocations — there's no new behavior to test"
+    reality: |
+      Half right, fully wrong. Pure relocations don't need a NEW failing test, but
+      they DO need the existing suite to run between old-location-removal and
+      new-location-addition — that's the regression-as-RED check. New ports always
+      need a contract test (the trait's promise is the test's assertion). New
+      adapters always need an impl test against the port. 'No new test' almost
+      always means 'I moved code without exercising it.'"
+
+# ─── Audit failure modes — patterns that mark a wrong audit ──────────
+audit_failure_modes:
+  - mistake: "I read 3 files, looks fine"
+    correction: "Audit needs the WHOLE layer surface, not a sample. Grep for forbidden imports first; sampling misses systemic violations."
+
+  - mistake: "The compiler caught nothing → it's correct"
+    correction: "The compiler can't see 'depends inward only'. A compile-clean tree can still violate layering."
+
+  - mistake: "I'll skip the boring composition root"
+    correction: "Composition root is where DI either works or doesn't. It's the most-leveraged 50 LOC in the codebase."
+
+  - mistake: "Anemic models are fine, the services have the logic"
+    correction: "The architecture LOOKS layered but isn't — see audit-rubric.yaml::anemic-getter-setter-only."
+
+  - mistake: "I'll just fix the violations as I find them"
+    correction: "Audit produces findings; route fixes through the create-plan → execute-plan chain. Improvised fixes hit cycle traps."
+
+# ─── Cases when the chain is unnecessary ─────────────────────────────
+chain_optional_when:
+  - "Audit confirms the architecture is already correct — stop after Part 2."
+  - "Audit recommends a purely additive change (new port, new value object, no migration, no code moves) AND < 10 LOC — skip the formal plan doc, but STILL run verify.yaml claims before claiming done."
+  - "User explicitly invoked the discipline for teaching / review only with no intent to change code — stop after Part 2."
+
+# In every other case — every refactor, every dep-direction fix,
+# every layer reassignment — the chain is required.

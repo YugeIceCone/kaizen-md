@@ -1,0 +1,104 @@
+# yaml-language-server: $schema=./schemas/verify.schema.json
+#
+# onion-tdd-strict — verification commands per architectural claim.
+#
+# Source: references/discipline.md Part 3 § "Verification commands by
+# claim". Each claim has language-specific check shells that exit 0
+# (claim holds) or 1 (claim violated). The compiler will not catch any
+# of these — they must run explicitly.
+#
+# Walked by: future kaizen-onion-verify CLI + the onion-tdd-strict
+# routine's `verify` stage gate.
+
+version: 1
+
+claims:
+  - id: domain-is-leaf-pure
+    description: "Domain layer has zero internal/workspace deps; depends on stdlib + data primitives only."
+    severity: P0
+    checks:
+      rust: |
+        # Confirm no workspace-prefixed deps in <domain>/Cargo.toml.
+        # Replace <workspace-prefix> with your workspace crate prefix.
+        grep -q '^<workspace-prefix>-' <domain>/Cargo.toml && exit 1 || exit 0
+      go: |
+        # No first-party module deps from the domain package.
+        go list -deps ./<domain> | grep -q '<module-prefix>' && exit 1 || exit 0
+      node: |
+        # No internal package names in domain package.json deps.
+        jq -e '.dependencies | keys | map(select(startswith("@<scope>/"))) | length == 0' <domain>/package.json
+      python: |
+        # First-party imports only from stdlib + declared data libs.
+        grep -rEh '^(from|import) ' <domain> | grep -vE '^(from|import) (typing|dataclasses|datetime|uuid|abc|enum)\b' | grep -E '^(from|import) <package-prefix>' && exit 1 || exit 0
+
+  - id: dep-direction-outer-to-inner-only
+    description: "Edges in the dep graph point outer → inner only (no cousin-deps, no inversions)."
+    severity: P0
+    checks:
+      rust: |
+        # cargo metadata + jq inspection for reverse-deps to inner layer
+        cargo metadata --format-version 1 \
+          | jq -r '.packages[] | select(.dependencies[]?.name == "<domain-crate>") | .name'
+        # Output should be only outer crates; any domain → X listed here is OK if X is leaf-pure.
+      manual: |
+        # Render dep-graph + diff against golden topology
+        cargo tree -p <crate> --depth 1 > /tmp/current-tree.txt
+        diff /tmp/current-tree.txt rules/lints/golden-tree.txt
+
+  - id: port-implemented-in-infrastructure
+    description: "Repository / Service port defined in Domain (or Application) AND impl exists in Infrastructure."
+    severity: P1
+    checks:
+      grep_port_defined: |
+        # Trait/interface declaration in Domain
+        grep -rE '(trait|interface)\s+<PortName>' <domain> <application>
+      grep_impl_exists: |
+        # Impl in Infrastructure
+        grep -rE 'impl\s+<PortName>\s+for|class\s+\w+\s+implements\s+<PortName>' <infrastructure>
+      # Both must return at least one hit for the claim to hold.
+
+  - id: no-framework-imports-in-domain
+    description: "Domain files contain no framework / runtime / IO imports."
+    severity: P0
+    checks:
+      shell: |
+        # Forbidden imports — project-specific allowlist
+        forbidden=("sqlx" "tokio" "reqwest" "axum" "hyper" "express" "sqlalchemy" "django"
+                   "kafka" "rabbitmq" "redis::Connection" "aws_sdk_")
+        for f in "${forbidden[@]}"; do
+            grep -rE "^(use|import|from)\s+.*${f}" <domain> && exit 1
+        done
+        exit 0
+
+  - id: cycle-broken-cleanly
+    description: "No circular dep between bounded contexts; cargo check passes AND leaf-purity holds."
+    severity: P0
+    checks:
+      rust: "cargo check --workspace --offline"
+      go: "go build ./..."
+      typescript: "npx tsc --noEmit"
+      python: "mypy ."
+      # Plus: re-run domain-is-leaf-pure (compiler accepts non-cyclic graphs that still violate dep-direction).
+
+# ─── Lint-rule families that lock the boundary in CI ─────────────────────
+lint_rule_families:
+  - id: forbidden-import
+    description: "An outer-ring dep leaking into Domain or Application"
+    naming_pattern: "onion-no-<dep>-in-<layer>"
+    tooling: ["ast-grep", "eslint", "import-linter", "go-arch-lint"]
+
+  - id: topology
+    description: "Layer importing across-and-down instead of inward"
+    naming_pattern: "onion-<layer>-no-internal-deps | onion-no-<consumer>-import-from-<forbidden-source>"
+    tooling: ["ast-grep", "import-linter contracts", "ArchUnit", "go-arch-lint"]
+
+  - id: port-uniqueness
+    description: "Port (trait/interface) lifted to Domain getting re-declared in an outer ring (Liskov-breaking)"
+    naming_pattern: "onion-no-redefine-<port>"
+    tooling: ["ast-grep"]
+
+# Hygiene per lint rule
+lint_hygiene:
+  - "Every rule has snapshot tests: a reject-fixture AND an accept-fixture."
+  - "CI gate runs on every PR: `ast-grep scan --filter 'onion-*'` or equivalent."
+  - "Architecture-log row names the new rule file by id when the boundary is locked."

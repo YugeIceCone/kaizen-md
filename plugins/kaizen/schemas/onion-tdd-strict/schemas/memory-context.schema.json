@@ -1,0 +1,87 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kaizen.invalid/schemas/onion-tdd-strict/memory-context.schema.json",
+  "title": "Onion-DDD agent memory context",
+  "description": "Durable agent context — red flags + common rationalizations + audit failure modes — surfaced by the routine's audit stage when classifying findings. Distinct from session memory: these are the discipline's permanent decision-anchors.",
+  "type": "object",
+  "required": ["version", "red_flags", "rationalizations", "audit_failure_modes"],
+  "additionalProperties": false,
+  "properties": {
+    "version": { "type": "integer", "const": 1 },
+    "red_flags": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/RedFlag" }
+    },
+    "rationalizations": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/Rationalization" }
+    },
+    "audit_failure_modes": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/FailureMode" }
+    },
+    "chain_optional_when": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Specific cases where the full plan/execute/verify chain can be shortened."
+    }
+  },
+  "$defs": {
+    "RedFlag": {
+      "type": "object",
+      "required": ["id", "trigger", "required_response", "severity"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
+        "trigger": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The condition the agent is about to do that requires STOP-and-route-through-chain."
+        },
+        "required_response": {
+          "type": "string",
+          "minLength": 1,
+          "description": "What the agent must do instead of proceeding ad-hoc."
+        },
+        "severity": { "enum": ["P0", "P1", "P2", "P3"] }
+      }
+    },
+    "Rationalization": {
+      "type": "object",
+      "required": ["excuse", "reality"],
+      "additionalProperties": false,
+      "properties": {
+        "excuse": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The talking-point the agent might use to skip the chain."
+        },
+        "reality": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Why the excuse is wrong + what's actually at stake."
+        }
+      }
+    },
+    "FailureMode": {
+      "type": "object",
+      "required": ["mistake", "correction"],
+      "additionalProperties": false,
+      "properties": {
+        "mistake": {
+          "type": "string",
+          "minLength": 1,
+          "description": "A common wrong-audit pattern."
+        },
+        "correction": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The right way to audit instead."
+        }
+      }
+    }
+  }
+}
