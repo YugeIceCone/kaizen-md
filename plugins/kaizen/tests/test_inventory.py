@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import shutil
 import sqlite3
 import subprocess
@@ -337,6 +338,60 @@ class TestOutputFormats(unittest.TestCase):
 
 
 # ─────────────────────── E. Import graph ──────────────────────────
+
+class TestMarkdownStructure(unittest.TestCase):
+    """Each file section in a markdown dump must follow the same
+    shape so downstream parsers / LLMs can navigate reliably."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls._tmp = Path(tempfile.mkdtemp(prefix="inv-MD-"))
+        cls.root = _seed_sandbox(cls._tmp)
+
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree(cls._tmp, ignore_errors=True)
+
+    def _md(self) -> str:
+        r = _run("dump", "--format", "markdown", "--root", str(self.root))
+        self.assertEqual(r.returncode, 0, r.stderr)
+        return r.stdout
+
+    def test_md_has_bundle_header(self):
+        # Top-level bundle header: `# inventory ... — <root>` + summary
+        text = self._md()
+        self.assertRegex(text, r"^# inventory")
+        # Summary line with file count
+        self.assertRegex(text, r"\d+ files? matched")
+
+    def test_every_file_section_has_metadata_line(self):
+        """Every `## ` file header must be followed (blank line, then)
+        by a metadata blockquote: `> type: X · bytes: N · lines: N · ...`"""
+        text = self._md()
+        sections = re.split(r"^## `", text, flags=re.MULTILINE)[1:]
+        self.assertGreater(len(sections), 0, "expected ≥1 file section")
+        for sec in sections:
+            self.assertRegex(sec, r"^[^\n]+`\s*\n\s*>\s*type:",
+                             f"missing metadata line in section: {sec[:120]}")
+
+    def test_metadata_carries_canonical_fields(self):
+        text = self._md()
+        # At least one section should have all canonical fields visible
+        self.assertRegex(text, r">\s*type:\s*\S+")
+        self.assertRegex(text, r"bytes:\s*\d+")
+        self.assertRegex(text, r"lines:\s*\d+")
+        self.assertRegex(text, r"tokens:\s*\d+")
+        self.assertRegex(text, r"sha:\s*[a-f0-9]{8,}")
+
+    def test_every_file_section_has_fenced_code_block(self):
+        text = self._md()
+        # Fenced blocks come in pairs (open + close); count opens
+        opens = len(re.findall(r"^```\w*$", text, flags=re.MULTILINE))
+        sections = len(re.findall(r"^## `", text, flags=re.MULTILINE))
+        self.assertEqual(opens, sections * 2,
+                         f"expected {sections * 2} fence lines for {sections} sections; "
+                         f"got {opens}")
+
 
 class TestImportGraph(unittest.TestCase):
     """Batch E — feature 5."""

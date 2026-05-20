@@ -500,11 +500,40 @@ def _record_for(p: Path, root: Path, max_size: int, with_graph: bool,
     return rec
 
 
+def _lang_for(rec_type: str | None, p: Path) -> str:
+    """Resolve a syntax-highlighting language tag from the record's
+    semantic type, falling back to the file's actual extension when
+    the semantic label isn't directly mapped."""
+    if rec_type and rec_type in EXT_TO_LANG:
+        return EXT_TO_LANG[rec_type]
+    suf = p.suffix.lstrip(".")
+    return EXT_TO_LANG.get(suf, "")
+
+
 def emit_markdown(files: list[Path], root: Path, args, out) -> None:
+    """Per-file shape (consistent across the bundle):
+
+        ## `<rel/path>`
+
+        > type: <T> · bytes: <N> · lines: <N> · tokens: <N> · sha: <12hex>
+
+        ```<lang>
+        <content>
+        ```
+
+    Downstream parsers can chunk reliably on `^## `\\``; pull metadata
+    via `^> type:`; and trust the fenced language tag for syntax-hi.
+    """
     for p in files:
         rec = _record_for(p, root, args.max_size, False, None, False)
-        lang = EXT_TO_LANG.get(rec["type"] or "", "")
-        out.write(f"\n## `{rec['path']}`\n\n")
+        lang = _lang_for(rec["type"], p)
+        sha_short = (rec["sha256"] or "")[:12]
+        meta = (f"> type: {rec['type'] or '?'} · "
+                f"bytes: {rec['bytes']} · "
+                f"lines: {rec['lines']} · "
+                f"tokens: {rec['tokens']} · "
+                f"sha: {sha_short}")
+        out.write(f"\n## `{rec['path']}`\n\n{meta}\n\n")
         out.write(f"```{lang}\n{rec['content']}\n```\n")
 
 
