@@ -808,7 +808,109 @@ def cmd_stats(args) -> int:
     return 0
 
 
+_CLI_PATTERNS_YAML = (Path(__file__).resolve().parents[2]
+                        / "skills" / "plugin-development"
+                        / "domain" / "cli-patterns.yaml")
+
+
+def _load_cli_patterns() -> list[dict]:
+    """Load cli-patterns.yaml catalog (stdlib regex fallback if pyyaml absent)."""
+    if not _CLI_PATTERNS_YAML.is_file():
+        return []
+    text = _CLI_PATTERNS_YAML.read_text(encoding="utf-8")
+    try:
+        import yaml  # type: ignore
+        d = yaml.safe_load(text) or {}
+        return d.get("patterns", [])
+    except ImportError:
+        out: list[dict] = []
+        cur: dict = {}
+        for line in text.splitlines():
+            if line.startswith("  - id:"):
+                if cur:
+                    out.append(cur)
+                cur = {"id": line.split(":", 1)[1].strip()}
+            elif line.startswith("    count:"):
+                cur["count"] = int(line.split(":", 1)[1].strip())
+            elif line.startswith("    detect:"):
+                cur["detect"] = line.split(":", 1)[1].strip().strip('"').strip("'")
+            elif line.startswith("    shape:"):
+                cur["shape"] = line.split(":", 1)[1].strip().strip('"')
+        if cur:
+            out.append(cur)
+        return out
+
+
+def _grep_count(detect_cmd: str, cwd: Path) -> int:
+    # shopt -s globstar — the catalog recipes use `**` globs which
+    # bash leaves literal unless globstar is enabled.
+    full_cmd = "shopt -s globstar; " + detect_cmd + " 2>/dev/null | wc -l"
+    try:
+        r = subprocess.run(
+            ["bash", "-c", full_cmd],
+            cwd=cwd, capture_output=True, text=True, timeout=30)
+        return int((r.stdout.strip() or "0").splitlines()[-1])
+    except (subprocess.SubprocessError, ValueError, IndexError):
+        return -1
+
+
+def _find_repo_root(start: Path) -> Path:
+    """Walk up to find the git repo root. Falls back to walking until a
+    plugins/kaizen/ subdir appears at the top level (skipping nested
+    occurrences that would otherwise short-circuit detection)."""
+    cur = start.resolve()
+    for _ in range(8):
+        if (cur / ".git").is_dir():
+            return cur
+        if cur.parent == cur:
+            break
+        cur = cur.parent
+    # Fallback: walk up from start looking for a plugins/kaizen/ that is
+    # NOT itself inside a plugins/kaizen/ chain.
+    cur = start.resolve()
+    for _ in range(8):
+        if (cur / "plugins" / "kaizen").is_dir() and cur.name != "kaizen":
+            return cur
+        if cur.parent == cur:
+            break
+        cur = cur.parent
+    return start
+
+
+def _cmd_drift_patterns(args) -> int:
+    patterns = _load_cli_patterns()
+    root = args.root.resolve()
+    repo_root = _find_repo_root(root)
+    results = []
+    for p in patterns:
+        if not p.get("detect"):
+            continue
+        actual = _grep_count(p["detect"], repo_root)
+        cataloged = p.get("count", 0)
+        drift = actual - cataloged if actual >= 0 else None
+        results.append({"id": p["id"], "catalog_count": cataloged,
+                         "actual_count": actual, "drift": drift})
+    if args.json:
+        print(json.dumps({"patterns": results, "root": str(repo_root)}, indent=2))
+        return 0
+    print(f"# CLI patterns drift report  (catalog: cli-patterns.yaml)")
+    print(f"# scope: {repo_root}\n")
+    print(f"  {'id':<28} catalog  actual  drift")
+    print("  " + "─" * 56)
+    for r in results:
+        d = r["drift"]
+        d_str = "n/a" if d is None else f"{d:+d}"
+        marker = "" if d in (0, None) else ("📈" if d > 0 else "⚠")
+        print(f"  {r['id']:<28} {r['catalog_count']:>6}  "
+              f"{r['actual_count']:>6}  {d_str:>5} {marker}")
+    total = sum(r["drift"] for r in results if r["drift"] is not None)
+    print(f"\n  total adoption drift: {total:+d}")
+    return 0
+
+
 def cmd_drift(args) -> int:
+    if getattr(args, "patterns", False):
+        return _cmd_drift_patterns(args)
     root = args.root.resolve()
     counts = {"pattern": 0, "extension": 0, "orphan": 0}
     by_pattern: dict[str, int] = {}
@@ -1025,6 +1127,8 @@ def build_parser() -> argparse.ArgumentParser:
         help="drift report against established PATH_PATTERNS")
     p_drift.add_argument("--root", type=Path, default=_detect_root())
     p_drift.add_argument("--json", action="store_true")
+    p_drift.add_argument("--patterns", action="store_true",
+                          help="run CLI-patterns conformance check (catalog vs grep)")
     p_drift.set_defaults(func=cmd_drift)
 
     p_tree = sub.add_parser("tree",

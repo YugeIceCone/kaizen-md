@@ -20,55 +20,55 @@ description: |
 patterns:
   - id: argparse-subparsers
     shape: "argparse + sub = ap.add_subparsers(dest='cmd', required=True)"
-    count: 94
+    count: 159
     why: |
       Standard shape for any kaizen CLI with ≥3 verbs. Bash case
       statement >5 branches is the anti-pattern (becomes a maintenance
       pit). argparse gives free --help, error messages, subcommand
       discovery.
-    detect: "grep -l 'add_subparsers' plugins/kaizen/scripts/**/*.py"
+    detect: "grep -rl 'add_subparsers' plugins/kaizen/scripts/ plugins/kaizen/skills/workflow/scripts/"
     iron_law: null
 
   - id: json-flag
     shape: "--json switch alongside the human-readable default"
-    count: 104
+    count: 205
     why: |
       Machine-readable parallel to human output. Same command renders
       both: `kaizen-X` for terminal, `kaizen-X --json` for pipelines.
       Validated externally — same pattern in simonw/csv-diff.
-    detect: 'grep -l "--json" plugins/kaizen/scripts/**/*.py'
+    detect: 'grep -rl -- "--json" plugins/kaizen/scripts/ plugins/kaizen/skills/workflow/scripts/'
     iron_law: null
 
   - id: envelope-emitter
     shape: "_emit = _envelope.emitter('kaizen-<name>', tool_version='X.Y.Z')"
-    count: 64
+    count: 67
     why: |
       Structured stderr emission. Every public CLI declares its
       tool-name once via the emitter; subsequent emit() calls carry
       that name + ISO timestamp + envelope schema. Feeds the trace log.
-    detect: "grep -l '_envelope.emitter' plugins/kaizen/scripts/"
+    detect: "grep -rl '_envelope.emitter' plugins/kaizen/scripts/"
     iron_law: bin-wrapper-per-cli  # name must match the bin symlink
 
   - id: disable-env-knob
     shape: "KAIZEN_<FEATURE>_DISABLE=1 early-exits the CLI as a no-op"
-    count: 87
+    count: 107
     why: |
       Every hook/feature MUST honor a bypass knob — iron-law
       hook-bypass-knob (hard, auto). Lets users opt out per-feature
       without uninstalling. Convention is checked very first thing,
       before any heavy import.
-    detect: "grep -l 'KAIZEN_.*_DISABLE' plugins/kaizen/scripts/ plugins/kaizen/hooks/"
+    detect: "grep -rl 'KAIZEN_.*_DISABLE' plugins/kaizen/scripts/ plugins/kaizen/hooks/"
     iron_law: hook-bypass-knob
 
   - id: bash-strict-mode
     shape: "set -uo pipefail (or -euo) at the top of every .sh"
-    count: 64
+    count: 66
     why: |
       Fail-fast on unset vars + pipeline errors. Without this, a typo
       in a variable name silently expands to '' and the script
       continues. -e adds exit-on-error; sometimes omitted when the
       script has its own error-handling.
-    detect: "grep -l 'set -uo pipefail\\|set -euo pipefail' plugins/kaizen/scripts/**/*.sh"
+    detect: "grep -rl 'set -uo pipefail\\|set -euo pipefail' plugins/kaizen/scripts/ plugins/kaizen/hooks/"
     iron_law: null
 
   - id: bin-wrapper-exec
@@ -84,7 +84,7 @@ patterns:
 
   - id: consolidated-cli-parent
     shape: "# consolidated-cli-parent: <name> marker in source header"
-    count: 33
+    count: 39
     why: |
       Marks a single CLI that dispatches to many verbs (e.g.
       kaizen-brain). Exempts the file from the strict 1:1 bin-wrapper-
@@ -95,7 +95,7 @@ patterns:
 
   - id: prog-matches-bin
     shape: "argparse.ArgumentParser(prog='kaizen-<name>') matches bin symlink"
-    count: 38
+    count: 47
     why: |
       Argparse's --help shows the actual invocation name (not the
       Python file name). Three-way drift class — prog vs bin symlink
@@ -105,18 +105,18 @@ patterns:
 
   - id: stdin-json-hook
     shape: "Python hook reads CC event JSON from sys.stdin"
-    count: 8
+    count: 11
     why: |
       Claude Code lifecycle hooks pipe event JSON to stdin. Hook
       writers parse it with json.load(sys.stdin); emit
       hookSpecificOutput.additionalContext via stdout JSON. Always
       exit 0 to avoid breaking the hook chain.
-    detect: "grep -l 'json.load(sys.stdin)' plugins/kaizen/scripts/handlers plugins/kaizen/hooks/claude/"
+    detect: "grep -rl 'json.load(sys.stdin)' plugins/kaizen/scripts/handlers/ plugins/kaizen/hooks/claude/"
     iron_law: hook-bypass-knob
 
   - id: env-overridable-paths
     shape: "os.environ.get('KAIZEN_<X>_DIR', default_path)"
-    count: 76
+    count: 213
     why: |
       Every feature dir resolves through _paths.py (or its env-knob
       counterpart) so tests can sandbox via KAIZEN_<X>_DIR. Convention:

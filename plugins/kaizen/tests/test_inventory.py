@@ -393,6 +393,31 @@ class TestMarkdownStructure(unittest.TestCase):
                          f"got {opens}")
 
 
+class TestDriftPatterns(unittest.TestCase):
+    """`drift --patterns` cross-checks the cli-patterns.yaml catalog
+    counts against fresh grep results — surfaces adoption drift."""
+
+    def test_drift_patterns_flag_runs(self):
+        r = _run("drift", "--patterns", "--root", str(_KZ_DIR))
+        self.assertEqual(r.returncode, 0, r.stderr)
+        # Output names known patterns + a per-row pair of integers
+        # (catalog count + actual count). Exact column layout is
+        # implementation-flexible; the data has to be present.
+        self.assertIn("argparse-subparsers", r.stdout)
+        self.assertIn("disable-env-knob", r.stdout)
+        # Header row mentions both 'catalog' and 'actual'
+        self.assertRegex(r.stdout, r"(?i)catalog.*actual|actual.*catalog")
+
+    def test_drift_patterns_json_emits_structured_diff(self):
+        r = _run("drift", "--patterns", "--json", "--root", str(_KZ_DIR))
+        self.assertEqual(r.returncode, 0, r.stderr)
+        data = json.loads(r.stdout)
+        self.assertIn("patterns", data)
+        for p in data["patterns"]:
+            for k in ("id", "catalog_count", "actual_count", "drift"):
+                self.assertIn(k, p)
+
+
 class TestImportGraph(unittest.TestCase):
     """Batch E — feature 5."""
 
