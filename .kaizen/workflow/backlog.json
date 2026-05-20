@@ -1043,6 +1043,44 @@
       "committed_at": null,
       "parked_reason": null,
       "probe_output": null
+    },
+    {
+      "id": "BK-055",
+      "section": "parked",
+      "title": "Backfill .jsonl siblings for historical audit reports + older plans",
+      "ref": "format-coverage-audit-2026-05-20",
+      "probe": "find .kaizen/workflow/audits/*.md — ZERO have paired .jsonl. find .kaizen/plans/2026-05-14-*.md — ZERO have paired .jsonl. Per pref-jsonl-indexed-deliverables, files with ≥30 structured entries should ship both. Audit reports typically have many severity-classified findings; plans have many phase/task entries.",
+      "verify": "every .kaizen/workflow/audits/*.md has a sibling .jsonl with one record per finding; every .kaizen/plans/*.md with ≥3 phases has a sibling .jsonl. kaizen-audit + kaizen-create-plan flows enhanced to emit both formats by default.",
+      "tags": [
+        "format-coverage",
+        "backfill",
+        "low-priority"
+      ],
+      "created": "2026-05-20",
+      "started_at": null,
+      "committed": null,
+      "committed_at": null,
+      "parked_reason": null,
+      "probe_output": null
+    },
+    {
+      "id": "BK-056",
+      "section": "next_up",
+      "title": "Automate progress.md → progress.jsonl regen (post-commit hook or pre-commit emit)",
+      "ref": "format-coverage-audit-2026-05-20",
+      "probe": "Today the regen is a manual inline Python script. Every commit that appends a progress.md row should auto-emit the matching jsonl record so the paired file stays in sync. Options: (a) post-commit hook walks the last commit's progress.md diff; (b) pre-commit hook re-parses progress.md to progress.jsonl whenever the former changes; (c) move the append logic to a kaizen-progress CLI that always writes both.",
+      "verify": "git commit that touches progress.md leaves progress.jsonl with the same row-count. Diff-test: parse-and-reemit progress.jsonl is idempotent (byte-identical).",
+      "tags": [
+        "automation",
+        "progress-log",
+        "format-coverage"
+      ],
+      "created": "2026-05-20",
+      "started_at": null,
+      "committed": null,
+      "committed_at": null,
+      "parked_reason": null,
+      "probe_output": null
     }
   ],
   "decisions": []
