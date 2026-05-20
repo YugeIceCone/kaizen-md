@@ -29,3 +29,14 @@ _spec = importlib.util.spec_from_file_location("_plugin_root", _CANONICAL)
 _mod = importlib.util.module_from_spec(_spec)
 sys.modules["_plugin_root"] = _mod
 _spec.loader.exec_module(_mod)
+
+# BK-061 — when invoked as `python3 .../skills/workflow/scripts/_plugin_root.py`
+# (NOT as an import), mirror the canonical's __main__ behavior. importlib's
+# exec_module doesn't trigger the canonical's `if __name__ == "__main__"`
+# block — so the shim must explicitly forward the CLI semantics here.
+if __name__ == "__main__":
+    try:
+        print(_mod.plugin_root())
+    except _mod.PluginRootNotFound as e:
+        sys.stderr.write(f"[_plugin_root] {e}\n")
+        sys.exit(1)
