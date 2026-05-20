@@ -20,6 +20,8 @@ import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 
 import _plugin_root as pr  # noqa: E402
 
+SCRIPT_DIR = Path(__file__).resolve().parent.parent / "scripts" / "io"
+
 class _ScrubEnv(unittest.TestCase):
     """Base class — strips CLAUDE_PLUGIN_ROOT + KAIZEN_PLUGIN_ROOT per-test."""
 
