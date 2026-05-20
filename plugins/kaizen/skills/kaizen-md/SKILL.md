@@ -72,20 +72,15 @@ actual work.
 
 ### quality / coverage cluster
 - `/kaizen:audit` — periodic comprehensive audit
-- Per-axis bins: `kaizen-coverage`, `kaizen-complexity`,
-  `kaizen-dead-code`, `kaizen-heavy-imports`, `kaizen-md-dupes`,
-  `kaizen-md-whitespace`, `kaizen-md-link-rot`, `kaizen-md-heading-depth`,
-  `kaizen-name-quality`, `kaizen-class-name-quality`,
-  `kaizen-var-name-quality`, `kaizen-tname-quality`,
-  `kaizen-test-density`, `kaizen-test-isolation`, `kaizen-test-name-quality`,
-  `kaizen-bin-coverage`, `kaizen-command-allowed-tools-coverage`,
-  `kaizen-hook-coverage`, `kaizen-hook-trace-coverage`,
-  `kaizen-mcp-coverage`, `kaizen-mcp-trace-coverage`,
-  `kaizen-perm-coverage`, `kaizen-schema-load-coverage`,
-  `kaizen-sandbox-check`, `kaizen-silent-fail`,
+- Per-axis bins: live list via `ls plugins/kaizen/bin/kaizen-* | xargs -n1 basename`
+  (catalog drifts as axes are added; the bin/ directory is the authority).
+  Major families: `kaizen-coverage` (1:1 script↔test), `kaizen-complexity`,
+  `kaizen-dead-code`, `kaizen-heavy-imports`, `kaizen-name-quality` family
+  (class/var/tname/frontmatter), `kaizen-md-*` family (dupes/whitespace/link-rot/heading-depth),
+  `kaizen-*-coverage` family (bin/command-allowed-tools/hook/hook-trace/mcp/mcp-trace/perm/schema-load),
+  `kaizen-density` + `kaizen-turn-density`, `kaizen-sandbox-check`, `kaizen-silent-fail`,
   `kaizen-subprocess-rc`, `kaizen-unused-env`, `kaizen-todo-inventory`,
-  `kaizen-density`, `kaizen-turn-density`, `kaizen-prompt-event-diff`,
-  `kaizen-prompt-rhythm`
+  `kaizen-prompt-event-diff`, `kaizen-prompt-rhythm`.
 - Aggregator: `kaizen-gatekeeper check --all` (one verdict over the axes)
 
 ### plugin-dev cluster

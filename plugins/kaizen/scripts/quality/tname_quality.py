@@ -19,7 +19,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "io"))
 
 import _envelope  # noqa: E402
 
-_emit = _envelope.emitter("kaizen-test-name-quality", tool_version="1.0.0")
+_emit = _envelope.emitter("kaizen-tname-quality", tool_version="1.0.0")
 
 
 def _plugin_root() -> Path:
@@ -82,7 +82,7 @@ def _run(args) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
-    ap = argparse.ArgumentParser(prog="kaizen-test-name-quality",
+    ap = argparse.ArgumentParser(prog="kaizen-tname-quality",
         description="Test-method name quality (too-short flags).")
     sub = ap.add_subparsers(dest="cmd", required=True)
     for n in ("report", "gaps"):
