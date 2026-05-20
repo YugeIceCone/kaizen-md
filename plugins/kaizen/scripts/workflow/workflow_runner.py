@@ -1,6 +1,4 @@
 #!/usr/bin/env python3
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-import _bootstrap  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 """kaizen workflow_runner — load + validate + topo-order schema-driven workflows.
 
 OpenSpec-inspired declarative workflow schemas. A schema is a yaml file
@@ -61,6 +59,9 @@ from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 PLUGIN_ROOT = SCRIPT_DIR.parent.parent  # scripts/workflow → plugin root
+
+sys.path.insert(0, str(SCRIPT_DIR.parent))
+import _bootstrap  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 
 # v1.22.0+: pull path defaults from the kaizen plugin's _paths SSOT.
 # v1.30.0+: renamed from skills/kaizen/scripts → skills/workflow/scripts.
