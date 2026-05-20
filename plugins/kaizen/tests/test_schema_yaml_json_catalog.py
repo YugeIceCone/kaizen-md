@@ -49,6 +49,7 @@ class TestLiveSkillsMatchCatalog(unittest.TestCase):
     """Empirical: live skills the catalog cites actually conform."""
 
     SKILLS_DIR = _KZ_DIR / "skills"
+    SCHEMAS_DIR = _KZ_DIR / "schemas"
 
     def _load_yaml(self, path: Path) -> dict:
         import yaml
@@ -59,7 +60,7 @@ class TestLiveSkillsMatchCatalog(unittest.TestCase):
             import yaml  # noqa
         except ImportError:
             self.skipTest("yaml not installed")
-        m = self._load_yaml(self.SKILLS_DIR / "handoff/domain/handoff.yaml")
+        m = self._load_yaml(self.SCHEMAS_DIR / "handoff/handoff.yaml")
         self.assertEqual(m.get("version"), 2)
         self.assertEqual(m.get("feature"), "handoff")
 
@@ -69,7 +70,7 @@ class TestLiveSkillsMatchCatalog(unittest.TestCase):
         except ImportError:
             self.skipTest("yaml not installed")
         r = self._load_yaml(
-            self.SKILLS_DIR / "auto-handoff/domain/rubric.yaml")
+            self.SCHEMAS_DIR / "auto-handoff/rubric.yaml")
         self.assertEqual(r.get("version"), 1)
         self.assertIn("rules", r)
         self.assertIn("fallback", r)
@@ -83,7 +84,7 @@ class TestLiveSkillsMatchCatalog(unittest.TestCase):
         except ImportError:
             self.skipTest("yaml not installed")
         c = self._load_yaml(
-            self.SKILLS_DIR / "auto-handoff/domain/config.yaml")
+            self.SCHEMAS_DIR / "auto-handoff/config.yaml")
         self.assertEqual(c.get("version"), 1)
         self.assertIn("on_fire", c)
         # on_bucket present (per-bucket policy paired with rubric)
@@ -95,7 +96,7 @@ class TestLiveSkillsMatchCatalog(unittest.TestCase):
         except ImportError:
             self.skipTest("yaml not installed")
         i = self._load_yaml(
-            self.SKILLS_DIR / "intent/domain/intents.yaml")
+            self.SCHEMAS_DIR / "intent/intents.yaml")
         self.assertEqual(i.get("version"), 1)
         self.assertIn("intents", i)
         for entry in i["intents"]:
@@ -111,7 +112,7 @@ class TestSchemasUseDraft07(unittest.TestCase):
 
     def test_all_shipped_schemas_declare_schema_url(self):
         misses = []
-        for p in (_KZ_DIR / "skills").rglob("*.schema.json"):
+        for p in (_KZ_DIR / "schemas").rglob("*.schema.json"):
             try:
                 data = json.loads(p.read_text(encoding="utf-8"))
             except json.JSONDecodeError:
@@ -121,7 +122,7 @@ class TestSchemasUseDraft07(unittest.TestCase):
                 misses.append(f"{p}: missing $schema")
         # Allow some misses (e.g. nested $defs files), but the bulk
         # should declare it. Threshold: ≥80% have it.
-        all_schemas = list((_KZ_DIR / "skills").rglob("*.schema.json"))
+        all_schemas = list((_KZ_DIR / "schemas").rglob("*.schema.json"))
         compliant = len(all_schemas) - len(misses)
         ratio = compliant / max(1, len(all_schemas))
         self.assertGreaterEqual(

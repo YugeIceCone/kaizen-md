@@ -31,7 +31,7 @@ class TestCodeTourSkill(unittest.TestCase):
 
     def test_domain_yamls_intact(self):
         for stem in ("personas", "depths"):
-            p = _SKILLS / "code-tour" / "domain" / f"{stem}.yaml"
+            p = _SKILLS.parent / "schemas" / "code-tour" / f"{stem}.yaml"
             self.assertTrue(p.is_file(), f"missing: {p}")
 
 

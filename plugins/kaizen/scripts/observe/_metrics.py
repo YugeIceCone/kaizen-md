@@ -392,8 +392,8 @@ SKIP_RULES = [
         "skill": "brain",
         "patterns": [
             "plugins/kaizen/skills/brain/",
+            "plugins/kaizen/schemas/brain/",                # post-consolidation
             "plugins/kaizen/scripts/brain/_brain.py",
-            "plugins/kaizen/skills/workflow/scripts/brain",  # prefix match
             ".kaizen/brain/Notes/",       # v1.38.0+ canonical location
             ".kaizen/brain/Persona.md",   # v1.38.0+ canonical location
             "/brain/Notes/",              # any-prefix match (legacy + new)

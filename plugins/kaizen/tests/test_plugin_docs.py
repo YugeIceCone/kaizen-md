@@ -42,7 +42,7 @@ class _DocsBase(unittest.TestCase):
         (self.root / "skills/foo/SKILL.md").write_text("# foo skill\n")
         (self.root / "skills/foo/references").mkdir()
         (self.root / "skills/foo/references/api.md").write_text("# api\n")
-        (self.root / "schemas/foo").mkdir()
+        (self.root / "schemas/foo").mkdir(parents=True)
         (self.root / "schemas/foo/rules.yaml").write_text("v: 1\n")
         (self.root / "skills/bar").mkdir()
         (self.root / "skills/bar/SKILL.md").write_text("# bar skill\n")

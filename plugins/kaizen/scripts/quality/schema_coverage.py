@@ -117,8 +117,13 @@ def detect_rule_catalog(domain_dir: Path) -> dict | None:
     return None
 
 def feature_report(feature_dir: Path) -> dict:
-    """Build a coverage entry for one skill / feature."""
-    domain = feature_dir / "domain"
+    """Build a coverage entry for one feature.
+
+    Post-schemas-consolidation, `feature_dir` IS the schemas/<X>/ dir
+    (was skills/<X>/domain/ pre-consolidation). The variable `domain`
+    keeps its name for readability inside this function.
+    """
+    domain = feature_dir
     schemas_dir = domain / "schemas"
     has_domain = domain.is_dir()
     schemas = sorted(p.name for p in schemas_dir.glob("*.schema.json")) \
@@ -163,11 +168,11 @@ def feature_report(feature_dir: Path) -> dict:
 
 def all_reports(root: Path | None = None) -> list[dict]:
     root = root or _plugin_root()
-    skills = root / "skills"
+    schemas = root / "schemas"
     out = []
-    if not skills.is_dir():
+    if not schemas.is_dir():
         return out
-    for p in sorted(skills.iterdir()):
+    for p in sorted(schemas.iterdir()):
         if not p.is_dir():
             continue
         out.append(feature_report(p))
@@ -203,7 +208,7 @@ def _cmd_report(args) -> int:
     return 0
 
 def _cmd_feature(args) -> int:
-    p = _plugin_root() / "skills" / args.name
+    p = _plugin_root() / "schemas" / args.name
     if not p.is_dir():
         sys.stderr.write(f"[kaizen-schema-coverage] feature not found: {args.name}\n")
         return 1

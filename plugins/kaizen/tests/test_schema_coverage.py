@@ -94,8 +94,9 @@ class TestFeatureReport(unittest.TestCase):
         self._tmp.cleanup()
 
     def test_no_domain_is_not_conformant_but_no_gaps(self):
-        feat = self.root / "x"; feat.mkdir()
-        (feat / "SKILL.md").write_text("body")
+        # Post-consolidation: feature_dir IS the data dir. Empty dir or
+        # a non-existent dir → has_domain=False.
+        feat = self.root / "x"  # don't mkdir — empty / missing
         r = self.sc.feature_report(feat)
         self.assertFalse(r["has_domain"])
         self.assertEqual(r["matched_shapes"], [])
@@ -103,9 +104,9 @@ class TestFeatureReport(unittest.TestCase):
         self.assertFalse(r["conformant"])
 
     def test_domain_with_no_shape_match_flagged(self):
+        # Post-consolidation: feat IS the schemas/<X>/ dir, no inner domain/.
         feat = self.root / "x"; feat.mkdir()
-        (feat / "domain").mkdir()
-        (feat / "domain/some.yaml").write_text("free: form\n")
+        (feat / "some.yaml").write_text("free: form\n")
         r = self.sc.feature_report(feat)
         self.assertTrue(r["has_domain"])
         self.assertEqual(r["matched_shapes"], [])
@@ -113,10 +114,9 @@ class TestFeatureReport(unittest.TestCase):
 
     def test_conformant_feature_passes(self):
         feat = self.root / "good"; feat.mkdir()
-        (feat / "domain").mkdir()
-        (feat / "domain/schemas").mkdir()
-        (feat / "domain/config.yaml").write_text("version: 1\n")
-        (feat / "domain/schemas/x.schema.json").write_text("{}")
+        (feat / "schemas").mkdir()
+        (feat / "config.yaml").write_text("version: 1\n")
+        (feat / "schemas/x.schema.json").write_text("{}")
         r = self.sc.feature_report(feat)
         self.assertTrue(r["conformant"])
         self.assertIn("plain-config", r["matched_shapes"])
