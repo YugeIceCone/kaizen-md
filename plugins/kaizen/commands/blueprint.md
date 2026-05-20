@@ -1,6 +1,6 @@
 ---
 name: blueprint
-description: "1-roundtrip plan management. Read / mutate / validate / atomic-write any blueprint.json plan with a single CLI call. Memory-cached metadata means the common scan-then-pick flow is truly 1 call after the first list. Verbs - show | list | scan | state | validate | set-status | set-task-status | add-item | add-task | chunk | dispatch | init | create. Triggers - 'show plan item', 'mark task done', 'next chunk', 'scan plan', 'kaizen-blueprint'."
+description: "1-roundtrip CLI over .kaizen/docs/<YYYY-MM-DD>-<topic>/plan.json. Read / mutate / validate / atomic-write per call. Verbs - show | list | scan | state | validate | set-status | set-task-status | add-item | add-task | chunk | dispatch | init | create. Triggers - 'show plan item', 'mark task done', 'next chunk', 'scan plan', 'kaizen-blueprint'."
 argument-hint: "show <N> | list | scan | chunk --list-id X | set-task-status --task-id Y --status completed | add-item --kind K --title T | ..."
 allowed-tools: ["Bash(${CLAUDE_PLUGIN_ROOT}/bin/kaizen-blueprint:*)", "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/scripts/blueprint/blueprint.py:*)", "Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/blueprint/dispatch.sh:*)"]
 ---

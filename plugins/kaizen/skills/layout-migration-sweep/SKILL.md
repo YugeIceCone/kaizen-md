@@ -1,6 +1,6 @@
 ---
 name: layout-migration-sweep
-description: Use when a previous refactor relocated files (skills/X/scripts → scripts/X, depth changes, cluster reshuffles) and stragglers — wrappers / shell scripts / docs / hooks — still point at the dead path. Symptom is usually a single broken command (exit 127, "No such file or directory") that on inspection reveals N more files with the same shape. Triggers on "Phase-N migration", "layout drift", "path sweep after move", "post-migration straggler", "../../.. lands at wrong dir", "skills/workflow/scripts/ refs", "stale exec path", "cafa249-shape fix". Pairs with shim-and-sweep (the structured way to relocate so straggler-sweeps aren't needed) and bin-wrapper-per-cli iron-law (which enforces wrapper presence but not target validity).
+description: Sweep post-relocation stragglers - bin wrappers / shell exec= / PLUGIN_ROOT ../... / doc refs / source siblings - against a dead path. Symptom - exit 127 on one verb, grep reveals N more. 4 classes (bin-wrapper exec / PLUGIN_ROOT depth / doc+frontmatter / internal source). Each has its own sweep cmd + regression-test pattern. Pairs - shim-and-sweep (prevention) / bin-wrapper-per-cli (iron-law). Triggers - "Phase-N migration", "layout drift", "path sweep after move", "post-migration straggler", "../../.. lands at wrong dir", "skills/workflow/scripts/ refs", "stale exec path", "cafa249-shape fix".
 metadata:
   version: "1.0"
   origin: kaizen-md 2026-05-20 (cafa249 + 992d9e8 + 4476162 + bin-wrapper sweep)
