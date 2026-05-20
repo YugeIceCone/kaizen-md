@@ -6,10 +6,10 @@ import unittest
 from pathlib import Path
 
 _KZ = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(_KZ / "skills/workflow/scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 
 import brainstorm  # noqa: E402
-
 
 class TestBrainstormSignals(unittest.TestCase):
     def test_full_draft(self):
@@ -70,7 +70,6 @@ class TestBrainstormSignals(unittest.TestCase):
         a = brainstorm._compute_idea_signals(draft)
         b = brainstorm._compute_idea_signals(draft)
         self.assertEqual(a, b)
-
 
 if __name__ == "__main__":
     unittest.main()

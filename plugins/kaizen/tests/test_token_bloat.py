@@ -9,10 +9,11 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 
 _KZ_DIR = Path(__file__).resolve().parent.parent
 _SCRIPT = _KZ_DIR / "scripts/index/token_bloat.py"
-
 
 def _run(*args, env: dict | None = None) -> subprocess.CompletedProcess:
     return subprocess.run(
@@ -20,7 +21,6 @@ def _run(*args, env: dict | None = None) -> subprocess.CompletedProcess:
         capture_output=True, text=True, timeout=10,
         env={**os.environ, **(env or {})},
     )
-
 
 class TestScriptHealth(unittest.TestCase):
     def test_script_present_and_parses(self):
@@ -31,7 +31,6 @@ class TestScriptHealth(unittest.TestCase):
     def test_no_subcommand_exits_nonzero(self):
         r = _run()
         self.assertNotEqual(r.returncode, 0)
-
 
 class TestScanAgainstRealPlugin(unittest.TestCase):
     """End-to-end: scan the real plugin, sanity-check the report."""
@@ -52,7 +51,6 @@ class TestScanAgainstRealPlugin(unittest.TestCase):
         # The real plugin has at least one bloat finding (session-intake heredoc, big SKILLs)
         self.assertGreater(data["total"], 0)
 
-
 class TestYamlTemplateScanner(unittest.TestCase):
     """Synthetic yaml fixtures to exercise the reason_template scanner."""
 
@@ -70,7 +68,6 @@ class TestYamlTemplateScanner(unittest.TestCase):
 
     def _run_scan(self) -> dict:
         """Patch _plugin_root and call scan_all."""
-        sys.path.insert(0, str(_KZ_DIR / "skills/workflow/scripts"))
         if "token_bloat" in sys.modules:
             del sys.modules["token_bloat"]
         import token_bloat
@@ -102,7 +99,6 @@ class TestYamlTemplateScanner(unittest.TestCase):
         self.assertEqual(f["severity"], "high")
         self.assertEqual(f["field"], "reason_template")
         self.assertGreater(f["tokens"], 0)
-
 
 class TestCacheSurfacing(unittest.TestCase):
     def setUp(self):
@@ -164,14 +160,12 @@ class TestCacheSurfacing(unittest.TestCase):
         self.assertIn("top-cost:", r.stdout)  # cumulative-aware
         self.assertIn("q=", r.stdout)
 
-
 class TestReportSubcommand(unittest.TestCase):
     def test_report_without_cache_exits_1(self):
         with tempfile.TemporaryDirectory() as tmp:
             env = {"KAIZEN_DIR": tmp}
             r = _run("report", env=env)
             self.assertEqual(r.returncode, 1)
-
 
 class TestHookArtifacts(unittest.TestCase):
     """The two auto-invocation hooks must be present + executable."""
@@ -191,13 +185,11 @@ class TestHookArtifacts(unittest.TestCase):
         self.assertTrue(p.is_file())
         self.assertTrue(os.access(p, os.X_OK))
 
-
 class TestQualityScore(unittest.TestCase):
     """Quality scoring — sanity-check the heuristic without claiming
     absolute precision. Tests pin RELATIVE ordering, not absolute scores."""
 
     def setUp(self):
-        sys.path.insert(0, str(_KZ_DIR / "skills/workflow/scripts"))
         if "token_bloat" in sys.modules:
             del sys.modules["token_bloat"]
         import token_bloat
@@ -238,7 +230,6 @@ class TestQualityScore(unittest.TestCase):
     def test_high_quality_outranks_low_in_waste_sort(self):
         """When two findings have similar tokens, the lower-quality one
         should rank first (more waste). scan_all does the sort."""
-        sys.path.insert(0, str(_KZ_DIR / "skills/workflow/scripts"))
         if "token_bloat" in sys.modules:
             del sys.modules["token_bloat"]
         import token_bloat as tb
@@ -255,7 +246,6 @@ class TestQualityScore(unittest.TestCase):
                                        -(f["tokens"] * (100 - f.get("quality", 50)))))
         self.assertEqual(findings[0]["path"], "a")  # low quality first
 
-
 class TestFindingsHaveQualityFields(unittest.TestCase):
     """After scoring wire-up, every finding dict must carry quality + hint."""
 
@@ -270,7 +260,6 @@ class TestFindingsHaveQualityFields(unittest.TestCase):
                 "  reason_template: |\n"
                 f"{body}\n"
             )
-            sys.path.insert(0, str(_KZ_DIR / "skills/workflow/scripts"))
             if "token_bloat" in sys.modules:
                 del sys.modules["token_bloat"]
             import token_bloat
@@ -282,12 +271,10 @@ class TestFindingsHaveQualityFields(unittest.TestCase):
             self.assertIsInstance(f["quality"], int)
             self.assertTrue(0 <= f["quality"] <= 100)
 
-
 class TestExpandedScanners(unittest.TestCase):
     """Phase-2 horizontal scanners: agents/*.md + frontmatter description."""
 
     def setUp(self):
-        sys.path.insert(0, str(_KZ_DIR / "skills/workflow/scripts"))
         if "token_bloat" in sys.modules:
             del sys.modules["token_bloat"]
         import token_bloat as tb
@@ -329,12 +316,10 @@ class TestExpandedScanners(unittest.TestCase):
         f = self.tb.scan_all(root=self.root)
         self.assertEqual([x for x in f if x["kind"] == "frontmatter-desc"], [])
 
-
 class TestSensitivityTier(unittest.TestCase):
     """LLMLingua-inspired classification per finding."""
 
     def setUp(self):
-        sys.path.insert(0, str(_KZ_DIR / "skills/workflow/scripts"))
         if "token_bloat" in sys.modules:
             del sys.modules["token_bloat"]
         import token_bloat as tb
@@ -360,12 +345,10 @@ class TestSensitivityTier(unittest.TestCase):
         self.assertEqual(self.tier({"kind": "skill-md", "path": "x"}),
                           "context")
 
-
 class TestDxmFireWeighting(unittest.TestCase):
     """Fire-count weighting: cumulative_tokens = tokens × max(1, fires)."""
 
     def setUp(self):
-        sys.path.insert(0, str(_KZ_DIR / "skills/workflow/scripts"))
         if "token_bloat" in sys.modules:
             del sys.modules["token_bloat"]
         import token_bloat as tb
@@ -433,7 +416,6 @@ class TestDxmFireWeighting(unittest.TestCase):
         finally:
             os.environ.pop("KAIZEN_DXM_DIR", None)
 
-
 class TestSessionStateFile(unittest.TestCase):
     """Per-scan session state file with one short line per finding."""
 
@@ -472,13 +454,11 @@ class TestSessionStateFile(unittest.TestCase):
         self.assertEqual(r.returncode, 0)
         self.assertEqual(r.stdout.strip(), str(self.state_file))
 
-
 class TestProjectAwarePath(unittest.TestCase):
     """Default location: $KAIZEN_DIR/token-bloat/<project-slug>/{session.md,history.jsonl}.
     User-global storage + per-project slugging."""
 
     def setUp(self):
-        sys.path.insert(0, str(_KZ_DIR / "skills/workflow/scripts"))
         if "token_bloat" in sys.modules:
             del sys.modules["token_bloat"]
         import token_bloat as tb
@@ -543,7 +523,6 @@ class TestProjectAwarePath(unittest.TestCase):
                 "KAIZEN_BLOAT_SESSION_FILE": str(custom)}
         r = _run("session", env=env)
         self.assertEqual(r.stdout.strip(), str(custom))
-
 
 class TestSessionStateSurvival(unittest.TestCase):
     """Continuity + survival: snapshot is atomic; history JSONL grows;
@@ -612,12 +591,10 @@ class TestSessionStateSurvival(unittest.TestCase):
         self.assertEqual(leftover, [],
                           f"atomic_write left stray tempfiles: {leftover}")
 
-
 class TestSplitPlan(unittest.TestCase):
     """Rubric-driven split-plan emitter — classifies SKILL.md sections."""
 
     def setUp(self):
-        sys.path.insert(0, str(_KZ_DIR / "skills/workflow/scripts"))
         if "token_bloat" in sys.modules:
             del sys.modules["token_bloat"]
         import token_bloat as tb
@@ -716,7 +693,6 @@ class TestSplitPlan(unittest.TestCase):
         self.assertIsInstance(data, list)
         self.assertGreater(len(data), 0)
 
-
 class TestArchiveAndSmartRead(unittest.TestCase):
     """Each scan archives the rendered snapshot to archive/<ts>.md and
     the `read` subcommand resolves `path:start-end` citations."""
@@ -768,12 +744,10 @@ class TestArchiveAndSmartRead(unittest.TestCase):
         for k in ("path", "name", "size", "mtime"):
             self.assertIn(k, data[0])
 
-
 class TestSmartRead(unittest.TestCase):
     """smart_read / `read` subcommand — pure citation → snippet."""
 
     def setUp(self):
-        sys.path.insert(0, str(_KZ_DIR / "skills/workflow/scripts"))
         if "token_bloat" in sys.modules:
             del sys.modules["token_bloat"]
         import token_bloat as tb
@@ -843,12 +817,10 @@ class TestSmartRead(unittest.TestCase):
         finally:
             os.chdir(cwd0)
 
-
 class TestStaleEntryValidator(unittest.TestCase):
     """Stale / invalid finding detection + prune behavior."""
 
     def setUp(self):
-        sys.path.insert(0, str(_KZ_DIR / "skills/workflow/scripts"))
         if "token_bloat" in sys.modules:
             del sys.modules["token_bloat"]
         import token_bloat as tb
@@ -909,7 +881,6 @@ class TestStaleEntryValidator(unittest.TestCase):
         self.assertEqual(len(buckets["active"]), 1)
         self.assertEqual(len(buckets["missing"]), 1)
         self.assertEqual(len(buckets["resolved"]), 1)
-
 
 class TestValidateCLI(unittest.TestCase):
     """CLI validate (read-only) + validate --prune (rewrites snapshot)."""
@@ -974,13 +945,11 @@ class TestValidateCLI(unittest.TestCase):
             if f_dict["path"] == "definitely-not-a-real-file.md":
                 self.assertNotIn("definitely-not-a-real-file.md", snap_text)
 
-
 class TestLineRangePresence(unittest.TestCase):
     """Every finding must carry start_line + end_line so the session
     state file can render `path:start-end` jump targets."""
 
     def setUp(self):
-        sys.path.insert(0, str(_KZ_DIR / "skills/workflow/scripts"))
         if "token_bloat" in sys.modules:
             del sys.modules["token_bloat"]
         import token_bloat as tb
@@ -997,7 +966,6 @@ class TestLineRangePresence(unittest.TestCase):
             self.assertGreaterEqual(f["start_line"], 1)
             self.assertGreaterEqual(f["end_line"], f["start_line"])
 
-
 class TestSkillBody(unittest.TestCase):
     def test_skill_md_present(self):
         p = _KZ_DIR / "skills/token-bloat/SKILL.md"
@@ -1010,7 +978,6 @@ class TestSkillBody(unittest.TestCase):
                          "find verbose templates"):
             self.assertIn(trigger, text,
                           f"SKILL.md missing trigger phrase {trigger!r}")
-
 
 if __name__ == "__main__":
     unittest.main()

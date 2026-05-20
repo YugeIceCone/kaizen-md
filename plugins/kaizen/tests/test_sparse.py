@@ -15,11 +15,11 @@ import unittest
 from pathlib import Path
 
 _KZ_DIR = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(_KZ_DIR / "skills/workflow/scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 sys.path.insert(0, str(_KZ_DIR / "scripts/indexers"))
 
 import _sparse  # noqa: E402
-
 
 class TestSparseSerialization(unittest.TestCase):
     def test_serialize_roundtrip_basic(self):
@@ -65,7 +65,6 @@ class TestSparseSerialization(unittest.TestCase):
         blob = _sparse.serialize(sparse)
         out = _sparse.deserialize(blob)
         self.assertEqual(out[1], 0.5)
-
 
 class TestSparseDotProduct(unittest.TestCase):
     def test_dot_basic(self):
@@ -114,7 +113,6 @@ class TestSparseDotProduct(unittest.TestCase):
         # Empty query → all-zero scores
         scores = _sparse.dot_product_batch({}, [{1: 1.0}, {2: 1.0}])
         self.assertEqual(scores, [0.0, 0.0])
-
 
 class TestSparseEnv(unittest.TestCase):
     """Env-knob behavior — these don't load the model, just check
@@ -180,7 +178,6 @@ class TestSparseEnv(unittest.TestCase):
         finally:
             self._restore("KAIZEN_SPARSE_MAX_LENGTH", orig)
 
-
 class TestSparseGracefulFallback(unittest.TestCase):
     """When transformers/torch aren't installed, encode_sparse* must
     return None / [None, ...] without crashing — same discipline as
@@ -209,7 +206,6 @@ class TestSparseGracefulFallback(unittest.TestCase):
     def test_is_available_returns_bool(self):
         self.assertIsInstance(_sparse.is_available(), bool)
 
-
 try:
     import numpy  # noqa: F401
     NUMPY_AVAILABLE = True
@@ -217,7 +213,6 @@ except ImportError:
     NUMPY_AVAILABLE = False
 
 requires_numpy = unittest.skipUnless(NUMPY_AVAILABLE, "numpy not installed")
-
 
 class TestSparseSchemaMigration(unittest.TestCase):
     """Migration + INSERT integration — covers the onboard_index path
@@ -231,7 +226,6 @@ class TestSparseSchemaMigration(unittest.TestCase):
         import tempfile
         from pathlib import Path
 
-        sys.path.insert(0, str(_KZ_DIR / "skills/workflow/scripts"))
         import onboard_index as oi
 
         with tempfile.TemporaryDirectory() as tmp:
@@ -252,7 +246,6 @@ class TestSparseSchemaMigration(unittest.TestCase):
         import tempfile
         from pathlib import Path
 
-        sys.path.insert(0, str(_KZ_DIR / "skills/workflow/scripts"))
         import onboard_index as oi
 
         with tempfile.TemporaryDirectory() as tmp:
@@ -293,7 +286,6 @@ class TestSparseSchemaMigration(unittest.TestCase):
         from pathlib import Path
         from unittest.mock import patch
 
-        sys.path.insert(0, str(_KZ_DIR / "skills/workflow/scripts"))
         import onboard_index as oi
         import index_flow as ix
 
@@ -330,7 +322,6 @@ class TestSparseSchemaMigration(unittest.TestCase):
         from pathlib import Path
         from unittest.mock import patch
 
-        sys.path.insert(0, str(_KZ_DIR / "skills/workflow/scripts"))
         import onboard_index as oi
         import index_flow as ix
 
@@ -367,7 +358,6 @@ class TestSparseSchemaMigration(unittest.TestCase):
         finally:
             os.environ.pop("KAIZEN_SPARSE_ENABLE", None)
 
-
 class TestSparseSearchReturnsEmpty(unittest.TestCase):
     """sparse_search must return [] (not crash) when:
        - column missing
@@ -380,7 +370,6 @@ class TestSparseSearchReturnsEmpty(unittest.TestCase):
         import tempfile
         from pathlib import Path
 
-        sys.path.insert(0, str(_KZ_DIR / "skills/workflow/scripts"))
         import _search as kz_search
 
         with tempfile.TemporaryDirectory() as tmp:
@@ -394,7 +383,6 @@ class TestSparseSearchReturnsEmpty(unittest.TestCase):
             result = kz_search.sparse_search(conn, "pretend_chunks", "query")
             self.assertEqual(result, [])
             conn.close()
-
 
 @unittest.skipUnless(
     _sparse.is_available(),
@@ -429,7 +417,6 @@ class TestSparseEncodeReal(unittest.TestCase):
         blob = _sparse.serialize(sparse)
         restored = _sparse.deserialize(blob)
         self.assertEqual(set(restored.keys()), set(sparse.keys()))
-
 
 if __name__ == "__main__":
     unittest.main()

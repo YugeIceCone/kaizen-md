@@ -13,16 +13,15 @@ from pathlib import Path
 
 _KZ = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_KZ / "scripts/handoff"))
-sys.path.insert(0, str(_KZ / "skills/workflow/scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 sys.path.insert(0, str(_KZ / "scripts/rules"))
 
 import handoff  # noqa: E402
 
-
 def _git(repo: Path, *args: str):
     return subprocess.run(["git", "-C", str(repo), *args],
                           capture_output=True, text=True, timeout=15)
-
 
 def _init_repo_with_commits(repo: Path):
     _git(repo, "init", "-q", "-b", "master")
@@ -39,7 +38,6 @@ def _init_repo_with_commits(repo: Path):
     (repo / "b.py").write_text("new1\nnew2\nnew3\n")
     _git(repo, "add", "b.py")
     _git(repo, "commit", "-q", "-m", "add-b")
-
 
 class TestLineRanges(unittest.TestCase):
     def test_parse_hunk_header_simple(self):
@@ -80,7 +78,6 @@ class TestLineRanges(unittest.TestCase):
             _git(repo, "config", "user.name", "t")
             ranges = handoff._git_changed_line_ranges(repo, since="2099-01-01")
             self.assertEqual(ranges, {})
-
 
 if __name__ == "__main__":
     unittest.main()

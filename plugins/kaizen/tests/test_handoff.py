@@ -17,12 +17,12 @@ from pathlib import Path
 _KZ_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_KZ_DIR / "scripts/handoff"))
 # legacy sibling helpers (_atomic, _dxm_emit etc.)
-sys.path.insert(0, str(_KZ_DIR / "skills/workflow/scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 sys.path.insert(0, str(_KZ_DIR / "scripts/rules"))
 sys.path.insert(0, str(_KZ_DIR / "scripts/brain"))
 
 import _handoff  # noqa: E402
-
 
 _SAMPLE_HANDOFF = """\
 ---
@@ -56,7 +56,6 @@ next:
 blockers: []
 """
 
-
 class SandboxBase(unittest.TestCase):
     """Sandboxes the handoff DB + YAML dir into a temp dir."""
 
@@ -85,7 +84,6 @@ class SandboxBase(unittest.TestCase):
         p = self.ydir / name
         p.write_text(body, encoding="utf-8")
         return p
-
 
 class TestModuleAndDomain(unittest.TestCase):
     def test_modules_parse(self):
@@ -121,7 +119,6 @@ class TestModuleAndDomain(unittest.TestCase):
             ["id", "session_id", "created_at", "file_path", "status"])
         self.assertFalse(s["additionalProperties"])
 
-
 class TestPaths(SandboxBase):
     def test_db_path_env_override(self):
         self.assertEqual(_handoff.handoff_db_path(), self.db)
@@ -133,7 +130,6 @@ class TestPaths(SandboxBase):
         ts = _handoff.now_iso()
         self.assertTrue(ts.endswith("Z"))
         self.assertIn("T", ts)
-
 
 class TestStore(SandboxBase):
     def test_save_inserts_and_returns_id(self):
@@ -193,7 +189,6 @@ class TestStore(SandboxBase):
         self.assertEqual(only_a[0]["session_id"], "proj-a")
         # list output is metadata-only — no `content` key
         self.assertNotIn("content", only_a[0])
-
 
 class TestBridge(unittest.TestCase):
     """extract_brain_candidates is pure + stdlib-only — no sandbox,
@@ -270,7 +265,6 @@ class TestBridge(unittest.TestCase):
         self.assertFalse(body.lstrip().startswith("---"))
         self.assertIn("goal: built the thing", body)
         self.assertNotIn("session: test-sess", body)
-
 
 class TestCli(SandboxBase):
     def _run(self, *args):
@@ -349,7 +343,6 @@ class TestCli(SandboxBase):
         r = self._run("bridge", "--file", str(f), "--json")
         self.assertEqual(r.returncode, 0)
         self.assertEqual(json.loads(r.stdout)["data"]["count"], 0)
-
 
 if __name__ == "__main__":
     unittest.main()

@@ -11,12 +11,12 @@ import unittest
 from pathlib import Path
 
 _KZ_DIR = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(_KZ_DIR / "skills/workflow/scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 
 import _self_audit  # noqa: E402
 import self_audit  # noqa: E402
 from _self_audit import Finding  # noqa: E402
-
 
 class TestPipelineLoad(unittest.TestCase):
     def test_pipeline_yaml_loads(self):
@@ -51,7 +51,6 @@ class TestPipelineLoad(unittest.TestCase):
         ):
             self.assertIn(required, ids, f"missing stage: {required}")
 
-
 class TestFindingDataclass(unittest.TestCase):
     def test_make_id_stable(self):
         a = Finding.make_id("stage", "key")
@@ -71,7 +70,6 @@ class TestFindingDataclass(unittest.TestCase):
         d = f.to_dict()
         self.assertEqual(d["id"], "x")
         self.assertEqual(d["severity"], "medium")
-
 
 class TestRunners(unittest.TestCase):
     """Each runner is callable + returns a list of Findings (possibly empty)."""
@@ -107,7 +105,6 @@ class TestRunners(unittest.TestCase):
         findings = self_audit.run_vendored_check({"id": "vendored"})
         self.assertIsInstance(findings, list)
 
-
 class TestSkillCheckpointEmit(unittest.TestCase):
     def test_emit_skill_checkpoint(self):
         stage = {
@@ -121,7 +118,6 @@ class TestSkillCheckpointEmit(unittest.TestCase):
         self.assertEqual(f.kind, "checkpoint")
         self.assertEqual(f.skill, "kiss")
         self.assertIn("plugins/kaizen/", f.files)
-
 
 class TestEndToEndAudit(unittest.TestCase):
     """Share ONE run_audit(no_write=False) call across all 3 tests in
@@ -188,7 +184,6 @@ class TestEndToEndAudit(unittest.TestCase):
         ):
             self.assertIn(section, md)
 
-
 class TestCli(unittest.TestCase):
     def _run(self, *args):
         script = _KZ_DIR / "scripts/iron-laws/self_audit.py"
@@ -240,7 +235,6 @@ class TestCli(unittest.TestCase):
                 p.unlink()
             except OSError:
                 pass
-
 
 if __name__ == "__main__":
     unittest.main()

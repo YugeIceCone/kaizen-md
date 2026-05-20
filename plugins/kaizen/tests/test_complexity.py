@@ -6,11 +6,11 @@ import unittest
 from pathlib import Path
 
 _KZ = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(_KZ / "skills/workflow/scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 sys.path.insert(0, str(_KZ / "scripts/quality"))
 
 import complexity  # noqa: E402
-
 
 class TestComplexity(unittest.TestCase):
     def test_is_available_is_bool(self):
@@ -29,7 +29,6 @@ class TestComplexity(unittest.TestCase):
         rep = complexity.scan(target=_KZ / "scripts/util/brainstorm.py")
         self.assertTrue(rep["available"])
         self.assertIsInstance(rep["findings"], list)
-
 
 if __name__ == "__main__":
     unittest.main()

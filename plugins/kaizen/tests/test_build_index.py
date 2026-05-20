@@ -16,11 +16,11 @@ import unittest
 from pathlib import Path
 
 _KZ_DIR = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(_KZ_DIR / "skills/workflow/scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 sys.path.insert(0, str(_KZ_DIR / "scripts/indexers"))
 
 import build_index as bi  # noqa: E402
-
 
 def _seed_brain(root: Path):
     """Create a minimal brain tree with one Note per type."""
@@ -59,7 +59,6 @@ def _seed_brain(root: Path):
         "Project A pipeline notes.\n"
     )
 
-
 class BrainIndexBase(unittest.TestCase):
     """Base class — sandbox the brain root + db path for each test."""
 
@@ -85,7 +84,6 @@ class BrainIndexBase(unittest.TestCase):
                 os.environ.pop(k, None)
             else:
                 os.environ[k] = v
-
 
 class TestIndexBuild(BrainIndexBase):
     def test_index_populates_table(self):
@@ -116,7 +114,6 @@ class TestIndexBuild(BrainIndexBase):
         report = bi.do_index(brain_root=self.brain)
         self.assertGreaterEqual(report["removed"], 1)
 
-
 class TestSearch(BrainIndexBase):
     def setUp(self):
         super().setUp()
@@ -146,7 +143,6 @@ class TestSearch(BrainIndexBase):
             self.assertIsNotNone(r["confidence"])
             self.assertGreaterEqual(r["confidence"], 0.85)
 
-
 class TestStats(BrainIndexBase):
     def test_stats_after_index(self):
         bi.do_index(brain_root=self.brain)
@@ -157,7 +153,6 @@ class TestStats(BrainIndexBase):
         self.assertIn("Notes", stats["by_subdir"])
         self.assertIn("People", stats["by_subdir"])
         self.assertTrue(stats["last_indexed_ts"])
-
 
 class TestGet(BrainIndexBase):
     def test_get_by_id(self):
@@ -173,7 +168,6 @@ class TestGet(BrainIndexBase):
         bi.do_index(brain_root=self.brain)
         self.assertIsNone(bi.do_get(99999))
 
-
 class TestClear(BrainIndexBase):
     def test_clear_removes_db(self):
         bi.do_index(brain_root=self.brain)
@@ -182,7 +176,6 @@ class TestClear(BrainIndexBase):
         # Re-running on missing file returns cleared=False
         out2 = bi.do_clear()
         self.assertFalse(out2["cleared"])
-
 
 class TestPath(unittest.TestCase):
     def test_env_db_wins(self):
@@ -195,7 +188,6 @@ class TestPath(unittest.TestCase):
                 del os.environ["KAIZEN_BRAIN_DB"]
             else:
                 os.environ["KAIZEN_BRAIN_DB"] = orig
-
 
 class TestCli(BrainIndexBase):
     def test_index_then_stats_cli(self):
@@ -214,7 +206,6 @@ class TestCli(BrainIndexBase):
         self.assertEqual(r2.returncode, 0)
         out = json.loads(r2.stdout)
         self.assertGreater(out["total"], 0)
-
 
 if __name__ == "__main__":
     unittest.main()

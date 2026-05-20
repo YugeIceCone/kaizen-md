@@ -19,15 +19,14 @@ import sys
 from pathlib import Path
 
 _KZ_DIR = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(_KZ_DIR / "skills/workflow/scripts"))
-
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 
 def test_umbrella_registry_has_all_5_subcommands():
     from plugin_docs import UMBRELLA_BINS
     assert set(UMBRELLA_BINS) == {
         "frontmatter", "links", "dupes", "whitespace", "heading-depth",
     }
-
 
 def test_each_subcommand_maps_to_existing_bin():
     """Every umbrella subcommand points at a real bin file."""
@@ -38,7 +37,6 @@ def test_each_subcommand_maps_to_existing_bin():
         assert bin_path.is_file(), \
             f"{sub} maps to {bin_name} but bin doesn't exist"
 
-
 def test_subcommand_dispatch_uses_correct_bin_name():
     """The dispatcher fn resolves the bin name + passes args through."""
     from plugin_docs import resolve_umbrella_bin
@@ -48,11 +46,9 @@ def test_subcommand_dispatch_uses_correct_bin_name():
     assert resolve_umbrella_bin("whitespace") == "kaizen-md-whitespace"
     assert resolve_umbrella_bin("heading-depth") == "kaizen-md-heading-depth"
 
-
 def test_unknown_subcommand_resolves_to_none():
     from plugin_docs import resolve_umbrella_bin
     assert resolve_umbrella_bin("nope") is None
-
 
 def test_help_lists_umbrella_subcommands():
     """`kaizen-plugin-docs --help` should mention all umbrella subcommands
@@ -67,7 +63,6 @@ def test_help_lists_umbrella_subcommands():
     out = r.stdout + r.stderr
     for sub in ("frontmatter", "links", "dupes", "whitespace", "heading-depth"):
         assert sub in out, f"--help missing umbrella subcommand: {sub}"
-
 
 def test_scan_and_list_still_work():
     """Pre-existing subcommands (scan + list) are NOT shadowed by the

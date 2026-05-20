@@ -24,10 +24,10 @@ from unittest import mock
 _KZ = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(_KZ / "scripts/brain"))
 sys.path.insert(0, str(_KZ / "scripts"))  # for evolution_log
-sys.path.insert(0, str(_KZ / "skills/workflow/scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 
 import brain_rank as br  # noqa: E402
-
 
 _PERSONA_WITH_TOP = """---
 created: 2026-05-10
@@ -54,7 +54,6 @@ tags: [persona]
 - [2026-05-10] First evidence.
 """
 
-
 def _write_belief(notes_dir: Path, slug: str, *, conf: float, sources: int,
                   freshness: str = "stable") -> Path:
     fm_lines = [
@@ -75,7 +74,6 @@ def _write_belief(notes_dir: Path, slug: str, *, conf: float, sources: int,
     p.write_text("\n".join(fm_lines), encoding="utf-8")
     return p
 
-
 def _write_non_belief(notes_dir: Path, slug: str, type_: str = "world-fact") -> Path:
     fm_lines = [
         "---",
@@ -88,7 +86,6 @@ def _write_non_belief(notes_dir: Path, slug: str, type_: str = "world-fact") -> 
     p = notes_dir / f"{slug}.md"
     p.write_text("\n".join(fm_lines), encoding="utf-8")
     return p
-
 
 class TestScore(unittest.TestCase):
     """score(rec) = confidence * log(sources_count + 1). Mirrors upstream."""
@@ -107,7 +104,6 @@ class TestScore(unittest.TestCase):
         """log(0 + 1) = 0 → score = 0. Prevents NaN on log(0)."""
         s = br.score({"confidence": 1.0, "sources_count": 0})
         self.assertEqual(s, 0.0)
-
 
 class TestFilterCandidates(unittest.TestCase):
     def setUp(self):
@@ -144,7 +140,6 @@ class TestFilterCandidates(unittest.TestCase):
         self.assertEqual(len(out), 2,
             "only stable + strengthening should pass; stale + contradicted out")
 
-
 class TestRankAndTake(unittest.TestCase):
     def test_sorts_by_score_desc(self):
         cands = [
@@ -165,7 +160,6 @@ class TestRankAndTake(unittest.TestCase):
         ]
         out = br.rank_and_take(cands, 5)
         self.assertEqual(len(out), 5)
-
 
 class TestEffectiveThresholds(unittest.TestCase):
     """Bootstrap mode: relaxed thresholds when beliefs_count < 20.
@@ -210,7 +204,6 @@ class TestEffectiveThresholds(unittest.TestCase):
         self.assertEqual(eff["promotion_confidence"], 0.6,
             "user's 0.6 must win against bootstrap's 0.7")
 
-
 class TestFindBeliefs(unittest.TestCase):
     def setUp(self):
         self._tmp = tempfile.TemporaryDirectory()
@@ -254,7 +247,6 @@ class TestFindBeliefs(unittest.TestCase):
         self.assertEqual(r["sources_count"], 4)
         self.assertEqual(r["freshness"], "strengthening")
 
-
 class TestRenderTopBeliefsSection(unittest.TestCase):
     def test_empty_renders_placeholder(self):
         out = br.render_top_beliefs_section([], beliefs_count=3)
@@ -276,7 +268,6 @@ class TestRenderTopBeliefsSection(unittest.TestCase):
         out = br.render_top_beliefs_section(top)
         self.assertIn("1. [[Notes/pref-a.md]] — conf=0.92 sources=5 freshness=stable", out)
         self.assertIn("2. [[Notes/pref-b.md]] — conf=0.88 sources=3 freshness=strengthening", out)
-
 
 class TestWriteTopBeliefs(unittest.TestCase):
     """write_top_beliefs REPLACES the section; demoted entries disappear."""
@@ -333,7 +324,6 @@ class TestWriteTopBeliefs(unittest.TestCase):
         self.assertIn("## Top Beliefs", text)
         self.assertIn("[[Notes/pref-x.md]]", text)
 
-
 class TestReadCurrentTopBeliefs(unittest.TestCase):
     def setUp(self):
         self._tmp = tempfile.TemporaryDirectory()
@@ -353,7 +343,6 @@ class TestReadCurrentTopBeliefs(unittest.TestCase):
         missing = Path(self._tmp.name) / "nope.md"
         self.assertEqual(br.read_current_top_beliefs(missing), [])
 
-
 class TestComputeDeltas(unittest.TestCase):
     def test_promoted_and_demoted(self):
         current = ["Notes/old-a.md", "Notes/keep.md"]
@@ -364,7 +353,6 @@ class TestComputeDeltas(unittest.TestCase):
         out = br.compute_deltas(current, top)
         self.assertEqual([p["path"] for p in out["promoted"]], ["Notes/new-b.md"])
         self.assertEqual(out["demoted"], ["Notes/old-a.md"])
-
 
 class TestLoadEvolutionConfig(unittest.TestCase):
     """User overrides via $KAIZEN_EVOLUTION_CONFIG (kaizen path, not XDG)."""
@@ -406,7 +394,6 @@ class TestLoadEvolutionConfig(unittest.TestCase):
         os.environ["KAIZEN_EVOLUTION_CONFIG"] = str(cfg_path)
         cfg = br.load_evolution_config()
         self.assertEqual(cfg["thresholds"], br.DEFAULT_THRESHOLDS)
-
 
 class TestRunEndToEnd(unittest.TestCase):
     """run() — find + filter + rank + write + log."""
@@ -488,7 +475,6 @@ class TestRunEndToEnd(unittest.TestCase):
         # Persona unchanged (Top Beliefs section still has the seed entries)
         self.assertIn("pref-old.md", self.persona.read_text())
 
-
 class TestBeliefStats(unittest.TestCase):
     """belief_stats(): distribution over freshness / sources / confidence.
 
@@ -522,7 +508,6 @@ class TestBeliefStats(unittest.TestCase):
         self.assertAlmostEqual(stats["confidence"]["min"], 0.70)
         self.assertAlmostEqual(stats["confidence"]["max"], 0.95)
         self.assertAlmostEqual(stats["confidence"]["avg"], (0.95 + 0.80 + 0.70) / 3)
-
 
 if __name__ == "__main__":
     unittest.main()

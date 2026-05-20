@@ -6,11 +6,11 @@ import unittest
 from pathlib import Path
 
 _KZ = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(_KZ / "skills/workflow/scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 sys.path.insert(0, str(_KZ / "scripts/quality"))
 
 import md_dupes  # noqa: E402
-
 
 class TestMdDupes(unittest.TestCase):
     def test_dupe_flagged(self):
@@ -22,7 +22,6 @@ class TestMdDupes(unittest.TestCase):
     def test_unique_headings_ok(self):
         text = "## A\n## B\n## C\n"
         self.assertEqual(md_dupes.scan_text(text, path="a.md"), [])
-
 
 if __name__ == "__main__":
     unittest.main()

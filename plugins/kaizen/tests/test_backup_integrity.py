@@ -24,22 +24,20 @@ import unittest
 from pathlib import Path
 
 _KZ_DIR = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(_KZ_DIR / "skills/workflow/scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 sys.path.insert(0, str(_KZ_DIR / "scripts/brain"))
-
 
 def _seed_brain(root: Path) -> None:
     (root / "Notes").mkdir(parents=True)
     (root / "Persona.md").write_text("---\nname: Test\n---\nbody\n")
     (root / "Notes" / "n1.md").write_text("---\nname: N1\n---\nb\n")
 
-
 def _seed_legacy_path_tree(root: Path) -> None:
     """Minimal pre-v1.39 layout for path_migrate to chew on."""
     (root / "trace").mkdir(parents=True)
     (root / "trace" / "events.jsonl").write_text('{"evt":"x"}\n')
     (root / "handoff.db").write_bytes(b"FAKEDB")
-
 
 class _BrainBase(unittest.TestCase):
     """Sandbox for brain_migrate."""
@@ -95,7 +93,6 @@ class _BrainBase(unittest.TestCase):
             setattr(ns, k, v)
         return ns
 
-
 class BrainBackupSidecar(_BrainBase):
 
     def test_apply_writes_sha256_sidecar_next_to_tarball(self):
@@ -109,7 +106,6 @@ class BrainBackupSidecar(_BrainBase):
         # Sidecar content is the hex-digest of the tarball
         expected = hashlib.sha256(backups[0].read_bytes()).hexdigest()
         self.assertEqual(sidecar.read_text().strip(), expected)
-
 
 class BrainRollbackVerify(_BrainBase):
     """Rollback must verify the tarball matches its sha256 sidecar."""
@@ -160,7 +156,6 @@ class BrainRollbackVerify(_BrainBase):
         self.assertEqual(rc, 0)
         self.assertTrue(self.src.exists())
 
-
 class _PathBase(unittest.TestCase):
     """Sandbox for path_migrate."""
 
@@ -197,7 +192,6 @@ class _PathBase(unittest.TestCase):
             setattr(ns, k, v)
         return ns
 
-
 class PathBackupSidecar(_PathBase):
 
     def test_apply_writes_sha256_sidecar(self):
@@ -210,7 +204,6 @@ class PathBackupSidecar(_PathBase):
                         f"missing integrity sidecar: {sidecar}")
         expected = hashlib.sha256(backups[0].read_bytes()).hexdigest()
         self.assertEqual(sidecar.read_text().strip(), expected)
-
 
 class PathRollbackVerify(_PathBase):
 
@@ -232,7 +225,6 @@ class PathRollbackVerify(_PathBase):
         rc = self.pm.cmd_rollback(self._args())
         self.assertNotEqual(rc, 0,
                             "path-migrate rollback must refuse when sidecar missing")
-
 
 class SettingsBackupSidecar(_BrainBase):
     """CRYPTO-2: brain_migrate._edit_settings writes a `<bak>.sha256`
@@ -269,7 +261,6 @@ class SettingsBackupSidecar(_BrainBase):
         sidecar = Path(str(bak) + ".sha256")
         self.assertEqual(sidecar.read_text().strip(),
                          hashlib.sha256(original_bytes).hexdigest())
-
 
 if __name__ == "__main__":
     unittest.main()

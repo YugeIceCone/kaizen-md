@@ -14,13 +14,12 @@ import unittest
 from pathlib import Path
 
 _KZ_DIR = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(_KZ_DIR / "skills/workflow/scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 
 import code_lift  # noqa: E402
 
-
 # ─── Config parsing ───────────────────────────────────────────────────
-
 
 class TestConfigParse(unittest.TestCase):
     def test_parses_minimal(self):
@@ -85,9 +84,7 @@ class TestConfigParse(unittest.TestCase):
         self.assertEqual(cfg.source_root, "vendor")
         self.assertEqual(cfg.target_root, "packages")
 
-
 # ─── Rewriter ─────────────────────────────────────────────────────────
-
 
 class TestRewriter(unittest.TestCase):
     def _cfg(self, pairs):
@@ -152,9 +149,7 @@ class TestRewriter(unittest.TestCase):
         )
         self.assertEqual(out, "X\nrest")
 
-
 # ─── Manifest detection / deps_gap ───────────────────────────────────
-
 
 class TestManifestDetection(unittest.TestCase):
     def test_cargo_dep_match_eq(self):
@@ -245,9 +240,7 @@ class TestManifestDetection(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             self.assertIsNone(code_lift.detect_manifest(Path(tmp)))
 
-
 # ─── do_lift / do_preview / do_audit (end-to-end) ────────────────────
-
 
 class TestLift(unittest.TestCase):
     def _scaffold(self):
@@ -316,7 +309,6 @@ class TestLift(unittest.TestCase):
         finally:
             tmp.cleanup()
 
-
 class TestPreview(unittest.TestCase):
     def _scaffold(self):
         tmp = tempfile.TemporaryDirectory()
@@ -377,7 +369,6 @@ class TestPreview(unittest.TestCase):
         finally:
             tmp.cleanup()
 
-
 class TestAudit(unittest.TestCase):
     def test_audit_status_buckets(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -406,7 +397,6 @@ class TestAudit(unittest.TestCase):
             self.assertEqual(statuses["p2"], "pending")
             self.assertEqual(statuses["p3"], "skipped")
             self.assertEqual(statuses["p4"], "missing-target")
-
 
 class TestDepsGap(unittest.TestCase):
     def test_deps_gap_lists_missing(self):
@@ -444,9 +434,7 @@ class TestDepsGap(unittest.TestCase):
             self.assertEqual(result.required, [])
             self.assertEqual(result.missing, [])
 
-
 # ─── CLI integration (path + smoke) ──────────────────────────────────
-
 
 class TestCli(unittest.TestCase):
     def test_path_command(self):
@@ -456,7 +444,6 @@ class TestCli(unittest.TestCase):
             (root / ".git").mkdir()
             rc = code_lift.main(["--root", str(root), "path"])
             self.assertEqual(rc, 0)
-
 
 if __name__ == "__main__":
     unittest.main()

@@ -26,10 +26,10 @@ _KZ = Path(__file__).resolve().parent.parent
 _HANDOFF = _KZ / "scripts/handoff/handoff.py"
 
 sys.path.insert(0, str(_KZ / "scripts/handoff"))
-sys.path.insert(0, str(_KZ / "skills/workflow/scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 sys.path.insert(0, str(_KZ / "scripts/rules"))
 import handoff as _h  # noqa: E402
-
 
 def _make_jsonl(path: Path) -> None:
     """Synthesize a CC transcript jsonl with 2 TaskCreate + 2 TaskUpdate."""
@@ -90,7 +90,6 @@ def _make_jsonl(path: Path) -> None:
     path.write_text("\n".join(json.dumps(e) for e in events) + "\n",
                      encoding="utf-8")
 
-
 class TestComputeRemine(unittest.TestCase):
     def setUp(self):
         self._tmp = tempfile.TemporaryDirectory()
@@ -120,7 +119,6 @@ class TestComputeRemine(unittest.TestCase):
         existing = ["first task", "second task"]
         result = _h._compute_remine(self.jsonl, existing)
         self.assertEqual(result["new_completed_tasks"], [])
-
 
 class TestRemineCLI(unittest.TestCase):
     def setUp(self):
@@ -172,7 +170,6 @@ class TestRemineCLI(unittest.TestCase):
         r = self._run("re-mine", "--file", str(bad))
         # Exit non-zero — no session_meta.cc_session_jsonl
         self.assertNotEqual(r.returncode, 0)
-
 
 if __name__ == "__main__":
     unittest.main()

@@ -23,10 +23,10 @@ _KZ = Path(__file__).resolve().parent.parent
 _HANDOFF = _KZ / "scripts/handoff/handoff.py"
 
 sys.path.insert(0, str(_KZ / "scripts/handoff"))
-sys.path.insert(0, str(_KZ / "skills/workflow/scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 sys.path.insert(0, str(_KZ / "scripts/rules"))
 import handoff as _h  # noqa: E402
-
 
 _SMALL_YAML = """---
 session: test
@@ -50,7 +50,6 @@ blockers: []
 next:
   - 'next step one'
 """
-
 
 def _make_big_yaml(n_entries: int) -> str:
     """A yaml with N done_this_session entries — for threshold testing."""
@@ -78,7 +77,6 @@ done_this_session:
                         f"    files: ['src/file_{i}.py', 'tests/test_{i}.py']\n")
     return base + "".join(entries) + "\nblockers: []\nnext: []\n"
 
-
 # ─── _approx_tokens ─────────────────────────────────────────────────────
 
 class TestApproxTokens(unittest.TestCase):
@@ -91,7 +89,6 @@ class TestApproxTokens(unittest.TestCase):
 
     def test_long_string(self):
         self.assertEqual(_h._approx_tokens("x" * 400), 100)
-
 
 # ─── _compute_costs ─────────────────────────────────────────────────────
 
@@ -120,7 +117,6 @@ class TestComputeCosts(unittest.TestCase):
         for s in result["per_section"].values():
             self.assertLessEqual(s["pct"], 100.0)
         self.assertLessEqual(total_pct, 105.0)
-
 
 # ─── Threshold logic ────────────────────────────────────────────────────
 
@@ -151,7 +147,6 @@ class TestThreshold(unittest.TestCase):
         result = _h._compute_costs(big)
         self.assertTrue(result["over_threshold"])
         self.assertIn("scaffold", result["recommendation"].lower())
-
 
 # ─── CLI integration ────────────────────────────────────────────────────
 
@@ -190,7 +185,6 @@ class TestCostCLI(unittest.TestCase):
     def test_cli_missing_file_fails(self):
         r = self._run("cost", "--file", str(self.tmp / "nope.yaml"))
         self.assertNotEqual(r.returncode, 0)
-
 
 if __name__ == "__main__":
     unittest.main()

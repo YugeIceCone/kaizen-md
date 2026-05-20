@@ -19,14 +19,13 @@ import unittest
 from pathlib import Path
 
 _KZ_DIR = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(_KZ_DIR / "skills/workflow/scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 sys.path.insert(0, str(_KZ_DIR / "scripts/brain"))
 
 import _brain  # noqa: E402
 
-
 # ─── Path resolution ──────────────────────────────────────────────────
-
 
 class TestPathResolution(unittest.TestCase):
     def _restore(self, name, val):
@@ -93,9 +92,7 @@ class TestPathResolution(unittest.TestCase):
         s = _brain.project_slug_for(rel)
         self.assertTrue(s.startswith("-"))
 
-
 # ─── Config loading ───────────────────────────────────────────────────
-
 
 class TestConfigLoad(unittest.TestCase):
     def test_load_default_config(self):
@@ -125,9 +122,7 @@ class TestConfigLoad(unittest.TestCase):
         self.assertGreater(len(cfg.capture_when), 0)
         self.assertGreater(len(cfg.skip_when), 0)
 
-
 # ─── Type detection ──────────────────────────────────────────────────
-
 
 class TestTypeDetection(unittest.TestCase):
     def setUp(self):
@@ -190,9 +185,7 @@ class TestTypeDetection(unittest.TestCase):
             "world-fact",
         )
 
-
 # ─── Frontmatter parse + serialize ───────────────────────────────────
-
 
 class TestFrontmatterRoundTrip(unittest.TestCase):
     def test_parse_basic(self):
@@ -262,9 +255,7 @@ Body content here.
         self.assertEqual(parsed_fm["tags"], ["a", "b", "c"])
         self.assertIn("body text", parsed_body)
 
-
 # ─── write_note ──────────────────────────────────────────────────────
-
 
 class TestWriteNote(unittest.TestCase):
     def test_writes_with_today_stamps(self):
@@ -297,9 +288,7 @@ class TestWriteNote(unittest.TestCase):
             _brain.write_note(p, {"name": "D", "description": "d", "type": "world-fact"}, "")
             self.assertTrue(p.is_file())
 
-
 # ─── slugify ─────────────────────────────────────────────────────────
-
 
 class TestSlugify(unittest.TestCase):
     def test_basic(self):
@@ -319,9 +308,7 @@ class TestSlugify(unittest.TestCase):
         self.assertEqual(_brain.slugify(""), "note")
         self.assertEqual(_brain.slugify("   "), "note")
 
-
 # ─── CLI invocation smoke test ───────────────────────────────────────
-
 
 class TestCli(unittest.TestCase):
     def test_cli_shows_paths(self):
@@ -334,7 +321,6 @@ class TestCli(unittest.TestCase):
         self.assertEqual(result.returncode, 0)
         self.assertIn("brain_root", result.stdout)
         self.assertIn("types", result.stdout)
-
 
 if __name__ == "__main__":
     unittest.main()

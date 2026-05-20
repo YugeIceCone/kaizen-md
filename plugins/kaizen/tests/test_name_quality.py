@@ -9,10 +9,11 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 
 _KZ_DIR = Path(__file__).resolve().parent.parent
 _SCRIPT = _KZ_DIR / "scripts/quality/name_quality.py"
-
 
 def _run(*args) -> subprocess.CompletedProcess:
     return subprocess.run(
@@ -20,10 +21,8 @@ def _run(*args) -> subprocess.CompletedProcess:
         capture_output=True, text=True, timeout=10, env=os.environ.copy(),
     )
 
-
 class TestTokenizers(unittest.TestCase):
     def setUp(self):
-        sys.path.insert(0, str(_KZ_DIR / "skills/workflow/scripts"))
         sys.path.insert(0, str(_KZ_DIR / "scripts/quality"))
         if "name_quality" in sys.modules:
             del sys.modules["name_quality"]
@@ -55,10 +54,8 @@ class TestTokenizers(unittest.TestCase):
         out = self.nq._normalized_overlap({"os"}, {"o"})
         self.assertEqual(out, set())
 
-
 class TestScoreFile(unittest.TestCase):
     def setUp(self):
-        sys.path.insert(0, str(_KZ_DIR / "skills/workflow/scripts"))
         sys.path.insert(0, str(_KZ_DIR / "scripts/quality"))
         if "name_quality" in sys.modules:
             del sys.modules["name_quality"]
@@ -101,7 +98,6 @@ class TestScoreFile(unittest.TestCase):
         r = self.nq.score_file(p)
         self.assertEqual(r["verdict"], "active")  # atomic ∈ intent
 
-
 class TestRealPluginReport(unittest.TestCase):
     def test_report_runs(self):
         r = _run("report")
@@ -132,7 +128,6 @@ class TestRealPluginReport(unittest.TestCase):
         r = _run("gaps")
         self.assertIn(r.returncode, (0, 1),
                        f"unexpected exit code {r.returncode}; stdout={r.stdout[:200]}")
-
 
 if __name__ == "__main__":
     unittest.main()

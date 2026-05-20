@@ -8,11 +8,11 @@ import unittest
 from pathlib import Path
 
 _KZ = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(_KZ / "skills/workflow/scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 sys.path.insert(0, str(_KZ / "scripts/quality"))
 
 import perm_coverage  # noqa: E402
-
 
 class TestPermCoverage(unittest.TestCase):
     def test_argparse_main_finder_picks_up_known_scripts(self):
@@ -41,7 +41,6 @@ class TestPermCoverage(unittest.TestCase):
         names = {g["script"] for g in report["gaps"]}
         self.assertNotIn("brainstorm.py", names,
             "brainstorm.py landed with its perm in BK-012 P3 — gap is a bug")
-
 
 if __name__ == "__main__":
     unittest.main()

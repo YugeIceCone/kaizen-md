@@ -7,11 +7,11 @@ import unittest
 from pathlib import Path
 
 _KZ = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(_KZ / "skills/workflow/scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 sys.path.insert(0, str(_KZ / "scripts/quality"))
 
 import md_whitespace  # noqa: E402
-
 
 class TestMdWhitespace(unittest.TestCase):
     def test_trailing_whitespace_flagged(self):
@@ -27,7 +27,6 @@ class TestMdWhitespace(unittest.TestCase):
     def test_clean_file_no_findings(self):
         f = md_whitespace.scan_text("# Title\n\nClean text.\n", path="a.md")
         self.assertEqual(f, [])
-
 
 if __name__ == "__main__":
     unittest.main()

@@ -10,13 +10,13 @@ import unittest
 from pathlib import Path
 
 _KZ = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(_KZ / "skills/workflow/scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 sys.path.insert(0, str(_KZ / "scripts/io"))
 
 _REFERENCE_YAML = (
     _KZ / "skills/workflow/domain/axes/reference_demo.yaml"
 )
-
 
 class TestReferenceDemoAxis(unittest.TestCase):
     def test_reference_yaml_exists(self):
@@ -60,7 +60,6 @@ class TestReferenceDemoAxis(unittest.TestCase):
         spec = axis_runner.load(_REFERENCE_YAML)
         self.assertEqual(spec["name"], "reference-demo")
         self.assertEqual(spec["scan_spec"]["type"], "grep")
-
 
 if __name__ == "__main__":
     unittest.main()

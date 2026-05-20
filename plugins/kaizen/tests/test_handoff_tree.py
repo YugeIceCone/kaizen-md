@@ -26,10 +26,10 @@ _KZ = Path(__file__).resolve().parent.parent
 _HANDOFF = _KZ / "scripts/handoff/handoff.py"
 
 sys.path.insert(0, str(_KZ / "scripts/handoff"))
-sys.path.insert(0, str(_KZ / "skills/workflow/scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 sys.path.insert(0, str(_KZ / "scripts/rules"))
 import handoff as _h  # noqa: E402
-
 
 _BASE_YAML = """---
 session: test-repo
@@ -57,7 +57,6 @@ done_this_session:
 blockers: []
 """
 
-
 def _init_repo_with_commits(repo: Path) -> dict[str, str]:
     """Return mapping of {file → sha that introduced it}."""
     for cmd in (["git", "init", "-q", "-b", "main"],
@@ -83,7 +82,6 @@ def _init_repo_with_commits(repo: Path) -> dict[str, str]:
                             cwd=str(repo), capture_output=True, text=True)
         shas[fpath] = r.stdout.strip()
     return shas
-
 
 # ─── _build_commit_task_map (pure function) ────────────────────────────
 
@@ -137,7 +135,6 @@ class TestBuildCommitTaskMap(unittest.TestCase):
             sha = shas["src/a.py"]
             self.assertEqual(set(r["by_commit"][sha]), {"task 1", "task 2"})
 
-
 # ─── CLI integration ───────────────────────────────────────────────────
 
 class TestTreeCLI(unittest.TestCase):
@@ -185,7 +182,6 @@ class TestTreeCLI(unittest.TestCase):
         self.assertEqual(r.returncode, 0, r.stderr)
         data = json.loads(r.stdout)
         self.assertEqual(data["since"], "2026-05-18T00:00:00Z")
-
 
 if __name__ == "__main__":
     unittest.main()

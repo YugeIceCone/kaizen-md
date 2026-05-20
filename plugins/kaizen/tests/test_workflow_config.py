@@ -15,10 +15,10 @@ from pathlib import Path
 
 # Make the scripts dir importable.
 _KZ_DIR = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(_KZ_DIR / "skills/workflow/scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 
 import workflow_config as wc  # noqa: E402
-
 
 class _Sandbox(unittest.TestCase):
     """Each test gets its own tempdir + isolated env."""
@@ -35,7 +35,6 @@ class _Sandbox(unittest.TestCase):
         os.environ.clear()
         os.environ.update(self._orig_env)
         self.tmp.cleanup()
-
 
 class TestRoundTrip(_Sandbox):
     def test_set_then_get_project(self):
@@ -89,7 +88,6 @@ class TestRoundTrip(_Sandbox):
         self.assertEqual(data["disciplines"], ["kiss"])
         self.assertEqual(data["auto_handoff_threshold"], 50)
 
-
 class TestValidation(_Sandbox):
     def test_invalid_run_mode_exits(self):
         with self.assertRaises(SystemExit):
@@ -115,7 +113,6 @@ class TestValidation(_Sandbox):
         with self.assertRaises(SystemExit):
             wc.main(["set", "--loop-its", "0"])
 
-
 class TestMergedRead(_Sandbox):
     """get / show with no --scope merges project on top of global."""
 
@@ -131,7 +128,6 @@ class TestMergedRead(_Sandbox):
         merged = wc._merged()
         self.assertEqual(merged["disciplines"], ["kiss"])
         self.assertEqual(merged["auto_handoff_threshold"], 75)
-
 
 class TestReset(_Sandbox):
     def test_reset_dry_run_keeps_file(self):
@@ -150,14 +146,12 @@ class TestReset(_Sandbox):
         rc = wc.main(["reset"])
         self.assertEqual(rc, 0)
 
-
 class TestPath(_Sandbox):
     def test_path_project(self):
         # Path subcommand prints; capture via stdout redirect would
         # need extra plumbing — just verify it returns 0.
         self.assertEqual(wc.main(["path"]), 0)
         self.assertEqual(wc.main(["path", "--scope", "global"]), 0)
-
 
 class TestGetKey(_Sandbox):
     """`get-key <dotted-key>` returns scalar values for shell consumers
@@ -214,7 +208,6 @@ class TestGetKey(_Sandbox):
         self.assertEqual(rc, 0)
         self.assertEqual(out.strip(), "")
 
-
 class TestSchemaValidity(unittest.TestCase):
     """The shipped JSON Schema must be valid JSON + declare version."""
 
@@ -234,7 +227,6 @@ class TestSchemaValidity(unittest.TestCase):
         data = json.loads(schema_path.read_text())
         thr = data["properties"]["auto_handoff_threshold"]["anyOf"][0]["enum"]
         self.assertEqual(thr, [25, 50, 75, 85])
-
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

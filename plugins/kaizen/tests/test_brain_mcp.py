@@ -15,10 +15,10 @@ import unittest
 from pathlib import Path
 
 _KZ_DIR = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(_KZ_DIR / "skills/workflow/scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 sys.path.insert(0, str(_KZ_DIR / "scripts/mcp"))
 sys.path.insert(0, str(_KZ_DIR / "scripts/brain"))
-
 
 def _mcp_available():
     try:
@@ -26,7 +26,6 @@ def _mcp_available():
         return True
     except ImportError:
         return False
-
 
 @unittest.skipUnless(_mcp_available(), "mcp package not installed")
 class TestMcpToolsRegistered(unittest.TestCase):
@@ -51,7 +50,6 @@ class TestMcpToolsRegistered(unittest.TestCase):
             self.assertIsNotNone(fn, f"missing tool: {name}")
             self.assertTrue(asyncio.iscoroutinefunction(fn),
                             f"{name} must be async")
-
 
 @unittest.skipUnless(_mcp_available(), "mcp package not installed")
 class TestMcpToolBehaviour(unittest.TestCase):
@@ -115,7 +113,6 @@ class TestMcpToolBehaviour(unittest.TestCase):
         stats = asyncio.run(brain_mcp.brain_index_stats())
         self.assertIn("total", stats)
 
-
 # Even when mcp isn't installed, we want at least to verify the
 # script file itself parses (no syntax errors).
 class TestModuleParses(unittest.TestCase):
@@ -125,7 +122,6 @@ class TestModuleParses(unittest.TestCase):
         with open(path, "r", encoding="utf-8") as f:
             src = f.read()
         compile(src, str(path), "exec")  # raises SyntaxError on failure
-
 
 if __name__ == "__main__":
     unittest.main()

@@ -13,16 +13,15 @@ from pathlib import Path
 
 _KZ = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_KZ / "scripts/handoff"))
-sys.path.insert(0, str(_KZ / "skills/workflow/scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 sys.path.insert(0, str(_KZ / "scripts/rules"))
 
 import handoff  # noqa: E402
 
-
 def _git(repo: Path, *args: str):
     return subprocess.run(["git", "-C", str(repo), *args],
                           capture_output=True, text=True, timeout=15)
-
 
 def _init_repo(repo: Path, n_commits: int = 2) -> str:
     _git(repo, "init", "-q", "-b", "master")
@@ -35,7 +34,6 @@ def _init_repo(repo: Path, n_commits: int = 2) -> str:
         _git(repo, "commit", "-q", "-m", f"commit {i}")
         last_sha = _git(repo, "rev-parse", "--short", "HEAD").stdout.strip()
     return last_sha
-
 
 class TestGitHeadSha(unittest.TestCase):
     def test_returns_short_sha(self):
@@ -54,7 +52,6 @@ class TestGitHeadSha(unittest.TestCase):
     def test_returns_empty_when_not_a_repo(self):
         with tempfile.TemporaryDirectory() as td:
             self.assertEqual(handoff._git_head_sha(Path(td)), "")
-
 
 class TestSplitByProject(unittest.TestCase):
     def test_groups_by_path_prefix(self):
@@ -95,7 +92,6 @@ class TestSplitByProject(unittest.TestCase):
             finally:
                 del os.environ["KAIZEN_TEST_HOME_PATH"]
 
-
 class TestSessionMeta(unittest.TestCase):
     def test_session_meta_includes_repo_heads(self):
         with tempfile.TemporaryDirectory() as td:
@@ -128,7 +124,6 @@ class TestSessionMeta(unittest.TestCase):
         self.assertNotIn("cc_session_jsonl", meta)
         self.assertNotIn("cc_session_sha256", meta)
         self.assertIn("handoff_generated_at", meta)
-
 
 class TestParentHandoff(unittest.TestCase):
     """multi-handoff chain — record the most-recent prior handoff under
@@ -181,7 +176,6 @@ class TestParentHandoff(unittest.TestCase):
                                             parent_handoff=None)
         self.assertNotIn("parent_handoff", meta)
 
-
 class TestAutoTagCommits(unittest.TestCase):
     def test_tags_commits_touching_a_file(self):
         with tempfile.TemporaryDirectory() as td:
@@ -207,7 +201,6 @@ class TestAutoTagCommits(unittest.TestCase):
             _git(Path(td), "init", "-q")
             tags = handoff._auto_tag_commits(Path(td), ["x.py"], since="2099-01-01")
             self.assertEqual(tags, [])
-
 
 if __name__ == "__main__":
     unittest.main()

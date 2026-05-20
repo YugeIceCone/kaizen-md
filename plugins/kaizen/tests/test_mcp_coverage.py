@@ -8,11 +8,11 @@ import unittest
 from pathlib import Path
 
 _KZ = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(_KZ / "skills/workflow/scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 sys.path.insert(0, str(_KZ / "scripts/quality"))
 
 import mcp_coverage  # noqa: E402
-
 
 class TestMcpCoverage(unittest.TestCase):
     def test_real_gateway_picks_up_subservers(self):
@@ -37,7 +37,6 @@ class TestMcpCoverage(unittest.TestCase):
             names = {o["module"] for o in rep["orphans"]}
             self.assertIn("bar_mcp", names)
             self.assertNotIn("foo_mcp", names)
-
 
 if __name__ == "__main__":
     unittest.main()

@@ -9,10 +9,11 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 
 _KZ_DIR = Path(__file__).resolve().parent.parent
 _SCRIPT = _KZ_DIR / "scripts/quality/frontmatter.py"
-
 
 def _run(*args) -> subprocess.CompletedProcess:
     return subprocess.run(
@@ -20,16 +21,13 @@ def _run(*args) -> subprocess.CompletedProcess:
         capture_output=True, text=True, timeout=10, env=os.environ.copy(),
     )
 
-
 class TestScriptHealth(unittest.TestCase):
     def test_script_parses(self):
         with open(_SCRIPT) as f:
             compile(f.read(), str(_SCRIPT), "exec")
 
-
 class TestAuditSkill(unittest.TestCase):
     def setUp(self):
-        sys.path.insert(0, str(_KZ_DIR / "skills/workflow/scripts"))
         sys.path.insert(0, str(_KZ_DIR / "scripts/quality"))
         if "frontmatter" in sys.modules:
             del sys.modules["frontmatter"]
@@ -88,7 +86,6 @@ class TestAuditSkill(unittest.TestCase):
         r = self.fm.audit_skill(d)
         self.assertEqual(r["trigger_count"], 3)
 
-
 class TestRealPluginReport(unittest.TestCase):
     def test_report_runs(self):
         r = _run("report")
@@ -108,7 +105,6 @@ class TestRealPluginReport(unittest.TestCase):
         """Real plugin has known frontmatter gaps → exit 1."""
         r = _run("gaps")
         self.assertEqual(r.returncode, 1)
-
 
 if __name__ == "__main__":
     unittest.main()

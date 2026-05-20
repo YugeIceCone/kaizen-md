@@ -10,18 +10,17 @@ import unittest
 from pathlib import Path
 
 _KZ_DIR = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(_KZ_DIR / "skills/workflow/scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 sys.path.insert(0, str(_KZ_DIR / "scripts/mcp"))
 
 import metrics  # noqa: E402
-
 
 def _write_trace(path: Path, events: list[dict]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w") as f:
         for e in events:
             f.write(json.dumps(e) + "\n")
-
 
 class MetricsBase(unittest.TestCase):
     def setUp(self):
@@ -37,7 +36,6 @@ class MetricsBase(unittest.TestCase):
             os.environ.pop("KAIZEN_TRACE_DIR", None)
         else:
             os.environ["KAIZEN_TRACE_DIR"] = self._orig
-
 
 class TestEventIter(MetricsBase):
     def test_iter_empty_when_no_file(self):
@@ -71,7 +69,6 @@ class TestEventIter(MetricsBase):
         events = list(metrics.iter_events(sid="session-1"))
         self.assertEqual(len(events), 2)
 
-
 class TestDurationParsing(unittest.TestCase):
     def test_minute_duration(self):
         out = metrics.parse_duration("30m")
@@ -88,7 +85,6 @@ class TestDurationParsing(unittest.TestCase):
     def test_invalid_returns_none(self):
         self.assertIsNone(metrics.parse_duration("bogus"))
         self.assertIsNone(metrics.parse_duration(""))
-
 
 class TestRollup(MetricsBase):
     def test_rollup_counts_tools(self):
@@ -144,7 +140,6 @@ class TestRollup(MetricsBase):
         r = metrics.rollup_events()
         self.assertEqual(len(r.sessions), 2)
 
-
 class TestLatestSession(MetricsBase):
     def test_latest_session_id(self):
         _write_trace(self.trace_file, [
@@ -155,7 +150,6 @@ class TestLatestSession(MetricsBase):
 
     def test_returns_none_on_empty(self):
         self.assertIsNone(metrics.latest_session_id())
-
 
 class TestNeverUsed(MetricsBase):
     def test_never_used_skills_finds_all_when_trace_empty(self):
@@ -198,7 +192,6 @@ class TestNeverUsed(MetricsBase):
         with self.assertRaises(ValueError):
             metrics.never_used("bogus")
 
-
 class TestTopN(MetricsBase):
     def test_top_n_by_tool(self):
         events = []
@@ -214,7 +207,6 @@ class TestTopN(MetricsBase):
         top = metrics.top_n("skill", n=2)
         self.assertEqual(top[0][0], "brain")
         self.assertEqual(top[0][1], 5)
-
 
 class TestSkipDetection(MetricsBase):
     def test_skip_detected_when_files_touched_skill_not_loaded(self):
@@ -280,7 +272,6 @@ class TestSkipDetection(MetricsBase):
         brain_skip = next(s for s in skips if s["skill"] == "brain")
         self.assertEqual(brain_skip["touched_count"], 2)
 
-
 class TestTraceAge(MetricsBase):
     def test_trace_age_none_when_no_matching_events(self):
         _write_trace(self.trace_file, [
@@ -298,7 +289,6 @@ class TestTraceAge(MetricsBase):
         age = metrics.trace_age_days("skill")
         self.assertIsNotNone(age)
         self.assertGreater(age, 30)  # Jan 1 → mid-May is >> 30 days
-
 
 class TestGraveyard(MetricsBase):
     def test_graveyard_not_ready_when_no_events(self):
@@ -330,11 +320,9 @@ class TestGraveyard(MetricsBase):
         self.assertNotIn("brain", result["candidates"])
         self.assertIn("archive_hint", result)
 
-
 def dt_now_iso() -> str:
     import datetime as _dt
     return _dt.datetime.now(_dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-
 
 class TestSmokeMcp(unittest.TestCase):
     """smoke_mcp imports the real MCP modules — runs against the
@@ -367,7 +355,6 @@ class TestSmokeMcp(unittest.TestCase):
             self.assertIn("name", f)
             self.assertIn("error", f)
 
-
 class TestPaths(unittest.TestCase):
     def test_trace_log_path_env_override(self):
         orig = os.environ.get("KAIZEN_TRACE_DIR")
@@ -382,7 +369,6 @@ class TestPaths(unittest.TestCase):
                 os.environ.pop("KAIZEN_TRACE_DIR", None)
             else:
                 os.environ["KAIZEN_TRACE_DIR"] = orig
-
 
 class TestCli(unittest.TestCase):
     """End-to-end CLI tests — subprocess to ensure argparse wiring."""
@@ -476,14 +462,12 @@ class TestCli(unittest.TestCase):
         for axis in ("hook_cascade", "silent_fail", "turn_density"):
             self.assertIn(axis, result.stdout, f"axis {axis} missing from output")
 
-
 def _mcp_available():
     try:
         import mcp  # noqa: F401
         return True
     except ImportError:
         return False
-
 
 @unittest.skipUnless(_mcp_available(), "mcp package not installed")
 class TestMcpServer(MetricsBase):
@@ -503,7 +487,6 @@ class TestMcpServer(MetricsBase):
             self.assertIsNotNone(fn, f"missing tool: {name}")
             self.assertTrue(_aio.iscoroutinefunction(fn))
 
-
 class TestMcpModuleParses(unittest.TestCase):
     """Even without mcp installed, the .py file should compile."""
 
@@ -511,7 +494,6 @@ class TestMcpModuleParses(unittest.TestCase):
         path = _KZ_DIR / "scripts/mcp/metrics_mcp.py"
         with open(path, "r") as f:
             compile(f.read(), str(path), "exec")
-
 
 if __name__ == "__main__":
     unittest.main()

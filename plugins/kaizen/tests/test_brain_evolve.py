@@ -10,11 +10,11 @@ import unittest
 from pathlib import Path
 
 _KZ_DIR = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(_KZ_DIR / "skills/workflow/scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 sys.path.insert(0, str(_KZ_DIR / "scripts/brain"))
 
 import brain_evolve as be  # noqa: E402
-
 
 def _write_note(notes_dir: Path, slug: str, **fm) -> Path:
     """Write a Note with the given frontmatter."""
@@ -29,7 +29,6 @@ def _write_note(notes_dir: Path, slug: str, **fm) -> Path:
     fm_lines.extend(["---", "", f"# {fm.get('name', slug)}", "", "body"])
     p.write_text("\n".join(fm_lines), encoding="utf-8")
     return p
-
 
 class TestDuplicateDetection(unittest.TestCase):
     def test_finds_duplicate_stems(self):
@@ -51,7 +50,6 @@ class TestDuplicateDetection(unittest.TestCase):
             _write_note(notes, "pref-b", name="B", type="belief", confidence=0.9)
             report = be.evolve(brain_root=brain)
             self.assertEqual(report["duplicates"], [])
-
 
 class TestFreshness(unittest.TestCase):
     def test_no_freshness_flagged(self):
@@ -94,7 +92,6 @@ class TestFreshness(unittest.TestCase):
                 str(notes / "recent-fresh.md"), paths_flagged,
             )
 
-
 class TestPersonaDrift(unittest.TestCase):
     def test_persona_drift_detected(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -133,7 +130,6 @@ class TestPersonaDrift(unittest.TestCase):
             report = be.evolve(brain_root=brain)
             self.assertEqual(report["persona_drift"], [])
 
-
 class TestEmptyBrain(unittest.TestCase):
     def test_empty_brain(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -142,7 +138,6 @@ class TestEmptyBrain(unittest.TestCase):
             report = be.evolve(brain_root=brain)
             self.assertEqual(report["total_notes"], 0)
             self.assertEqual(report["duplicates"], [])
-
 
 if __name__ == "__main__":
     unittest.main()

@@ -8,11 +8,12 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 
 _REPO_ROOT = Path(__file__).resolve().parents[3]
 _GATEKEEPER = _REPO_ROOT / "plugins/kaizen/scripts/iron-laws/gatekeeper.py"
 _ETU_SCAN = _REPO_ROOT / "plugins/kaizen/scripts/etu/etu_scan.py"
-
 
 def _load(name: str, path: Path):
     spec = importlib.util.spec_from_file_location(name, path)
@@ -20,7 +21,6 @@ def _load(name: str, path: Path):
     sys.modules[name] = mod
     spec.loader.exec_module(mod)
     return mod
-
 
 class TestEtuScan(unittest.TestCase):
     def setUp(self):
@@ -55,7 +55,6 @@ class TestEtuScan(unittest.TestCase):
             self.assertTrue(any(f.severity == "error" for f in findings))
             for f in findings:
                 self.assertTrue(f.replacement, "replacement must be non-empty")
-
 
 class TestGatekeeperAggregator(unittest.TestCase):
     def setUp(self):
@@ -124,7 +123,6 @@ class TestGatekeeperAggregator(unittest.TestCase):
         out = self.gk._gate_etu("staged", _REPO_ROOT)
         self.assertIsInstance(out, list)
 
-
 class TestAutoLoadBudgetGate(unittest.TestCase):
     """The auto-load-budget gate warns when ~/.claude/.kaizen/auto-load.md
     exceeds KAIZEN_AUTO_LOAD_BUDGET (default 5120). Never blocks — auto-
@@ -182,7 +180,6 @@ class TestAutoLoadBudgetGate(unittest.TestCase):
         # Message includes actual and budget for diagnosis
         self.assertIn("8000", findings[0].message)
         self.assertIn("5120", findings[0].message)
-
 
 class TestBrainDriftGate(unittest.TestCase):
     """The brain-drift gate detects 4 classes of stale state across the
@@ -311,7 +308,6 @@ class TestBrainDriftGate(unittest.TestCase):
         msgs = " ".join(f.message for f in findings)
         self.assertIn("pref-does-not-exist", msgs)
 
-
 class TestExpectedImportNotFired(unittest.TestCase):
     """brain-drift gate enrichment: detect CLAUDE.md @imports that
     never showed up in the InstructionsLoaded jsonl audit.
@@ -414,7 +410,6 @@ class TestExpectedImportNotFired(unittest.TestCase):
         # missing load event).
         self.assertNotIn("expected-import-not-fired", kinds)
 
-
 class TestIndexerStaleRule(unittest.TestCase):
     """Phase 4.C: brain-drift gets an indexer-stale rule_id that warns
     when ANY known kaizen index's source-corpus hash differs from the
@@ -481,7 +476,6 @@ class TestIndexerStaleRule(unittest.TestCase):
         (brain / "Notes").mkdir(parents=True)
         (brain / "Notes" / "pref-x.md").write_text("body")
         # Compute the actual current hash + seed state with the same value
-        sys.path.insert(0, str(_REPO_ROOT / "plugins/kaizen/skills/workflow/scripts"))
         import _index_kit as ik
         current = ik.compute_corpus_drift(brain / "Notes", "*.md")
         state_file = self.root / "indexer-state.json"
@@ -492,7 +486,6 @@ class TestIndexerStaleRule(unittest.TestCase):
             findings = self.gk._gate_brain_drift("staged", _REPO_ROOT)
         kinds = [f.rule_id for f in findings]
         self.assertNotIn("indexer-stale", kinds)
-
 
 class TestGatekeeperCollisionResistance(unittest.TestCase):
     """Regression — both iron-laws and efficient-tool-use ship a
@@ -512,10 +505,8 @@ class TestGatekeeperCollisionResistance(unittest.TestCase):
                 f"etu_scan failed to load post iron-laws: {f.message}",
             )
 
-
 if __name__ == "__main__":
     unittest.main()
-
 
 class TestGateFrontmatterSplit(unittest.TestCase):
     """Quality-check brainstorm #1 + #2 — _gate_frontmatter must split

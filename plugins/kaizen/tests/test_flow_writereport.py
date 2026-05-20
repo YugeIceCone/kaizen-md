@@ -19,8 +19,8 @@ import unittest
 from pathlib import Path
 
 _KZ_DIR = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(_KZ_DIR / "skills/workflow/scripts"))
-
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 
 class TestWriteReportConsumesDataclasses(unittest.TestCase):
     """WriteReport.exec_async must use attribute access on CrateProfile."""
@@ -107,7 +107,6 @@ class TestWriteReportConsumesDataclasses(unittest.TestCase):
         self.assertEqual(summary["total_files"], 0)
         self.assertEqual(summary["by_language"], {})
         self.assertEqual(summary["top_5_by_loc"], [])
-
 
 if __name__ == "__main__":
     unittest.main()

@@ -14,9 +14,9 @@ import unittest
 from pathlib import Path
 
 _KZ = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(_KZ / "skills/workflow/scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 sys.path.insert(0, str(_KZ / "scripts/io"))
-
 
 class TestAxisRunner(unittest.TestCase):
     def test_load_and_run_grep_axis(self):
@@ -78,7 +78,6 @@ class TestAxisRunner(unittest.TestCase):
             spec = axis_runner.load(axis_yaml)
             self.assertEqual(spec["name"], "demo")
             self.assertEqual(spec["scan_spec"]["type"], "grep")
-
 
 if __name__ == "__main__":
     unittest.main()

@@ -12,11 +12,11 @@ import unittest
 from pathlib import Path
 
 _KZ = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(_KZ / "skills/workflow/scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 sys.path.insert(0, str(_KZ / "scripts/quality"))
 
 import sandbox_check  # noqa: E402
-
 
 class TestTestIsolation(unittest.TestCase):
     def test_clean_test_file_no_findings(self):
@@ -49,7 +49,6 @@ class T(unittest.TestCase):
         rep = sandbox_check.scan(tests_dir=_KZ / "tests")
         for k in ("tests_total", "findings", "violation_count"):
             self.assertIn(k, rep)
-
 
 if __name__ == "__main__":
     unittest.main()

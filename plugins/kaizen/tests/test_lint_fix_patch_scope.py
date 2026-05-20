@@ -24,11 +24,11 @@ import unittest
 from pathlib import Path
 
 _KZ_DIR = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(_KZ_DIR / "skills/workflow/scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 sys.path.insert(0, str(_KZ_DIR / "scripts/lint"))
 
 import lint_fix_dispatch as lfd  # noqa: E402
-
 
 def _init_repo(repo: Path) -> None:
     subprocess.run(["git", "init", "-q"], cwd=repo, check=True)
@@ -40,7 +40,6 @@ def _init_repo(repo: Path) -> None:
     (repo / "src" / "foo.py").write_text("def f():\n    pass\n")
     subprocess.run(["git", "add", "."], cwd=repo, check=True)
     subprocess.run(["git", "commit", "-q", "-m", "init"], cwd=repo, check=True)
-
 
 _LEGIT_DIFF_FOR_FOO_PY = """\
 --- a/src/foo.py
@@ -66,7 +65,6 @@ _MALICIOUS_DIFF_TARGETING_CI = """\
 _MIXED_LEGIT_AND_MALICIOUS = (_LEGIT_DIFF_FOR_FOO_PY + "\n"
                                 + _MALICIOUS_DIFF_TARGETING_CI)
 
-
 class DiffScopeGuard(unittest.TestCase):
     """A scope guard helper must exist (we'll add `_diff_targets()` +
     `_diff_in_scope(diff, allowed)` to lint_fix_dispatch)."""
@@ -90,7 +88,6 @@ class DiffScopeGuard(unittest.TestCase):
     def test_diff_in_scope_rejects_mixed_legit_plus_out_of_scope(self):
         self.assertFalse(lfd._diff_in_scope(_MIXED_LEGIT_AND_MALICIOUS,
                                              {"src/foo.py"}))
-
 
 class ApplyPatchScopeEnforced(unittest.TestCase):
     """`_apply_patch(diff, repo, allowed_paths)` must enforce scope."""
@@ -131,7 +128,6 @@ class ApplyPatchScopeEnforced(unittest.TestCase):
         self.assertEqual(
             (self.repo / ".github" / "workflows" / "ci.yml").read_text(),
             self.original_ci)
-
 
 if __name__ == "__main__":
     unittest.main()

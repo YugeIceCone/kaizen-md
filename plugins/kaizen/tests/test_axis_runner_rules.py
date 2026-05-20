@@ -13,8 +13,8 @@ import unittest
 from pathlib import Path
 
 _KZ = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(_KZ / "skills/workflow/scripts"))
-
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 
 class TestRunGrep(unittest.TestCase):
     def test_grep_finds_pattern(self):
@@ -45,7 +45,6 @@ class TestRunGrep(unittest.TestCase):
             root = Path(tmp)
             (root / "a.md").write_text("clean\n")
             self.assertEqual(rules.run_grep("MISSING", "*.md", root), [])
-
 
 class TestRunAstRule(unittest.TestCase):
     def test_class_camelcase_flags_lowercase(self):
@@ -83,7 +82,6 @@ class TestRunAstRule(unittest.TestCase):
             with self.assertRaises(ValueError):
                 rules.run_ast_rule("nonexistent-rule", "*.py", Path(tmp))
 
-
 class TestRunFileCoverage(unittest.TestCase):
     def test_missing_counterpart_flagged(self):
         import axis_runner_rules as rules
@@ -112,7 +110,6 @@ class TestRunFileCoverage(unittest.TestCase):
             self.assertEqual(rules.run_file_coverage(
                 "src/*.py", "tests/test_*.py", root
             ), [])
-
 
 if __name__ == "__main__":
     unittest.main()

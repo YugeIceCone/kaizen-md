@@ -6,11 +6,11 @@ import unittest
 from pathlib import Path
 
 _KZ = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(_KZ / "skills/workflow/scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 sys.path.insert(0, str(_KZ / "scripts/quality"))
 
 import class_name_quality  # noqa: E402
-
 
 class TestClassNameQuality(unittest.TestCase):
     def test_camel_case_ok(self):
@@ -28,7 +28,6 @@ class TestClassNameQuality(unittest.TestCase):
         findings = class_name_quality.scan_text(
             "class lowercaseclass: pass\n", path="bad.py")
         self.assertEqual(findings[0]["rule"], "not-camelcase")
-
 
 if __name__ == "__main__":
     unittest.main()

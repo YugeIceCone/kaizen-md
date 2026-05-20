@@ -19,11 +19,11 @@ import unittest
 from pathlib import Path
 
 _KZ_DIR = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(_KZ_DIR / "skills/workflow/scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 sys.path.insert(0, str(_KZ_DIR / "scripts/brain"))
 
 import _iron_laws as il  # noqa: E402
-
 
 def _ctx(repo_root: Path, scope: str = "all") -> "il.CheckContext":
     return il.CheckContext(
@@ -33,7 +33,6 @@ def _ctx(repo_root: Path, scope: str = "all") -> "il.CheckContext":
         changed=[],
         added=[],
     )
-
 
 def _make_starter(repo_root: Path, name: str = "test") -> Path:
     starter = repo_root / "plugins" / "kaizen" / "assets" / "starters" / name
@@ -48,7 +47,6 @@ def _make_starter(repo_root: Path, name: str = "test") -> Path:
                  "Resources", "Tasks", "Templates", "Archive"):
         (starter / sub).mkdir()
     return starter
-
 
 class BrainNoteSchema(unittest.TestCase):
 
@@ -112,7 +110,6 @@ class BrainNoteSchema(unittest.TestCase):
         )
         self.assertEqual(il.check_brain_note_schema(_ctx(self.root)), [])
 
-
 class BrainRuleSchema(unittest.TestCase):
 
     def setUp(self):
@@ -158,7 +155,6 @@ class BrainRuleSchema(unittest.TestCase):
             "---\n\nbody\n"
         )
         self.assertEqual(il.check_brain_rule_schema(_ctx(self.root)), [])
-
 
 class StarterNoPersonalData(unittest.TestCase):
 
@@ -212,7 +208,6 @@ class StarterNoPersonalData(unittest.TestCase):
         )
         self.assertEqual(il.check_starter_no_personal_data(_ctx(self.root)), [])
 
-
 class BrainNoOrphanTopLevel(unittest.TestCase):
 
     def setUp(self):
@@ -241,7 +236,6 @@ class BrainNoOrphanTopLevel(unittest.TestCase):
         f = il.check_brain_no_orphan_toplevel(_ctx(self.root))
         self.assertTrue(f)
         self.assertIn("UnknownDir", f[0].message)
-
 
 if __name__ == "__main__":
     unittest.main()

@@ -22,10 +22,10 @@ import sys
 from pathlib import Path
 
 _KZ = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(_KZ / "skills/workflow/scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 
 from _paths import env_overridable_dir  # noqa: E402
-
 
 class TestEnvWins:
     def test_env_returns_env_value(self, monkeypatch):
@@ -39,7 +39,6 @@ class TestEnvWins:
         # Empty string env → fall back to default
         assert result != Path("")
         assert "default" in str(result)
-
 
 class TestDefaultPath:
     def test_default_when_env_unset(self, monkeypatch):
@@ -59,7 +58,6 @@ class TestDefaultPath:
         result = env_overridable_dir("KAIZEN_TEST_DIR")
         assert result == Path.home() / ".claude" / ".kaizen"
 
-
 class TestBaseOverride:
     def test_base_overrides_default_root(self, monkeypatch):
         monkeypatch.delenv("KAIZEN_TEST_DIR", raising=False)
@@ -67,7 +65,6 @@ class TestBaseOverride:
         result = env_overridable_dir("KAIZEN_TEST_DIR", "sub",
                                        base=custom)
         assert result == custom / "sub"
-
 
 class TestDeterministic:
     def test_same_inputs_same_output(self, monkeypatch):

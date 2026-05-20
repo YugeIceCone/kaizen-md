@@ -11,17 +11,16 @@ import unittest
 from pathlib import Path
 
 _KZ = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(_KZ / "skills/workflow/scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 sys.path.insert(0, str(_KZ / "scripts/rules"))
 
 import schema_cli  # noqa: E402
 
 _RUBRIC = _KZ / "skills/brainstorming/domain/brainstorm-rubric.yaml"
 
-
 def _walker():
     return schema_cli.BucketWalker.from_yaml(_RUBRIC)
-
 
 def _signals(**over):
     """Neutral baseline; override keys."""
@@ -37,7 +36,6 @@ def _signals(**over):
     }
     base.update(over)
     return base
-
 
 class TestBrainstormRubricCases(unittest.TestCase):
     def setUp(self):
@@ -104,7 +102,6 @@ class TestBrainstormRubricCases(unittest.TestCase):
     def test_mid_confidence_no_trigger_hits_research(self):
         r = self.w.evaluate(_signals(llm_confidence=0.6, trigger_present=False))
         self.assertEqual(r.bucket, "RESEARCH")
-
 
 if __name__ == "__main__":
     unittest.main()

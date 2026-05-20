@@ -26,10 +26,10 @@ _KZ = Path(__file__).resolve().parent.parent
 _HANDOFF = _KZ / "scripts/handoff/handoff.py"
 
 sys.path.insert(0, str(_KZ / "scripts/handoff"))
-sys.path.insert(0, str(_KZ / "skills/workflow/scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 sys.path.insert(0, str(_KZ / "scripts/rules"))
 import handoff as _h  # noqa: E402
-
 
 _HANDOFF_YAML = """---
 session: kaizen-md
@@ -60,7 +60,6 @@ failed: []
 next: []
 files: {}
 """
-
 
 # ─── _maybe_auto_bridge — gating unit tests ─────────────────────────────
 
@@ -112,7 +111,6 @@ class TestAutoBridgeGating(unittest.TestCase):
         r = _h._maybe_auto_bridge(self.yaml, outcome="FAILED", force=False)
         self.assertIsNotNone(r)
         self.assertTrue(r.get("skipped"))
-
 
 # ─── auto-finalize CLI integration ──────────────────────────────────────
 
@@ -182,7 +180,6 @@ class TestAutoFinalizeAutoBridge(unittest.TestCase):
         data = env.get("data", env)
         self.assertIn("auto_bridge", data)
         self.assertTrue(data["auto_bridge"].get("skipped"))
-
 
 if __name__ == "__main__":
     unittest.main()

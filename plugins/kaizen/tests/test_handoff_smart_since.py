@@ -23,10 +23,10 @@ _KZ = Path(__file__).resolve().parent.parent
 _HANDOFF = _KZ / "scripts/handoff/handoff.py"
 
 sys.path.insert(0, str(_KZ / "scripts/handoff"))
-sys.path.insert(0, str(_KZ / "skills/workflow/scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 sys.path.insert(0, str(_KZ / "scripts/rules"))
 import handoff as _h  # noqa: E402
-
 
 _PARENT_YAML = """---
 session: test
@@ -40,7 +40,6 @@ session_meta:
 
 goal: 'parent goal'
 """
-
 
 def _child_yaml_with_parent(parent_path: str) -> str:
     return f"""---
@@ -61,7 +60,6 @@ done_this_session:
     files: ['a.py']
 """
 
-
 _ORPHAN_YAML = """---
 session: test
 date: 2026-05-18
@@ -74,7 +72,6 @@ session_meta:
 
 goal: 'no parent'
 """
-
 
 class TestSmartSince(unittest.TestCase):
     def test_uses_parent_handoff_generated_at_when_parent_exists(self):
@@ -119,7 +116,6 @@ goal: 'nothing'
             # parent has no handoff_generated_at → use child's date
             self.assertEqual(_h._smart_since(child), "2026-05-18")
 
-
 # ─── tree CLI uses smart since when --since omitted ─────────────────────
 
 def _git_init_with_commit(repo: Path) -> str:
@@ -135,7 +131,6 @@ def _git_init_with_commit(repo: Path) -> str:
     r = subprocess.run(["git", "log", "-1", "--format=%h"],
                         cwd=str(repo), capture_output=True, text=True)
     return r.stdout.strip()
-
 
 class TestTreeUsesSmartSince(unittest.TestCase):
     def test_tree_default_since_uses_parent_timestamp_when_present(self):
@@ -159,7 +154,6 @@ class TestTreeUsesSmartSince(unittest.TestCase):
             # since should be parent's handoff_generated_at (passed through
             # _normalize_since, but this isn't a bare YYYY-MM-DD so untouched)
             self.assertEqual(data["since"], "2026-05-17T20:02:59Z")
-
 
 if __name__ == "__main__":
     unittest.main()

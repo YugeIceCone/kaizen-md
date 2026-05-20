@@ -9,11 +9,11 @@ import unittest
 from pathlib import Path
 
 _KZ = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(_KZ / "skills/workflow/scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 sys.path.insert(0, str(_KZ / "scripts/quality"))
 
 import command_allowed_tools_coverage as ctc  # noqa: E402
-
 
 _HAS_TOOL_INVOKE = """---
 name: x
@@ -37,7 +37,6 @@ allowed-tools: ["Bash(python3 foo:*)"]
 Runs foo via bash.
 """
 
-
 class TestCommandAllowedToolsCoverage(unittest.TestCase):
     def test_synthetic_missing_allowed_tools(self):
         with tempfile.TemporaryDirectory() as td:
@@ -55,7 +54,6 @@ class TestCommandAllowedToolsCoverage(unittest.TestCase):
         rep = ctc.scan(commands_dir=_KZ / "commands")
         for k in ("commands_total", "gaps", "coverage_pct"):
             self.assertIn(k, rep)
-
 
 if __name__ == "__main__":
     unittest.main()

@@ -7,11 +7,11 @@ import unittest
 from pathlib import Path
 
 _KZ = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(_KZ / "skills/workflow/scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 sys.path.insert(0, str(_KZ / "scripts/quality"))
 
 import heavy_imports  # noqa: E402
-
 
 class TestHeavyImports(unittest.TestCase):
     def test_eager_heavy_import_flagged(self):
@@ -34,7 +34,6 @@ def heavy():
         rep = heavy_imports.scan(scripts_dir=_KZ / "skills/workflow/scripts")
         for k in ("scripts_total", "findings"):
             self.assertIn(k, rep)
-
 
 if __name__ == "__main__":
     unittest.main()

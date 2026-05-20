@@ -7,10 +7,10 @@ import unittest
 from pathlib import Path
 
 _KZ = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(_KZ / "skills/workflow/scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 
 import brainstorm  # noqa: E402
-
 
 class TestBrainstormSkillFlow(unittest.TestCase):
     def test_should_emit_jsonl_under_threshold_false(self):
@@ -33,7 +33,6 @@ class TestBrainstormSkillFlow(unittest.TestCase):
         body = skill.read_text(encoding="utf-8")
         self.assertIn("Threshold-gated output contract", body)
         self.assertIn("idea.schema.json", body)
-
 
 if __name__ == "__main__":
     unittest.main()

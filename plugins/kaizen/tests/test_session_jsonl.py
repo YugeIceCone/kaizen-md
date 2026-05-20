@@ -20,12 +20,11 @@ import unittest
 from pathlib import Path
 
 _KZ_DIR = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(_KZ_DIR / "skills/workflow/scripts"))
-
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 
 def _make_jsonl(*records: dict) -> str:
     return "\n".join(json.dumps(r) for r in records) + "\n"
-
 
 _SAMPLE_RECORDS = [
     {"type": "file-history-snapshot", "messageId": "m1",
@@ -79,7 +78,6 @@ _SAMPLE_RECORDS = [
       "sessionId": "s1"},
 ]
 
-
 class TestDiscoverSessionJsonl(unittest.TestCase):
     def setUp(self):
         self._tmp = tempfile.TemporaryDirectory()
@@ -112,7 +110,6 @@ class TestDiscoverSessionJsonl(unittest.TestCase):
         # Only top-level *.jsonl considered
         self.assertIsNone(sj.discover_session_jsonl(self.tmp))
 
-
 class TestCwdToProjectSlug(unittest.TestCase):
     def test_absolute_path_slug(self):
         import _session_jsonl as sj
@@ -124,7 +121,6 @@ class TestCwdToProjectSlug(unittest.TestCase):
         slug = sj.cwd_to_slug(Path("/"))
         # Just "/" → "-" or empty leading is fine; matches CC behavior
         self.assertTrue(slug.startswith("-"))
-
 
 class TestDiscoverActiveSessionId(unittest.TestCase):
     """Shared helper: cwd → slug → latest JSONL → stem in one call."""
@@ -166,7 +162,6 @@ class TestDiscoverActiveSessionId(unittest.TestCase):
         # Either None or a real string from the actual process cwd —
         # both valid; the assertion is no-exception
         self.assertTrue(result is None or isinstance(result, str))
-
 
 class TestMineSession(unittest.TestCase):
     def setUp(self):
@@ -248,7 +243,6 @@ class TestMineSession(unittest.TestCase):
         self.assertIn("ai_title", mined)
         self.assertIsNotNone(mined["ai_title"])
 
-
 class TestMineSessionEmpty(unittest.TestCase):
     def setUp(self):
         self._tmp = tempfile.TemporaryDirectory()
@@ -266,7 +260,6 @@ class TestMineSessionEmpty(unittest.TestCase):
         self.assertEqual(mined["tasks"], {})
         self.assertEqual(mined["completed_tasks"], [])
         self.assertEqual(mined["pending_tasks"], [])
-
 
 if __name__ == "__main__":
     unittest.main()

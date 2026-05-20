@@ -21,10 +21,10 @@ _KZ = Path(__file__).resolve().parent.parent
 _HANDOFF = _KZ / "scripts/handoff/handoff.py"
 
 sys.path.insert(0, str(_KZ / "scripts/handoff"))
-sys.path.insert(0, str(_KZ / "skills/workflow/scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 sys.path.insert(0, str(_KZ / "scripts/rules"))
 import handoff as _h  # noqa: E402
-
 
 _A = """---
 session: test
@@ -53,7 +53,6 @@ done_this_session:
 blockers: ['something blocking']
 findings: ['new finding']
 """
-
 
 class TestComputeDiff(unittest.TestCase):
     def test_identical_sections(self):
@@ -88,7 +87,6 @@ class TestComputeDiff(unittest.TestCase):
         self.assertGreaterEqual(c["added"], 1)
         self.assertGreaterEqual(c["modified"], 2)
         self.assertEqual(c["removed"], 0)
-
 
 class TestDiffCLI(unittest.TestCase):
     def setUp(self):
@@ -127,7 +125,6 @@ class TestDiffCLI(unittest.TestCase):
         r = self._run("diff", "--a", str(self.tmp / "nope.yaml"),
                        "--b", str(self.b))
         self.assertNotEqual(r.returncode, 0)
-
 
 if __name__ == "__main__":
     unittest.main()

@@ -25,9 +25,9 @@ from pathlib import Path
 _KZ = Path(__file__).resolve().parent.parent
 _BUNDLE = _KZ / "scripts/util/superpower_bundle.py"
 
-sys.path.insert(0, str(_KZ / "skills/workflow/scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 import superpower_bundle as _sb  # noqa: E402
-
 
 # ─── _classify_kind — pure ────────────────────────────────────────────
 
@@ -55,7 +55,6 @@ class TestClassifyKind(unittest.TestCase):
 
     def test_unknown_falls_back_to_other(self):
         self.assertEqual(_sb._classify_kind("misc.md"), "other")
-
 
 # ─── _extract_status — pure ────────────────────────────────────────────
 
@@ -98,7 +97,6 @@ class TestExtractStatus(unittest.TestCase):
         text = "# Title\n\n**Status:** in-progress\n"
         self.assertEqual(_sb._extract_status(text), "in-progress")
 
-
 class TestReadmeIsReference(unittest.TestCase):
     """READMEs are folder-descriptions, not work items. They should
     classify as `reference` status so they never appear in task lists."""
@@ -112,7 +110,6 @@ class TestReadmeIsReference(unittest.TestCase):
         # Non-README files still go through content scan
         status = _sb._extract_status_for_file("plan-x.md", "# X\n\n**COMPLETE**")
         self.assertEqual(status, "shipped")
-
 
 # ─── _scan_state — pure-ish (reads filesystem) ────────────────────────
 
@@ -166,7 +163,6 @@ class TestScanState(unittest.TestCase):
         self.assertEqual(plan["status"], "shipped")
         self.assertGreater(plan["size_bytes"], 0)
 
-
 # ─── state CLI ────────────────────────────────────────────────────────
 
 class TestStateCLI(unittest.TestCase):
@@ -215,7 +211,6 @@ class TestStateCLI(unittest.TestCase):
         self.assertEqual(r.returncode, 0, r.stderr)
         data = json.loads(r.stdout)
         self.assertIn("totals", data)
-
 
 # ─── tasks CLI ────────────────────────────────────────────────────────
 
@@ -278,7 +273,6 @@ class TestTasksCLI(unittest.TestCase):
         self.assertIn("plan-pending.md", r.stdout)
         self.assertIn("plan-deferred.md", r.stdout)
         self.assertNotIn("plan-shipped.md", r.stdout)
-
 
 if __name__ == "__main__":
     unittest.main()

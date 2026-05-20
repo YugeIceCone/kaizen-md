@@ -8,11 +8,11 @@ import unittest
 from pathlib import Path
 
 _KZ = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(_KZ / "skills/workflow/scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 sys.path.insert(0, str(_KZ / "scripts/quality"))
 
 import prompt_event_diff  # noqa: E402
-
 
 class TestPromptEventDiff(unittest.TestCase):
     def test_slice_between_prompts(self):
@@ -35,7 +35,6 @@ class TestPromptEventDiff(unittest.TestCase):
     def test_missing_log(self):
         slices = prompt_event_diff.slice_by_prompt(trace_log=Path("/nonexistent.jsonl"))
         self.assertEqual(slices, [])
-
 
 if __name__ == "__main__":
     unittest.main()

@@ -74,8 +74,6 @@ class _DocsBase(unittest.TestCase):
 
 class TestKindClassifier:
     def test_pure_fn(self):
-        import sys as _sys
-        _sys.path.insert(0, str(_KZ_DIR / "skills/workflow/scripts"))
         from plugin_docs import classify_kind
         assert classify_kind(Path("plugins/kaizen/skills/foo/SKILL.md")) == "skill"
         assert classify_kind(Path("plugins/kaizen/skills/foo/references/api.md")) == "reference"

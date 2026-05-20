@@ -6,11 +6,11 @@ import unittest
 from pathlib import Path
 
 _KZ = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(_KZ / "skills/workflow/scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 sys.path.insert(0, str(_KZ / "scripts/quality"))
 
 import var_name_quality  # noqa: E402
-
 
 class TestVarNameQuality(unittest.TestCase):
     def test_single_letter_module_var_flagged(self):
@@ -29,7 +29,6 @@ class TestVarNameQuality(unittest.TestCase):
     def test_local_in_function_ignored(self):
         src = "def f():\n    x = 1\n    return x\n"
         self.assertEqual(var_name_quality.scan_text(src, path="ok.py"), [])
-
 
 if __name__ == "__main__":
     unittest.main()

@@ -7,11 +7,11 @@ import unittest
 from pathlib import Path
 
 _KZ = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(_KZ / "skills/workflow/scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 sys.path.insert(0, str(_KZ / "scripts/quality"))
 
 import todo_inventory  # noqa: E402
-
 
 class TestTodoInventory(unittest.TestCase):
     def test_scan_finds_todo_and_fixme(self):
@@ -24,7 +24,6 @@ class TestTodoInventory(unittest.TestCase):
             self.assertIn("TODO", kinds)
             self.assertIn("FIXME", kinds)
             self.assertEqual(rep["count"], 2)
-
 
 if __name__ == "__main__":
     unittest.main()

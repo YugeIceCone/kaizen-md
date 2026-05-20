@@ -27,9 +27,9 @@ import unittest
 from pathlib import Path
 
 _KZ_DIR = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(_KZ_DIR / "skills/workflow/scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 sys.path.insert(0, str(_KZ_DIR / "scripts/brain"))
-
 
 def _craft_traversal_tar(tar_path: Path, escape_filename: str,
                           payload: bytes = b"PWNED\n") -> None:
@@ -48,7 +48,6 @@ def _craft_traversal_tar(tar_path: Path, escape_filename: str,
     finally:
         src_path.unlink()
 
-
 def _craft_absolute_path_tar(tar_path: Path,
                               abs_target: Path,
                               payload: bytes = b"PWNED\n") -> None:
@@ -61,7 +60,6 @@ def _craft_absolute_path_tar(tar_path: Path,
             tar.add(src_path, arcname=str(abs_target))
     finally:
         src_path.unlink()
-
 
 class BrainMigrateTarSafety(unittest.TestCase):
     """`brain_migrate.cmd_rollback` extracts via `tar.extractall(src.parent)`.
@@ -140,7 +138,6 @@ class BrainMigrateTarSafety(unittest.TestCase):
         self.assertFalse(abs_target.exists(),
                          "tar.extractall honored absolute path member")
 
-
 class PathMigrateTarSafety(unittest.TestCase):
     """`path_migrate.cmd_rollback` extracts via `tar.extractall(target_parent)`.
     Must reject traversal + absolute paths."""
@@ -189,7 +186,6 @@ class PathMigrateTarSafety(unittest.TestCase):
         self.assertFalse(self.canary.exists(),
                          f"path_migrate tar.extractall wrote outside "
                          f"target ({self.canary}) — path-traversal")
-
 
 if __name__ == "__main__":
     unittest.main()

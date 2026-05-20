@@ -28,11 +28,11 @@ import unittest
 from pathlib import Path
 
 _KZ_DIR = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(_KZ_DIR / "skills/workflow/scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 sys.path.insert(0, str(_KZ_DIR / "scripts/brain"))
 
 import brain_migrate as bm  # noqa: E402
-
 
 def _seed_brain(root: Path, n_notes: int = 3) -> None:
     """Create a minimal brain tree."""
@@ -46,7 +46,6 @@ def _seed_brain(root: Path, n_notes: int = 3) -> None:
         (root / "Notes" / f"note-{i}.md").write_text(
             f"---\nname: Note {i}\ntype: belief\n---\n\n# Note {i}\n\nbody\n"
         )
-
 
 class _BaseCase(unittest.TestCase):
     """Per-test tempdir for src, dst, backup, settings."""
@@ -83,9 +82,7 @@ class _BaseCase(unittest.TestCase):
             setattr(ns, k, v)
         return ns
 
-
 # ─── State classification ────────────────────────────────────────────
-
 
 class StateClassification(_BaseCase):
 
@@ -122,9 +119,7 @@ class StateClassification(_BaseCase):
             bm.cmd_status(self._args())
         self.assertIn("both-have-data", buf.getvalue())
 
-
 # ─── Apply flow ──────────────────────────────────────────────────────
-
 
 class ApplyFlow(_BaseCase):
 
@@ -180,9 +175,7 @@ class ApplyFlow(_BaseCase):
         rc = bm.cmd_apply(self._args())
         self.assertEqual(rc, 0)  # no-op, exit 0
 
-
 # ─── Rollback ────────────────────────────────────────────────────────
-
 
 class RollbackFlow(_BaseCase):
 
@@ -200,9 +193,7 @@ class RollbackFlow(_BaseCase):
         rc = bm.cmd_rollback(self._args())
         self.assertEqual(rc, 1)
 
-
 # ─── Settings.json mutation ──────────────────────────────────────────
-
 
 class SettingsMutation(_BaseCase):
 
@@ -267,9 +258,7 @@ class SettingsMutation(_BaseCase):
         self.assertFalse(result["edited"])
         self.assertTrue(result["skipped"])
 
-
 # ─── CLI smoke ───────────────────────────────────────────────────────
-
 
 class CliSmoke(_BaseCase):
 
@@ -299,14 +288,12 @@ class CliSmoke(_BaseCase):
         self.assertTrue(self.src.exists())
         self.assertFalse(self.dst.exists())
 
-
 # ─── TDD discipline pass — RED-first tests for edge cases ────────────
 #
 # Phase 4 was initially built test+impl in parallel, not strict TDD.
 # This class catches up: each test was authored as a behavioral
 # contract first. Some failed against the initial impl → impl
 # tightened; others passed (the impl had already covered them).
-
 
 class Phase4EdgeCases(_BaseCase):
     """Edge cases that should hold but weren't covered in the
@@ -440,7 +427,6 @@ class Phase4EdgeCases(_BaseCase):
         self.assertFalse(hasattr(bm, "cmd_edit_settings"),
                           "cmd_edit_settings should be removed")
 
-
 class Phase4JsonEnvelope(_BaseCase):
     """Every subcommand with --json must produce the canonical envelope
     (kaizen.tool / kaizen.schema_version / data / verdict). Caught one
@@ -506,7 +492,6 @@ class Phase4JsonEnvelope(_BaseCase):
         out = json.loads(r.stdout)
         self.assertEqual(out["kaizen"]["tool"], "kaizen-brain-migrate")
         self.assertEqual(out["data"]["action"], "rolled-back")
-
 
 if __name__ == "__main__":
     unittest.main()

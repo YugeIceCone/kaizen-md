@@ -8,12 +8,12 @@ import unittest
 from pathlib import Path
 
 _KZ_DIR = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(_KZ_DIR / "skills/workflow/scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 sys.path.insert(0, str(_KZ_DIR / "scripts/brain"))
 
 import _brain  # noqa: E402
 import brain_promote as bp  # noqa: E402
-
 
 def _write_project_memory_entry(
     pm_dir: Path,
@@ -36,7 +36,6 @@ def _write_project_memory_entry(
     p.write_text("\n".join(fm_lines), encoding="utf-8")
     return p
 
-
 class TestPromoteBase(unittest.TestCase):
     def setUp(self):
         self._tmp = tempfile.TemporaryDirectory()
@@ -54,7 +53,6 @@ class TestPromoteBase(unittest.TestCase):
     def tearDown(self):
         self._tmp.cleanup()
         bp._all_project_memory_roots = self._orig
-
 
 class TestPromoteFiltering(TestPromoteBase):
     def test_low_source_count_not_promotable(self):
@@ -85,7 +83,6 @@ class TestPromoteFiltering(TestPromoteBase):
         )
         report = bp.promote(brain_root=self.brain)
         self.assertEqual(report["total_candidates"], 0)
-
 
 class TestPromoteApply(TestPromoteBase):
     def test_apply_moves_to_brain_and_tombstones_source(self):
@@ -124,7 +121,6 @@ class TestPromoteApply(TestPromoteBase):
         dest = Path(report["applied"][0]["destination"])
         self.assertTrue(dest.name.startswith("pref-"))
 
-
 class TestPromoteFilterGlob(TestPromoteBase):
     def test_filter_glob_restricts(self):
         _write_project_memory_entry(
@@ -141,7 +137,6 @@ class TestPromoteFilterGlob(TestPromoteBase):
         )
         self.assertEqual(report["total_candidates"], 1)
         self.assertIn("feedback", report["candidates"][0]["source"])
-
 
 if __name__ == "__main__":
     unittest.main()

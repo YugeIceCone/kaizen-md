@@ -20,12 +20,12 @@ import unittest
 from pathlib import Path
 
 _KZ_DIR = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(_KZ_DIR / "skills/workflow/scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 sys.path.insert(0, str(_KZ_DIR / "scripts/lint"))
 
 import lint_fix_setup as lfs  # noqa: E402
 import lint_fix_dispatch as lfd  # noqa: E402
-
 
 class SetupProbeSchemeAllowlist(unittest.TestCase):
     """`lint_fix_setup._probe(base_url)` must reject non-http(s)."""
@@ -57,7 +57,6 @@ class SetupProbeSchemeAllowlist(unittest.TestCase):
         result = lfs._probe("http://127.0.0.1:1", timeout=0.1)
         self.assertIsNone(result)  # connection failed, not scheme reject
 
-
 class HttpPostSchemeAllowlist(unittest.TestCase):
     """`lint_fix_dispatch._http_post(url, payload)` must reject
     non-http(s) schemes BEFORE issuing the request."""
@@ -71,7 +70,6 @@ class HttpPostSchemeAllowlist(unittest.TestCase):
         with self.assertRaises((ValueError, lfd.urllib.error.URLError)):
             lfd._http_post("ftp://example.com/api",
                             {"model": "x", "messages": []})
-
 
 if __name__ == "__main__":
     unittest.main()

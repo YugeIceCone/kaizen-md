@@ -16,10 +16,10 @@ from pathlib import Path
 
 _KZ = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(_KZ / "scripts/brain"))
-sys.path.insert(0, str(_KZ / "skills/workflow/scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 
 import brain_schema as bs  # noqa: E402
-
 
 class TestInferExpectedSchema(unittest.TestCase):
     def setUp(self):
@@ -115,7 +115,6 @@ class TestInferExpectedSchema(unittest.TestCase):
         out = bs.infer_expected_schema(p, self.brain)
         self.assertEqual(out["kind"], "passthrough")
 
-
 class TestApplyMissingFrontmatterFields(unittest.TestCase):
     def test_adds_missing_fields_to_existing_fm(self):
         text = "---\nname: foo\n---\n# body"
@@ -150,7 +149,6 @@ class TestApplyMissingFrontmatterFields(unittest.TestCase):
         self.assertIn("type: world-fact", out["text"])
         self.assertIn("# just a body", out["text"])
 
-
 class TestAppendMissingPersonaSections(unittest.TestCase):
     def test_appends_missing_sections(self):
         text = "# Persona\n\n## Mission\n\n_role_\n"
@@ -174,7 +172,6 @@ class TestAppendMissingPersonaSections(unittest.TestCase):
         out = bs.append_missing_persona_sections(text, bs.PERSONA_SECTIONS)
         self.assertEqual(out["added_sections"], [])
         self.assertEqual(out["text"], text)
-
 
 class TestValidateAndUpgrade(unittest.TestCase):
     def setUp(self):
@@ -265,7 +262,6 @@ class TestValidateAndUpgrade(unittest.TestCase):
         self.assertIn("type: world-fact", text)
         self.assertIn("freshness: stable", text)
 
-
 class TestDryRun(unittest.TestCase):
     """dry_run=True surfaces what would change without writing.
 
@@ -299,7 +295,6 @@ class TestDryRun(unittest.TestCase):
         )
         out = bs.validate_and_upgrade(p, brain_root=self.brain, dry_run=True)
         self.assertFalse(out["changed"])
-
 
 class TestCheckLinks(unittest.TestCase):
     """check_links(): audit [[ref]] cross-references in Persona + Notes.
@@ -335,7 +330,6 @@ class TestCheckLinks(unittest.TestCase):
         self.assertEqual(out["refs_count"], 1)
         self.assertEqual(len(out["broken"]), 1)
         self.assertEqual(out["broken"][0][1], "Notes/ghost")
-
 
 if __name__ == "__main__":
     unittest.main()

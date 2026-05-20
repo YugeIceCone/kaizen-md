@@ -9,10 +9,11 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 
 _KZ_DIR = Path(__file__).resolve().parent.parent
 _SCRIPT = _KZ_DIR / "scripts/quality/schema_coverage.py"
-
 
 def _run(*args) -> subprocess.CompletedProcess:
     return subprocess.run(
@@ -21,18 +22,15 @@ def _run(*args) -> subprocess.CompletedProcess:
         env=os.environ.copy(),
     )
 
-
 class TestScriptHealth(unittest.TestCase):
     def test_script_parses(self):
         with open(_SCRIPT) as f:
             compile(f.read(), str(_SCRIPT), "exec")
 
-
 class TestShapeDetectors(unittest.TestCase):
     """Per-shape detection on synthetic fixtures."""
 
     def setUp(self):
-        sys.path.insert(0, str(_KZ_DIR / "skills/workflow/scripts"))
         sys.path.insert(0, str(_KZ_DIR / "scripts/quality"))
         if "schema_coverage" in sys.modules:
             del sys.modules["schema_coverage"]
@@ -82,10 +80,8 @@ class TestShapeDetectors(unittest.TestCase):
         out = self.sc.detect_rule_catalog(self.domain)
         self.assertIsNotNone(out)
 
-
 class TestFeatureReport(unittest.TestCase):
     def setUp(self):
-        sys.path.insert(0, str(_KZ_DIR / "skills/workflow/scripts"))
         sys.path.insert(0, str(_KZ_DIR / "scripts/quality"))
         if "schema_coverage" in sys.modules:
             del sys.modules["schema_coverage"]
@@ -125,7 +121,6 @@ class TestFeatureReport(unittest.TestCase):
         self.assertTrue(r["conformant"])
         self.assertIn("plain-config", r["matched_shapes"])
 
-
 class TestRealPluginReport(unittest.TestCase):
     def test_report_runs_against_real_plugin(self):
         r = _run("report")
@@ -160,7 +155,6 @@ class TestRealPluginReport(unittest.TestCase):
         r = _run("gaps")
         # Real plugin has known gaps (brain, code-tour, etc.) → exit 1
         self.assertEqual(r.returncode, 1)
-
 
 if __name__ == "__main__":
     unittest.main()

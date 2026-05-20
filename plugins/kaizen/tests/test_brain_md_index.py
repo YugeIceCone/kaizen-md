@@ -14,10 +14,10 @@ from pathlib import Path
 
 _KZ = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(_KZ / "scripts/brain"))
-sys.path.insert(0, str(_KZ / "skills/workflow/scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 
 import brain_md_index as bm  # noqa: E402
-
 
 class _BrainSandbox(unittest.TestCase):
     """Per-test sandboxed brain with the PARA dir skeleton."""
@@ -30,7 +30,6 @@ class _BrainSandbox(unittest.TestCase):
 
     def tearDown(self):
         self._tmp.cleanup()
-
 
 class TestScanPeople(_BrainSandbox):
     def test_empty(self):
@@ -65,7 +64,6 @@ class TestScanPeople(_BrainSandbox):
         # No `name:` and no H1 → derive from stem
         self.assertEqual(out[0]["name"], "Charlie Davis")
 
-
 class TestScanProjects(_BrainSandbox):
     def test_uses_main_named_file(self):
         proj = self.brain / "Projects" / "foo"
@@ -98,7 +96,6 @@ class TestScanProjects(_BrainSandbox):
         out = bm.scan_projects(self.brain)
         self.assertEqual(out, [])
 
-
 class TestScanAreas(_BrainSandbox):
     def test_extracts_updated(self):
         (self.brain / "Areas" / "fitness.md").write_text(
@@ -110,7 +107,6 @@ class TestScanAreas(_BrainSandbox):
         self.assertEqual(out[0]["file"], "fitness")
         self.assertEqual(out[0]["updated"], "2026-05-15")
 
-
 class TestScanNotes(_BrainSandbox):
     def test_sorted_alphabetically(self):
         for slug in ("z-last", "a-first", "m-mid"):
@@ -120,7 +116,6 @@ class TestScanNotes(_BrainSandbox):
             )
         out = bm.scan_notes(self.brain)
         self.assertEqual([n["file"] for n in out], ["a-first", "m-mid", "z-last"])
-
 
 class TestScanTasks(_BrainSandbox):
     def test_counts_per_section(self):
@@ -150,7 +145,6 @@ class TestScanTasks(_BrainSandbox):
         out = bm.scan_tasks(self.brain)
         self.assertEqual(out, {"focus": 0, "next_up": 0, "backlog": 0, "done": 0})
 
-
 class TestScanJournal(_BrainSandbox):
     def test_latest_is_last_alphabetical(self):
         for d in ("2026-05-15", "2026-05-20", "2026-05-18"):
@@ -158,7 +152,6 @@ class TestScanJournal(_BrainSandbox):
         out = bm.scan_journal(self.brain)
         self.assertEqual(out["count"], 3)
         self.assertEqual(out["latest"], "2026-05-20")
-
 
 class TestFormatCompact(_BrainSandbox):
     def test_includes_all_categories(self):
@@ -184,7 +177,6 @@ class TestFormatCompact(_BrainSandbox):
         # First 20 listed, the 21st (pref-20) not listed (when sorted alphabetically)
         self.assertIn("pref-19", out)
 
-
 class TestFormatFull(_BrainSandbox):
     def test_uses_tables(self):
         (self.brain / "People" / "alice.md").write_text(
@@ -198,7 +190,6 @@ class TestFormatFull(_BrainSandbox):
         self.assertIn("[[People/alice\\|Alice]]", out)
         # Empty sections still rendered with "None yet"
         self.assertIn("## Projects\n*None yet*", out)
-
 
 if __name__ == "__main__":
     unittest.main()

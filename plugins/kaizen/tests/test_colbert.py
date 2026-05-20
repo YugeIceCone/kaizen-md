@@ -16,7 +16,8 @@ import unittest
 from pathlib import Path
 
 _KZ_DIR = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(_KZ_DIR / "skills/workflow/scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 sys.path.insert(0, str(_KZ_DIR / "scripts/indexers"))
 
 import _colbert  # noqa: E402
@@ -28,7 +29,6 @@ except ImportError:
     NUMPY_AVAILABLE = False
 
 requires_numpy = unittest.skipUnless(NUMPY_AVAILABLE, "numpy not installed")
-
 
 class TestColbertEnv(unittest.TestCase):
     def _restore(self, name, val):
@@ -90,7 +90,6 @@ class TestColbertEnv(unittest.TestCase):
         finally:
             self._restore("KAIZEN_COLBERT_MAX_SEQ", orig)
 
-
 @requires_numpy
 class TestColbertSerialization(unittest.TestCase):
     def test_roundtrip_basic(self):
@@ -136,7 +135,6 @@ class TestColbertSerialization(unittest.TestCase):
         # Header claims (4, 8) but body is too short
         bad = struct.pack("<II", 4, 8) + b"\x00" * 10  # need 128 bytes
         self.assertIsNone(_colbert.deserialize(bad))
-
 
 @requires_numpy
 class TestColbertMaxSim(unittest.TestCase):
@@ -190,7 +188,6 @@ class TestColbertMaxSim(unittest.TestCase):
         # First query: max sim 1.0; second: zero vector → max sim 0.0
         self.assertAlmostEqual(_colbert.max_sim_score(q, d), 1.0, places=5)
 
-
 class TestColbertGracefulFallback(unittest.TestCase):
     """When transformers/torch are missing, encode_colbert* return
     None / [None, ...] without crashing."""
@@ -217,7 +214,6 @@ class TestColbertGracefulFallback(unittest.TestCase):
     def test_is_available_returns_bool(self):
         self.assertIsInstance(_colbert.is_available(), bool)
 
-
 class TestColbertSchemaMigration(unittest.TestCase):
     """Sidecar table creation + indexer integration. Uses a mocked
     encoder so no transformers/torch needed."""
@@ -227,7 +223,6 @@ class TestColbertSchemaMigration(unittest.TestCase):
         import tempfile
         from pathlib import Path
 
-        sys.path.insert(0, str(_KZ_DIR / "skills/workflow/scripts"))
         import onboard_index as oi
 
         with tempfile.TemporaryDirectory() as tmp:
@@ -253,7 +248,6 @@ class TestColbertSchemaMigration(unittest.TestCase):
         from pathlib import Path
         from unittest.mock import patch
 
-        sys.path.insert(0, str(_KZ_DIR / "skills/workflow/scripts"))
         import onboard_index as oi
         import index_flow as ix
 
@@ -287,7 +281,6 @@ class TestColbertSchemaMigration(unittest.TestCase):
         from pathlib import Path
         from unittest.mock import patch
 
-        sys.path.insert(0, str(_KZ_DIR / "skills/workflow/scripts"))
         import onboard_index as oi
         import index_flow as ix
 
@@ -325,7 +318,6 @@ class TestColbertSchemaMigration(unittest.TestCase):
         finally:
             os.environ.pop("KAIZEN_COLBERT_ENABLE", None)
 
-
 class TestColbertSearchEmpty(unittest.TestCase):
     @requires_numpy
     def test_colbert_search_empty_when_sidecar_missing(self):
@@ -333,7 +325,6 @@ class TestColbertSearchEmpty(unittest.TestCase):
         import tempfile
         from pathlib import Path
 
-        sys.path.insert(0, str(_KZ_DIR / "skills/workflow/scripts"))
         import _search as kz_search
 
         with tempfile.TemporaryDirectory() as tmp:
@@ -346,7 +337,6 @@ class TestColbertSearchEmpty(unittest.TestCase):
             result = kz_search.colbert_search(conn, "chunks", "query")
             self.assertEqual(result, [])
             conn.close()
-
 
 @unittest.skipUnless(
     _colbert.is_available(),
@@ -384,7 +374,6 @@ class TestColbertEncodeReal(unittest.TestCase):
             _colbert.max_sim_score(q, d_self),
             _colbert.max_sim_score(q, d_other),
         )
-
 
 if __name__ == "__main__":
     unittest.main()

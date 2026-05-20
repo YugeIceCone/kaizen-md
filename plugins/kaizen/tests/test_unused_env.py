@@ -7,11 +7,11 @@ import unittest
 from pathlib import Path
 
 _KZ = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(_KZ / "skills/workflow/scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 sys.path.insert(0, str(_KZ / "scripts/quality"))
 
 import unused_env  # noqa: E402
-
 
 class TestUnusedEnv(unittest.TestCase):
     def test_unused_flagged(self):
@@ -26,7 +26,6 @@ class TestUnusedEnv(unittest.TestCase):
             keys = {g["env_var"] for g in rep["gaps"]}
             self.assertIn("FOO_UNUSED_KEY", keys)
             self.assertNotIn("KAIZEN_ALLOW_DELETE", keys)
-
 
 if __name__ == "__main__":
     unittest.main()

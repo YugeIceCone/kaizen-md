@@ -17,19 +17,18 @@ import sys
 import unittest
 from pathlib import Path
 from unittest.mock import patch
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 
 _KZ_DIR = Path(__file__).resolve().parent.parent
 _SCRIPT = _KZ_DIR / "scripts/mcp/discovery_mcp.py"
 
-
 def _load():
-    sys.path.insert(0, str(_KZ_DIR / "skills/workflow/scripts"))
     spec = importlib.util.spec_from_file_location("dm_test", _SCRIPT)
     mod = importlib.util.module_from_spec(spec)
     sys.modules["dm_test"] = mod
     spec.loader.exec_module(mod)
     return mod
-
 
 class TestModuleSurface(unittest.TestCase):
     """Module-level invariants — instance, tool registration."""
@@ -48,7 +47,6 @@ class TestModuleSurface(unittest.TestCase):
                           "discovery_list_surfaces"):
             self.assertIn(expected, names,
                            f"missing {expected}; got {sorted(names)}")
-
 
 class TestSurfacesCatalog(unittest.TestCase):
     """The catalog (SURFACES dict) is the SSOT for the 4 indexes."""
@@ -73,7 +71,6 @@ class TestSurfacesCatalog(unittest.TestCase):
             self.assertIn("index_module", meta)
             self.assertIn("desc", meta)
 
-
 class TestResolvedSurfaces(unittest.TestCase):
     def setUp(self):
         self.dm = _load()
@@ -97,7 +94,6 @@ class TestResolvedSurfaces(unittest.TestCase):
         self.assertEqual(self.dm._resolved_surfaces(["bogus"]),
                           ["bogus"])
 
-
 class TestDoSearchSurface(unittest.TestCase):
     """Per-surface dispatcher raises on unknown / propagates on found."""
 
@@ -120,7 +116,6 @@ class TestDoSearchSurface(unittest.TestCase):
             result = self.dm._do_search_surface("codebase", "q", 5)
         self.assertEqual(len(result), 1)
         self.assertEqual(result[0]["score"], 0.9)
-
 
 class TestListEmbedModels(unittest.TestCase):
     """`discovery_list_embed_models` surfaces locally-available
@@ -160,7 +155,6 @@ class TestListEmbedModels(unittest.TestCase):
                            side_effect=ConnectionError("ollama down")):
             result = self.dm._list_available_embed_models()
         self.assertEqual(result, [])
-
 
 class TestFederatedSearchAggregator(unittest.IsolatedAsyncioTestCase):
     """The async aggregator that's exposed as discovery_search MCP tool.
@@ -218,7 +212,6 @@ class TestFederatedSearchAggregator(unittest.IsolatedAsyncioTestCase):
         result = await self._call_aggregator("q", surfaces=["nonexistent"])
         self.assertIn("nonexistent", result)
         self.assertIn("error", result["nonexistent"])
-
 
 if __name__ == "__main__":
     unittest.main()

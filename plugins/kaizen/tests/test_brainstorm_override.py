@@ -12,13 +12,13 @@ from pathlib import Path
 from unittest import mock
 
 _KZ = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(_KZ / "skills/workflow/scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 
 import brainstorm  # noqa: E402
 
 _SCRIPT = _KZ / "scripts/util/brainstorm.py"
 _RUBRIC = _KZ / "skills/brainstorming/domain/brainstorm-rubric.yaml"
-
 
 class TestBrainstormOverride(unittest.TestCase):
     def test_manual_bucket_set_preserves_auto(self):
@@ -91,7 +91,6 @@ class TestBrainstormOverride(unittest.TestCase):
         out = brainstorm.run_override_loop(rows, ask_user_question=mock_ask)
         mock_ask.assert_not_called()
         self.assertEqual(out, rows)
-
 
 if __name__ == "__main__":
     unittest.main()

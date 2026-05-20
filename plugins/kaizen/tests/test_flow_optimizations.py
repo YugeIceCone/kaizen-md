@@ -22,17 +22,15 @@ import unittest
 from pathlib import Path
 
 _KZ_DIR = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(_KZ_DIR / "skills/workflow/scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 
 import flow as _flow  # noqa: E402
 
-
 # ─── Helpers ─────────────────────────────────────────────────────────
-
 
 def _run(coro):
     return asyncio.run(coro)
-
 
 def _make_recorder(name):
     """Build an AsyncNode that records its invocation in store['log']."""
@@ -49,9 +47,7 @@ def _make_recorder(name):
     Recorder.__name__ = f"Recorder_{name}"
     return Recorder()
 
-
 # ─── Successors-on-node + chaining ───────────────────────────────────
-
 
 class TestSuccessorsOnNode(unittest.TestCase):
     def test_default_successor_chain_via_rshift(self):
@@ -94,9 +90,7 @@ class TestSuccessorsOnNode(unittest.TestCase):
         # Legacy mirror also populated for back-compat inspection
         self.assertIs(flow.successors[(a, "default")], b)
 
-
 # ─── AsyncFlow.run_async (end-to-end) ────────────────────────────────
-
 
 class TestFlowExecution(unittest.TestCase):
     def test_linear_three_node_run(self):
@@ -158,9 +152,7 @@ class TestFlowExecution(unittest.TestCase):
         _run(_flow.AsyncFlow(Terminal()).run_async(store))
         self.assertEqual(store["log"], ["only-me"])
 
-
 # ─── Cycle detection ────────────────────────────────────────────────
-
 
 class TestCycleGuard(unittest.TestCase):
     def test_default_max_iterations_catches_cycle(self):
@@ -199,9 +191,7 @@ class TestCycleGuard(unittest.TestCase):
         flow = _flow.AsyncFlow(c, max_iterations=200)
         _run(flow.run_async({}))
 
-
 # ─── Retry + fallback ────────────────────────────────────────────────
-
 
 class TestRetryFallback(unittest.TestCase):
     def test_default_no_retry_fails_fast(self):
@@ -253,9 +243,7 @@ class TestRetryFallback(unittest.TestCase):
         with self.assertRaises(ValueError):
             _run(Flaky().run_async({}))
 
-
 # ─── Batch nodes ─────────────────────────────────────────────────────
-
 
 class TestAsyncBatchNode(unittest.TestCase):
     def test_sequential_batch(self):
@@ -283,7 +271,6 @@ class TestAsyncBatchNode(unittest.TestCase):
         store: dict = {}
         _run(Sq().run_async(store))
         self.assertEqual(store["out"], [])
-
 
 class TestAsyncParallelBatchNode(unittest.TestCase):
     def test_parallel_batch_runs_concurrently(self):
@@ -340,9 +327,7 @@ class TestAsyncParallelBatchNode(unittest.TestCase):
         _run(S().run_async(store))
         self.assertEqual(store["out"], [])
 
-
 # ─── Event hooks ─────────────────────────────────────────────────────
-
 
 class TestEventHooks(unittest.TestCase):
     def test_on_enter_on_exit_sync(self):
@@ -395,9 +380,7 @@ class TestEventHooks(unittest.TestCase):
         self.assertEqual(captured[0][0], "Bad")
         self.assertIn("explode", captured[0][1])
 
-
 # ─── Timing ──────────────────────────────────────────────────────────
-
 
 class TestTiming(unittest.TestCase):
     def test_timing_recorded_per_node(self):
@@ -426,9 +409,7 @@ class TestTiming(unittest.TestCase):
         timing = store["_timing"]
         self.assertIn("Counter", timing)
 
-
 # ─── Class-name caching ──────────────────────────────────────────────
-
 
 class TestClassNameCache(unittest.TestCase):
     def test_class_name_cached_after_first_run(self):
@@ -437,9 +418,7 @@ class TestClassNameCache(unittest.TestCase):
         _run(a.run_async({}))
         self.assertEqual(a._cls_name, "Recorder_A")
 
-
 # ─── Error context ──────────────────────────────────────────────────
-
 
 class TestErrorContext(unittest.TestCase):
     def test_node_name_in_exception_notes(self):
@@ -455,9 +434,7 @@ class TestErrorContext(unittest.TestCase):
             notes = getattr(e, "__notes__", [])
             self.assertTrue(any("Bad" in n for n in notes))
 
-
 # ─── Helper: _maybe_await ────────────────────────────────────────────
-
 
 class TestMaybeAwait(unittest.TestCase):
     def test_none_short_circuits(self):
@@ -467,7 +444,6 @@ class TestMaybeAwait(unittest.TestCase):
         async def co():
             return 42
         _run(_flow._maybe_await(co()))
-
 
 if __name__ == "__main__":
     unittest.main()

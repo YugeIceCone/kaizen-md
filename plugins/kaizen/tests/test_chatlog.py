@@ -32,9 +32,9 @@ _KZ = Path(__file__).resolve().parent.parent
 _CHATLOG = _KZ / "scripts/chatlog/chatlog.py"
 
 # Direct import for unit tests of pure functions
-sys.path.insert(0, str(_KZ / "skills/workflow/scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 from _chatlog import match_event, extract_slice, slice_transcript  # noqa: E402
-
 
 # ─── Fixture events ────────────────────────────────────────────────────
 
@@ -44,7 +44,6 @@ def _user_event(uid: str, text: str) -> dict:
         "message": {"role": "user", "content": text},
         "timestamp": "2026-05-18T20:00:00Z",
     }
-
 
 def _assistant_event(uid: str, text: str, tool_uses=()) -> dict:
     content = [{"type": "text", "text": text}]
@@ -56,14 +55,12 @@ def _assistant_event(uid: str, text: str, tool_uses=()) -> dict:
         "timestamp": "2026-05-18T20:00:01Z",
     }
 
-
 def _attachment_event(uid: str, hook: str) -> dict:
     return {
         "uuid": uid, "type": "attachment",
         "attachment": {"type": "hook_success", "hookName": hook},
         "timestamp": "2026-05-18T20:00:02Z",
     }
-
 
 # ─── match_event ────────────────────────────────────────────────────────
 
@@ -77,7 +74,6 @@ class TestMatchEventType(unittest.TestCase):
         e = _user_event("u1", "hi")
         rule = {"trigger": {"type": "event_type", "event_type": "attachment"}}
         self.assertFalse(match_event(e, rule))
-
 
 class TestMatchUserKeyword(unittest.TestCase):
     def test_matches_keyword(self):
@@ -100,7 +96,6 @@ class TestMatchUserKeyword(unittest.TestCase):
         rule = {"trigger": {"type": "user_keyword", "pattern": r"response"}}
         self.assertFalse(match_event(e, rule))
 
-
 class TestMatchAssistantToolUse(unittest.TestCase):
     def test_matches_tool_name(self):
         e = _assistant_event("u1", "calling tool", tool_uses=["Bash"])
@@ -117,7 +112,6 @@ class TestMatchAssistantToolUse(unittest.TestCase):
         rule = {"trigger": {"type": "assistant_tool_use", "tool_name": "Bash"}}
         self.assertFalse(match_event(e, rule))
 
-
 class TestMatchGraceful(unittest.TestCase):
     def test_missing_message_field_no_crash(self):
         e = {"uuid": "u1", "type": "user"}  # no message
@@ -128,7 +122,6 @@ class TestMatchGraceful(unittest.TestCase):
         e = _user_event("u1", "hi")
         rule = {"trigger": {"type": "made_up_trigger", "pattern": "x"}}
         self.assertFalse(match_event(e, rule))
-
 
 # ─── extract_slice ──────────────────────────────────────────────────────
 
@@ -162,7 +155,6 @@ class TestExtractSlice(unittest.TestCase):
     def test_extract_large_window_returns_all(self):
         s = extract_slice(self.events, idx=2, before=10, after=10)
         self.assertEqual(len(s), 5)
-
 
 # ─── slice_transcript ───────────────────────────────────────────────────
 
@@ -214,7 +206,6 @@ class TestSliceTranscript(unittest.TestCase):
         a = slice_transcript(self.events, rules)
         b = slice_transcript(self.events, rules)
         self.assertEqual(a, b)
-
 
 # ─── CLI integration ────────────────────────────────────────────────────
 
@@ -278,7 +269,6 @@ class TestChatlogCLI(unittest.TestCase):
                        "--rules", str(self.rules),
                        "--out", str(self.out))
         self.assertNotEqual(r.returncode, 0)
-
 
 if __name__ == "__main__":
     unittest.main()

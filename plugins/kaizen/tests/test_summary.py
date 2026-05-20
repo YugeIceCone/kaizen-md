@@ -13,10 +13,10 @@ import unittest
 from pathlib import Path
 
 _KZ_DIR = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(_KZ_DIR / "skills/workflow/scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 
 import _summary  # noqa: E402
-
 
 class TestPythonSummary(unittest.TestCase):
     def test_extracts_signatures(self):
@@ -115,7 +115,6 @@ class C:
         # Either empty or just whitespace/newline
         self.assertEqual(out.strip(), "")
 
-
 class TestSmartSummaryDispatch(unittest.TestCase):
     """Dispatch logic: python → ast, others → ts, neither → fallback."""
 
@@ -173,7 +172,6 @@ class TestSmartSummaryDispatch(unittest.TestCase):
         )
         self.assertEqual(out, "fb")
 
-
 @unittest.skipUnless(
     True,  # Import works regardless of ts presence; smart_summary handles None
     "always runs — _ts_summary handles missing ts internally",
@@ -183,7 +181,6 @@ class TestTreeSitterSummary(unittest.TestCase):
         # When tree-sitter is missing, returns "". Either way must be str.
         out = _summary._ts_summary("fn hello() {}", "rust", 2048)
         self.assertIsInstance(out, str)
-
 
 class TestSignatureHelpers(unittest.TestCase):
     def test_first_docstring_line_strips_whitespace(self):
@@ -216,7 +213,6 @@ class TestSignatureHelpers(unittest.TestCase):
         tree = ast.parse("x = 1\n")
         sig = _summary._python_signature(tree.body[0])
         self.assertEqual(sig, "")
-
 
 if __name__ == "__main__":
     unittest.main()

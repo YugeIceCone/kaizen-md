@@ -8,11 +8,11 @@ import unittest
 from pathlib import Path
 
 _KZ = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(_KZ / "skills/workflow/scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 sys.path.insert(0, str(_KZ / "scripts/quality"))
 
 import hook_coverage  # noqa: E402
-
 
 class TestHookCoverage(unittest.TestCase):
     def test_scan_returns_expected_shape(self):
@@ -50,7 +50,6 @@ class TestHookCoverage(unittest.TestCase):
             self.assertIn("missing-file.sh", missing_names)
             self.assertNotIn("wired-and-present.sh", orphan_names)
             self.assertNotIn("wired-and-present.sh", missing_names)
-
 
 if __name__ == "__main__":
     unittest.main()

@@ -23,10 +23,10 @@ _KZ = Path(__file__).resolve().parent.parent
 _HANDOFF = _KZ / "scripts/handoff/handoff.py"
 
 sys.path.insert(0, str(_KZ / "scripts/handoff"))
-sys.path.insert(0, str(_KZ / "skills/workflow/scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 sys.path.insert(0, str(_KZ / "scripts/rules"))
 import handoff as _h  # noqa: E402
-
 
 _YAML = """---
 session: test
@@ -53,7 +53,6 @@ goal: 'g'
 next: []
 """
 
-
 class TestExtractTasks(unittest.TestCase):
     def test_extract_handles_both_forms(self):
         result = _h._extract_tasks_from_next(_YAML)
@@ -70,7 +69,6 @@ class TestExtractTasks(unittest.TestCase):
 
     def test_extract_empty_next_returns_empty(self):
         self.assertEqual(_h._extract_tasks_from_next(_EMPTY_NEXT), [])
-
 
 class TestTasksCLI(unittest.TestCase):
     def setUp(self):
@@ -108,7 +106,6 @@ class TestTasksCLI(unittest.TestCase):
     def test_tasks_missing_file_fails(self):
         r = self._run("tasks", "--file", str(Path(self._tmp.name) / "nope.yaml"))
         self.assertNotEqual(r.returncode, 0)
-
 
 if __name__ == "__main__":
     unittest.main()

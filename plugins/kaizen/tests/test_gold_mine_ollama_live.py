@@ -24,8 +24,8 @@ import urllib.request
 from pathlib import Path
 
 _KZ_DIR = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(_KZ_DIR / "skills/workflow/scripts"))
-
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 
 def _ollama_reachable() -> bool:
     try:
@@ -34,7 +34,6 @@ def _ollama_reachable() -> bool:
             return r.status == 200
     except Exception:
         return False
-
 
 def _granite_present() -> bool:
     try:
@@ -47,7 +46,6 @@ def _granite_present() -> bool:
     except Exception:
         return False
 
-
 _LIVE_OPT_IN = os.environ.get("KAIZEN_GOLD_MINE_TEST_LIVE", "") == "1"
 _REACHABLE = _ollama_reachable() if _LIVE_OPT_IN else False
 _GRANITE = _granite_present() if _LIVE_OPT_IN else False
@@ -56,7 +54,6 @@ _SKIP_MSG = (
     f"live test gated: opt_in={_LIVE_OPT_IN}, "
     f"ollama_reachable={_REACHABLE}, granite_present={_GRANITE}"
 )
-
 
 _SCHEMA = {
     "type": "object",
@@ -69,7 +66,6 @@ _SCHEMA = {
         "reason":      {"type": "string"},
     },
 }
-
 
 @unittest.skipUnless(_LIVE_OPT_IN and _REACHABLE and _GRANITE, _SKIP_MSG)
 class TestGraniteLive(unittest.TestCase):
@@ -155,7 +151,6 @@ class TestGraniteLive(unittest.TestCase):
             f"(prompt + schema may be mis-calibrated)",
         )
 
-
 @unittest.skipUnless(_LIVE_OPT_IN and _REACHABLE, _SKIP_MSG)
 class TestModelPresenceProbe(unittest.TestCase):
     """Diagnose missing-granite case so the skip-message is useful."""
@@ -166,7 +161,6 @@ class TestModelPresenceProbe(unittest.TestCase):
                 "granite4.1:8b not present locally. "
                 "Run: kaizen models pull granite4.1:8b"
             )
-
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

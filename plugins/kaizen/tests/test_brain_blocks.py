@@ -25,10 +25,10 @@ from pathlib import Path
 _KZ = Path(__file__).resolve().parent.parent
 _BRAIN = _KZ / "scripts/brain/brain.py"
 
-sys.path.insert(0, str(_KZ / "skills/workflow/scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 sys.path.insert(0, str(_KZ / "scripts/brain"))
 import _brain_blocks as _bb  # noqa: E402
-
 
 _SAMPLE = """---
 title: Sample
@@ -59,7 +59,6 @@ Intro paragraph.
 
 - [2026-05-18] Quote: "x" → reason.
 """
-
 
 # ─── parse_blocks ──────────────────────────────────────────────────────
 
@@ -99,7 +98,6 @@ class TestParseBlocks(unittest.TestCase):
         self.assertEqual(blocks[0]["path"], "")
         self.assertEqual(blocks[0]["start"], 0)
 
-
 # ─── extract_block ─────────────────────────────────────────────────────
 
 class TestExtractBlock(unittest.TestCase):
@@ -119,7 +117,6 @@ class TestExtractBlock(unittest.TestCase):
     def test_extract_missing_returns_none(self):
         self.assertIsNone(_bb.extract_block(_SAMPLE, "NotThere"))
 
-
 # ─── replace_block ─────────────────────────────────────────────────────
 
 class TestReplaceBlock(unittest.TestCase):
@@ -138,7 +135,6 @@ class TestReplaceBlock(unittest.TestCase):
     def test_replace_missing_raises(self):
         with self.assertRaises(KeyError):
             _bb.replace_block(_SAMPLE, "NotThere", "x")
-
 
 # ─── append_to_list_block ──────────────────────────────────────────────
 
@@ -160,7 +156,6 @@ class TestAppendToListBlock(unittest.TestCase):
         self.assertIn("Fourth directive", out)
         self.assertLess(out.index("Third directive"),
                          out.index("Fourth directive"))
-
 
 # ─── CLI integration ───────────────────────────────────────────────────
 
@@ -221,7 +216,6 @@ class TestBrainBlocksCLI(unittest.TestCase):
     def test_show_missing_block_fails_gracefully(self):
         r = self._run("show", "--file", str(self.file), "--block", "Nope")
         self.assertNotEqual(r.returncode, 0)
-
 
 class TestShortNameResolution(unittest.TestCase):
     """`--file Persona.md` → ~/.claude/.kaizen/brain/Persona.md.
@@ -300,7 +294,6 @@ class TestShortNameResolution(unittest.TestCase):
         self.assertNotEqual(r.returncode, 0)
         # Error names the resolution attempts so the user can diagnose
         self.assertIn("brain", r.stderr.lower() + r.stdout.lower())
-
 
 if __name__ == "__main__":
     unittest.main()

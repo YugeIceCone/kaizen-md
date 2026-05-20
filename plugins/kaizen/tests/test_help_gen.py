@@ -8,10 +8,11 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 
 _KZ_DIR = Path(__file__).resolve().parent.parent
 _SCRIPT = _KZ_DIR / "scripts/util/help_gen.py"
-
 
 def _run(*args) -> subprocess.CompletedProcess:
     return subprocess.run(
@@ -20,12 +21,10 @@ def _run(*args) -> subprocess.CompletedProcess:
         env=os.environ.copy(),
     )
 
-
 class TestScriptHealth(unittest.TestCase):
     def test_script_parses(self):
         with open(_SCRIPT) as f:
             compile(f.read(), str(_SCRIPT), "exec")
-
 
 class TestRender(unittest.TestCase):
     def test_print_emits_body_with_clusters(self):
@@ -49,10 +48,8 @@ class TestRender(unittest.TestCase):
         self.assertEqual(r2.returncode, 0, r2.stderr)
         self.assertIn("fresh", r2.stdout)
 
-
 class TestShortDesc(unittest.TestCase):
     def setUp(self):
-        sys.path.insert(0, str(_KZ_DIR / "skills/workflow/scripts"))
         if "help_gen" in sys.modules:
             del sys.modules["help_gen"]
         import help_gen
@@ -74,10 +71,8 @@ class TestShortDesc(unittest.TestCase):
         self.assertNotIn("  ", s)
         self.assertNotIn("\n", s)
 
-
 class TestClusterAssignment(unittest.TestCase):
     def setUp(self):
-        sys.path.insert(0, str(_KZ_DIR / "skills/workflow/scripts"))
         if "help_gen" in sys.modules:
             del sys.modules["help_gen"]
         import help_gen
@@ -93,7 +88,6 @@ class TestClusterAssignment(unittest.TestCase):
         cmds = [{"name": "totally-novel", "stem": "totally-novel", "desc": "x"}]
         buckets = self.hg.cluster_assignments(cmds)
         self.assertEqual(buckets["uncategorized"][0]["stem"], "totally-novel")
-
 
 class TestClusterSubcommand(unittest.TestCase):
     """Backing for /kaizen:help cluster-picker QA — emit one cluster only."""
@@ -129,7 +123,6 @@ class TestClusterSubcommand(unittest.TestCase):
                          "workflow", "plugin-meta", "discovery/search",
                          "dev-aids"):
             self.assertIn(cluster, r.stdout)
-
 
 if __name__ == "__main__":
     unittest.main()

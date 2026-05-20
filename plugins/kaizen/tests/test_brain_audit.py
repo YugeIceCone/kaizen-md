@@ -9,12 +9,12 @@ import unittest
 from pathlib import Path
 
 _KZ_DIR = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(_KZ_DIR / "skills/workflow/scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 sys.path.insert(0, str(_KZ_DIR / "scripts/brain"))
 
 import _brain  # noqa: E402
 import brain_audit as ba  # noqa: E402
-
 
 class TestExtractCandidates(unittest.TestCase):
     def test_double_quoted_extraction(self):
@@ -58,7 +58,6 @@ class TestExtractCandidates(unittest.TestCase):
             for c in report["candidates"]:
                 self.assertIn(c["type"], {"world-fact", "belief", "observation", "experience"})
 
-
 class TestSourceReaders(unittest.TestCase):
     def test_recent_commits_in_repo(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -93,7 +92,6 @@ class TestSourceReaders(unittest.TestCase):
             self.assertEqual(items[0]["kind"], "loop")
             self.assertIn("migration", items[0]["text"])
 
-
 class TestApplyInbox(unittest.TestCase):
     def test_apply_writes_inbox_drafts(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -124,7 +122,6 @@ class TestApplyInbox(unittest.TestCase):
             report = ba.audit(cwd=cwd, brain_root=brain, apply=False)
             # No Inbox writes regardless of candidate count
             self.assertEqual(report.get("inbox_writes"), [])
-
 
 class TestYamlSafeWriter(unittest.TestCase):
     """The Inbox draft writer must emit valid YAML frontmatter for any
@@ -203,7 +200,6 @@ class TestYamlSafeWriter(unittest.TestCase):
                 self.assertIn("name", fm)
                 self.assertIn("description", fm)
 
-
 class TestSchemaConformance(unittest.TestCase):
     """Every Inbox draft brain_audit writes must pass the memory-entry
     schema validator. Closes the loop between _yaml_safe (write-time)
@@ -231,7 +227,6 @@ class TestSchemaConformance(unittest.TestCase):
                 errors = memory_schema.validate_text(text)
                 self.assertEqual(errors, [],
                     f"{draft.name}: schema violations {errors}")
-
 
 if __name__ == "__main__":
     unittest.main()

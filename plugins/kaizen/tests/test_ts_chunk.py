@@ -13,10 +13,10 @@ import unittest
 from pathlib import Path
 
 _KZ_DIR = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(_KZ_DIR / "skills/workflow/scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 
 import _ts_chunk  # noqa: E402
-
 
 class TestLanguageMapping(unittest.TestCase):
     def test_resolves_common_names(self):
@@ -42,7 +42,6 @@ class TestLanguageMapping(unittest.TestCase):
         self.assertIsNone(_ts_chunk._resolve_ts_lang("brainfuck"))
         self.assertIsNone(_ts_chunk._resolve_ts_lang(""))
         self.assertIsNone(_ts_chunk._resolve_ts_lang(None))
-
 
 class TestDefinitionDetection(unittest.TestCase):
     def test_recognizes_definition_suffixes(self):
@@ -72,7 +71,6 @@ class TestDefinitionDetection(unittest.TestCase):
     def test_handles_none(self):
         self.assertFalse(_ts_chunk._is_definition_node(None))
 
-
 class TestKindClassification(unittest.TestCase):
     def test_kind_buckets(self):
         cases = [
@@ -94,7 +92,6 @@ class TestKindClassification(unittest.TestCase):
         for ty, expected in cases:
             actual = _ts_chunk._classify_kind(ty)
             self.assertEqual(actual, expected, f"{ty!r} → {actual!r}")
-
 
 class TestGracefulFallback(unittest.TestCase):
     """When tree_sitter_languages isn't installed, the chunker must
@@ -130,7 +127,6 @@ class TestGracefulFallback(unittest.TestCase):
 
     def test_is_available_returns_bool(self):
         self.assertIsInstance(_ts_chunk.is_available(), bool)
-
 
 @unittest.skipUnless(
     _ts_chunk.is_available(),
@@ -206,7 +202,6 @@ function beta(x) { return x + 1; }
         # Either empty or no real definitions
         self.assertTrue(all(c.kind != "block" or c.text.strip()
                             for c in chunks))
-
 
 if __name__ == "__main__":
     unittest.main()

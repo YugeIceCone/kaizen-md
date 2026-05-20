@@ -61,15 +61,22 @@ shims were transitional back-compat scaffolding. Retiring them:
 
 **Commit:** `chore(tests): add _kaizen_paths helper for canonical scripts/<cluster>/ resolution`
 
-### Phase 2 — Migrate 89 test files to the helper
+### Phase 2 — Migrate 88 test files to the helper
 
-- [ ] For each test file: replace
-      `sys.path.insert(0, str(<X> / "skills/workflow/scripts"))`
-      with `import _kaizen_paths  # noqa: F401  -- adds scripts/<cluster>/ to sys.path`
-- [ ] Run `kaizen-tests` after each batch of 20 files; bisect if any regress
-- [ ] Verify: `grep -r 'skills/workflow/scripts' plugins/kaizen/tests/` returns 0
+- [x] Wrote `/tmp/migrate_tests.py` — bulk migration script. Handles
+      module-level + indented (in-method) sys.path.insert patterns.
+- [x] Migrated 88 test files in one pass (originally split into batches,
+      but the script proved clean enough for atomic land). 111 insert
+      rewrites total. test_plugin_docs.py needed manual patch (uses
+      `import sys as _sys` aliasing that the regex didn't match).
+- [x] `kaizen-tests --concurrency 4` post-migration: 331/333 pass (only
+      2 pre-existing failures: test_debug_smoke + test_evolution_log).
+      Baseline: 330/333. Net: +1 pass (migration eliminated 1 flake).
+- [x] Verify: `grep -rEln 'sys\.path\.insert.*skills/workflow' tests/`
+      returns 0 (excluding _kaizen_paths.py which mentions the legacy
+      path in its docstring).
 
-**Commits:** 4-5 batches, one per ~20 test files. Subject `refactor(tests): migrate <N> tests off shim sys.path (Wave <X>)`
+**Commit:** `refactor(tests): migrate 88 test files off skills/workflow/scripts shim`
 
 ### Phase 3 — Migrate 3 bash hooks
 

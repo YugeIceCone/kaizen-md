@@ -19,11 +19,11 @@ import unittest
 from pathlib import Path
 
 _KZ_DIR = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(_KZ_DIR / "skills/workflow/scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 
 import _self_audit  # noqa: E402
 import self_audit_agent as agent  # noqa: E402
-
 
 def _checkpoint(cid: str, skill: str, targets=None, rationale="focus here"):
     """A checkpoint Finding shaped like self_audit emits (to_dict form)."""
@@ -33,7 +33,6 @@ def _checkpoint(cid: str, skill: str, targets=None, rationale="focus here"):
         "detail": "", "files": targets or [], "skill": skill,
         "rationale": rationale, "remediation": "apply it",
     }
-
 
 class SandboxBase(unittest.TestCase):
     """Sandboxes the agent-audit dir so tests never touch the real repo."""
@@ -50,7 +49,6 @@ class SandboxBase(unittest.TestCase):
             os.environ.pop("KAIZEN_SELF_AUDIT_AGENT_DIR", None)
         else:
             os.environ["KAIZEN_SELF_AUDIT_AGENT_DIR"] = self._orig
-
 
 class TestModuleAndConfig(unittest.TestCase):
     def test_module_parses(self):
@@ -83,7 +81,6 @@ class TestModuleAndConfig(unittest.TestCase):
                 os.environ.pop("KAIZEN_SELF_AUDIT_AGENT_DIR", None)
             else:
                 os.environ["KAIZEN_SELF_AUDIT_AGENT_DIR"] = orig
-
 
 class TestBuildBriefs(unittest.TestCase):
     def setUp(self):
@@ -147,7 +144,6 @@ class TestBuildBriefs(unittest.TestCase):
         self.assertNotIn('"$schema"', briefs[0]["prompt"])
         self.assertNotIn('"$id"', briefs[0]["prompt"])
 
-
 class TestValidateResult(unittest.TestCase):
     def setUp(self):
         self.schema = json.loads(
@@ -192,7 +188,6 @@ class TestValidateResult(unittest.TestCase):
         ok["$id"] = "https://example/x.json"
         self.assertIsNone(agent._validate_result(ok, self.schema))
         self.assertIsNone(agent._validate_result(ok, None))
-
 
 class TestMergeResults(unittest.TestCase):
     def _brief(self, cid, skill):
@@ -266,7 +261,6 @@ class TestMergeResults(unittest.TestCase):
         merged = agent.merge_results(briefs, collected)
         self.assertEqual(len(merged["findings"]), 1)
 
-
 class TestAggregateFlow(SandboxBase):
     """End-to-end aggregate against a hand-crafted run dir."""
 
@@ -323,7 +317,6 @@ class TestAggregateFlow(SandboxBase):
         (self.root / "2026-03-03T00-00-00Z").mkdir(parents=True)
         self.assertEqual(agent._latest_run_id(), "2026-03-03T00-00-00Z")
 
-
 class TestDispatchPlanIntegration(SandboxBase):
     """Runs the real mechanical audit — PyYAML-gated, slower."""
 
@@ -346,7 +339,6 @@ class TestDispatchPlanIntegration(SandboxBase):
             self.assertIn("prompt", b)
             self.assertIn("result_path", b)
             self.assertNotIn("{skill}", b["prompt"])
-
 
 class TestCli(SandboxBase):
     def _run(self, *args):
@@ -373,7 +365,6 @@ class TestCli(SandboxBase):
         # Phase D2: errors live under the canonical envelope's `errors` key.
         envelope = json.loads(result.stdout)
         self.assertIn("errors", envelope)
-
 
 if __name__ == "__main__":
     unittest.main()

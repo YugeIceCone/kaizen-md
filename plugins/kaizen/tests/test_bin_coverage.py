@@ -7,11 +7,11 @@ import unittest
 from pathlib import Path
 
 _KZ = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(_KZ / "skills/workflow/scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 sys.path.insert(0, str(_KZ / "scripts/quality"))
 
 import bin_coverage  # noqa: E402
-
 
 class TestBinCoverage(unittest.TestCase):
     def test_synthetic_orphan_script(self):
@@ -38,7 +38,6 @@ class TestBinCoverage(unittest.TestCase):
         names = {g["script"] for g in rep["gaps"]}
         # brainstorm shipped with its bin in P4
         self.assertNotIn("brainstorm.py", names)
-
 
 if __name__ == "__main__":
     unittest.main()

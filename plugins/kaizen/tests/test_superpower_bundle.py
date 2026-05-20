@@ -29,10 +29,11 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 
 _KZ_DIR = Path(__file__).resolve().parent.parent
 _BUNDLE_PY = _KZ_DIR / "scripts/util/superpower_bundle.py"
-
 
 class _BundleBase(unittest.TestCase):
     def setUp(self):
@@ -57,13 +58,11 @@ class _BundleBase(unittest.TestCase):
             env=os.environ.copy(),
         )
 
-
 class TestBundleFolderName:
     """Pure-function tests (no I/O) — folder name is deterministic."""
 
     def test_with_full_sid(self):
         import sys
-        sys.path.insert(0, str(_KZ_DIR / "skills/workflow/scripts"))
         from superpower_bundle import bundle_folder_name
         name = bundle_folder_name("2026-05-18", "kaizen-md",
                                     "6ebbb7cb-11ff-4316-a34c-15566eb24925")
@@ -91,7 +90,6 @@ class TestBundleFolderName:
         with pytest.raises(BundleError):
             bundle_folder_name("not-a-date", "p", None)
 
-
 class TestInit(_BundleBase):
     def test_creates_folder(self):
         r = self._run("init", "--date", "2026-05-18",
@@ -118,7 +116,6 @@ class TestInit(_BundleBase):
         folder = self.root / "2026-05-17-kaizen-md"
         self.assertTrue(folder.is_dir())
 
-
 class TestList(_BundleBase):
     def test_lists_existing_bundles(self):
         self._run("init", "--date", "2026-05-17", "--project", "kaizen-md")
@@ -144,7 +141,6 @@ class TestList(_BundleBase):
         self.assertEqual(len(data), 1)
         self.assertIn("kaizen-md", data[0]["name"])
 
-
 class TestPath(_BundleBase):
     def test_path_for_existing(self):
         self._run("init", "--date", "2026-05-18",
@@ -161,7 +157,6 @@ class TestPath(_BundleBase):
                        "--project", "kaizen-md", "--sid", "abc")
         self.assertEqual(r.returncode, 0)
         self.assertIn("2026-05-18-kaizen-md-abc", r.stdout)
-
 
 class TestAdd(_BundleBase):
     def test_moves_file_into_bundle(self):
@@ -191,7 +186,6 @@ class TestAdd(_BundleBase):
         bundle = self.root / "2026-05-18-kaizen-md-abc"
         self.assertTrue(bundle.is_dir())
         self.assertTrue((bundle / "spec.md").is_file())
-
 
 if __name__ == "__main__":
     unittest.main()

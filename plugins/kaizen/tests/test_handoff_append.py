@@ -27,10 +27,10 @@ _KZ = Path(__file__).resolve().parent.parent
 _HANDOFF = _KZ / "scripts/handoff/handoff.py"
 
 sys.path.insert(0, str(_KZ / "scripts/handoff"))
-sys.path.insert(0, str(_KZ / "skills/workflow/scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 sys.path.insert(0, str(_KZ / "scripts/rules"))
 import handoff as _h  # noqa: E402
-
 
 # ─── Fixtures ──────────────────────────────────────────────────────────
 
@@ -65,7 +65,6 @@ status: partial
 done_this_session: []
 blockers: []
 """
-
 
 # ─── _append_to_list_section ───────────────────────────────────────────
 
@@ -115,7 +114,6 @@ class TestAppendToListSection(unittest.TestCase):
         # the file. We raise ValueError to be loud.
         with self.assertRaises(ValueError):
             _h._append_to_list_section(_BASE_YAML, "goal", "x")
-
 
 # ─── CLI integration ───────────────────────────────────────────────────
 
@@ -179,7 +177,6 @@ class TestHandoffAppendCLI(unittest.TestCase):
                    "--section", "blockers", "--entry", "same thing")
         text = self.yaml.read_text(encoding="utf-8")
         self.assertEqual(text.count("same thing"), 2)
-
 
 if __name__ == "__main__":
     unittest.main()

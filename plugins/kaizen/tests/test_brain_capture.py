@@ -16,12 +16,12 @@ import unittest
 from pathlib import Path
 
 _KZ_DIR = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(_KZ_DIR / "skills/workflow/scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 sys.path.insert(0, str(_KZ_DIR / "scripts/brain"))
 
 import _brain  # noqa: E402
 import brain as _brain_cli  # noqa: E402
-
 
 def _capture(text: str, brain_root: Path, project_memory_root: Path, **kwargs) -> dict:
     """Helper: run the capture flow with sandboxed paths."""
@@ -32,9 +32,7 @@ def _capture(text: str, brain_root: Path, project_memory_root: Path, **kwargs) -
         **kwargs,
     ))
 
-
 # ─── End-to-end capture flow ─────────────────────────────────────────
-
 
 class TestCaptureFlowBasic(unittest.TestCase):
     def setUp(self):
@@ -116,7 +114,6 @@ class TestCaptureFlowBasic(unittest.TestCase):
         note = Path(result["path"]).read_text()
         self.assertIn("confidence: 0.95", note)
 
-
 class TestCaptureFlowMerge(unittest.TestCase):
     def setUp(self):
         self._tmp = tempfile.TemporaryDirectory()
@@ -147,7 +144,6 @@ class TestCaptureFlowMerge(unittest.TestCase):
         if r2.get("path") == r1["path"]:
             self.assertEqual(r2["action"], "merged")
             self.assertGreaterEqual(r2["sources_count"], 2)
-
 
 class TestRouting(unittest.TestCase):
     """Verify tier-rule + file-rule logic in isolation."""
@@ -185,9 +181,7 @@ class TestRouting(unittest.TestCase):
         )
         self.assertEqual(tier, "brain")
 
-
 # ─── CLI smoke tests ─────────────────────────────────────────────────
-
 
 class TestCli(unittest.TestCase):
     def _run_cli(self, *args, env_extras: dict | None = None) -> subprocess.CompletedProcess:
@@ -234,7 +228,6 @@ class TestCli(unittest.TestCase):
             self.assertEqual(result.returncode, 0)
             out = json.loads(result.stdout)
             self.assertEqual(out["type"], "world-fact")
-
 
 if __name__ == "__main__":
     unittest.main()
