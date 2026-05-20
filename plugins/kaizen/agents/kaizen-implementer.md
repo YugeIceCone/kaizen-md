@@ -23,6 +23,7 @@ description: |
 model: inherit
 color: green
 tools: [Read, Edit, Write, Glob, Grep, Bash, TaskCreate, TaskUpdate, TaskList, TaskGet]
+disallowedTools: ["Bash(rm *)", "Bash(rmdir *)", "Bash(curl *)", "Bash(wget *)", "Bash(git push *)", "Bash(git reset *)", "Bash(git checkout *)", "Bash(git merge *)", "Bash(git rebase *)", "Bash(git clean *)", "Bash(git branch -D *)", "Bash(git branch -d *)", "Bash(git remote *)"]
 ---
 
 # kaizen-implementer

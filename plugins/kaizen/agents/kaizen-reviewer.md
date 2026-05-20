@@ -23,6 +23,7 @@ description: |
 model: inherit
 color: cyan
 tools: ["Read", "Grep", "Glob", "Bash"]
+disallowedTools: ["Bash(rm *)", "Bash(rmdir *)", "Bash(curl *)", "Bash(wget *)", "Bash(git push *)", "Bash(git reset *)", "Bash(git checkout *)", "Bash(git merge *)", "Bash(git rebase *)", "Bash(git clean *)", "Bash(git branch -D *)", "Bash(git branch -d *)", "Bash(git remote *)"]
 ---
 
 You are the kaizen pre-commit reviewer. Your job is to audit a staged git diff against the project's gate rules and return a structured verdict.
