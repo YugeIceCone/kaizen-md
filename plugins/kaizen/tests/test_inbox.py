@@ -21,12 +21,14 @@ import unittest
 from pathlib import Path
 
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 — adds scripts/<cluster>/ to sys.path
+
+
 def _fresh_inbox(tmp: Path):
     os.environ["KAIZEN_INBOX_DIR"] = str(tmp)
     if "inbox" in sys.modules:
         del sys.modules["inbox"]
-    SCRIPT_DIR = Path(__file__).resolve().parent.parent / "skills" / "workflow" / "scripts"
-    sys.path.insert(0, str(SCRIPT_DIR))
     import inbox  # noqa: E402
     return inbox
 
