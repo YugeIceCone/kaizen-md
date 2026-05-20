@@ -20,10 +20,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
-_KZ_DIR = Path(__file__).resolve().parent.parent
-_SCRIPTS = _KZ_DIR / "skills/workflow/scripts"
-sys.path.insert(0, str(_SCRIPTS))
-sys.path.insert(0, str(_KZ_DIR / "scripts/brain"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 — adds scripts/<cluster>/ to sys.path
 
 
 class _BaseSeedCase(unittest.TestCase):
