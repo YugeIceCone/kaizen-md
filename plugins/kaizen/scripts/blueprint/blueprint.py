@@ -340,6 +340,9 @@ def cmd_scan(args: argparse.Namespace) -> int:
     print(f"summary: {entry.get('summary', '')[:120]}")
     print(f"items:   {entry.get('n_items')}")
     print(f"cached:  {entry.get('cached_at')}")
+    h = entry.get("content_hash")
+    if h:
+        print(f"hash:    {h[:16]}...{h[-8:]}")
     rollup = entry.get("status_rollup", {})
     if rollup:
         print(f"status:  {', '.join(f'{k}={v}' for k,v in sorted(rollup.items()))}")
@@ -478,6 +481,30 @@ def cmd_add_task(args: argparse.Namespace) -> int:
     st.touch(target)
     print(f"✓ added task {task_id} to list {args.to}")
     return 0
+
+
+def cmd_verify_hash(args: argparse.Namespace) -> int:
+    """verify-hash [file] — content_hash drift check."""
+    target = _resolve_file(args.file)
+    if not target:
+        print("no plan given and no active plan in cache", file=sys.stderr)
+        return 2
+    result = bp.verify_hash(target)
+    if args.json:
+        json.dump(result, sys.stdout, indent=2)
+        print()
+        return 0 if result["ok"] else 1
+    if result["first_read"]:
+        print("⚠ no stored hash — file not yet rewritten through the CLI")
+        print(f"  computed: {result['computed']}")
+        return 1
+    if result["ok"]:
+        print(f"✓ hash matches: {result['stored'][:16]}...")
+        return 0
+    print(f"✗ DRIFT detected")
+    print(f"  stored:   {result['stored']}")
+    print(f"  computed: {result['computed']}")
+    return 1
 
 
 def cmd_resume(args: argparse.Namespace) -> int:
@@ -682,6 +709,12 @@ def build_parser() -> argparse.ArgumentParser:
     atp.add_argument("--tags", default=None, help="comma-separated")
     atp.add_argument("--validate", action="store_true")
     atp.set_defaults(func=cmd_add_task)
+
+    vhp = sub.add_parser("verify-hash",
+                         help="content_hash drift check")
+    vhp.add_argument("file", nargs="?", default=None)
+    vhp.add_argument("--json", action="store_true")
+    vhp.set_defaults(func=cmd_verify_hash)
 
     rp = sub.add_parser("resume",
                         help="pick the next actionable task")

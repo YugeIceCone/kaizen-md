@@ -370,6 +370,55 @@ class TestResume(unittest.TestCase):
             self.assertIsNone(bp.resume(p))
 
 
+class TestContentHash(unittest.TestCase):
+    """Auto-injected content_hash header on every atomic write."""
+
+    def test_hash_injected_on_mutate(self):
+        with tempfile.TemporaryDirectory() as td:
+            p = _write_plan(Path(td), _fresh_plan([
+                {"id": "01", "kind": "plan", "title": "X",
+                 "status": "draft", "links": {}},
+            ]))
+            # First read — no stored hash yet (template doesn't have one)
+            r = bp.verify_hash(p)
+            self.assertTrue(r["first_read"])
+            # Mutate via the CLI primitive — hash gets injected
+            bp.set_item_status(p, "01", "active")
+            r = bp.verify_hash(p)
+            self.assertTrue(r["ok"])
+            self.assertEqual(r["stored"], r["computed"])
+            self.assertEqual(len(r["stored"]), 64)  # sha256 hex
+
+    def test_hash_drift_detected(self):
+        with tempfile.TemporaryDirectory() as td:
+            p = _write_plan(Path(td), _fresh_plan([
+                {"id": "01", "kind": "plan", "title": "X",
+                 "status": "draft", "links": {}},
+            ]))
+            bp.set_item_status(p, "01", "active")  # injects hash
+            # External mutation — bypass the CLI
+            raw = json.loads(p.read_text())
+            raw["items"][0]["title"] = "TAMPERED"
+            p.write_text(json.dumps(raw))
+            # Verify catches drift
+            r = bp.verify_hash(p)
+            self.assertFalse(r["ok"])
+            self.assertNotEqual(r["stored"], r["computed"])
+
+    def test_hash_stable_across_rewrites(self):
+        """Re-writing the same data shouldn't churn the hash."""
+        with tempfile.TemporaryDirectory() as td:
+            p = _write_plan(Path(td), _fresh_plan([
+                {"id": "01", "kind": "plan", "title": "X",
+                 "status": "active", "links": {}},
+            ]))
+            bp.set_item_status(p, "01", "active")  # no-op flip; hash injected
+            h1 = bp.verify_hash(p)["computed"]
+            bp.set_item_status(p, "01", "active")  # idempotent
+            h2 = bp.verify_hash(p)["computed"]
+            self.assertEqual(h1, h2)
+
+
 class TestAutoDiscover(unittest.TestCase):
     """Fresh-session auto-discovery — single command kicks off the plan."""
 

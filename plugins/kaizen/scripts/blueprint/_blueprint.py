@@ -55,17 +55,46 @@ def _is_yaml(path: str | Path) -> bool:
     return s.endswith(".yaml") or s.endswith(".yml")
 
 
+def _content_hash(data: dict) -> str:
+    """SHA-256 over the canonical-form JSON of `data` MINUS session_meta.
+    content_hash itself (so the hash is stable across rewrites that
+    only update the hash field). Hex digest, 64 chars."""
+    import hashlib
+    # Copy + strip the hash field if present
+    snapshot = dict(data)
+    sm = dict(snapshot.get("session_meta") or {})
+    sm.pop("content_hash", None)
+    snapshot["session_meta"] = sm
+    # Canonical JSON (sort_keys=True for determinism)
+    body = json.dumps(snapshot, sort_keys=True,
+                      separators=(",", ":"), default=str)
+    return hashlib.sha256(body.encode("utf-8")).hexdigest()
+
+
+def _inject_hash(data: dict) -> dict:
+    """Return a copy of `data` with session_meta.content_hash set to
+    the current content hash. Idempotent."""
+    h = _content_hash(data)
+    out = dict(data)
+    sm = dict(out.get("session_meta") or {})
+    sm["content_hash"] = h
+    out["session_meta"] = sm
+    return out
+
+
 def _write_plan(path: str | Path, data: dict) -> None:
     """Atomic-write a blueprint, picking JSON or YAML by extension.
-    JSON is via _atomic.atomic_write_json (sort_keys=False). YAML is
-    via PyYAML safe_dump + _atomic.atomic_write (string)."""
+    Injects session_meta.content_hash before write — drift detection
+    + cross-session integrity check. Auto-discovery + handoff can pin
+    the hash."""
+    stamped = _inject_hash(data)
     if _is_yaml(path):
         import yaml
-        body = yaml.safe_dump(data, sort_keys=False, allow_unicode=True,
+        body = yaml.safe_dump(stamped, sort_keys=False, allow_unicode=True,
                               default_flow_style=False) + ""
         _atomic.atomic_write(path, body)
     else:
-        _atomic.atomic_write_json(path, data, sort_keys=False)
+        _atomic.atomic_write_json(path, stamped, sort_keys=False)
 
 
 # ─── Pure reads (1 roundtrip each) ──────────────────────────────────────
@@ -256,6 +285,22 @@ def _schema_validate(plan: dict) -> None:
     jsonschema.validate(plan, schema)
 
 
+def verify_hash(path: str | Path) -> dict:
+    """Compute current content hash + compare to session_meta.content_hash
+    in the file. Returns {ok, stored, computed}. ok=True means the hash
+    matches (no drift since last atomic write). ok=False or stored=None
+    means external mutation or first-read on a plan not yet hashed."""
+    plan = read_plan(path)
+    stored = (plan.get("session_meta") or {}).get("content_hash")
+    computed = _content_hash(plan)
+    return {
+        "ok": stored == computed if stored else False,
+        "stored": stored,
+        "computed": computed,
+        "first_read": stored is None,
+    }
+
+
 def resume(path: str | Path) -> dict | None:
     """Pick the next actionable task. Returns the task + its parent
     item, or None if nothing is actionable.
@@ -435,4 +480,5 @@ __all__ = [
     "dag_check",
     "chunk_tasks",
     "resume",
+    "verify_hash",
 ]

@@ -112,6 +112,7 @@ def _summarize_plan(plan_path: Path) -> dict:
             "title": it.get("title", "")[:80],
         })
     mtime, size = _stat(plan_path)
+    content_hash = (data.get("session_meta") or {}).get("content_hash")
     return {
         "mtime": mtime,
         "size_bytes": size,
@@ -121,6 +122,7 @@ def _summarize_plan(plan_path: Path) -> dict:
         "items": items_idx,
         "status_rollup": status_rollup,
         "kind_rollup": kind_rollup,
+        "content_hash": content_hash,
         "cached_at": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
     }
 
