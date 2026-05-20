@@ -43,8 +43,12 @@ root = os.environ.get('CLAUDE_PLUGIN_ROOT') or os.environ.get('KAIZEN_PLUGIN_ROO
 if not root:
     here = os.path.realpath('${BASH_SOURCE[0]}')
     root = os.path.realpath(os.path.join(os.path.dirname(here), '..', '..'))
-sys.path.insert(0, os.path.join(root, 'skills', 'workflow', 'scripts'))
+# Post-DOMAIN-shells: _session_jsonl lives at scripts/handoff/_session_jsonl.py.
+# Use _bootstrap (adds every scripts/<cluster>/ to sys.path) so this stays
+# resilient if the module relocates again.
+sys.path.insert(0, os.path.join(root, 'scripts'))
 try:
+    import _bootstrap  # noqa: F401
     from _session_jsonl import discover_active_session_id
     sid = discover_active_session_id()
     if sid: print(sid)

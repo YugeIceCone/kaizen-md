@@ -14,13 +14,9 @@ import unittest
 from pathlib import Path
 
 _PLUGIN_ROOT = Path(__file__).resolve().parent.parent
-_APP = _PLUGIN_ROOT / "skills" / "iron-laws" / "application"
-_SCRIPTS = _PLUGIN_ROOT / "skills" / "workflow" / "scripts"
-_MCP = _PLUGIN_ROOT / "scripts" / "mcp"
 _DOMAIN = _PLUGIN_ROOT / "skills" / "iron-laws" / "domain"
-for _p in (_APP, _SCRIPTS, _MCP):
-    if str(_p) not in sys.path:
-        sys.path.insert(0, str(_p))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 — adds scripts/<cluster>/ to sys.path
 
 
 class TestLoader(unittest.TestCase):

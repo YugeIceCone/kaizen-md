@@ -18,11 +18,8 @@ from pathlib import Path
 
 _HERE = Path(__file__).resolve().parent
 _PLUGIN_ROOT = _HERE.parent
-_APP = _PLUGIN_ROOT / "skills" / "iron-laws" / "application"
-_SCRIPTS = _PLUGIN_ROOT / "skills" / "workflow" / "scripts"
-for _p in (_HERE, _APP, _SCRIPTS):
-    if str(_p) not in sys.path:
-        sys.path.insert(0, str(_p))
+sys.path.insert(0, str(_HERE))
+import _kaizen_paths  # noqa: F401, E402 — adds scripts/<cluster>/ to sys.path
 
 from test_iron_laws import _mini_plugin, _ctx  # noqa: E402
 
