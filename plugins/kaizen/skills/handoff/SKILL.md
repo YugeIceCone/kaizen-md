@@ -1,6 +1,6 @@
 ---
 name: handoff
-description: Creates and resumes session handoff documents for transferring work between sessions. Use to save context, resume from previous sessions, or manage handoff files.
+description: Creates and resumes session handoff documents for transferring work between sessions. Two modes — manual (kaizen-handoff create / resume) and automatic (Stop-hook decision=block when context crosses the user-chosen threshold). Use to save context, resume from previous sessions, configure auto-handoff thresholds, or manage handoff files. Triggers on "handoff", "save context", "resume session", "auto handoff", "context-pressure handoff", "pre-compact handoff", "context threshold trigger".
 metadata:
   version: "2.0"
 ---
@@ -421,10 +421,74 @@ After the user confirms direction:
   (decisions / findings / worked / failed) across — it never
   collapses the two concerns into one store.
 
+## Auto-trigger mode — context-pressure → forced handoff
+
+The skill's second mode is automatic — fires the handoff create flow
+when context usage crosses the user-chosen threshold, BEFORE `/compact`
+would wipe state.
+
+### Contract
+
+When the Stop-hook fires, the agent's Stop is **BLOCKED** until a
+handoff is created. The block reason is injected as the next-turn
+prompt, so the agent receives an imperative directive to complete the
+handoff before it can release.
+
+Intentionally NOT advisory — `systemMessage` was the prior design,
+but Claude could skip the suggestion. `decision=block` cannot be
+skipped: the assistant literally cannot exit until handoff lands (or
+the user manually overrides via `KAIZEN_AUTO_HANDOFF_DISABLE=1`).
+
+### Configuration
+
+Driven by `schemas/handoff/auto-config.yaml`. Validated against
+`schemas/handoff/schemas/auto-config.schema.json`. Overridable via
+`KAIZEN_AUTO_HANDOFF_CONFIG` (absolute path to a user-tweaked config).
+
+Defaults:
+
+```yaml
+version: 1
+valid_thresholds: [25, 50, 75, 85]
+dedupe_event_type: "auto_handoff.requested"
+on_fire:
+  decision: "block"      # block | systemMessage
+  reason_template: |     # available vars: {pct} {threshold}
+    ⚠ MANDATORY pre-compact handoff (context at {pct}%, threshold {threshold}%).
+    …
+```
+
+### Fires once per session
+
+A dxm event (`auto_handoff.requested` by default) is written the first
+time the threshold is crossed. Subsequent invocations see the marker
+and no-op — preventing repeat blocks within the same session.
+
+### Bypass
+
+`KAIZEN_AUTO_HANDOFF_DISABLE=1` — full opt-out (the hook returns `{}`
+immediately, no threshold check, no block).
+
+### Source of truth for threshold
+
+The threshold value comes from the **session-mode state**
+(`.kaizen/session-mode.json::auto_handoff_threshold`), set at session
+intake via `/kaizen:workflow` (Q1 = "This session only" — folded from
+the retired `/kaizen:session-mode` slash) or the SessionStart QA.
+Valid values are the four levels declared in `auto-config.yaml`: 25 /
+50 / 75 / 85. `None` (or unset) = auto-handoff disabled.
+
+### Implementation
+
+- `scripts/handoff/auto_handoff.py` — threshold check + decision emit
+- `hooks/claude/auto-handoff.sh` — Stop-hook wire that invokes the
+  Python check
+- `schemas/handoff/auto-{config,rubric}.yaml` + auto-{config,rubric,
+  decision,event}.schema.json — declarative config + rubric
+
 ## Related skills
 
 - **`schema-driven-cli`** — the lens runtime + v2 manifest pattern.
   Read this if extending the handoff subcommand surface.
-- **`decision-rubric`** — the rubric pattern that drives `assess`.
-  Read this if tuning `outcome-rubric.yaml` or building a similar
-  classifier.
+- **`decision-rubric`** — the rubric pattern that drives `assess` +
+  the auto-handoff threshold rubric.

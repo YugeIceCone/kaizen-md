@@ -113,16 +113,16 @@ directly — it never went through the bin.
 - [x] Updated test_auto_handoff.py (6 path refs) + plugin-development
       references/rubric-pattern.md (1 ref) — test_auto_handoff: 19/19 green
 
-### Phase 2 — Merge skill bodies
+### Phase 2 — Merge skill bodies [x]
 
-- [ ] Read both SKILL.md bodies in full
-- [ ] Merge: handoff/SKILL.md gains an "## Auto-trigger mode" section
-      that absorbs the auto-handoff body verbatim (preserving the
-      `decision=block` contract callout + config docs)
-- [ ] Description front-matter expanded to cover both modes + trigger
-      phrases
-- [ ] `git rm skills/auto-handoff/SKILL.md` (only file there post-merge)
-- [ ] `rmdir skills/auto-handoff/`
+- [x] handoff/SKILL.md description front-matter expanded to cover
+      both manual + auto modes with full trigger-phrase list
+- [x] Appended "## Auto-trigger mode — context-pressure → forced
+      handoff" section with full body (contract, config, dedupe,
+      bypass, threshold source, implementation pointers)
+- [x] Fixed scripts/handoff/auto_handoff.py path reference (was
+      pointing at retired skills/workflow/scripts/auto_handoff.py)
+- [x] `git rm skills/auto-handoff/SKILL.md` + dir removed
 
 ### Phase 3 — Retire kaizen-auto-handoff bin
 

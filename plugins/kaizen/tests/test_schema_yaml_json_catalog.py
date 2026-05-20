@@ -70,7 +70,7 @@ class TestLiveSkillsMatchCatalog(unittest.TestCase):
         except ImportError:
             self.skipTest("yaml not installed")
         r = self._load_yaml(
-            self.SCHEMAS_DIR / "auto-handoff/rubric.yaml")
+            self.SCHEMAS_DIR / "handoff/auto-rubric.yaml")
         self.assertEqual(r.get("version"), 1)
         self.assertIn("rules", r)
         self.assertIn("fallback", r)
@@ -84,7 +84,7 @@ class TestLiveSkillsMatchCatalog(unittest.TestCase):
         except ImportError:
             self.skipTest("yaml not installed")
         c = self._load_yaml(
-            self.SCHEMAS_DIR / "auto-handoff/config.yaml")
+            self.SCHEMAS_DIR / "handoff/auto-config.yaml")
         self.assertEqual(c.get("version"), 1)
         self.assertIn("on_fire", c)
         # on_bucket present (per-bucket policy paired with rubric)
