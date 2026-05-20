@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/YugeIceCone/kaizen-md/assets/schemas/brain-rule.schema.json",
+  "$id": "https://github.com/YugeIceCone/kaizen-md/schemas/brain-rule.schema.json",
   "title": "Kaizen brain-sourced behaviour rule",
   "description": "The `kaizen:` block in the YAML frontmatter of `<KAIZEN_BRAIN_DIR>/Notes/*.md` (default `~/.claude/.kaizen/brain/Notes/`). Parsed by scripts/rules/rules.py. Each note becomes one runtime rule the pre-commit gate + vibe-check consult.",
   "oneOf": [

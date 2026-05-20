@@ -38,7 +38,7 @@ import re
 import sys
 from pathlib import Path
 
-# Canonical tool-output envelope — see assets/schemas/tool-output.schema.json
+# Canonical tool-output envelope — see schemas/tool-output.schema.json
 _HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(_HERE))
 sys.path.insert(0, str(_HERE.parent / "io"))

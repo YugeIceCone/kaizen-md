@@ -386,7 +386,7 @@ def _self_validate(record: dict) -> Optional[str]:
     except ImportError:
         return None
     schema_path = (Path(__file__).resolve().parent.parent.parent
-                    / "assets" / "schemas" / "stack-context.schema.json")
+                    / "schemas" / "stack-context.schema.json")
     if not schema_path.is_file():
         return None
     try:

@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/YugeIceCone/kaizen-md/assets/schemas/knowledge-item.schema.json",
+  "$id": "https://github.com/YugeIceCone/kaizen-md/schemas/knowledge-item.schema.json",
   "title": "Kaizen knowledge index item",
   "description": "One row in the knowledge SQLite index (~/.claude/.kaizen-knowledge/index.db). Produced by knowledge_index.py's iter_* generators and persisted via do_index. Consumed via do_search / do_get / knowledge_recent.",
   "type": "object",

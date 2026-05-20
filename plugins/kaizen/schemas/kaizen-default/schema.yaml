@@ -1,4 +1,4 @@
-# yaml-language-server: $schema=../../assets/schemas/workflow.schema.json
+# yaml-language-server: $schema=../../schemas/workflow.schema.json
 # Kaizen default workflow schema — mirrors the routines hardcoded in the
 # v1.0+ workflow-routing skill (audit / build-feature / fix-bug / refactor
 # / migrate / harden). DECLARATIVE re-statement, not yet wired into the

@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/YugeIceCone/kaizen-md/assets/schemas/agent-formatting.schema.json",
+  "$id": "https://github.com/YugeIceCone/kaizen-md/schemas/agent-formatting.schema.json",
   "title": "Kaizen agent-formatting rules block",
   "description": "Embedded YAML block in skills/agent-formatting/SKILL.md. Codifies slash-vs-bash discipline for assistant messages. Parseable by future linters / gate integration.",
   "type": "object",

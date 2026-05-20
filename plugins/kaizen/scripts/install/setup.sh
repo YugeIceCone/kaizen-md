@@ -224,7 +224,7 @@ if [ ! -f "$CONFIG_PATH" ]; then
     fi
 
     cat > "$CONFIG_PATH" <<TOML
-#:schema https://raw.githubusercontent.com/YugeIceCone/kaizen-md/main/plugins/kaizen/assets/schemas/kaizen-config.schema.json
+#:schema https://raw.githubusercontent.com/YugeIceCone/kaizen-md/main/plugins/kaizen/schemas/kaizen-config.schema.json
 # kaizen config — generated $(date +%Y-%m-%d) by skill installer.
 # Schema: kaizen-config.schema.json (Taplo / Even Better TOML auto-bind
 # via the `#:schema` directive above; offline editors can also use the

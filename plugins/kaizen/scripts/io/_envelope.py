@@ -3,7 +3,7 @@
 
 Every kaizen CLI that supports `--json` should emit through `wrap(...)`
 so consumers get the same shape across the whole surface. Schema at
-`assets/schemas/tool-output.schema.json`.
+`schemas/tool-output.schema.json`.
 
 ## Usage
 

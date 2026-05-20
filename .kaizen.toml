@@ -1,9 +1,9 @@
-#:schema https://raw.githubusercontent.com/YugeIceCone/kaizen-md/main/plugins/kaizen/assets/schemas/kaizen-config.schema.json
+#:schema https://raw.githubusercontent.com/YugeIceCone/kaizen-md/main/plugins/kaizen/schemas/kaizen-config.schema.json
 # kaizen config — refreshed 2026-05-17 (v1.39.0 — dropped
 # user-specific brain_path / project_memory_path; defaults from
 # _paths.py take over).
 # Schema (Taplo / Even Better TOML auto-binds via the #:schema
-# directive above): plugins/kaizen/assets/schemas/kaizen-config.schema.json
+# directive above): plugins/kaizen/schemas/kaizen-config.schema.json
 
 compile_check_cmd = ""
 architecture_log  = ".kaizen/workflow/progress.md"

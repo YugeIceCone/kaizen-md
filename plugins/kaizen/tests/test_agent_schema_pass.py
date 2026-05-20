@@ -8,7 +8,7 @@ agents). This file:
      hardcoded set.
 
   2. Validates each frontmatter against
-     assets/schemas/agent.schema.json — pinning name/description/
+     schemas/agent.schema.json — pinning name/description/
      tools structure as the canonical contract.
 
   3. Loads + lints the dispatch-rubric (skills/agent-formatting/
@@ -32,7 +32,7 @@ from pathlib import Path
 
 _KZ_DIR = Path(__file__).resolve().parent.parent
 _AGENTS_DIR = _KZ_DIR / "agents"
-_AGENT_SCHEMA = _KZ_DIR / "assets/schemas/agent.schema.json"
+_AGENT_SCHEMA = _KZ_DIR / "schemas/agent.schema.json"
 _RUBRIC = _KZ_DIR / "schemas/agent-formatting/dispatch-rubric.yaml"
 
 

@@ -1,6 +1,6 @@
 """Tests for the canonical tool-output envelope — every kaizen CLI
 that supports `--json` must validate against
-`assets/schemas/tool-output.schema.json`.
+`schemas/tool-output.schema.json`.
 
 Regression guard: as new tools opt in to the envelope, add them to
 `_RETROFIT_TOOLS` so a future change can't silently break the contract.
@@ -16,7 +16,7 @@ from pathlib import Path
 
 _REPO_ROOT = Path(__file__).resolve().parents[3]
 _SCRIPTS = _REPO_ROOT / "plugins/kaizen/skills/workflow/scripts"
-_SCHEMA = _REPO_ROOT / "plugins/kaizen/assets/schemas/tool-output.schema.json"
+_SCHEMA = _REPO_ROOT / "plugins/kaizen/schemas/tool-output.schema.json"
 _ENVELOPE = _REPO_ROOT / "plugins/kaizen/scripts/io/_envelope.py"
 
 

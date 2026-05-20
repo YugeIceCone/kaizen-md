@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/YugeIceCone/kaizen-md/assets/schemas/code-file.schema.json",
+  "$id": "https://github.com/YugeIceCone/kaizen-md/schemas/code-file.schema.json",
   "title": "Kaizen codebase-index entry",
   "description": "One row in the codebase semantic index at <repo>/.kaizen/onboard.db. Produced + consumed by scripts/indexers/onboard_index.py. One row per source file after comment-stripping + whitespace normalization.",
   "type": "object",

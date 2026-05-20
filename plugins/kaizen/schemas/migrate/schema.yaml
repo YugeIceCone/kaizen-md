@@ -1,4 +1,4 @@
-# yaml-language-server: $schema=../../assets/schemas/workflow.schema.json
+# yaml-language-server: $schema=../../schemas/workflow.schema.json
 # Migrate workflow schema — declarative form of the v1.0+ hardcoded
 # `migrate` routine. For framework, version, API, and infrastructure
 # migrations with explicit rollback design.

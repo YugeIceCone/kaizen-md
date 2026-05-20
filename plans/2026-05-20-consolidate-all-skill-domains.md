@@ -77,7 +77,7 @@ routine `schema.yaml` keeps its canonical name.
 
 ## Phases
 
-### Phase A — Small skills (1-2 files each, no collisions)
+### Phase A — Small skills (1-2 files each, no collisions) [x]
 
 Skills that move trivially: agent-formatting, brainstorming, chatlog,
 decision-rubric, efficient-tool-use, iron-laws, karpathy, loop,
@@ -90,36 +90,38 @@ For each:
 3. `kaizen-tests --concurrency 4` → green
 4. Commit `refactor(<X>): consolidate domain/ -> schemas/<X>/`
 
-### Phase B — Medium skills (4-7 files, no collisions)
+### Phase B — Medium skills (4-7 files, no collisions) [x]
 
 Skills: brain (4), plugin-self-audit (4), code-tour (5), intent (6),
 auto-handoff (6), deus-ex-machina (7). (6 skills, ~32 files.)
 
 Same per-skill workflow as Phase A.
 
-### Phase C — Large skills (12 files, no collisions)
+### Phase C — Large skills (12 files, no collisions) [x]
 
 handoff (12 files). One commit.
 
-### Phase D — Collision skills (co-locate)
+### Phase D — Collision skills (co-locate) [x]
 
 audit + plugin-development. The skill's domain yamls join the existing
 `schemas/<X>/schema.yaml`. Filenames preserved.
 
-### Phase E — assets/schemas/ verdict
+### Phase E — assets/schemas/ verdict [x]
 
-Decide whether assets/schemas/ (16 .schema.json files) moves under
-schemas/, gets renamed, or stays. assets/ implies "loaded as data by
-runtime code" (distinct from "validates a yaml in schemas/"). Decision
-deferred to end of plan after the rest converges.
+Resolved: flatten assets/schemas/*.schema.json + README.md → schemas/
+root level (sibling to the per-feature subdirs). Files (data shapes)
+coexist with subdirs (feature configs) — names don't collide. 65
+caller files updated via bulk sed. assets/schemas/ dir removed.
 
-### Phase F — Cleanup + docs
+### Phase F — Cleanup + docs [x]
 
-- Update all SKILL.md files that mention `domain/`
-- Update plugin-development SKILL.md's feature-shape guidance
-- Update DEVOPS-CHEAT-SHEET.md
-- Append progress.md row
-- Run full `kaizen-tests` + `kaizen-health`
+- [x] DEVOPS-CHEAT-SHEET.md — skills/<X>/domain → schemas/<X>; iron-laws
+      codegen at scripts/iron-laws/codegen.py
+- [x] plugin-development SKILL.md — feature-shape guidance now points
+      at schemas/<feature>/, not skills/<feature>/domain/
+- [x] Plan checkboxes ticked
+- [x] Append progress.md row
+- [x] `kaizen-tests --concurrency 4`: 331/333 (baseline)
 
 ## Execution strategy
 
@@ -163,7 +165,7 @@ the completed skill. The next skill in the table is the resume point.
 
 ## Out of scope
 
-- assets/schemas/ → schemas/ migration (Phase E placeholder; decision
+- schemas/ → schemas/ migration (Phase E placeholder; decision
   deferred)
 - Adding NEW JSON Schemas where none currently exist (would require
   schema authoring per consumer; separate task)

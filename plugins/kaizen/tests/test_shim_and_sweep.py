@@ -25,7 +25,7 @@ PLUGIN_ROOT = Path(__file__).resolve().parent.parent
 SCHEMA = PLUGIN_ROOT / "schemas" / "shim-and-sweep" / "schema.yaml"
 SKILL = PLUGIN_ROOT / "skills" / "shim-and-sweep" / "SKILL.md"
 ROUTINES = PLUGIN_ROOT / "schemas" / "workflow" / "routines.yaml"
-WORKFLOW_JSON_SCHEMA = PLUGIN_ROOT / "assets" / "schemas" / "workflow.schema.json"
+WORKFLOW_JSON_SCHEMA = PLUGIN_ROOT / "schemas" / "workflow.schema.json"
 
 
 class TestSchemaFile(unittest.TestCase):

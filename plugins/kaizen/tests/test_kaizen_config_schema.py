@@ -1,7 +1,7 @@
 """RED first — kaizen.toml JSON Schema + Taplo integration tests.
 
 Validates:
-  - assets/schemas/kaizen-config.schema.json exists + is valid
+  - schemas/kaizen-config.schema.json exists + is valid
     JSON Schema 2020-12
   - schema accepts the canonical seeded .kaizen.toml
   - schema rejects garbage (wrong types)
@@ -21,7 +21,7 @@ import unittest
 from pathlib import Path
 
 PLUGIN_ROOT = Path(__file__).resolve().parent.parent
-SCHEMA_PATH = PLUGIN_ROOT / "assets" / "schemas" / "kaizen-config.schema.json"
+SCHEMA_PATH = PLUGIN_ROOT / "schemas" / "kaizen-config.schema.json"
 TAPLO_PATH  = PLUGIN_ROOT / "taplo.toml"
 SETUP_SH    = PLUGIN_ROOT / "scripts" / "install" / "setup.sh"
 

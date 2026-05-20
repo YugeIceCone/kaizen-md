@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/YugeIceCone/kaizen-md/assets/schemas/tool-output.schema.json",
+  "$id": "https://github.com/YugeIceCone/kaizen-md/schemas/tool-output.schema.json",
   "title": "kaizen tool output envelope",
   "description": "Canonical JSON envelope for every kaizen CLI tool's `--json` output. Programmable (predictable shape), reproducible (deterministic ordering, no random ids), consistent (same envelope across every tool). Per-tool payload lives in `data`; envelope metadata in `kaizen`.\n\nIntent: an agent or downstream pipe can call ANY kaizen tool with --json and consume the result via a single shape — `verdict` for go/no-go, `counts` for severity buckets, `data` for the tool-specific payload. New tools opt in by importing `_envelope.py::wrap` and emitting `wrap(...)` instead of bare JSON.",
   "type": "object",

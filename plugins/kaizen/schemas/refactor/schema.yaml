@@ -1,4 +1,4 @@
-# yaml-language-server: $schema=../../assets/schemas/workflow.schema.json
+# yaml-language-server: $schema=../../schemas/workflow.schema.json
 # Refactor workflow schema — declarative form of the v1.0+ hardcoded
 # `refactor` routine, with tests-first as the hard gate.
 #

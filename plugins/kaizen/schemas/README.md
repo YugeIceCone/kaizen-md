@@ -24,7 +24,7 @@ For VSCode + YAML extension, add to project / user settings:
 
 ```jsonc
 "yaml.schemas": {
-  "./assets/schemas/workflow.schema.json": [
+  "./schemas/workflow.schema.json": [
     "schemas/*/schema.yaml",
     ".workflow/schemas/*/schema.yaml"
   ]
@@ -38,7 +38,7 @@ For ajv (Node):
 ```javascript
 import Ajv from "ajv";
 import addFormats from "ajv-formats";
-import workflowSchema from "./assets/schemas/workflow.schema.json" assert { type: "json" };
+import workflowSchema from "./schemas/workflow.schema.json" assert { type: "json" };
 const ajv = new Ajv({ allErrors: true });
 addFormats(ajv);
 const validate = ajv.compile(workflowSchema);
@@ -49,7 +49,7 @@ For Python (`jsonschema` package, optional dep):
 
 ```python
 import json, jsonschema
-with open("assets/schemas/backlog.schema.json") as f: schema = json.load(f)
+with open("schemas/backlog.schema.json") as f: schema = json.load(f)
 with open(".workflow/backlog.json") as f: doc = json.load(f)
 jsonschema.validate(doc, schema)
 ```

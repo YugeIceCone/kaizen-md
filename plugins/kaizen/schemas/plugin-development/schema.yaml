@@ -1,4 +1,4 @@
-# yaml-language-server: $schema=../../assets/schemas/workflow.schema.json
+# yaml-language-server: $schema=../../schemas/workflow.schema.json
 #
 # Plugin-development workflow — declarative routine for building a
 # new kaizen-plugin feature end-to-end. The 13-slot canonical

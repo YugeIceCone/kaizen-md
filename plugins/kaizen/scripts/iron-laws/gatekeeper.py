@@ -950,7 +950,7 @@ def render_text(v: Verdict) -> str:
 
 def render_json(v: Verdict, argv: list[str] | None = None) -> str:
     """Canonical-envelope-wrapped JSON output. Schema:
-    `assets/schemas/tool-output.schema.json`. Use this over hand-rolled
+    `schemas/tool-output.schema.json`. Use this over hand-rolled
     JSON so consumers get the same shape across all kaizen tools."""
     sys.path.insert(0, str(_SCRIPT_DIR))
     import _envelope  # peer module — must exist

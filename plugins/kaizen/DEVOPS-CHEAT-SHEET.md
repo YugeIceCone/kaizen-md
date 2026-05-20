@@ -22,7 +22,7 @@ plugins/kaizen/
 ├── commands/                    ← 48 slash commands (/kaizen:<name>)
 ├── bin/                         ← 50 CLI wrappers (kaizen-*) + 1 dispatcher (kaizen)
 ├── agents/                      ← 6 sub-agent personas
-├── assets/schemas/              ← 13 plugin-wide JSON schemas
+├── schemas/              ← 13 plugin-wide JSON schemas
 ├── skills/
 │   ├── workflow/                ← THE big skill — discipline + orchestration
 │   │   ├── domain/              ← yaml SSOTs (routines, git-discipline, schemas)
@@ -49,10 +49,10 @@ plugins/kaizen/
 | A new **MCP tool** | `skills/workflow/scripts/foo_mcp.py` (FastMCP server with `@mcp.tool()` decorators) | Add `("foo", "foo_mcp")` to `gateway.py::SUBSERVERS`. Optionally add tool names to `CURATED_CORE` so they're always-visible (default ~15 tool budget). |
 | A new **hook script** | `hooks/claude/<event>-<purpose>.sh` (e.g. `posttooluse-foo.sh`) | Register in `hooks/hooks.json` under the right event. Use `bash` + source `_paths.sh` for plugin-root resolution. Always include a `KAIZEN_<NAME>_DISABLE=1` bypass knob (hook-bypass-knob iron-law). |
 | A new **skill** | `skills/<name>/SKILL.md` with YAML frontmatter (`name`, `description`, `metadata.version`) | Auto-discovered. Body MUST be read in full by callers (write the trigger phrases in `description` clearly). |
-| A new **iron law** | `schemas/iron-laws/iron-laws.yaml` (yaml entry) + `skills/workflow/scripts/_iron_laws.py::check_<name>()` if `enforcement: auto` | Regenerate the reference: `python3 skills/iron-laws/application/codegen.py`. Tests in `tests/test_iron_laws.py`. |
+| A new **iron law** | `schemas/iron-laws/iron-laws.yaml` (yaml entry) + `skills/workflow/scripts/_iron_laws.py::check_<name>()` if `enforcement: auto` | Regenerate the reference: `python3 scripts/iron-laws/codegen.py`. Tests in `tests/test_iron_laws.py`. |
 | A new **anti-pattern (efficient-tool-use)** | `schemas/efficient-tool-use/anti-patterns.yaml` (yaml entry with `id`, `tool`, `bad_pattern`, `why_bad`, `replacement`, `severity`, optional `detect` regex) | The pre-commit etu gate auto-picks it up. Add a `# noqa: etu` test case if false-positive prone. |
 | A new **workflow routine** | `schemas/workflow/routines.yaml` (`routines:` array) + each new stage to `stage_skill_map` | `python3 scripts/workflow/codegen.py` regenerates `references/routines.md`. Tests in `scripts/workflow/_tests.py`. |
-| A new **assets/schema** | `assets/schemas/<name>.schema.json` | Add a consumer (validator script). Orphan schemas trip `kaizen-surface validate`. |
+| A new **assets/schema** | `schemas/<name>.schema.json` | Add a consumer (validator script). Orphan schemas trip `kaizen-surface validate`. |
 
 ## Editing existing things (what to touch where)
 
@@ -120,7 +120,7 @@ plugins/kaizen/
 | Surface validate | `kaizen-surface validate` |
 | Gatekeeper aggregate | `kaizen-gatekeeper check --all` |
 | Plugin-development validator | `python3 plugins/kaizen/skills/plugin-development/scripts/validate.py` |
-| Codegen drift (iron-laws) | `python3 plugins/kaizen/skills/iron-laws/application/codegen.py --check` |
+| Codegen drift (iron-laws) | `python3 plugins/kaizen/scripts/iron-laws/codegen.py --check` |
 | Codegen drift (workflow) | `python3 plugins/kaizen/scripts/workflow/codegen.py --check` |
 | Hot-path hook performance | `kaizen metrics top --kind hook` |
 | etu scanner self-test | `python3 plugins/kaizen/skills/efficient-tool-use/application/etu_scan.py --all` |
@@ -152,7 +152,7 @@ There's no automated release script. `kaizen publish release vX.Y.Z` is for the 
 | All iron laws | `schemas/iron-laws/iron-laws.yaml` (`kaizen iron-laws list --json` to enumerate) |
 | All workflow routines | `schemas/workflow/routines.yaml` (`kaizen workflow list` to enumerate) |
 | All etu anti-patterns | `schemas/efficient-tool-use/anti-patterns.yaml` |
-| Envelope schema | `assets/schemas/tool-output.schema.json` |
+| Envelope schema | `schemas/tool-output.schema.json` |
 | Envelope retrofit status | `skills/efficient-tool-use/references/envelope-retrofit.md` |
 | Plugin attribution | `ATTRIBUTIONS.md` |
 | Plugin version | `.claude-plugin/plugin.json::version` |

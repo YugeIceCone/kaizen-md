@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/YugeIceCone/kaizen-md/assets/schemas/workflow-state.schema.json",
+  "$id": "https://github.com/YugeIceCone/kaizen-md/schemas/workflow-state.schema.json",
   "title": "Kaizen workflow runtime state",
   "description": "Active workflow state. Lives at <repo>/.workflow/state.json. Written by skills/workflow-routing/scripts/workflow.sh (init/advance/branch/artifact/dispatch).",
   "type": "object",

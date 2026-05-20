@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/YugeIceCone/kaizen-md/assets/schemas/trace-event.schema.json",
+  "$id": "https://github.com/YugeIceCone/kaizen-md/schemas/trace-event.schema.json",
   "title": "Kaizen trace event",
   "description": "One JSONL line in ~/.claude/.kaizen/indexes/trace/events.jsonl (v1.22.0+ path; previously ~/.claude/.kaizen-trace/events.jsonl). Producer: trace.py via hooks/_trace.sh, llm_proxy.py, daemon.py, browser_mcp.py. Consumer: trace.py query/tail, trace_index.py for semantic search, observe.py.",
   "type": "object",

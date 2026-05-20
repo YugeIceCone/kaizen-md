@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/YugeIceCone/kaizen-md/assets/schemas/backlog.schema.json",
+  "$id": "https://github.com/YugeIceCone/kaizen-md/schemas/backlog.schema.json",
   "title": "Kaizen backlog store",
   "description": "Micro-work backlog. Lives at <repo>/.workflow/backlog.json. Source of truth; .workflow/backlog.md is generated from this. Mutated only via scripts/backlog/backlog.py.",
   "type": "object",

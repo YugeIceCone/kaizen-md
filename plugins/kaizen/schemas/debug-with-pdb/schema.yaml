@@ -1,4 +1,4 @@
-# yaml-language-server: $schema=../../assets/schemas/workflow.schema.json
+# yaml-language-server: $schema=../../schemas/workflow.schema.json
 # Debug-with-pdb workflow — 8-phase loop for Python bug investigation using
 # `breakpoint()` / `pdb`. Pairs with the kaizen `systematic-debugging` skill;
 # this schema codifies the *artifact-producing* discipline (vs. the skill's

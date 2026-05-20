@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/YugeIceCone/kaizen-md/assets/schemas/inbox-message.schema.json",
+  "$id": "https://github.com/YugeIceCone/kaizen-md/schemas/inbox-message.schema.json",
   "title": "Kaizen inbox message",
   "description": "One file per user prompt under ~/.claude/.kaizen/inbox/<ts>-<n>.json (v1.22.0+ path; previously ~/.claude/kaizen-inbox/). Producer: inbox.py capture (called by hooks/userprompt-inbox.sh). Consumer: inbox.py {list,peek,drain,stats}. Surfaces pending messages on the next PostToolUse boundary as additionalContext.",
   "type": "object",

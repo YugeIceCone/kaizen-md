@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/YugeIceCone/kaizen-md/assets/schemas/agent.schema.json",
+  "$id": "https://github.com/YugeIceCone/kaizen-md/schemas/agent.schema.json",
   "title": "Kaizen subagent frontmatter",
   "description": "Schema for the YAML frontmatter block in plugins/kaizen/agents/<name>.md files. Validates the parsed frontmatter (not the raw YAML text). Loader normalizes tools / disallowedTools from any supported surface form (JSON array, YAML list, comma-separated string) to a list[str] before validation.",
   "type": "object",

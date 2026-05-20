@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/YugeIceCone/kaizen-md/assets/schemas/scrape-item.schema.json",
+  "$id": "https://github.com/YugeIceCone/kaizen-md/schemas/scrape-item.schema.json",
   "title": "Kaizen scrape-index item",
   "description": "One row in the scrape SQLite index at ~/.claude/.kaizen/scrape/index.db. Produced by scrape_index.py's PocketFlow pipeline (FetchURLs → ScrapeFanOut → Synthesize → EmbedAndPersist). Wraps a ScrapeGraphAI SmartScraperGraph extraction with denormalized text + 384-dim embedding for semantic search.",
   "type": "object",

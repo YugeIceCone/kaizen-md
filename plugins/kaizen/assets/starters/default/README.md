@@ -40,7 +40,7 @@ A minimal but production-ready Second Brain. Seeded by
 ## Customization
 
 Every starter file is just a Markdown file with YAML frontmatter.
-Edit freely. The brain schema (`assets/schemas/note.schema.json`)
+Edit freely. The brain schema (`schemas/note.schema.json`)
 lists required + optional fields per `type` (belief / world-fact /
 observation / experience).
 

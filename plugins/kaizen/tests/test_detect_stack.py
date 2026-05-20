@@ -193,7 +193,7 @@ class TestSubcommands(ProjectBase):
 class TestSchemaValidation(ProjectBase):
     """The JSON artifact must validate against the shipped schema."""
 
-    _SCHEMA = (_KZ_DIR / "assets/schemas/stack-context.schema.json")
+    _SCHEMA = (_KZ_DIR / "schemas/stack-context.schema.json")
 
     def setUp(self):
         super().setUp()

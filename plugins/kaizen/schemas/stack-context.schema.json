@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/YugeIceCone/kaizen-md/assets/schemas/stack-context.schema.json",
+  "$id": "https://github.com/YugeIceCone/kaizen-md/schemas/stack-context.schema.json",
   "title": "kaizen detect-stack artifact",
   "description": "Schema for `<repo>/.agents/stack-context.{json,md}` — mechanical stack detection output. JSON is the system of record; markdown is a derived human-readable view. Consumed by SessionStart hook to auto-inject stack into agent context.",
   "type": "object",

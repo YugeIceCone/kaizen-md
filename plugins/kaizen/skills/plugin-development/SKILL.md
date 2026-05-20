@@ -32,7 +32,7 @@ The authoritative declarations live in `domain/`:
 |---|---|
 | `domain/feature-shape.yaml` | The file slots + per-slot `required` / `when` predicates |
 | `domain/wiring-checklist.yaml` | Per-artifact wiring entries (plugin.json permissions, hooks.json events, bin chmod, etc.) |
-| `domain/schemas/feature.schema.json` | JSONSchema for optional `skills/<feature>/domain/manifest.yaml` |
+| `domain/schemas/feature.schema.json` | JSONSchema for optional `schemas/<feature>/manifest.yaml` |
 
 The **iron laws** moved to their own skill — see `kaizen:iron-laws`
 (registry at `schemas/iron-laws/iron-laws.yaml`, plus a checker,
@@ -187,7 +187,7 @@ routing.
 
 ### Private core (`_<feature>.py`)
 
-- Defines `Config` (loads yaml from `skills/<feature>/domain/`)
+- Defines `Config` (loads yaml from `schemas/<feature>/`)
 - Path resolution: `<feature>_root()` + per-project resolution
 - Frontmatter parse + serialize (when the feature reads/writes
   markdown files with frontmatter)
@@ -365,12 +365,12 @@ code.
 | Hardcoded Python dicts | Users must edit code + restart to change |
 | `.kaizen.toml` | Already the gate's home; adding feature rules bloats it |
 | Brain rules (`kaizen:` frontmatter) | Right for runtime gate overrides (deletion-allow etc.); wrong for feature-internal decisions like type taxonomies |
-| **yaml + jsonschema in `skills/<feature>/domain/`** ✓ | Lives WITH the feature; user can edit; validation via jsonschema |
+| **yaml + jsonschema in `schemas/<feature>/`** ✓ | Lives WITH the feature; user can edit; validation via jsonschema |
 
 ### Required files per feature
 
 ```text
-skills/<feature>/domain/
+schemas/<feature>/
 ├── <thing>.yaml             # the decision tables
 ├── <thing-2>.yaml           # add more as the feature grows
 └── schemas/
@@ -436,7 +436,7 @@ subcommands:
 ```
 
 - Pair every subcommand with both `input_schema` and `output_schema`
-- Files live at `skills/<feature>/domain/schemas/<sub>-{in,out}.schema.json`
+- Files live at `schemas/<feature>/schemas/<sub>-{in,out}.schema.json`
 - Validate at runtime via `m.get(sub).validate_output(data)`
 - Public envelope wraps via `schema_cli.lens_emit(tool, manifest, sub, data, verdict)`
 
@@ -479,7 +479,7 @@ on_bucket:                                 # per-bucket policy (paired with rubr
 
 - `version: <int>` always present
 - Override via env: `KAIZEN_<FEATURE>_CONFIG=<path>`
-- Default at `skills/<feature>/domain/config.yaml`
+- Default at `schemas/<feature>/config.yaml`
 - Hand-roll the loader with PyYAML; fall back to a `_BUILTIN_DEFAULT`
   dict on parse error (never break the host)
 
@@ -515,7 +515,7 @@ These are **runtime state**, not schemas:
 | `.mcp.json` | MCP server registration | CC contract |
 
 State files belong **in the repo's `.kaizen/`**, not under `skills/`.
-Schemas + configs belong **under `skills/<feature>/domain/`**.
+Schemas + configs belong **under `schemas/<feature>/`**.
 
 #### When to pick which shape
 
@@ -973,7 +973,7 @@ For a new feature `xyz`, drop these files in one PR / phased commits:
 
 ```bash
 F=xyz
-mkdir -p plugins/kaizen/skills/$F/domain/schemas
+mkdir -p plugins/kaizen/schemas/$F/schemas
 touch plugins/kaizen/skills/$F/{SKILL.md,domain/types.yaml,domain/routing.yaml,domain/schemas/note.schema.json}
 touch plugins/kaizen/skills/workflow/scripts/{_$F.py,$F.py,${F}_index.py,${F}_mcp.py}
 touch plugins/kaizen/hooks/claude/$F-session-end.sh

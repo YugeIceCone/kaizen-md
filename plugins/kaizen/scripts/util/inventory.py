@@ -116,7 +116,7 @@ PATH_PATTERNS: list[tuple[str, str]] = [
     ("*/audits/*.jsonl",                          "jsonl-deliverable"),
     ("*/audits/*.md",                             "audit-report"),
     ("*/schemas/*/schema.yaml",                   "routine-schema"),
-    ("*/assets/schemas/*.schema.json",            "cross-skill-schema"),
+    ("*/schemas/*.schema.json",            "cross-skill-schema"),
     ("*/assets/starters/*",                       "starter-asset"),
     ("*/assets/templates/*",                      "template-asset"),
     ("*/workflow/backlog.json",                   "backlog-source"),

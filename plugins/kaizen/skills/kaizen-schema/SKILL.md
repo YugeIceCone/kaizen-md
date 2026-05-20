@@ -84,7 +84,7 @@ Examples:
 - `schemas/chatlog/schemas/triggers.schema.json`
 - `skills/parallel-branches/schemas/{chunk,master-plan,merge-action,chunk-ledger,backlog-fragment,perms-fragment,progress-fragment}.schema.json`
 - `schemas/workflow/schemas/architecture-log-row.schema.json`
-- `assets/schemas/kaizen-config.schema.json` — plugin TOML config shape
+- `schemas/kaizen-config.schema.json` — plugin TOML config shape
 
 Validation: `jsonschema` Python library (used in tests + at runtime).
 
@@ -95,7 +95,7 @@ Validation: `jsonschema` Python library (used in tests + at runtime).
 | New `/workflow` routine | 1 | `schemas/<routine>/schema.yaml` |
 | New declarative config for a skill | 2 | `skills/<skill>/domain/<config>.yaml` |
 | New JSON Schema for skill's runtime data | 3 | `skills/<skill>/domain/schemas/<thing>.schema.json` |
-| Cross-skill config schema | mixed | `assets/schemas/<name>.schema.json` |
+| Cross-skill config schema | mixed | `schemas/<name>.schema.json` |
 
 ## Coverage + audit surface
 

@@ -2,7 +2,7 @@
 
 **Last regenerated**: 2026-05-17 (auto-generatable via the script at the bottom of this file).
 
-Tracks which kaizen tools emit the canonical tool-output envelope (`assets/schemas/tool-output.schema.json`) and which don't yet. Continuous reference for the "programmable + reproducible + consistent output" effort.
+Tracks which kaizen tools emit the canonical tool-output envelope (`schemas/tool-output.schema.json`) and which don't yet. Continuous reference for the "programmable + reproducible + consistent output" effort.
 
 ## Status legend
 

@@ -1,4 +1,4 @@
-# yaml-language-server: $schema=../../assets/schemas/workflow.schema.json
+# yaml-language-server: $schema=../../schemas/workflow.schema.json
 # Ralph Loop workflow schema — self-correcting Stop-hook iteration.
 #
 # Wraps the kaizen Ralph-loop pattern (originally Geoffrey Huntley's

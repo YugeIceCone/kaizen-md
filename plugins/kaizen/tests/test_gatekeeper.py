@@ -98,7 +98,7 @@ class TestGatekeeperAggregator(unittest.TestCase):
 
     def test_render_json_roundtrip(self):
         """render_json emits the canonical envelope (see
-        assets/schemas/tool-output.schema.json) — `verdict` at top
+        schemas/tool-output.schema.json) — `verdict` at top
         level, `findings` inside `data`."""
         import json
         f = self.gk.GateFinding(

@@ -20,5 +20,5 @@ column_width      = 100
 trailing_newline  = true
 
 [[schema]]
-path     = "assets/schemas/kaizen-config.schema.json"
+path     = "schemas/kaizen-config.schema.json"
 include  = ["**/.kaizen.toml"]

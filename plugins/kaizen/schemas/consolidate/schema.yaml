@@ -1,4 +1,4 @@
-# yaml-language-server: $schema=../../assets/schemas/workflow.schema.json
+# yaml-language-server: $schema=../../schemas/workflow.schema.json
 # Consolidate workflow schema — collapse redundancy across a surface.
 #
 # Distinct from refactor (preserve behavior, restructure) and

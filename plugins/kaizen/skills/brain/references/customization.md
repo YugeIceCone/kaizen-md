@@ -26,7 +26,7 @@ If you want to do X, edit Y.
 
 | Want to change | Edit |
 |---|---|
-| Required/optional frontmatter fields | `assets/schemas/note.schema.json` |
+| Required/optional frontmatter fields | `schemas/note.schema.json` |
 | Note `type` enum (world-fact / belief / observation / experience / ...) | Same — `properties.type.enum` |
 | Confidence range | Same — `properties.confidence.minimum/maximum` (currently 0.0–1.0) |
 | Freshness values | Same — `properties.freshness.enum` (fresh / stable / hardened / stale / archived) |
@@ -158,7 +158,7 @@ The pre-commit gate consumes brain notes that carry a `kaizen:` block in their f
 
 | Want to change | Edit |
 |---|---|
-| Which `rule_type` values are valid | `rules.py::VALID_RULE_TYPES` + `assets/schemas/kaizen-rule.schema.json` |
+| Which `rule_type` values are valid | `rules.py::VALID_RULE_TYPES` + `schemas/kaizen-rule.schema.json` |
 | Add a new rule kind | Append to `VALID_RULE_TYPES`, write the consumer handler in `rules.py`, add a template (`rules.py template <name>`) |
 | Which gate check a rule overrides | `kaizen-rule.schema.json::properties.check_id` |
 | Custom-pattern rule regex format | `rules.py::cmd_custom_patterns` |

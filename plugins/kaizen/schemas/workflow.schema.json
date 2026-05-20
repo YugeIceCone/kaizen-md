@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/YugeIceCone/kaizen-md/assets/schemas/workflow.schema.json",
+  "$id": "https://github.com/YugeIceCone/kaizen-md/schemas/workflow.schema.json",
   "title": "Kaizen workflow schema",
   "description": "Declarative workflow definition. Lives at schemas/<name>/schema.yaml (built-in), .workflow/schemas/<name>/schema.yaml (project), or ~/.claude/kaizen-schemas/<name>/schema.yaml (user). Consumed by skills/workflow-routing/scripts/workflow_runner.py.",
   "type": "object",
