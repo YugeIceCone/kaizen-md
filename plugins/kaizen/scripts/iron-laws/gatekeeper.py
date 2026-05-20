@@ -157,7 +157,7 @@ def _gate_etu(scope: str, repo_root: Path) -> list[GateFinding]:
 
 def _gate_karpathy(scope: str, repo_root: Path) -> list[GateFinding]:
     """Run karpathy diff-level scanners. Skipped when no staged diff."""
-    karpathy_dir = _PLUGIN_ROOT / "skills" / "karpathy" / "scripts"
+    karpathy_dir = _PLUGIN_ROOT / "scripts" / "karpathy"
     if not karpathy_dir.is_dir():
         return []
     if scope != "staged":

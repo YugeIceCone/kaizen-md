@@ -29,7 +29,7 @@ import _dxm_emit  # noqa: E402
 import _session_jsonl as _sj  # noqa: E402
 
 _PLUGIN_ROOT = _SCRIPT_DIR.parent.parent  # was .parent.parent.parent (legacy skills/workflow/scripts/ depth)
-_COMPLEXITY_CHECKER = _PLUGIN_ROOT / "skills" / "karpathy" / "scripts" / "complexity_checker.py"
+_COMPLEXITY_CHECKER = _PLUGIN_ROOT / "scripts" / "karpathy" / "complexity_checker.py"
 _EVT_TYPE = "stop_karpathy_check.fired"
 _FILE_TOOLS = frozenset({"Edit", "Write", "NotebookEdit"})
 _EXTENSIONS = (".py", ".ts", ".tsx", ".js", ".jsx")
