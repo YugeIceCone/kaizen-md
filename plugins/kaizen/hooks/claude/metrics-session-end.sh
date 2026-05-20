@@ -21,8 +21,8 @@ if [ "${KAIZEN_METRICS_DISABLE:-}" = "1" ]; then
 fi
 
 _HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=../../skills/workflow/scripts/_plugin_root.sh
-source "$_HOOK_DIR/../../skills/workflow/scripts/_plugin_root.sh"
+# shellcheck source=../../scripts/util/_plugin_root.sh
+source "$_HOOK_DIR/../../scripts/util/_plugin_root.sh"
 PLUGIN_ROOT="$(kaizen_plugin_root 2>/dev/null)" || exit 0
 
 # Trace this hook's own firing — universal trace covers tool calls;
@@ -32,8 +32,8 @@ echo '{}' | bash "$PLUGIN_ROOT/hooks/claude/_trace.sh" \
 
 # Resolve brain root via the kaizen SSOT (post v1.38.0 — KAIZEN_BRAIN_DIR
 # is the ONLY resolver; legacy envs no longer consulted).
-# shellcheck source=../../skills/workflow/scripts/_paths.sh
-source "$PLUGIN_ROOT/skills/workflow/scripts/_paths.sh"
+# shellcheck source=../../scripts/util/_paths.sh
+source "$PLUGIN_ROOT/scripts/util/_paths.sh"
 BRAIN_ROOT="$KAIZEN_BRAIN_DIR"
 [ -d "$BRAIN_ROOT" ] || exit 0
 

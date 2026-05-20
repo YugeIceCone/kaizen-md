@@ -16,8 +16,8 @@ set -u
 [ "${KAIZEN_BACKLOG_SURFACE_DISABLE:-}" = "1" ] && { echo '{}'; exit 0; }
 
 _HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=../../skills/workflow/scripts/_plugin_root.sh
-source "$_HOOK_DIR/../../skills/workflow/scripts/_plugin_root.sh"
+# shellcheck source=../../scripts/util/_plugin_root.sh
+source "$_HOOK_DIR/../../scripts/util/_plugin_root.sh"
 PLUGIN_ROOT="$(kaizen_plugin_root 2>/dev/null)" || { echo "{}"; exit 0; }
 
 EVENT=$(cat 2>/dev/null || echo "{}")

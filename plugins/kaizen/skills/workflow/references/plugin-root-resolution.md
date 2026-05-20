@@ -26,11 +26,11 @@ synced when one changes.
 
 ## Helpers
 
-### Bash — `skills/workflow/scripts/_plugin_root.sh`
+### Bash — `scripts/util/_plugin_root.sh`
 
 ```bash
 _HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "$_HOOK_DIR/../skills/workflow/scripts/_plugin_root.sh"
+source "$_HOOK_DIR/../scripts/util/_plugin_root.sh"
 PLUGIN_ROOT="$(kaizen_plugin_root)" || exit 0
 ```
 

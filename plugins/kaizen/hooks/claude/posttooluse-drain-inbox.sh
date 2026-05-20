@@ -17,8 +17,8 @@ set -uo pipefail
 if [ "${KAIZEN_INBOX_DISABLE:-}" = "1" ]; then exit 0; fi
 
 _HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=../../skills/workflow/scripts/_plugin_root.sh
-source "$_HOOK_DIR/../../skills/workflow/scripts/_plugin_root.sh"
+# shellcheck source=../../scripts/util/_plugin_root.sh
+source "$_HOOK_DIR/../../scripts/util/_plugin_root.sh"
 PLUGIN_ROOT="$(kaizen_plugin_root 2>/dev/null)" || exit 0
 
 INPUT=$(cat 2>/dev/null || echo "{}")
@@ -30,8 +30,8 @@ printf '%s' "$INPUT" | bash "$PLUGIN_ROOT/hooks/claude/_trace.sh" PostToolUse-dr
 # inbox.py writes one indented *.json per captured message; a pending one
 # carries `"drained": false`. A single grep is ~10x cheaper than spawning
 # python3 just to discover there's nothing to drain.
-# shellcheck source=../../skills/workflow/scripts/_paths.sh
-source "$PLUGIN_ROOT/skills/workflow/scripts/_paths.sh"
+# shellcheck source=../../scripts/util/_paths.sh
+source "$PLUGIN_ROOT/scripts/util/_paths.sh"
 if ! grep -q '"drained": false' "$KAIZEN_INBOX_DIR"/*.json 2>/dev/null; then
     exit 0
 fi

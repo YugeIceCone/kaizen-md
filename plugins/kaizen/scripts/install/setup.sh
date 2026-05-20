@@ -83,7 +83,7 @@ done
 # v1.30.0+ — install log lives under the unified ~/.claude/.kaizen/ tree
 # (was ~/.claude/kaizen-install.log). Source _paths.sh as the SSOT.
 _SCRIPT_REAL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "$_SCRIPT_REAL_DIR/../../skills/workflow/scripts/_paths.sh"  # deferred
+source "$_SCRIPT_REAL_DIR/../../scripts/util/_paths.sh"  # deferred
 INSTALL_LOG="$KAIZEN_INSTALL_LOG"
 mkdir -p "$(dirname "$INSTALL_LOG")"
 
@@ -366,7 +366,7 @@ fi
 # already seeded). Semantic + the watch daemon come with --enable-all.
 if [ "${KAIZEN_PLUGIN_INDEX_DISABLE:-}" != "1" ]; then
     # shellcheck source=_paths.sh
-    source "$_SCRIPT_DIR/../../skills/workflow/scripts/_paths.sh"  # deferred
+    source "$_SCRIPT_DIR/../../scripts/util/_paths.sh"  # deferred
     _PLUGIN_ROOT_IDX="$(kaizen_plugin_index_root)"
     if [ -f "$_PLUGIN_ROOT_IDX/.kaizen/loc.db" ]; then
         echo "  ∘ plugin index already seeded ($_PLUGIN_ROOT_IDX/.kaizen/loc.db)"

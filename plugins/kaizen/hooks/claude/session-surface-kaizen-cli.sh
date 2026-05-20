@@ -11,8 +11,8 @@
 set -u
 
 _HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=../../skills/workflow/scripts/_plugin_root.sh
-source "$_HOOK_DIR/../../skills/workflow/scripts/_plugin_root.sh"
+# shellcheck source=../../scripts/util/_plugin_root.sh
+source "$_HOOK_DIR/../../scripts/util/_plugin_root.sh"
 PLUGIN_ROOT="$(kaizen_plugin_root 2>/dev/null)" || { echo "{}"; exit 0; }
 
 # Bypass-knob iron-law compliance

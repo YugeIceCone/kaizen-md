@@ -130,7 +130,7 @@ Per-file ownership: `backlog.{json,md}` → the plugin;
 |---|---|---|
 | `skills/workflow/scripts/config.py`  | **Plugin defaults** + per-project TOML parser | `PLUGIN ▸ DEFAULTS` constants + `.kaizen.toml` reader |
 | `skills/workflow/scripts/_paths.py`  | **Path SSOT (Python)** | every `KAIZEN_*_DIR` resolver |
-| `skills/workflow/scripts/_paths.sh`  | **Path SSOT (shell mirror)** | bash-source-able variants |
+| `scripts/util/_paths.sh`  | **Path SSOT (shell mirror)** | bash-source-able variants |
 
 **Resolution order** (low → high precedence):
 1. `config.py::PLUGIN_DEFAULTS`
@@ -142,7 +142,7 @@ Per-file ownership: `backlog.{json,md}` → the plugin;
 ```bash
 kaizen-config --defaults                # plugin-wide defaults
 kaizen-config <key>                     # one resolved value
-source plugins/kaizen/skills/workflow/scripts/_paths.sh && env | grep KAIZEN_
+source plugins/kaizen/scripts/util/_paths.sh && env | grep KAIZEN_
 ```
 
 Common env knobs (full list in `_paths.sh`): `KAIZEN_DIR`,

@@ -243,7 +243,7 @@ Shebang script with `# /// script` dep block:
   _SCRIPT_REAL="$(readlink -f "${BASH_SOURCE[0]}" 2>/dev/null \
     || python3 -c 'import os,sys; print(os.path.realpath(sys.argv[1]))' "${BASH_SOURCE[0]}")"
   _HOOK_DIR="$(cd "$(dirname "$_SCRIPT_REAL")" && pwd)"
-  source "$_HOOK_DIR/../../skills/workflow/scripts/_plugin_root.sh"
+  source "$_HOOK_DIR/../../scripts/util/_plugin_root.sh"
   PLUGIN_ROOT="$(kaizen_plugin_root)" || exit 0
   ```
 - Defensive stdin parse — `INPUT="$(cat 2>/dev/null || true)"` then

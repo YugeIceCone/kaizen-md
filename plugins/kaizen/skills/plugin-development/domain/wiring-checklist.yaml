@@ -68,7 +68,7 @@ artifacts:
       - artifact: set_pipefail
         check: "uses `set -euo pipefail`"
       - artifact: plugin_root_resolver
-        check: "sources skills/workflow/scripts/_plugin_root.sh"
+        check: "sources scripts/util/_plugin_root.sh"
       - artifact: exec_python_script
         check: "ends with `exec python3 ...<script>.py \"$@\"`"
 

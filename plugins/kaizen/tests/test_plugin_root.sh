@@ -11,7 +11,7 @@ set -uo pipefail
 
 TESTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PLUGIN_DIR="$(cd "$TESTS_DIR/.." && pwd)"
-RESOLVER="$PLUGIN_DIR/skills/workflow/scripts/_plugin_root.sh"
+RESOLVER="$PLUGIN_DIR/scripts/util/_plugin_root.sh"
 
 FAIL=0
 PASS=0

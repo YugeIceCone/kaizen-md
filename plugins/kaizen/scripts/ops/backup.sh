@@ -28,7 +28,7 @@ REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null) || {
 REPO_SLUG=$(echo "$REPO_ROOT" | sed 's|^/||; s|/|-|g')
 # v1.30.0+ — backup base from _paths.sh (SSOT).
 _SCRIPT_REAL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "$_SCRIPT_REAL_DIR/../../skills/workflow/scripts/_paths.sh"  # _paths.sh deferred at legacy
+source "$_SCRIPT_REAL_DIR/../../scripts/util/_paths.sh"  # _paths.sh deferred at legacy
 BACKUP_BASE="$KAIZEN_BACKUP_DIR/$REPO_SLUG"
 mkdir -p "$BACKUP_BASE"
 

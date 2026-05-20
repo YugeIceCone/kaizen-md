@@ -12,7 +12,7 @@ REPO=$(git rev-parse --show-toplevel 2>/dev/null) || {
 cd "$REPO"
 # v1.30.0+ — unified backup path from _paths.sh (SSOT).
 _SCRIPT_REAL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "$_SCRIPT_REAL_DIR/../../skills/workflow/scripts/_paths.sh"  # _paths.sh deferred at legacy
+source "$_SCRIPT_REAL_DIR/../../scripts/util/_paths.sh"  # _paths.sh deferred at legacy
 
 echo "Repo:        $REPO"
 echo ""

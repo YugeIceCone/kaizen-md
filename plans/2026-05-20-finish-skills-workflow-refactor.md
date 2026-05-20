@@ -85,7 +85,7 @@ shims were transitional back-compat scaffolding. Retiring them:
 - [x] `hooks/claude/session-start-token-bloat.sh` → `$PLUGIN_ROOT/scripts/index/token_bloat.py`
 - [x] Verified 0 hook refs remaining via grep.
 
-NB: each hook also does `source ../../skills/workflow/scripts/_plugin_root.sh`.
+NB: each hook also does `source ../../scripts/util/_plugin_root.sh`.
 That `_plugin_root.sh` is NOT a shim — it's a real shell utility that hasn't
 been migrated to a canonical scripts/<cluster>/ location yet. Leaving the
 source line untouched here; Phase 6 will decide whether to move the .sh
@@ -139,7 +139,7 @@ fix commits behind them.
   - "Pre-commit gates (12)" → (13)
   - "MIGRATION BRIDGES to scripts/workflow/" → "(placeholder — code
     moved to scripts/workflow/ in v1.40)"
-- [x] `skills/workflow/scripts/kaizen-env.sh`:
+- [x] `scripts/util/kaizen-env.sh`:
   - `KAIZEN_SCRIPTS=skills/workflow/scripts/` → `$KAIZEN_ROOT/scripts/`
   - 7 interactive aliases rewired to canonical scripts/<cluster>/
   - PATH prepends `$KAIZEN_ROOT/bin` (bin/ wrappers) instead of scripts/

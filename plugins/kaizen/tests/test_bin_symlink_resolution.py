@@ -3,7 +3,7 @@
 The `/kaizen:setup` command symlinks every `bin/kaizen-*` into
 `~/.local/bin/`. The wrappers must resolve `BASH_SOURCE[0]` through that
 symlink before computing the plugin root — otherwise the `source
-$_BIN_DIR/../skills/workflow/scripts/_plugin_root.sh` fails with
+$_BIN_DIR/../scripts/util/_plugin_root.sh` fails with
 "No such file or directory".
 
 This was the bug that broke `kaizen-loop` mid-loop on 2026-05-14.

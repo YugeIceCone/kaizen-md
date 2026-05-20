@@ -22,7 +22,7 @@ HOOKS_DIR="$PLUGIN_ROOT/hooks/claude"
 GW_SCRIPTS="$_SCRIPT_REAL_DIR"
 
 # v1.30.0+ — unified path SSOT.
-source "$_SCRIPT_REAL_DIR/../../skills/workflow/scripts/_paths.sh"  # _paths.sh deferred at legacy
+source "$_SCRIPT_REAL_DIR/../../scripts/util/_paths.sh"  # _paths.sh deferred at legacy
 
 # Hook scripts read CLAUDE_PLUGIN_ROOT at run time (Claude Code's harness
 # sets it). The test harness simulates that here so hook stdout stays

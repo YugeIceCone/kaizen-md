@@ -18,7 +18,7 @@
 set -uo pipefail
 
 _SCRIPT_REAL_DIR="$(cd "$(dirname "$(python3 -c "import os,sys; print(os.path.realpath(sys.argv[1]))" "${BASH_SOURCE[0]}")")" && pwd)"
-source "$_SCRIPT_REAL_DIR/../../skills/workflow/scripts/_paths.sh"
+source "$_SCRIPT_REAL_DIR/../../scripts/util/_paths.sh"
 
 DRY_RUN=0
 FORCE=0

@@ -75,7 +75,7 @@ find_sibling() {
         # dir (deferred — see DOMAIN-shells audit). Reach back from
         # scripts/git-hooks/.
         # shellcheck source=/dev/null
-        source "$_lib_dir/../../skills/workflow/scripts/_plugin_root.sh"
+        source "$_lib_dir/../../scripts/util/_plugin_root.sh"
     fi
 
     local plugin_root

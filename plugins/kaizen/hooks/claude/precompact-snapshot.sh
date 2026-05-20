@@ -10,8 +10,8 @@ set -uo pipefail
 
 # Resolve plugin root (CLAUDE_PLUGIN_ROOT → KAIZEN_PLUGIN_ROOT → derived).
 _HOOK_DIR="$(cd "$(dirname "$(python3 -c "import os,sys; print(os.path.realpath(sys.argv[1]))" "${BASH_SOURCE[0]}")")" && pwd)"
-# shellcheck source=../../skills/workflow/scripts/_plugin_root.sh
-source "$_HOOK_DIR/../../skills/workflow/scripts/_plugin_root.sh"
+# shellcheck source=../../scripts/util/_plugin_root.sh
+source "$_HOOK_DIR/../../scripts/util/_plugin_root.sh"
 PLUGIN_ROOT="$(kaizen_plugin_root 2>/dev/null)" || { echo '{}'; exit 0; }
 
 # Capture event JSON for trace, then discard

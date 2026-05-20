@@ -232,7 +232,7 @@ if [ "$SKIP_GLOBALS" -eq 0 ]; then
 
   # env — appends KAIZEN_* exports + aliases to shell rc
   step "install shell env (KAIZEN_ROOT + aliases)" \
-    "bash '$PLUGIN_ROOT/skills/workflow/scripts/kaizen-env.sh' install"
+    "bash '$PLUGIN_ROOT/scripts/util/kaizen-env.sh' install"
 
   # bootstrap — pre-warm every uv-script venv so first use is not a
   # cold download. Idempotent (uv caches); KAIZEN_BOOTSTRAP_DISABLE=1

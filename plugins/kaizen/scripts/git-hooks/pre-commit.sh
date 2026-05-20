@@ -554,7 +554,7 @@ if ! command -v kaizen_resolve_workflow_dir >/dev/null 2>&1; then
     # _paths.sh still lives at skills/workflow/scripts/ (deferred — see
     # DOMAIN-shells audit). Reach back from scripts/git-hooks/.
     _PC_REAL_DIR="$(cd "$(dirname "$(python3 -c "import os,sys; print(os.path.realpath(sys.argv[1]))" "${BASH_SOURCE[0]}")")" && pwd)"
-    source "$_PC_REAL_DIR/../../skills/workflow/scripts/_paths.sh"
+    source "$_PC_REAL_DIR/../../scripts/util/_paths.sh"
 fi
 WORKFLOW_STATE_FILE="$(kaizen_resolve_workflow_dir)/state.json"
 # Re-resolve relative to repo root if helper returned absolute path.

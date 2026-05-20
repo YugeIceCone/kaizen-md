@@ -37,8 +37,8 @@ _HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 printf '%s' "$INPUT" | bash "$_HOOK_DIR/_trace.sh" postcompact-refresh 2>/dev/null || true
 
 # Resolve plugin root via the shared helper.
-# shellcheck source=../../skills/workflow/scripts/_plugin_root.sh
-source "$_HOOK_DIR/../../skills/workflow/scripts/_plugin_root.sh" 2>/dev/null || exit 0
+# shellcheck source=../../scripts/util/_plugin_root.sh
+source "$_HOOK_DIR/../../scripts/util/_plugin_root.sh" 2>/dev/null || exit 0
 PLUGIN_ROOT="$(kaizen_plugin_root 2>/dev/null)" || exit 0
 
 # Fire the bin (which writes auto-load.md + cluster gates atomically).

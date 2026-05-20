@@ -13,7 +13,7 @@ _LIB_DIR="$(cd "$(dirname "$(python3 -c "import os,sys; print(os.path.realpath(s
 # lib.sh moved to scripts/git-hooks/ in DOMAIN-shells Wave A.
 . "$_LIB_DIR/../git-hooks/lib.sh"
 # v1.30.0+ — unified path SSOT. _paths.sh deferred at skills/workflow/scripts/.
-source "$_LIB_DIR/../../skills/workflow/scripts/_paths.sh"
+source "$_LIB_DIR/../../scripts/util/_paths.sh"
 color_init
 
 REPO=$(repo_root)

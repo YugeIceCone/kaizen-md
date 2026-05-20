@@ -4,7 +4,7 @@
 # Source this from your ~/.bashrc / ~/.zshrc to make kaizen scripts
 # callable from any shell:
 #
-#   source /home/<you>/.claude/local-marketplaces/kaizen-md/plugins/kaizen/skills/workflow/scripts/kaizen-env.sh
+#   source /home/<you>/.claude/local-marketplaces/kaizen-md/plugins/kaizen/scripts/util/kaizen-env.sh
 #
 # Or have /kaizen:env install do it for you (writes one line to your rc).
 #
@@ -37,7 +37,7 @@ _kz_resolve() {
 }
 
 _KZ_SCRIPT_PATH=$(_kz_resolve)
-# This file lives at skills/workflow/scripts/kaizen-env.sh until Phase 6
+# This file lives at scripts/util/kaizen-env.sh until Phase 6
 # moves it to scripts/util/. Plugin root is 3 levels above its dir.
 KAIZEN_ROOT="$(cd "$(dirname "$_KZ_SCRIPT_PATH")/../../.." && pwd)"
 KAIZEN_SCRIPTS="$KAIZEN_ROOT/scripts"
