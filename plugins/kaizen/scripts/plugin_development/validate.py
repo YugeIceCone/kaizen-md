@@ -284,6 +284,35 @@ class FeatureManifest:
     predicates: dict[str, bool] = field(default_factory=dict)
     ops: list[str] = field(default_factory=list)
 
+def _scripts_dirs() -> list[Path]:
+    """All canonical scripts/<cluster>/ dirs to scan for backing code.
+
+    Post DOMAIN-shells sweep, plugin-original .py files live under
+    plugins/kaizen/scripts/<cluster>/ rather than the retired
+    skills/workflow/scripts/ shim collection.
+    """
+    root = PLUGIN_ROOT / "scripts"
+    if not root.is_dir():
+        return []
+    return [p for p in root.iterdir() if p.is_dir() and p.name != "__pycache__"]
+
+
+def _any_file(name: str) -> bool:
+    """True iff `name` exists in any scripts/<cluster>/ dir."""
+    return any((d / name).is_file() for d in _scripts_dirs())
+
+
+def _any_glob(pattern: str) -> bool:
+    """True iff any scripts/<cluster>/ dir has a glob match for `pattern`."""
+    return any(any(d.glob(pattern)) for d in _scripts_dirs())
+
+
+def _glob_all(pattern: str):
+    """Iterator over every glob match across scripts/<cluster>/ dirs."""
+    for d in _scripts_dirs():
+        yield from d.glob(pattern)
+
+
 def load_or_infer_manifest(feature: str) -> FeatureManifest:
     """Read skills/<feature>/domain/manifest.yaml if present; else
     infer the predicates from filesystem presence."""
@@ -298,13 +327,13 @@ def load_or_infer_manifest(feature: str) -> FeatureManifest:
 
     # Infer from filesystem
     skill_dir = PLUGIN_ROOT / "skills" / feature
-    # Backing code: any python script in workflow/scripts/ matching the
+    # Backing code: any python script in scripts/<cluster>/ matching the
     # feature name (with or without underscore prefix, with or without
     # an _<op> suffix).
     has_backing_code = (
-        (scripts / f"_{feature}.py").is_file()
-        or (scripts / f"{feature}.py").is_file()
-        or any(scripts.glob(f"{feature}_*.py"))
+        _any_file(f"_{feature}.py")
+        or _any_file(f"{feature}.py")
+        or _any_glob(f"{feature}_*.py")
     )
     # Core/public split: only true when the feature ships a
     # <feature>.py public CLI OR a _<feature>.py private core. MCP-only
@@ -312,8 +341,8 @@ def load_or_infer_manifest(feature: str) -> FeatureManifest:
     # have backing code but no split — the `core` + `tests` slots
     # don't apply to them.
     has_core_split = (
-        (scripts / f"_{feature}.py").is_file()
-        or (scripts / f"{feature}.py").is_file()
+        _any_file(f"_{feature}.py")
+        or _any_file(f"{feature}.py")
     )
     predicates = {
         "feature_has_backing_code": has_backing_code,
@@ -321,15 +350,15 @@ def load_or_infer_manifest(feature: str) -> FeatureManifest:
         "feature_has_routing_or_taxonomy": any((skill_dir / "domain").glob("*.yaml")) if (skill_dir / "domain").is_dir() else False,
         "feature_writes_validatable_artifacts": (skill_dir / "domain" / "schemas").is_dir() and any((skill_dir / "domain" / "schemas").glob("*.schema.json")),
         "feature_has_skill_scoped_tooling": (skill_dir / "scripts").is_dir() and any((skill_dir / "scripts").glob("*.py")),
-        "feature_exposes_cli": (scripts / f"{feature}.py").is_file(),
-        "feature_needs_search": (scripts / f"{feature}_index.py").is_file(),
+        "feature_exposes_cli": _any_file(f"{feature}.py"),
+        "feature_needs_search": _any_file(f"{feature}_index.py"),
         "feature_has_multiple_ops": False,  # set below
-        "feature_exposes_mcp": (scripts / f"{feature}_mcp.py").is_file(),
+        "feature_exposes_mcp": _any_file(f"{feature}_mcp.py"),
         "feature_uses_lifecycle_events": any((PLUGIN_ROOT / "hooks" / "claude").glob(f"{feature}-*.sh")),
     }
     # Detect multi-op
     ops = []
-    for p in scripts.glob(f"{feature}_*.py"):
+    for p in _glob_all(f"{feature}_*.py"):
         suffix = p.stem[len(feature) + 1:]
         if suffix and suffix not in {"index", "mcp"}:
             ops.append(suffix)
