@@ -62,11 +62,22 @@ _BARENAMES = {"LICENSE", "README", "CHANGELOG", "CONTRIBUTING",
 # plugin shape — agents reading the inventory want to filter by ROLE
 # (skill / command / mcp / hook / test), not just extension.
 PATH_PATTERNS: list[tuple[str, str]] = [
-    # high-value shapes — keep recognizable
+    # ── Agent-orientation handles (top of file; most specific shapes) ──
+    ("CLAUDE.md",                                 "claude-md"),
+    ("*/CLAUDE.md",                               "claude-md"),
+    ("*/AGENTS.md",                               "agents-md"),
+    ("*/MEMORY.md",                               "memory-index"),
+
+    # ── SKILL.md (canonical skill location first; fallback for others) ──
     ("*/skills/*/SKILL.md",                       "skill"),
+    ("*/SKILL.md",                                "skill"),
+
+    # ── Slash commands + subagents ──
     ("*/commands/*.md",                           "command"),
     ("*/commands/*/*.md",                         "command"),
     ("*/agents/*.md",                             "agent"),
+
+    # ── Hooks + handlers + indexers (script-cluster shapes) ──
     ("*/hooks/claude/*.sh",                       "hook-sh"),
     ("*/hooks/claude/*.py",                       "hook-py"),
     ("*/hooks/hooks.json",                        "hook-registry"),
@@ -74,15 +85,44 @@ PATH_PATTERNS: list[tuple[str, str]] = [
     ("*/scripts/indexers/*.py",                   "indexer"),
     ("*/scripts/handlers/*.py",                   "handler"),
     ("*/scripts/git-hooks/*.sh",                  "git-hook"),
+
+    # ── Domain layer — specific shapes FIRST, generic catch-all last ──
+    ("*/iron-laws/domain/iron-laws.yaml",         "iron-law-registry"),
+    ("*/domain/*rubric*.yaml",                    "rubric-yaml"),
+    ("*/domain/*rubric*.yml",                     "rubric-yaml"),
+    ("*/domain/*checklist*.yaml",                 "checklist-yaml"),
+    ("*/domain/*checklist*.yml",                  "checklist-yaml"),
+    ("*/skills/*/domain/schemas/*.schema.json",   "domain-schema"),
     ("*/skills/*/domain/*.yaml",                  "domain-yaml"),
     ("*/skills/*/domain/*.yml",                   "domain-yaml"),
-    ("*/skills/*/domain/schemas/*.schema.json",   "domain-schema"),
     ("*/skills/*/application/*.py",               "application-py"),
     ("*/skills/*/references/*.md",                "generated-ref"),
+
+    # ── Tests + plans + routine schemas ──
     ("*/tests/test_*.py",                         "test"),
     ("*/plans/*.md",                              "plan"),
+    ("*/plans/*.jsonl",                           "jsonl-deliverable"),
+    ("*/brainstorms/*.jsonl",                     "jsonl-deliverable"),
+    ("*/brainstorms/*.md",                        "brainstorm"),
+    ("*/inventory/*.jsonl",                       "jsonl-deliverable"),
+    ("*/audits/*.jsonl",                          "jsonl-deliverable"),
+    ("*/audits/*.md",                             "audit-report"),
     ("*/schemas/*/schema.yaml",                   "routine-schema"),
-    ("*/iron-laws/domain/iron-laws.yaml",         "iron-law-registry"),
+
+    # ── Cross-skill assets (top-level schemas, starters, templates) ──
+    ("*/assets/schemas/*.schema.json",            "cross-skill-schema"),
+    ("*/assets/starters/*",                       "starter-asset"),
+    ("*/assets/templates/*",                      "template-asset"),
+
+    # ── Workflow state files (per CLAUDE.md namespace ownership table) ──
+    ("*/workflow/backlog.json",                   "backlog-source"),
+    ("*/workflow/backlog.md",                     "backlog-md"),
+    ("*/workflow/state.json",                     "workflow-state"),
+    ("*/workflow/progress.md",                    "architecture-log"),
+    ("*/workflow/deletions.jsonl",                "deletion-log"),
+    ("*/workflow.json",                           "workflow-config"),
+
+    # ── Bin wrappers + plugin manifest ──
     ("*/bin/kaizen-*",                            "bin-wrapper"),
     ("*/.claude-plugin/plugin.json",              "plugin-manifest"),
 ]
