@@ -271,10 +271,10 @@ class TestSchemaValidation(unittest.TestCase):
             self.skipTest("jsonschema not installed")
         import yaml
         cfg = yaml.safe_load(
-            (_KZ_DIR / "schemas/auto-handoff/config.yaml").read_text()
+            (_KZ_DIR / "schemas/handoff/auto-config.yaml").read_text()
         )
         schema = json.loads(
-            (_KZ_DIR / "schemas/auto-handoff/schemas/config.schema.json").read_text()
+            (_KZ_DIR / "schemas/handoff/schemas/auto-config.schema.json").read_text()
         )
         jsonschema.validate(cfg, schema)  # no raise
 
@@ -284,7 +284,7 @@ class TestSchemaValidation(unittest.TestCase):
         except ImportError:
             self.skipTest("jsonschema not installed")
         schema = json.loads(
-            (_KZ_DIR / "schemas/auto-handoff/schemas/decision.schema.json").read_text()
+            (_KZ_DIR / "schemas/handoff/schemas/auto-decision.schema.json").read_text()
         )
         # Three valid shapes per the oneOf in the schema
         jsonschema.validate({}, schema)
@@ -299,10 +299,10 @@ class TestSchemaValidation(unittest.TestCase):
             self.skipTest("jsonschema not installed")
         import yaml
         rubric = yaml.safe_load(
-            (_KZ_DIR / "schemas/auto-handoff/rubric.yaml").read_text()
+            (_KZ_DIR / "schemas/handoff/auto-rubric.yaml").read_text()
         )
         schema = json.loads(
-            (_KZ_DIR / "schemas/auto-handoff/schemas/rubric.schema.json").read_text()
+            (_KZ_DIR / "schemas/handoff/schemas/auto-rubric.schema.json").read_text()
         )
         jsonschema.validate(rubric, schema)
 
@@ -312,7 +312,7 @@ class TestSchemaValidation(unittest.TestCase):
         except ImportError:
             self.skipTest("jsonschema not installed")
         schema = json.loads(
-            (_KZ_DIR / "schemas/auto-handoff/schemas/event.schema.json").read_text()
+            (_KZ_DIR / "schemas/handoff/schemas/auto-event.schema.json").read_text()
         )
         jsonschema.validate({"pct": 80, "threshold": 75,
                               "tokens": 80000, "peak_tokens": 95000}, schema)

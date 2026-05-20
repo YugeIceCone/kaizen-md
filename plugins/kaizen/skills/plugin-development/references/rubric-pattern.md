@@ -161,7 +161,7 @@ action shape.
 2. **Signal computer is pure.** Tests can call it directly with
    synthetic inputs and assert the rubric routes correctly.
 3. **Schema-validate the rubric.** Ship a `rubric.schema.json`
-   alongside (see `schemas/auto-handoff/schemas/rubric.schema.json`)
+   alongside (see `schemas/handoff/schemas/auto-rubric.schema.json`)
    so misconfigurations surface at install/test, not at runtime.
 4. **Order rules SPECIFIC → GENERAL.** First-match-wins means a
    `pct >= 50` rule placed before `pct >= 90` would prevent the

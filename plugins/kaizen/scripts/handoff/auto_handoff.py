@@ -3,8 +3,8 @@ forces a handoff before /compact. When fires, returns
 `{"decision": "block", "reason": ...}` which prevents the agent from
 stopping until a handoff is created.
 
-Config: schemas/auto-handoff/config.yaml
-        (validated against schemas/config.schema.json)
+Config: schemas/handoff/auto-config.yaml
+        (validated against schemas/handoff/schemas/auto-config.schema.json)
         Overridable via KAIZEN_AUTO_HANDOFF_CONFIG=<path>.
 
 Dedupe: dxm event written on first fire (configured event type).
@@ -39,8 +39,8 @@ import session_mode as _sm  # noqa: E402
 
 # script at scripts/handoff/ → plugin_root is 2 levels up
 _PLUGIN_ROOT = _SCRIPT_DIR.parent.parent
-_DEFAULT_CONFIG_PATH = _PLUGIN_ROOT / "schemas" / "auto-handoff" / "config.yaml"
-_DEFAULT_RUBRIC_PATH = _PLUGIN_ROOT / "schemas" / "auto-handoff" / "rubric.yaml"
+_DEFAULT_CONFIG_PATH = _PLUGIN_ROOT / "schemas" / "handoff" / "auto-config.yaml"
+_DEFAULT_RUBRIC_PATH = _PLUGIN_ROOT / "schemas" / "handoff" / "auto-rubric.yaml"
 
 _BUILTIN_DEFAULT = {
     "version": 1,

@@ -102,16 +102,16 @@ directly — it never went through the bin.
 
 ## Phases
 
-### Phase 1 — Move schemas
+### Phase 1 — Move schemas [x]
 
-- [ ] `git mv schemas/auto-handoff/config.yaml schemas/handoff/auto-config.yaml`
-- [ ] `git mv schemas/auto-handoff/rubric.yaml schemas/handoff/auto-rubric.yaml`
-- [ ] `git mv schemas/auto-handoff/schemas/config.schema.json schemas/handoff/schemas/auto-config.schema.json`
-- [ ] `rmdir schemas/auto-handoff/schemas schemas/auto-handoff`
-- [ ] Update auto_handoff.py CONFIG_PATH + SCHEMA_PATH constants
-- [ ] Update auto_handoff.py docstring path refs
-- [ ] Grep + replace remaining `schemas/auto-handoff/` callers across
-      plugin (search test fixtures, hooks, docs)
+- [x] git mv 6 files from schemas/auto-handoff/{config.yaml, rubric.yaml,
+      schemas/{config,decision,event,rubric}.schema.json} into
+      schemas/handoff/ with auto- prefix
+- [x] rmdir schemas/auto-handoff/{schemas,} (empty)
+- [x] Updated auto_handoff.py _DEFAULT_CONFIG_PATH + _DEFAULT_RUBRIC_PATH
+- [x] Updated auto_handoff.py module docstring
+- [x] Updated test_auto_handoff.py (6 path refs) + plugin-development
+      references/rubric-pattern.md (1 ref) — test_auto_handoff: 19/19 green
 
 ### Phase 2 — Merge skill bodies
 
