@@ -248,65 +248,8 @@ class TestChecker(unittest.TestCase):
         self.assertEqual(
             _iron_laws.check_paired_tests(_ctx(self.tmp, "staged", changed)), [])
 
-    def test_cli_naming_consistency_clean_when_prog_matches_emitter(self):
-        import _iron_laws
-        p = self.pk / "scripts/quality/demo.py"
-        p.parent.mkdir(parents=True, exist_ok=True)
-        p.write_text(
-            'import _envelope\n'
-            '_emit = _envelope.emitter("kaizen-demo", tool_version="1.0.0")\n'
-            'ap = argparse.ArgumentParser(prog="kaizen-demo")\n'
-        )
-        self.assertEqual(
-            _iron_laws.check_cli_naming_consistency(_ctx(self.tmp)), [])
-
-    def test_cli_naming_consistency_flags_prog_emitter_disagreement(self):
-        import _iron_laws
-        p = self.pk / "scripts/quality/drifty.py"
-        p.parent.mkdir(parents=True, exist_ok=True)
-        # The exact pattern surfaced 2026-05-20 in 7 files (docs_flow /
-        # index_flow / search_flow / observe / trace / config / loop_state):
-        # prog used the raw filename; emitter carried the canonical name.
-        p.write_text(
-            'import _envelope\n'
-            '_emit = _envelope.emitter("kaizen-drifty", tool_version="1.0.0")\n'
-            'ap = argparse.ArgumentParser(prog="drifty.py")\n'
-        )
-        findings = _iron_laws.check_cli_naming_consistency(_ctx(self.tmp))
-        self.assertEqual(len(findings), 1)
-        self.assertEqual(findings[0].law_id, "cli-naming-consistency")
-        self.assertEqual(findings[0].severity, "soft")
-        self.assertIn("drifty.py", findings[0].message)
-        self.assertIn("kaizen-drifty", findings[0].message)
-
-    def test_cli_naming_consistency_silent_when_one_side_absent(self):
-        """Script with only prog OR only emitter is fine — the law only
-        opinions when both surfaces exist and disagree."""
-        import _iron_laws
-        prog_only = self.pk / "scripts/util/prog_only.py"
-        prog_only.parent.mkdir(parents=True, exist_ok=True)
-        prog_only.write_text(
-            'ap = argparse.ArgumentParser(prog="kaizen-prog-only")\n')
-        emitter_only = self.pk / "scripts/util/emitter_only.py"
-        emitter_only.write_text(
-            '_emit = _envelope.emitter("kaizen-emitter-only", tool_version="1.0.0")\n')
-        self.assertEqual(
-            _iron_laws.check_cli_naming_consistency(_ctx(self.tmp)), [])
-
-    def test_cli_naming_consistency_underscore_files_skipped(self):
-        """`_*.py` files are private helpers — even if they happen to
-        carry a prog/emitter literal in a docstring example, they're
-        not the CLI surface and shouldn't be flagged."""
-        import _iron_laws
-        p = self.pk / "scripts/util/_helper.py"
-        p.parent.mkdir(parents=True, exist_ok=True)
-        p.write_text(
-            '# example: ArgumentParser(prog="something")\n'
-            '_emit = _envelope.emitter("kaizen-helper", tool_version="1.0.0")\n'
-            'ap = argparse.ArgumentParser(prog="other")\n'
-        )
-        self.assertEqual(
-            _iron_laws.check_cli_naming_consistency(_ctx(self.tmp)), [])
+    # cli-naming-consistency law tests moved to test_iron_laws_naming.py
+    # to keep this file under the 500-line karpathy threshold.
 
     def test_bin_wrapper_per_cli_strict(self):
         import _iron_laws
