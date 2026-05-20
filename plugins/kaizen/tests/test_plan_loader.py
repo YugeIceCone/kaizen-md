@@ -7,7 +7,8 @@ import unittest
 from pathlib import Path
 
 _HERE = Path(__file__).resolve().parent
-sys.path.insert(0, str(_HERE.parent / "scripts"))
+# Post-consolidation: _plan_loader lives at scripts/parallel_branches/.
+sys.path.insert(0, str(_HERE.parent / "scripts" / "parallel_branches"))
 
 from _plan_loader import load_plan  # noqa: E402
 
