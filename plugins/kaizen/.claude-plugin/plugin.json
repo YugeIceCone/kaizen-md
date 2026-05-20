@@ -52,6 +52,8 @@
       "Bash(${CLAUDE_PLUGIN_ROOT}/bin/kaizen:*)",
       "Bash(${CLAUDE_PLUGIN_ROOT}/bin/kaizen-help-gen:*)",
       "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/scripts/util/help_gen.py:*)",
+      "Bash(${CLAUDE_PLUGIN_ROOT}/bin/kaizen-inventory:*)",
+      "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/scripts/util/inventory.py:*)",
       "Bash(${CLAUDE_PLUGIN_ROOT}/bin/kaizen-menu-lint:*)",
       "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/scripts/quality/menu_lint.py:*)",
       "Bash(uv run --script ${CLAUDE_PLUGIN_ROOT}/scripts/mcp/discovery_mcp.py:*)",
