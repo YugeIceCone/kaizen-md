@@ -67,7 +67,7 @@ def _load_etu_scan_text():
 
 # Long-form path → short-form `kaizen <sub>` suggester.
 # Matches `bash plugins/kaizen/.../bin/kaizen-FOO` OR
-# `python3 plugins/kaizen/skills/workflow/scripts/FOO.py` and infers the
+# `python3 plugins/kaizen/scripts/<cluster>/FOO.py` and infers the
 # subcommand name. The `kaizen` dispatcher is on $PATH after
 # /kaizen:setup install (typically).
 _LONG_FORM_BIN = re.compile(

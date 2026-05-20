@@ -4,7 +4,7 @@
 Applies the 15 scanner-ready entries from `anti-patterns.yaml` (those with
 a `detect` regex) to shell files. Returns one Finding per pattern hit.
 
-Used by `skills/workflow/scripts/gatekeeper.py` as one of the unified
+Used by `scripts/iron-laws/gatekeeper.py` as one of the unified
 gate's sub-gates. Standalone CLI too — `python3 etu_scan.py --staged`
 runs against `git diff --cached --name-only` output.
 

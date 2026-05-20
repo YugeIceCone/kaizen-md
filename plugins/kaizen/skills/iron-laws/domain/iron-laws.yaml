@@ -47,7 +47,7 @@ laws:
     enforcement: auto
     check: node_flow_for_multi_step
     detect: "module imports asyncio.gather more than once without subclassing AsyncParallelBatchNode"
-    why: "Consistent observability + retry/cycle guards; see skills/workflow/scripts/flow.py docstring."
+    why: "Consistent observability + retry/cycle guards; see scripts/workflow/flow.py docstring."
 
   - id: lazy-heavy-deps
     statement: "Heavy deps (transformers, torch, tree-sitter, etc.) lazy-load with is_available() + graceful fallback."

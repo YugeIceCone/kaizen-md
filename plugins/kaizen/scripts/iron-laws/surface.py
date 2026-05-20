@@ -26,7 +26,7 @@ hook configs) and gives future audits a single-shot health check.
 
 ## Canonical sources
 
-  MCP tools     :  skills/workflow/scripts/gateway.py::SUBSERVERS
+  MCP tools     :  scripts/mcp/gateway.py::SUBSERVERS
                    + each {name}_mcp.py exporting `mcp` FastMCP server
   MCP register  :  .mcp.json (single entry: `kaizen` → gateway.py)
   Hook scripts  :  hooks/claude/*.sh (excluding _*-prefixed helpers)
@@ -124,10 +124,7 @@ def list_hook_files() -> list[str]:
 def _gateway_subservers() -> list[tuple[str, str]]:
     """Parse SUBSERVERS list from gateway.py via lightweight regex.
 
-    Reads the canonical at scripts/mcp/gateway.py (post-consolidation).
-    The legacy path skills/workflow/scripts/gateway.py is now a shim
-    that uses runpy/importlib — its bytes no longer contain the literal
-    SUBSERVERS table."""
+    Reads the canonical at scripts/mcp/gateway.py."""
     gw = _PLUGIN_ROOT / "scripts" / "mcp" / "gateway.py"
     if not gw.exists():
         return []
@@ -264,7 +261,7 @@ def validate() -> list[Finding]:
         findings.append(Finding(
             severity="warn", surface="mcp", rule_id="empty-curated-core",
             message="CURATED_CORE in gateway.py parses as empty (regex miss?)",
-            path="skills/workflow/scripts/gateway.py",
+            path="scripts/mcp/gateway.py",
         ))
 
     # --- PERMISSIONS: every script invocable via Bash should have an allow ---
@@ -273,10 +270,10 @@ def validate() -> list[Finding]:
         try:
             allow = json.loads(pj.read_text()).get("permissions", {}).get("allow", [])
             blob = "\n".join(allow)
-            # A wildcard `Bash(... skills/workflow/scripts/*.py:*)` covers
-            # every per-module *.py — recognize it before flagging individuals.
-            has_wildcard_uv = "skills/workflow/scripts/*.py" in blob and "uv run --script" in blob
-            has_wildcard_py = "skills/workflow/scripts/*.py" in blob and "python3" in blob
+            # A wildcard `Bash(... scripts/*/*.py:*)` covers every
+            # per-module *.py — recognize it before flagging individuals.
+            has_wildcard_uv = "scripts/*/*.py" in blob and "uv run --script" in blob
+            has_wildcard_py = "scripts/*/*.py" in blob and "python3" in blob
             for s in list_mcp_servers():
                 module_name = Path(s.module + ".py").name
                 if module_name in blob:

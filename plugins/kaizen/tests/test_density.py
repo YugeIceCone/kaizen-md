@@ -25,9 +25,9 @@ class TestTestDensity(unittest.TestCase):
     def test_synthetic_density(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
-            (root / "skills/workflow/scripts").mkdir(parents=True)
+            (root / "scripts/util").mkdir(parents=True)
             (root / "tests").mkdir(parents=True)
-            (root / "skills/workflow/scripts/foo.py").write_text(
+            (root / "scripts/util/foo.py").write_text(
                 "def a(): pass\ndef b(): pass\ndef c(): pass\n")
             (root / "tests/test_foo.py").write_text(
                 "class T:\n    def test_a(self): pass\n")

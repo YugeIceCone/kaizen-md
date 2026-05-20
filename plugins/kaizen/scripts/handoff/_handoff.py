@@ -28,7 +28,7 @@ from typing import Optional
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR))
-# MIGRATION BRIDGE — _sqlite has a shim at legacy skills/workflow/scripts/.
+# MIGRATION BRIDGE — _sqlite has a shim at legacy scripts/.
 sys.path.insert(0, str(SCRIPT_DIR.parents[1] / "skills" / "workflow" / "scripts"))
 
 import _sqlite as _kz_sqlite  # noqa: E402  — shared SQLite open/meta helpers

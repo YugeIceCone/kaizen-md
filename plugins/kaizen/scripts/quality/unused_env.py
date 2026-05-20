@@ -37,9 +37,9 @@ def _declared_env_vars(repo_root: Path) -> set[str]:
 
 def _all_python_blob(repo_root: Path) -> str:
     text = ""
-    sd = repo_root / "skills/workflow/scripts"
+    sd = repo_root / "scripts"
     if sd.is_dir():
-        for p in sd.glob("*.py"):
+        for p in sd.rglob("*.py"):
             try:
                 text += p.read_text(encoding="utf-8")
             except OSError:

@@ -19,8 +19,8 @@ class TestUnusedEnv(unittest.TestCase):
             root = Path(td)
             (root / ".kaizen.toml").write_text(
                 'unused_env_var = "FOO_UNUSED_KEY"\nallow_deletion_env = "KAIZEN_ALLOW_DELETE"\n')
-            (root / "skills/workflow/scripts").mkdir(parents=True)
-            (root / "skills/workflow/scripts/x.py").write_text(
+            (root / "scripts/util").mkdir(parents=True)
+            (root / "scripts/util/x.py").write_text(
                 'import os\nos.environ.get("KAIZEN_ALLOW_DELETE")\n')
             rep = unused_env.scan(repo_root=root)
             keys = {g["env_var"] for g in rep["gaps"]}

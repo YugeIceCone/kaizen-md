@@ -1,7 +1,7 @@
 """kaizen-observer — read-side CLI for the observer events.jsonl sink.
 
 Distinct from kaizen-observe (the 6-layer observability tool at
-skills/workflow/scripts/observe.py). This CLI specifically queries the
+scripts/observe/observe.py). This CLI specifically queries the
 custom-observer sink built in Phase 1+1.5 (capture hook + ingest module).
 
 Closes the observer's read surface (Phase 1.6): events captured by

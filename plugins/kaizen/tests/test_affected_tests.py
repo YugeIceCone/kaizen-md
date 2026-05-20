@@ -37,7 +37,7 @@ def _load():
 def _seed(tmp: Path) -> Path:
     """Lay out a minimal plugin-shape tree under tmp:
         plugins/kaizen/
-          skills/workflow/scripts/
+          scripts/util/
             foo.py
             _helper.py
             bar.py
@@ -46,7 +46,7 @@ def _seed(tmp: Path) -> Path:
             (test_bar.py intentionally missing)
     """
     plugin = tmp / "plugins/kaizen"
-    scripts = plugin / "skills/workflow/scripts"
+    scripts = plugin / "scripts/util"
     tests = plugin / "tests"
     scripts.mkdir(parents=True)
     tests.mkdir(parents=True)
@@ -86,7 +86,7 @@ class TestDeriveModules(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             plugin = _seed(Path(tmp))
             mods, reason = self.at.derive_modules(
-                staged_files=["plugins/kaizen/skills/workflow/scripts/foo.py"],
+                staged_files=["plugins/kaizen/scripts/util/foo.py"],
                 repo_root=Path(tmp), plugin_root=plugin,
             )
         self.assertEqual(mods, ["tests.test_foo"])
@@ -97,7 +97,7 @@ class TestDeriveModules(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             plugin = _seed(Path(tmp))
             mods, reason = self.at.derive_modules(
-                staged_files=["plugins/kaizen/skills/workflow/scripts/bar.py"],
+                staged_files=["plugins/kaizen/scripts/util/bar.py"],
                 repo_root=Path(tmp), plugin_root=plugin,
             )
         self.assertEqual(mods, ["FULL"])
@@ -108,7 +108,7 @@ class TestDeriveModules(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             plugin = _seed(Path(tmp))
             mods, reason = self.at.derive_modules(
-                staged_files=["plugins/kaizen/skills/workflow/scripts/_helper.py"],
+                staged_files=["plugins/kaizen/scripts/util/_helper.py"],
                 repo_root=Path(tmp), plugin_root=plugin,
             )
         self.assertEqual(mods, ["FULL"])
@@ -132,7 +132,7 @@ class TestDeriveModules(unittest.TestCase):
             plugin = _seed(Path(tmp))
             mods, reason = self.at.derive_modules(
                 staged_files=[
-                    "plugins/kaizen/skills/workflow/scripts/foo.py",
+                    "plugins/kaizen/scripts/util/foo.py",
                     "plugins/kaizen/tests/test_foo.py",
                 ],
                 repo_root=Path(tmp), plugin_root=plugin,
@@ -145,8 +145,8 @@ class TestDeriveModules(unittest.TestCase):
             plugin = _seed(Path(tmp))
             mods, reason = self.at.derive_modules(
                 staged_files=[
-                    "plugins/kaizen/skills/workflow/scripts/foo.py",
-                    "plugins/kaizen/skills/workflow/scripts/_helper.py",
+                    "plugins/kaizen/scripts/util/foo.py",
+                    "plugins/kaizen/scripts/util/_helper.py",
                 ],
                 repo_root=Path(tmp), plugin_root=plugin,
             )
@@ -179,7 +179,7 @@ class TestCli(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             plugin = _seed(Path(tmp))
             rc, out, _ = self._invoke(
-                plugin, "plugins/kaizen/skills/workflow/scripts/foo.py\n",
+                plugin, "plugins/kaizen/scripts/util/foo.py\n",
             )
         self.assertEqual(rc, 0)
         self.assertEqual(out.strip(), "tests.test_foo")
@@ -188,7 +188,7 @@ class TestCli(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             plugin = _seed(Path(tmp))
             rc, out, _ = self._invoke(
-                plugin, "plugins/kaizen/skills/workflow/scripts/_helper.py\n",
+                plugin, "plugins/kaizen/scripts/util/_helper.py\n",
             )
         self.assertEqual(rc, 0)
         self.assertEqual(out.strip(), "FULL")

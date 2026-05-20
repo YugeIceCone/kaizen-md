@@ -52,8 +52,8 @@ def scan(*, scripts_dir: Path, gateway_py: Path) -> dict:
 
 
 def _run(args) -> int:
-    rep = scan(scripts_dir=_plugin_root() / "skills/workflow/scripts",
-                gateway_py=_plugin_root() / "skills/workflow/scripts/gateway.py")
+    rep = scan(scripts_dir=_plugin_root() / "scripts/mcp",
+                gateway_py=_plugin_root() / "scripts/mcp/gateway.py")
     gaps = rep["gaps_total"]
     verdict = "green" if gaps == 0 else ("yellow" if gaps <= 3 else "red")
     if args.cmd == "gaps" and not args.json:

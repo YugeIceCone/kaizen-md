@@ -89,7 +89,7 @@ Multi-step async ops use flow.AsyncNode + AsyncFlow. No ad-hoc orchestration.
 
 **Detect:** module imports asyncio.gather more than once without subclassing AsyncParallelBatchNode
 
-**Why:** Consistent observability + retry/cycle guards; see skills/workflow/scripts/flow.py docstring.
+**Why:** Consistent observability + retry/cycle guards; see scripts/workflow/flow.py docstring.
 
 ### `lazy-heavy-deps` (soft · auto)
 

@@ -66,7 +66,7 @@ def scan(*, targets: list[Path], min_confidence: int = 80) -> dict:
 
 
 def _run(args) -> int:
-    targets = [_plugin_root() / "skills/workflow/scripts"]
+    targets = [_plugin_root() / "scripts"]
     rep = scan(targets=targets, min_confidence=args.min_confidence)
     n = len(rep["findings"])
     if not rep["available"]:

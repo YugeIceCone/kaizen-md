@@ -2,7 +2,7 @@
 
 The iron-laws skill's backing code is split across two dirs:
   - skills/iron-laws/application/  — _loader.py, codegen.py
-  - skills/workflow/scripts/       — _iron_laws.py, iron_laws.py, iron_laws_mcp.py
+  - scripts/util/       — _iron_laws.py, iron_laws.py, iron_laws_mcp.py
 Both are put on sys.path here.
 """
 
@@ -74,7 +74,7 @@ class TestLoader(unittest.TestCase):
 def _mini_plugin(tmp: Path) -> Path:
     """Build a minimal repo skeleton: <tmp>/plugins/kaizen/{skills,hooks,bin,commands,...}."""
     pk = tmp / "plugins" / "kaizen"
-    for d in ("skills/workflow/scripts", "skills/demo", "hooks/claude",
+    for d in ("scripts/util", "skills/demo", "hooks/claude",
               "bin", "commands", "tests", ".claude-plugin"):
         (pk / d).mkdir(parents=True, exist_ok=True)
     (pk / ".claude-plugin" / "plugin.json").write_text('{"permissions": {"allow": []}}')
@@ -133,10 +133,10 @@ class TestChecker(unittest.TestCase):
         h = self.pk / "hooks/claude/delegated.sh"
         h.write_text(
             '#!/bin/bash\n'
-            'python3 "$PLUGIN_ROOT/skills/workflow/scripts/my_helper.py"\n'
+            'python3 "$PLUGIN_ROOT/scripts/util/my_helper.py"\n'
         )
         # Helper imports trace and calls append_event
-        scripts = self.pk / "skills/workflow/scripts"
+        scripts = self.pk / "scripts/util"
         scripts.mkdir(parents=True, exist_ok=True)
         (scripts / "my_helper.py").write_text(
             "import trace\n"
@@ -166,7 +166,7 @@ class TestChecker(unittest.TestCase):
 
     def test_lazy_heavy_deps(self):
         import _iron_laws
-        p = self.pk / "skills/workflow/scripts/demo.py"
+        p = self.pk / "scripts/util/demo.py"
         p.write_text("try:\n    import torch\nexcept ImportError:\n    torch = None\n")
         self.assertEqual(_iron_laws.check_lazy_heavy_deps(_ctx(self.tmp)), [])
         p.write_text("import torch\nprint(torch)\n")
@@ -213,7 +213,7 @@ class TestChecker(unittest.TestCase):
 
     def test_bin_wrapper_per_cli(self):
         import _iron_laws
-        p = self.pk / "skills/workflow/scripts/demo.py"
+        p = self.pk / "scripts/util/demo.py"
         p.write_text("import argparse\nif __name__ == '__main__':\n    argparse.ArgumentParser()\n")
         # no bin wrapper → finding
         self.assertTrue(_iron_laws.check_bin_wrapper_per_cli(_ctx(self.tmp)))
@@ -231,8 +231,8 @@ class TestChecker(unittest.TestCase):
 
     def test_plugin_manifest_permissions(self):
         import _iron_laws
-        (self.pk / "skills/workflow/scripts/demo.py").write_text("print('hi')\n")
-        changed = ["plugins/kaizen/skills/workflow/scripts/demo.py"]
+        (self.pk / "scripts/util/demo.py").write_text("print('hi')\n")
+        changed = ["plugins/kaizen/scripts/util/demo.py"]
         dirty = _ctx(self.tmp, scope="staged", changed=changed)
         self.assertTrue(_iron_laws.check_plugin_manifest_permissions(dirty))
         (self.pk / ".claude-plugin" / "plugin.json").write_text(
@@ -241,8 +241,8 @@ class TestChecker(unittest.TestCase):
 
     def test_paired_tests(self):
         import _iron_laws
-        (self.pk / "skills/workflow/scripts/demo.py").write_text("print('hi')\n")
-        changed = ["plugins/kaizen/skills/workflow/scripts/demo.py"]
+        (self.pk / "scripts/util/demo.py").write_text("print('hi')\n")
+        changed = ["plugins/kaizen/scripts/util/demo.py"]
         self.assertTrue(_iron_laws.check_paired_tests(_ctx(self.tmp, "staged", changed)))
         (self.pk / "tests/test_demo.py").write_text("# test\n")
         self.assertEqual(
@@ -253,9 +253,9 @@ class TestChecker(unittest.TestCase):
 
     def test_bin_wrapper_per_cli_strict(self):
         import _iron_laws
-        (self.pk / "skills/workflow/scripts/demo.py").write_text(
+        (self.pk / "scripts/util/demo.py").write_text(
             "import argparse\nif __name__ == '__main__':\n    argparse.ArgumentParser()\n")
-        changed = ["plugins/kaizen/skills/workflow/scripts/demo.py"]
+        changed = ["plugins/kaizen/scripts/util/demo.py"]
         self.assertTrue(_iron_laws.check_bin_wrapper_per_cli_strict(_ctx(self.tmp, "staged", changed)))
         (self.pk / "bin" / "kaizen-demo").write_text("#!/bin/bash\n")
         changed.append("plugins/kaizen/bin/kaizen-demo")
@@ -284,7 +284,7 @@ class TestChecker(unittest.TestCase):
         """Check is fan-out-aware: only flags `gather(*<iter>)` shape,
         not fixed-pair `gather(task_a, task_b)`."""
         import _iron_laws
-        p = self.pk / "skills/workflow/scripts/demo.py"
+        p = self.pk / "scripts/util/demo.py"
         # Fixed-pair gather — heterogeneous tasks, correct shape, NOT flagged
         p.write_text(
             "import asyncio\n"

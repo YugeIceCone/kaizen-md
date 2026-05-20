@@ -109,7 +109,7 @@ def check_node_flow_for_multi_step(ctx: CheckContext) -> list[Finding]:
     tasks like `ruff + ty`) are correct shape — only true fan-outs (`*`
     unpack of a generator/comprehension) get flagged."""
     out = []
-    for p in ctx.plugin_files("skills/workflow/scripts/*.py"):
+    for p in ctx.plugin_files("scripts/*/*.py"):
         text = p.read_text(encoding="utf-8", errors="ignore")
         fanouts = len(_FANOUT_GATHER_RE.findall(text))
         if fanouts >= 1 and "AsyncParallelBatchNode" not in text:
@@ -124,7 +124,7 @@ def check_node_flow_for_multi_step(ctx: CheckContext) -> list[Finding]:
 def check_lazy_heavy_deps(ctx: CheckContext) -> list[Finding]:
     pat = re.compile(rf"^(?:import|from) (?:{'|'.join(HEAVY_DEPS)})\b")
     out = []
-    for p in ctx.plugin_files("skills/workflow/scripts/*.py"):
+    for p in ctx.plugin_files("scripts/*/*.py"):
         for i, line in enumerate(p.read_text(encoding="utf-8", errors="ignore").splitlines(), 1):
             if pat.match(line):  # column-0 = top-level, not inside try/except
                 out.append(Finding(
@@ -193,7 +193,7 @@ def check_bin_wrapper_per_cli(ctx: CheckContext) -> list[Finding]:
     `kaizen-brain <verb>` without 5 separate bin wrappers.
     """
     out = []
-    for p in ctx.plugin_files("skills/workflow/scripts/*.py"):
+    for p in ctx.plugin_files("scripts/*/*.py"):
         if p.name.startswith("_"):
             continue
         text = p.read_text(encoding="utf-8", errors="ignore")
@@ -223,11 +223,11 @@ def check_bin_wrapper_per_cli(ctx: CheckContext) -> list[Finding]:
 
 
 def check_plugin_manifest_permissions(ctx: CheckContext) -> list[Finding]:
-    # The law targets NEW invocable surfaces: skills/workflow/scripts/*.py
-    # OR hooks/claude/*.sh. NOT scripts/*.sh (infra: pre-commit.sh, lib.sh)
-    # and NOT `_`-prefixed modules (imported, never Bash-invoked).
+    # The law targets NEW invocable surfaces: scripts/<cluster>/*.py OR
+    # hooks/claude/*.sh. NOT top-level scripts/*.sh (infra: pre-commit.sh,
+    # lib.sh) and NOT `_`-prefixed modules (imported, never Bash-invoked).
     scripts_py = [
-        c for c in ctx.added_under("plugins/kaizen/skills/workflow/scripts/")
+        c for c in ctx.added_under("plugins/kaizen/scripts/")
         if c.endswith(".py") and not Path(c).name.startswith("_")
     ]
     hook_sh = [
@@ -302,7 +302,7 @@ def check_claude_md_no_volatile_data(ctx: CheckContext) -> list[Finding]:
 
 
 def check_paired_tests(ctx: CheckContext) -> list[Finding]:
-    new = [c for c in ctx.added_under("plugins/kaizen/skills/workflow/scripts/")
+    new = [c for c in ctx.added_under("plugins/kaizen/scripts/")
            if c.endswith(".py")]
     out = []
     for c in new:
@@ -355,7 +355,7 @@ def check_cli_naming_consistency(ctx: CheckContext) -> list[Finding]:
 
 
 def check_bin_wrapper_per_cli_strict(ctx: CheckContext) -> list[Finding]:
-    new = [c for c in ctx.added_under("plugins/kaizen/skills/workflow/scripts/")
+    new = [c for c in ctx.added_under("plugins/kaizen/scripts/")
            if c.endswith(".py") and not Path(c).name.startswith("_")]
     out = []
     for c in new:
@@ -483,8 +483,8 @@ def _hook_traces_via_helper(text: str, ctx: CheckContext) -> bool:
     """
     for m in _PY_INVOKE_RE.finditer(text):
         py_name = m.group(1)
-        # Helper lives under skills/workflow/scripts/ by convention
-        candidates = list(ctx.plugin_files(f"skills/workflow/scripts/{py_name}"))
+        # Helper lives under scripts/<cluster>/ by convention
+        candidates = list(ctx.plugin_files(f"scripts/*/{py_name}"))
         for cand in candidates:
             try:
                 body = cand.read_text(encoding="utf-8", errors="ignore")

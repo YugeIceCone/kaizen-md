@@ -27,9 +27,9 @@ def _plugin_root_default() -> Path:
 def scan(*, plugin_root: Path) -> dict:
     schemas = sorted(plugin_root.glob("skills/*/domain/schemas/*.json"))
     py_blob = ""
-    scripts_dir = plugin_root / "skills/workflow/scripts"
+    scripts_dir = plugin_root / "scripts"
     if scripts_dir.is_dir():
-        for p in scripts_dir.glob("*.py"):
+        for p in scripts_dir.rglob("*.py"):
             try:
                 py_blob += p.read_text(encoding="utf-8")
             except OSError:

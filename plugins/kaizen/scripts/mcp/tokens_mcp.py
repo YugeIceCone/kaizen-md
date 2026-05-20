@@ -11,7 +11,7 @@
 # ///
 """kaizen-tokens MCP server — positional token addressing over FastMCP.
 
-Sibling of `kaizen-tokens` CLI (skills/workflow/scripts/tokens.py).
+Sibling of `kaizen-tokens` CLI (scripts/index/tokens.py).
 Wraps the same TokenDB store and exposes:
 
 Tools (compact-args agent surface, per spec V9):

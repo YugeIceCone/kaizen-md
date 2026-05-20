@@ -239,7 +239,7 @@ class TestRenderHeaderPath(unittest.TestCase):
 
     def test_header_does_not_reference_legacy_path(self):
         md = bl.render_md(bl.empty_store())
-        self.assertNotIn("~/.claude/skills/workflow/scripts/backlog.py", md,
+        self.assertNotIn("~/.claude/scripts/util/backlog.py", md,
                          "stale legacy script path in header")
 
     def test_header_points_at_canonical_cli(self):

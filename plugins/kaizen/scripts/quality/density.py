@@ -57,12 +57,12 @@ def _test_methods(source: str) -> int:
 
 
 def scan(*, plugin_root: Path) -> dict:
-    scripts_dir = plugin_root / "skills/workflow/scripts"
+    scripts_dir = plugin_root / "scripts"
     tests_dir = plugin_root / "tests"
     per_script: list[dict] = []
     if not scripts_dir.is_dir():
         return {"per_script": [], "low_density": []}
-    for s in sorted(scripts_dir.glob("*.py")):
+    for s in sorted(scripts_dir.rglob("*.py")):
         if s.name.startswith("_"):
             continue
         try:

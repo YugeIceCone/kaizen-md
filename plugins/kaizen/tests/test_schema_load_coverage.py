@@ -20,8 +20,8 @@ class TestSchemaLoadCoverage(unittest.TestCase):
             (root / "skills/x/domain/schemas").mkdir(parents=True)
             (root / "skills/x/domain/schemas/used.schema.json").write_text("{}")
             (root / "skills/x/domain/schemas/orphan.schema.json").write_text("{}")
-            (root / "skills/workflow/scripts").mkdir(parents=True)
-            (root / "skills/workflow/scripts/loader.py").write_text(
+            (root / "scripts/util").mkdir(parents=True)
+            (root / "scripts/util/loader.py").write_text(
                 'open("used.schema.json")\n')
             rep = schema_load_coverage.scan(plugin_root=root)
             names = {g["schema"] for g in rep["gaps"]}

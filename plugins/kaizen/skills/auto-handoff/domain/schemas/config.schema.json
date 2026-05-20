@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "kaizen-auto-handoff-config",
   "title": "kaizen auto-handoff config",
-  "description": "Declarative config for the context-pressure auto-handoff trigger. Loaded by skills/workflow/scripts/auto_handoff.py.",
+  "description": "Declarative config for the context-pressure auto-handoff trigger. Loaded by scripts/handoff/auto_handoff.py.",
   "type": "object",
   "required": ["version", "valid_thresholds", "dedupe_event_type", "on_fire"],
   "additionalProperties": false,

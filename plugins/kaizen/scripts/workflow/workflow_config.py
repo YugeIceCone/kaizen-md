@@ -381,7 +381,7 @@ def cmd_dry_run(args) -> int:
     """Classify a task without executing it: signals → bucket → stages."""
     import importlib.util  # noqa: I001
     # Lazy import to avoid cost on hot path of other subcommands.
-    # schema_cli canonical at scripts/rules/; legacy shim at skills/workflow/scripts/.
+    # schema_cli canonical at scripts/rules/; legacy shim at scripts/.
     _here = Path(__file__).resolve().parent
     _plugin_root = _here.parent.parent
     for _p in (_here, _plugin_root / "scripts" / "rules",

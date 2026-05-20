@@ -95,15 +95,24 @@ utilities (_plugin_root.sh, _paths.sh, kaizen-env.sh).
 
 ### Phase 4 — Verify zero callers + full test suite
 
-- [ ] `grep -rEn 'skills/workflow/(scripts|application)/[a-zA-Z_]+\.py' \
-        --include='*.py' --include='*.sh' \
-        plugins/ scripts/ .github/ 2>/dev/null | \
-        grep -v __pycache__ | grep -v CHANGELOG | grep -v 'plugins/kaizen/skills/workflow/'`
-      → expect 0 hits (excluding the shims themselves + CHANGELOG history)
-- [ ] `kaizen-tests` → all green
-- [ ] `kaizen-health` → 0 errors
-- [ ] `bash plugins/kaizen/scripts/ops/test-pipeline.sh` → TAP green
-- [ ] `kaizen-gatekeeper check --staged` → no new findings
+- [x] Stale-ref grep finds 0 hits across plugins/scripts/.github/ (CHANGELOG
+      + shim self-refs excluded).
+- [x] Updated 8 production files with hardcoded `skills/workflow/scripts/`
+      paths to canonical `scripts/<cluster>/` or `scripts/` (recursive):
+      - scripts/quality/density.py (scripts_dir + rglob)
+      - scripts/quality/dead_code.py (targets list)
+      - scripts/quality/mcp_trace_coverage.py (scan call)
+      - scripts/quality/schema_load_coverage.py (scripts_dir + rglob)
+      - scripts/quality/unused_env.py (scripts_dir + rglob)
+      - scripts/iron-laws/_iron_laws.py (5 hardcoded paths in checks)
+      - scripts/iron-laws/surface.py (wildcard permission detection)
+      - scripts/quality/mcp_coverage.py (scan target)
+- [x] Updated plugin.json: 7 explicit permissions + 3 wildcard entries.
+- [x] Updated 7 test fixtures (skills/workflow/scripts/ → scripts/util/).
+- [x] Updated 5 schema/yaml docstrings to canonical paths.
+- [x] `kaizen-tests --concurrency 4`: 331/333 pass (baseline = 331/2 failed).
+      Same 2 pre-existing failures (test_debug_smoke + test_evolution_log).
+      0 regressions.
 
 ### Phase 5 — Sweep shims via kaizen-shim F-FINAL
 

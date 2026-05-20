@@ -53,7 +53,7 @@ def scan(*, scripts_dir: Path) -> dict:
 
 
 def _run(args) -> int:
-    rep = scan(scripts_dir=_plugin_root() / "skills/workflow/scripts")
+    rep = scan(scripts_dir=_plugin_root() / "scripts/mcp")
     n = len(rep["gaps"])
     verdict = "green" if n == 0 else ("yellow" if n <= 5 else "red")
     if args.cmd == "gaps" and not args.json:
