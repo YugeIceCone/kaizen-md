@@ -170,7 +170,7 @@ Load alongside:
 - `kaizen:tdd` — Phase 3 characterization
 - `kaizen:boy-scout-rule` — Phase 6 incidental cleanups (without
   scope creep)
-- `kaizen:onion-ddd-workflow` — when the carve also fixes a
+- `kaizen:onion-tdd-strict` — when the carve also fixes a
   dependency-direction violation (then the shim doubles as a port
   lift)
 

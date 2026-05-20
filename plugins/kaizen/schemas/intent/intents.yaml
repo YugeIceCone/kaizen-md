@@ -99,7 +99,7 @@ intents:
       - { kind: phrase, pattern: "refactor", case_insensitive: true }
       - { kind: phrase, pattern: "(restructure|reorganize).*code", case_insensitive: true }
     action:
-      suggest: "Load Skill(kaizen:onion-ddd-workflow) + consider /workflow schema=onion-tdd-strict  # touched coding-skills/* per Persona Directives"
+      suggest: "Load Skill(kaizen:onion-tdd-strict) + consider /workflow schema=onion-tdd-strict  # touched coding-skills/* per Persona Directives"
       subcommand: refactor
       confidence: 0.75
 

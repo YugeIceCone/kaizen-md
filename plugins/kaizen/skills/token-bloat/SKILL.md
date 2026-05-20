@@ -60,7 +60,7 @@ KAIZEN_TOKEN_BLOAT_DISABLE      bypass (skips both hooks)
 
 ```
 kaizen-token-bloat: 9 finding(s) — 5 high, 4 medium
-  ▲ [high  ] skill-md       skills/onion-ddd-workflow/SKILL.md::(body)  809 lines (~13614 tok)
+  ▲ [high  ] skill-md       schemas/onion-tdd-strict/SKILL.md::(body)  809 lines (~13614 tok)
   ▲ [high  ] hook-heredoc   hooks/claude/session-intake.sh::body=''' ... '''  88 lines (~1078 tok)
   ...
 ```

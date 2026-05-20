@@ -635,24 +635,24 @@ class TestSplitPlan(unittest.TestCase):
         self.assertEqual(out["verdict"], "keep-inline")
 
     def test_build_split_plan_returns_schema_shape(self):
-        # Run against onion-ddd-workflow (real plugin)
-        plan = self.tb.build_split_plan("onion-ddd-workflow")
+        # Run against rust-architecture-patterns (real plugin)
+        plan = self.tb.build_split_plan("rust-architecture-patterns")
         for k in ("skill", "path", "current_lines", "current_tokens",
                    "estimated_tokens_saved", "candidates"):
             self.assertIn(k, plan)
-        self.assertEqual(plan["skill"], "onion-ddd-workflow")
+        self.assertEqual(plan["skill"], "rust-architecture-patterns")
         self.assertIsInstance(plan["candidates"], list)
 
     def test_split_plan_subcommand_runs(self):
-        r = _run("split-plan", "--skill", "onion-ddd-workflow")
+        r = _run("split-plan", "--skill", "rust-architecture-patterns")
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertIn("split-plan", r.stdout)
 
     def test_split_plan_json_emits_valid_json(self):
-        r = _run("split-plan", "--skill", "onion-ddd-workflow", "--json")
+        r = _run("split-plan", "--skill", "rust-architecture-patterns", "--json")
         self.assertEqual(r.returncode, 0)
         data = json.loads(r.stdout)
-        self.assertEqual(data["skill"], "onion-ddd-workflow")
+        self.assertEqual(data["skill"], "rust-architecture-patterns")
         self.assertIn("candidates", data)
 
     def test_scan_cache_appends_split_plans_to_session_md(self):

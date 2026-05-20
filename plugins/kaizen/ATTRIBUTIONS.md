@@ -99,7 +99,7 @@ Plus the original `scripts/*.js` (build-index, extract, schema, promote, append-
 ## Plugin-original (always)
 
 - `skills/workflow/` — the multi-stage routine engine + 12-check pre-commit gate + backlog CLI + semantic indexers. Drives `.kaizen/workflow/state.json`.
-- `skills/onion-ddd-workflow/` — the theory + audit + plan + execute layering discipline.
+- `schemas/onion-tdd-strict/` — the theory + audit + plan + execute layering discipline.
 - `skills/verify-before-execution/` — the RED-GREEN gate generalising TDD to non-test artifacts.
 - `skills/iron-laws/`, `skills/brain/`, `skills/plugin-development/`, `skills/plugin-self-audit/`, `skills/handoff/`, `skills/audit/` (schemas), and most others not listed above.
 - `scripts/`, `commands/`, `hooks/`, `bin/` — plugin entry points.

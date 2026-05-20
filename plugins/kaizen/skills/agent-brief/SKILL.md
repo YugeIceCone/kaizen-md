@@ -229,7 +229,7 @@ When a task crosses your default knowledge, load these (via `Skill` tool):
 | Trigger | Skill |
 |---|---|
 | About to commit / cadence question / sizing dispute | `kaizen:workflow` (the git-workflow Iron Laws) |
-| Structural change touching layer boundaries | `kaizen:onion-ddd-workflow` |
+| Structural change touching layer boundaries | `kaizen:onion-tdd-strict` |
 | Net-new code (no existing tests yet) | `kaizen:tdd` |
 | Code-quality dimension is named (DRY/KISS/SOLID/...) | `kaizen:<principle>` |
 | Authoring a brain rule | `kaizen:behaviour-config` |

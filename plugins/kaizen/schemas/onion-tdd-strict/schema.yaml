@@ -1,0 +1,216 @@
+# yaml-language-server: $schema=../workflow.schema.json
+#
+# onion-tdd-strict — deterministic code-task discipline
+#
+# Every code task lands as: Domain (pure) → tests → Adapters (ports) →
+# Composition (Flow/Nodes) → Supervisor (cookbook quality gate). Tests pass
+# before commit. Trace events fire at every layer.
+#
+# Triggered by: "implement X", "refactor X", "add feature", "fix bug X",
+# any net-new component (TDD mandatory per Persona Top Beliefs).
+#
+# Invoke: /workflow schema=onion-tdd-strict prompt="<task>"
+
+name: onion-tdd-strict
+version: 1
+description: |
+  Deterministic discipline for code tasks. Onion-DDD layering + TDD
+  red→green→refactor + cookbook supervisor + full trace wiring. Every
+  artifact has a verification gate; gates that fail block advancement.
+
+artifacts:
+
+  - id: audit
+    generates: audit/<feature>.md
+    template: explore/note.md
+    requires: []
+    description: |
+      Find the closest existing pattern in the workspace. Identify the
+      layer each new type will belong to BEFORE writing code. Output:
+      file map, naming convention, candidate test locations.
+    gate: |
+      grep + sem search has surfaced ≥1 reference pattern OR confirmed
+      "no precedent — net-new shape" with justification.
+
+  - id: design-layers
+    generates: design/<feature>-layers.md
+    template: explore/note.md
+    requires: [audit]
+    description: |
+      Split into four Onion-DDD rings:
+        Domain (pure, leaf-pure kernel — no I/O, no env, no urllib/sqlite)
+        Application (Flow / Nodes; orchestrates Domain via Ports)
+        Infrastructure (adapters fulfilling Ports — HTTP/DB/FS/LLM)
+        Presentation (CLI / HTTP handlers / IPC seams)
+      List which functions go where + their dependency arrows.
+    gate: |
+      Every arrow points inward. No Domain type references infra. No
+      Application code constructs infra directly — uses ports.
+
+  - id: red-test
+    generates: test__<feature>.py
+    template: tasks/test.md
+    requires: [design-layers]
+    description: |
+      Write failing unit tests for the Domain layer FIRST. Cover empty
+      input, single-item, edge sizes, dim/shape invariants, error
+      paths. Use stdlib `unittest`. PEP 723 header so it runs via
+      `python3 test__*.py`.
+    gate: |
+      `python3 test__<feature>.py` exits NON-ZERO (tests fail as
+      expected — the impl doesn't exist yet).
+
+  - id: green-impl
+    generates: _<feature>.py
+    template: null
+    requires: [red-test]
+    description: |
+      Minimal Domain code to make the tests pass. Pure functions only —
+      no I/O, no env reads, no module-globals mutations. Each public
+      function annotated with type hints.
+    gate: |
+      `python3 test__<feature>.py` exits zero. Every test introduced in
+      red-test now passes. No new tests skipped or xfailed.
+
+  - id: refactor
+    generates: (in-place)
+    template: null
+    requires: [green-impl]
+    description: |
+      Coding-skills sweep on the green impl: DRY (extract repeats), KISS
+      (collapse code paths), SoC (split modules if needed), Convention
+      (naming consistency). No behaviour change.
+    gate: |
+      Tests still pass. No LOC growth without a named justification
+      (new test, new edge case, new public function).
+
+  - id: adapters
+    generates: _<feature>_adapters.py
+    template: null
+    requires: [refactor]
+    description: |
+      For each I/O concern: declare a Protocol (port) + provide a
+      concrete impl. HTTP → HttpTransport. Storage → Repository. Trace
+      → Emitter. Nodes consume the Protocol, never the impl.
+    gate: |
+      Domain module has zero imports of urllib / requests / sqlite3 /
+      os.environ / pathlib (file I/O). Adapters expose only port
+      methods; no business logic leaks down.
+
+  - id: composition
+    generates: <feature>.py
+    template: null
+    requires: [adapters]
+    description: |
+      Compose Domain + Adapters in an Application-layer Flow.
+      Canonical PocketFlow shape: prep_async (load) → exec_async
+      (compute) → post_async (commit). Use AsyncParallelBatchNode for
+      inherent fan-out. Transition operators: `a - "action" >> b`.
+    gate: |
+      Flow runs end-to-end on a smoke input. No `import sqlite3` /
+      `import urllib` in Node bodies. Dependencies injected via the
+      shared store or Flow params.
+
+  - id: supervisor
+    generates: (SupervisorNode inside <feature>.py)
+    template: null
+    requires: [composition]
+    description: |
+      Cookbook pattern (cookbook/pocketflow-supervisor): insert a
+      validation node between the work node and the persist node.
+      Detect degenerate / partial outputs. Either route to a heal
+      branch OR annotate the store with skip set + emit clear trace.
+    gate: |
+      `supervisor.report` trace event fires per run. Degenerate-row
+      detection path is exercised in at least one test.
+
+  - id: trace-wire
+    generates: (emit_trace calls + verification)
+    template: null
+    requires: [supervisor]
+    description: |
+      Every Node phase emits a structured trace event via the shared
+      Emitter port. Event names follow `<subject>.<action>` convention
+      (e.g. `node.start`, `node.done`, `run.start`, `post.ok`). HTTP
+      transport emits per-attempt traces. Domain functions do NOT
+      emit traces (they're pure).
+    gate: |
+      `python3 <feature>.py smoke` produces ≥1 trace event per Node
+      phase. `kaizen-trace-index search "<subject>.<action>"` returns
+      hits. No `print()` debugging left in.
+
+  - id: verify
+    generates: verify-<feature>-<UTC>.md
+    template: validate/note.md
+    requires: [trace-wire]
+    description: |
+      End-to-end gate: full unit-test pass, smoke run green, audit
+      delta clean. Inline /kaizen:audit output. Report any new HIGH /
+      MEDIUM findings against the feature directory.
+    gate: |
+      All unit tests pass. Smoke run exits zero. `/kaizen:audit
+      --scope <feature-dir>` reports zero new HIGH findings vs the
+      pre-task baseline.
+
+apply:
+  gate: verify
+  progress: BACKLOG.md  # micro-units; promote to plans/ only on ≥3-phase work
+  description: |
+    Implementation is gated on `verify-*.md` being green. No commit
+    that would regress test count or trace coverage.
+
+# ─── Invariants enforced across ALL stages ────────────────────────────
+
+invariants:
+  layer_purity:
+    - "Domain has zero imports of: urllib, requests, sqlite3, os.environ, pathlib (for file I/O), asyncio runtime constructs."
+    - "Adapters never contain business logic — only translation."
+  testability:
+    - "Every public Domain function has at least one unit test."
+    - "Tests run from a clean process — no shared mutable state between cases."
+  config_resolution:
+    - "Module-level env reads forbidden. Use a resolver function called per request."
+    - "Backends resolved via _kaizen_shared.resolve_*_backend() — never inline os.environ."
+  trace_discipline:
+    - "Every Node phase emits a trace event."
+    - "Event names follow <subject>.<action> convention."
+    - "Trace path resolved per call via trace_path() — env-overridable."
+  schema_discipline:
+    - "Any new persisted shape declares a schema_version meta row."
+    - "Dim / dtype tracked per row, not just globally."
+    - "Migrations are idempotent — check current version before mutating."
+  llm_output_shape:
+    - "Any LLM call that returns structured data MUST use response_format=json_schema with strict=true."
+    - "Regex / string-parsing of LLM output is FORBIDDEN for tool routing — grammar-constrained generation guarantees parseable shape."
+    - "Model-specific quirks (special tokens, reasoning leaks, chat-template demands) go in _model_cards.py — code dispatches off the card, never on hardcoded names."
+    - "Assistant messages preceding role:tool results MUST use openai canonical shape (content=null, tool_calls=[...]) — even when the model returned raw JSON via json_schema. Rewrite before re-feeding to history."
+    - "Defensive sanitization: pass every outgoing message through card.clean_response() to strip model-specific leak patterns before re-sending."
+
+# ─── Cookbook pattern references ───────────────────────────────────────
+# Each pattern below is the canonical reference for its discipline.
+
+cookbook_references:
+  supervisor: "cookbook/pocketflow-supervisor — validate + route to heal"
+  self_healing: "cookbook/pocketflow-self-healing-mermaid — detector + writer loop"
+  parallel_batch: "cookbook/pocketflow-parallel-batch — AsyncParallelBatchNode"
+  streaming: "cookbook/pocketflow-llm-streaming — SSE parse for TTFT split"
+  agentic_rag: "cookbook/pocketflow-agentic-rag — tool-loop with decide/run/answer"
+  visualization: "cookbook/pocketflow-visualization — mermaid diagram from Flow"
+
+# ─── Reference implementation (this session) ──────────────────────────
+
+session_example:
+  date: 2026-05-12
+  feature: "chunked HTTP embedding pipeline + agentic RAG (works around nomic-v2's 512 ctx + Nemotron's quirks)"
+  artifacts_produced:
+    audit:          "(grep + cookbook research)"
+    design_layers:  "Domain: chunk_tokens / mean_pool_l2 / extract_tool_calls / clean_chat_response / ModelCard. Application: LoadRows / TokenizeAndChunk / EmbedFanOut / Supervisor / MeanPoolAndPersist + DecideAction / RunSearch / RunReadFile. Infrastructure: UrllibPollingTransport / SqliteOnboardRepo. Presentation: CLI subcommands."
+    red_test:       "test__chunking.py (34 tests) + test__model_cards.py (18 tests) — all initially failing"
+    green_impl:     "_chunking.py (183 LOC) + _model_cards.py (153 LOC) — pure functions / frozen dataclasses"
+    refactor:       "(folded into green-impl)"
+    adapters:       "_adapters.py — HttpTransport / OnboardRepository protocols + impls; schema v2 migrator"
+    composition:    "embed_chunked.py — PocketFlow Flow with 4 reindex nodes + 3 RAG nodes"
+    supervisor:     "Supervisor node detects degenerate/partial rows; emits supervisor.report"
+    trace_wire:     "emit_trace per node phase + per HTTP call + per RAG turn (llm-pipeline / llm-http / llm-chat / llm-embed / llm-rag)"
+    structured_io:  "response_format=json_schema for Nemotron tool routing (vs prior <TOOLCALL> regex fallback) — 3.1s vs 13.5s end-to-end (4.3x speedup)"
+    verify:         "52/52 tests pass; 1017-row reindex in 4.3s; agentic RAG in 3.1s; /kaizen:audit zero new HIGH findings"

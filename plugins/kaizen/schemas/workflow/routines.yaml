@@ -266,15 +266,18 @@ routines:
 
   - name: onion-tdd-strict
     kind: schema
-    tier: user
-    trigger_words: []
-    schema_path: ~/.claude/.kaizen/schemas/onion-tdd-strict/schema.yaml
+    tier: built-in
+    trigger_words: ["onion architecture", "ports and adapters", "DIP", "Palermo", "DDD layering", "Onion remediation", "carve-out", "structural lint"]
+    schema_path: schemas/onion-tdd-strict/schema.yaml
     stages: [audit, design-layers, red-test, green-impl, refactor, adapters, composition, supervisor, trace-wire, verify]
     end_state: "Layered code with RED→GREEN→REFACTOR + cookbook supervisor + full trace"
     coding_skills: [solid, dry, kiss, separation-of-concerns]
     description: |
       Onion-DDD layering + TDD + cookbook supervisor + full trace. Strictest
-      schema; gate on every stage. User-tier (lives in ~/.claude/.kaizen/).
+      schema; gate on every stage. Plugin-tier (was user-tier pre-2026-05-20
+      promotion). Discipline references live at
+      schemas/onion-tdd-strict/references/{theory,discipline,rust-example,
+      typescript-example}.md.
 
   - name: ralph-loop
     kind: schema
