@@ -94,6 +94,20 @@ class TestDrain(unittest.TestCase):
         # Second drain is empty (no pending)
         self.assertEqual(self.inbox.drain(), "")
 
+    def test_drain_trailer_discourages_redundant_ack(self):
+        """BK-062: the system-reminder containing the drain output
+        persists in conversation context after the tool call. The
+        trailer must explicitly tell the agent NOT to re-acknowledge
+        on subsequent turns if the prior turn already addressed the
+        message — otherwise the agent produces noisy duplicate acks."""
+        self.inbox.capture("hi mid-busy")
+        out = self.inbox.drain()
+        # Hard signal — explicit "do NOT re-acknowledge"
+        self.assertIn("do NOT re-acknowledge", out)
+        # The trailer references the prior-turn check so the rule is
+        # actionable, not just a vague suggestion
+        self.assertIn("prior assistant turn already addressed", out)
+
     def test_peek_does_not_mark(self):
         self.inbox.capture("watch me")
         out1 = self.inbox.peek()

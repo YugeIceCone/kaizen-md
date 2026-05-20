@@ -227,7 +227,16 @@ def drain() -> str:
             pass
     if len(lines) == 1:  # nothing real to surface
         return ""
-    lines.append("(Pause current task to acknowledge these if relevant.)")
+    # The drain block is attached as a system-reminder to the current
+    # tool result and PERSISTS in conversation context across later
+    # turns. Once acknowledged, the reminder text doesn't disappear —
+    # so the agent must not re-acknowledge on every subsequent turn.
+    # See [[feedback-no-redundant-while-busy-ack]].
+    lines.append(
+        "(If your immediately prior assistant turn already addressed "
+        "these, continue silently — do NOT re-acknowledge. Otherwise "
+        "pause the current task to address them.)"
+    )
     return "\n".join(lines)
 
 
