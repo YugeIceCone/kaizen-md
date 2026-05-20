@@ -128,12 +128,25 @@ def get_limit() -> int:
     if derived > 200_000:
         return derived
 
-    # Defensive: if observed usage > 200k, infer 1M context
+    # Defensive auto-detect: observed-usage signals that contradict the
+    # standard 200k model. CC's JSONL strips the `[1m]` suffix, so the
+    # model field alone is unreliable — usage shape is authoritative.
+    #
+    # Two branches:
+    #   1. peak > 200_000 — mathematically impossible in a 200k window.
+    #   2. peak >= 175_000 with ZERO compact markers — a standard model
+    #      would have auto-compacted by ~80% (160k), so reaching 175k
+    #      without any compact rules it out. Catches 1M sessions that
+    #      never quite exceed 200k in a single turn but routinely sit
+    #      near the standard cap.
     try:
         summary = get_usage_summary()
         peak = summary.get("peak_tokens")
-        if isinstance(peak, int) and peak > 200_000:
-            return 1_000_000
+        if isinstance(peak, int):
+            if peak > 200_000:
+                return 1_000_000
+            if peak >= 175_000 and int(summary.get("compact_count") or 0) == 0:
+                return 1_000_000
     except Exception:
         pass
 

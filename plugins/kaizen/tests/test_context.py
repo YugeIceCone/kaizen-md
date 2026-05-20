@@ -23,11 +23,22 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 
-def _fresh():
-    """Reimport context module (no env mutation — caller controls env)."""
+def _fresh(*, isolate_summary: bool = True):
+    """Reimport context module (no env mutation — caller controls env).
+
+    By default, stubs `get_usage_summary` to return an empty dict so the
+    test doesn't leak the live session's JSONL. Defensive-autodetect
+    tests + JSONL-fixture tests override this either by re-stubbing or
+    by calling with `isolate_summary=False`.
+    """
     if "context" in sys.modules:
         del sys.modules["context"]
     import context  # noqa: E402
+    if isolate_summary:
+        context.get_usage_summary = lambda cwd_path=None: {
+            "current_tokens": None, "peak_tokens": None,
+            "peak_pre_compact": False, "compact_count": 0,
+        }
     return context
 
 def _clear_env():
@@ -181,6 +192,37 @@ class TestModelAwareLimit(unittest.TestCase):
         finally:
             c.get_usage_summary = orig
 
+    def test_defensive_autodetect_high_usage_zero_compacts_infers_1m(self):
+        """A standard 200k Opus auto-compacts around 80% (~160k). Observing
+        a peak >= 175k with ZERO compact markers means the session can't
+        be the standard 200k model — it must be 1M. Without this branch,
+        the auto-handoff hook misfires at 86-97% (false red) on 1M
+        sessions whose JSONL stores the bare model id."""
+        c = _fresh()
+        orig = c.get_usage_summary
+        try:
+            c.get_usage_summary = lambda cwd_path=None: {
+                "current_tokens": 195_071, "peak_tokens": 195_071,
+                "peak_pre_compact": False, "compact_count": 0,
+            }
+            self.assertEqual(c.get_limit(), 1_000_000)
+        finally:
+            c.get_usage_summary = orig
+
+    def test_defensive_autodetect_high_usage_with_compact_stays_200k(self):
+        """High peak WITH a compact marker is consistent with a standard
+        200k session that hit auto-compact — don't infer 1M in that case."""
+        c = _fresh()
+        orig = c.get_usage_summary
+        try:
+            c.get_usage_summary = lambda cwd_path=None: {
+                "current_tokens": 150_000, "peak_tokens": 185_000,
+                "peak_pre_compact": True, "compact_count": 1,
+            }
+            self.assertEqual(c.get_limit(), 200_000)
+        finally:
+            c.get_usage_summary = orig
+
 class TestZone(unittest.TestCase):
     def setUp(self):
         self.c = _fresh()
@@ -262,6 +304,13 @@ class PeakAwareReaderBase(unittest.TestCase):
             for r in records:
                 f.write(json.dumps(r) + "\n")
 
+    def _fresh(self):
+        # PeakAwareReader subclasses need the REAL get_usage_summary —
+        # they sandbox HOME and write fixture JSONLs that the function
+        # is meant to read. The module-level _fresh() default stubs the
+        # function for tests that don't care about JSONL leakage.
+        return _fresh(isolate_summary=False)
+
 class TestPeakDetection(PeakAwareReaderBase):
     def test_peak_equals_max_assistant_usage(self):
         self._write_jsonl([
@@ -269,7 +318,7 @@ class TestPeakDetection(PeakAwareReaderBase):
             _usage_record(120_000),
             _usage_record(80_000),
         ])
-        c = _fresh()
+        c = self._fresh()
         summary = c.get_usage_summary(cwd_path=self.cwd)
         self.assertEqual(summary["peak_tokens"], 120_000)
         self.assertEqual(summary["current_tokens"], 80_000)
@@ -286,7 +335,7 @@ class TestPeakDetection(PeakAwareReaderBase):
             _usage_record(30_000),
             _usage_record(45_000),
         ])
-        c = _fresh()
+        c = self._fresh()
         summary = c.get_usage_summary(cwd_path=self.cwd)
         self.assertEqual(summary["peak_tokens"], 950_000)
         self.assertEqual(summary["current_tokens"], 45_000)
@@ -300,7 +349,7 @@ class TestPeakDetection(PeakAwareReaderBase):
             _usage_record(200_000),
             _usage_record(150_000),
         ])
-        c = _fresh()
+        c = self._fresh()
         summary = c.get_usage_summary(cwd_path=self.cwd)
         self.assertEqual(summary["peak_tokens"], 200_000)
         self.assertEqual(summary["compact_count"], 1)
@@ -314,7 +363,7 @@ class TestPeakDetection(PeakAwareReaderBase):
             _compact_marker(),
             _usage_record(20_000),
         ])
-        c = _fresh()
+        c = self._fresh()
         summary = c.get_usage_summary(cwd_path=self.cwd)
         self.assertEqual(summary["compact_count"], 2)
         self.assertEqual(summary["peak_tokens"], 800_000)
@@ -323,7 +372,7 @@ class TestPeakDetection(PeakAwareReaderBase):
 
     def test_no_jsonl_returns_all_none(self):
         # No JSONL exists at all
-        c = _fresh()
+        c = self._fresh()
         summary = c.get_usage_summary(cwd_path=self.cwd)
         self.assertIsNone(summary["current_tokens"])
         self.assertIsNone(summary["peak_tokens"])
@@ -332,7 +381,7 @@ class TestPeakDetection(PeakAwareReaderBase):
 
     def test_empty_jsonl_returns_all_none(self):
         self.jsonl.write_text("")
-        c = _fresh()
+        c = self._fresh()
         summary = c.get_usage_summary(cwd_path=self.cwd)
         self.assertIsNone(summary["peak_tokens"])
 
@@ -344,7 +393,7 @@ class TestPeakDetection(PeakAwareReaderBase):
             _compact_marker(),
             _usage_record(30_000),
         ])
-        c = _fresh()
+        c = self._fresh()
         self.assertEqual(c.get_tokens_from_jsonl(cwd_path=self.cwd), 30_000)
 
 class TestStatuslineLineSubcommand(unittest.TestCase):
