@@ -18,7 +18,8 @@ import unittest
 from pathlib import Path
 import sys
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "skills" / "workflow" / "scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 — adds scripts/<cluster>/ to sys.path
 import mermaid as mp
 
 
