@@ -1,22 +1,45 @@
 # Kaizen JSON Schemas
 
-Formal JSON Schema (draft 2020-12) definitions for kaizen's main data shapes. Mirrors of the dataclasses in `skills/workflow/scripts/schemas.py` (the runtime SSOT). Consumed by editors / IDEs / external validators (`ajv`, `jsonschema`, yaml-language-server).
+Formal JSON Schema (draft 2020-12) definitions for kaizen's main data shapes. Consumed by editors / IDEs / external validators (`ajv`, `jsonschema`, yaml-language-server) AND by the runtime gate (the `kaizen-schema` CLI walks them for validation).
 
-## Inventory
+## Layout — the per-domain nesting convention
 
-| Schema                          | Mirrors dataclass             | On-disk location                                   |
-|---------------------------------|-------------------------------|----------------------------------------------------|
-| `workflow.schema.json`          | `WorkflowSchema` + nested     | `schemas/<name>/schema.yaml`                       |
-| `workflow-state.schema.json`    | `WorkflowState`               | `<repo>/.workflow/state.json`                      |
-| `backlog.schema.json`           | `BacklogStore` + `BacklogItem` | `<repo>/.workflow/backlog.json`                    |
-| `knowledge-item.schema.json`    | `KnowledgeItem`               | `~/.claude/.kaizen-knowledge/index.db` rows        |
-| `brain-rule.schema.json`        | `KaizenBrainRule`             | `<KAIZEN_BRAIN_DIR>/Notes/*.md` frontmatter        |
-| `agent-formatting.schema.json`  | `AgentFormattingSchema`       | `skills/agent-formatting/SKILL.md` embedded block  |
-| `code-file.schema.json`         | `CodeFile`                    | `<repo>/.kaizen/onboard.db` rows (v1.20.0+)        |
-| `trace-event.schema.json`       | `TraceEvent`                  | `~/.claude/.kaizen/indexes/trace/events.jsonl` (v1.23.0)   |
-| `inbox-message.schema.json`     | `InboxMessage`                | `~/.claude/.kaizen/inbox/<ts>-<n>.json` (v1.23.0)  |
-| `daemon-state.schema.json`      | `DaemonState`                 | `~/.claude/.kaizen/data/daemon/state.json` (v1.23.0)    |
-| `scrape-item.schema.json`       | `ScrapeItem`                  | `~/.claude/.kaizen/indexes/scrape/index.db` rows (v1.24.0) |
+Every domain owns a folder under `schemas/`. Inside each domain folder, the YAMLs that hold runtime data live at the top level, and the JSON Schemas that validate them live in a child `schemas/` subfolder. The double-`schemas` in the path is deliberate:
+
+```
+schemas/                           ← kaizen domain root (the OUTER schemas/)
+├── README.md                      ← this file
+├── <domain>/                      ← one folder per domain (workflow, handoff, iron-laws, …)
+│   ├── <domain>.yaml              ← the runtime YAML (rubrics / configs / rule catalogs)
+│   ├── <other>.yaml               ← additional domain-owned YAMLs (e.g. handoff/auto-config.yaml)
+│   ├── schema.yaml                ← (workflow-routine schemas only) the routine DAG
+│   └── schemas/                   ← JSON Schemas that validate the YAMLs above (the INNER schemas/)
+│       ├── <domain>.schema.json
+│       └── <other>.schema.json
+└── …
+```
+
+So `schemas/workflow/schemas/workflow-config.schema.json` reads as:
+
+- outer `schemas/` — kaizen's domain root
+- `workflow/` — the workflow domain
+- inner `schemas/` — the JSON Schemas folder for that domain
+- `workflow-config.schema.json` — validates `~/.claude/.kaizen/workflow-global.json` and `.kaizen/workflow.json`
+
+The naming is awkward at the path-segment level but consistent across all 22 domains. Each domain is self-contained: data + validators co-located, no cross-domain reach into `assets/schemas/` or top-level orphan schemas.
+
+## Domain inventory (selection)
+
+| Domain               | Runtime YAML(s)                         | Validators                                              |
+|----------------------|-----------------------------------------|---------------------------------------------------------|
+| `workflow/`          | `routines.yaml` + routine `schema.yaml` | `schemas/workflow-config.schema.json`, etc.             |
+| `handoff/`           | `auto-config.yaml`, `auto-rubric.yaml`  | `schemas/auto-config.schema.json` + rubric/event schemas |
+| `iron-laws/`         | `iron-laws.yaml`                        | `schemas/iron-laws.schema.json`                         |
+| `onion-tdd-strict/`  | `schema.yaml`, `audit-rubric.yaml`, …   | `schemas/*.schema.json` (one per yaml)                  |
+| `brain/`             | brain Persona + Notes schema            | `schemas/brain-rule.schema.json`                        |
+| `backlog/`           | `backlog.schema.json` reference         | (validators only)                                       |
+
+Run `find schemas -maxdepth 2 -name 'schemas' -type d` for the live list (22 domains).
 
 ## Wiring into editors
 

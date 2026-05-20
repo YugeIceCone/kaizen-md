@@ -18,6 +18,12 @@ description: |
   red→green→refactor + cookbook supervisor + full trace wiring. Every
   artifact has a verification gate; gates that fail block advancement.
 
+  Runs as a ONE-SHOT topo-sorted DAG — each artifact is produced exactly
+  once, gate-by-gate, terminating at `verify`. The workflow-config
+  `loop:` block does not apply; for iterative refinement on top of this
+  discipline, run `ralph-loop` as the outer schema and let it dispatch
+  onion-tdd-strict stages.
+
 artifacts:
 
   - id: audit

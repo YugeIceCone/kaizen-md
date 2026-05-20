@@ -69,11 +69,11 @@ header:      "Run mode"
 multiSelect: false
 options:
   - label: "Routine (multi-stage)"
-    description: "/workflow runs a curated routine (build-feature, fix-bug, refactor, etc.). Stage gates between steps."
+    description: "/workflow runs a curated routine (build-feature, fix-bug, refactor, etc.). Walks stages once with gates between steps. One-shot."
   - label: "Loop (Ralph)"
-    description: "kaizen-loop runs a self-correcting iteration loop. Continues until ledger empty or completion-promise emitted."
+    description: "kaizen-loop runs a self-correcting iteration loop on a fixed prompt. Iterates until ledger empty, completion-promise emitted, or iteration-cap hit. Reads .kaizen/loop.state.md (not the workflow-config loop block)."
   - label: "Schema (declarative DAG)"
-    description: "/workflow runs a schema (onion-tdd-strict / mcp-build / spec-driven). Each artifact has a gate."
+    description: "/workflow runs a schema (onion-tdd-strict / mcp-build / spec-driven / ralph-loop). Walks the topo-sorted artifact DAG once, gates enforced per stage. One-shot — for schema-driven iteration, pick the ralph-loop schema, not Loop mode."
 ```
 
 When Q2 picks **Loop**, also follow the **`kaizen-loop`** wizard

@@ -53,7 +53,7 @@
     "loop": {
       "type": "object",
       "additionalProperties": false,
-      "description": "When run_mode=loop, the Ralph defaults.",
+      "description": "Ralph iteration defaults. Read ONLY when run_mode=loop; ignored under run_mode=routine and run_mode=schema (those execute their stages once and exit on terminal gate). For schema-driven iteration, use the ralph-loop schema instead of wrapping another schema.",
       "properties": {
         "max_iterations": {
           "type": "integer",
