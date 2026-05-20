@@ -30,14 +30,15 @@ description: |
 
 artifacts:
   - id: brainstorm
-    generates: .kaizen/docs/specs/<YYYY-MM-DD>-<topic>-design.md
+    generates: .kaizen/docs/<YYYY-MM-DD>-<topic>/design.md
     template: null
     requires: []
     description: |
       OPTIONAL stage 0 — explore intent → produce a spec via
       kaizen:brainstorming. Use when the user's request is ill-formed
       and needs design exploration before a plan can be drafted. Spec
-      lands at .kaizen/docs/specs/<YYYY-MM-DD>-<topic>-design.md.
+      lands at .kaizen/docs/<YYYY-MM-DD>-<topic>/design.md (one folder
+      per work-unit; design / plan / brainstorm / notes all siblings).
 
       When a clear request already exists, SKIP this stage and start
       at create-plan. The user's "doesn't have to be brainstorming
@@ -48,7 +49,7 @@ artifacts:
       blueprint via links.parents.
 
   - id: create-plan
-    generates: .kaizen/docs/plans/<YYYY-MM-DD>-<topic>.json
+    generates: .kaizen/docs/<YYYY-MM-DD>-<topic>/plan.json
     template: null
     requires: []
     description: |
@@ -90,7 +91,7 @@ artifacts:
       long-form prose via content_ref.
 
   - id: create-tasks
-    generates: .kaizen/docs/plans/<YYYY-MM-DD>-<topic>.json#items[].tasks
+    generates: .kaizen/docs/<YYYY-MM-DD>-<topic>/plan.json#items[].tasks
     template: null
     requires: [create-plan]
     description: |

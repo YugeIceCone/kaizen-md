@@ -160,7 +160,7 @@ Before drafting the plan:
 1. **QA pass** — AskUserQuestion to disambiguate:
    - Scope (what's in / out)
    - Unstated constraints (deadlines, dependencies, blast radius)
-   - Artifact location (`.kaizen/docs/plans/` confirmed?)
+   - Artifact location (`.kaizen/docs/<YYYY-MM-DD>-<topic>/` confirmed?)
    - Plan-kind (single-file blueprint? sub-plans linked DAG?)
    Surface a one-paragraph plan summary before triggering.
 
@@ -211,8 +211,8 @@ silent runaway.
 
 Before dispatching ANY stage:
 
-- Check `.kaizen/docs/specs/` for an existing spec on the topic.
-- Check `.kaizen/docs/plans/` for an existing plan blueprint.
+- Check `.kaizen/docs/` for an existing `<date>-<topic>-design.md` spec.
+- Check `.kaizen/docs/<YYYY-MM-DD>-<topic>/plan.{md,json}` for an existing plan.
 - Read either if found; note their `status` (draft / active / shipped).
 
 ### 2. Dispatch in order
@@ -227,7 +227,7 @@ For each stage the chain hasn't already finished:
 ### 3. Output one blueprint
 
 The chain's deliverable is ONE blueprint.json at
-`.kaizen/docs/plans/<YYYY-MM-DD>-<topic>.json` containing:
+`.kaizen/docs/<YYYY-MM-DD>-<topic>/plan.json` containing:
 
 - `kind=plan` root item linked to its `kind=spec` via `links.parents`.
 - One or more `kind=task-list` items with populated `tasks[]`.
@@ -260,7 +260,7 @@ auto-skips finished stages.
 ## Anti-patterns
 
 - **Re-deriving stage logic** — never. If brainstorming's body says
-  "save to `.kaizen/docs/specs/`", trust it. Don't add planner-specific
+  "save to `.kaizen/docs/`", trust it. Don't add planner-specific
   variants of stage instructions.
 - **Skipping verify-before-execution** — the final gate is non-optional.
   Every stage's output is a candidate for RED-GREEN proof before the

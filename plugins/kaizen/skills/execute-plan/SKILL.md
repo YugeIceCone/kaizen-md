@@ -85,7 +85,7 @@ For full status patterns, sub-agent dispatch examples, and recovery flows, see `
 Because the plan is self-contained, a phase can be handed to a subagent with a one-paragraph prompt:
 
 ```
-Read plans/2026-04-26-auth-iface.md.
+Read .kaizen/docs/2026-04-26-auth-iface/plan.md.
 Execute Phase 2 only. Do not touch other phases.
 Follow the plan's Resume Protocol and Execution Loop.
 Update Status and Notes in the plan file.

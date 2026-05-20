@@ -74,7 +74,7 @@ This is the **non-negotiable structure** for a plan that another agent will cons
 - Owner: <user / team / "any agent">
 - Last updated: 2026-04-26
 - Status: in-progress | complete | blocked
-- Plan file: plans/2026-04-26-<topic>.md
+- Plan file: .kaizen/docs/<YYYY-MM-DD>-<topic>/plan.md (or plan.json blueprint per kaizen:planner)
 
 ## Goal
 <one paragraph; what success looks like, observable from outside the code>
@@ -135,7 +135,7 @@ For an agent picking this up cold:
 
 Persist durable plans at:
 
-- `plans/YYYY-MM-DD-<topic>.md`
+- `.kaizen/docs/<YYYY-MM-DD>-<topic>/plan.md` (one folder per topic; markdown or .json blueprint)
 
 Use a durable plan when:
 

@@ -1,6 +1,6 @@
 ---
 name: blueprint
-description: The `kaizen-blueprint` CLI — 1-roundtrip read/mutate/validate over blueprint-format plan JSON files. Use when an agent needs to inspect or mutate a plan stored at `.kaizen/docs/plans/<topic>.json` without hand-editing the JSON. Memory-cached metadata makes the common "scan-then-pick" flow truly 1 call. Pairs with kaizen:planner (the chain orchestrator that writes blueprints) and the blueprint.schema.json (the canonical artifact format). Triggers on "show plan item", "list plan items", "plan scan", "mark task done", "set plan status", "validate blueprint", "kaizen-blueprint", "1-roundtrip plan op".
+description: The `kaizen-blueprint` CLI — 1-roundtrip read/mutate/validate over blueprint-format plan JSON files. Use when an agent needs to inspect or mutate a plan stored at `.kaizen/docs/<YYYY-MM-DD>-<topic>/plan.json` without hand-editing the JSON. Memory-cached metadata makes the common "scan-then-pick" flow truly 1 call. Pairs with kaizen:planner (the chain orchestrator that writes blueprints) and the blueprint.schema.json (the canonical artifact format). Triggers on "show plan item", "list plan items", "plan scan", "mark task done", "set plan status", "validate blueprint", "kaizen-blueprint", "1-roundtrip plan op".
 metadata:
   version: "1.0"
   origin: kaizen-md 2026-05-20 (gap surfaced by the unify-artifact-generation plan; built to honor the 1-roundtrip contract in decision 28)
