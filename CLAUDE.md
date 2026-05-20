@@ -162,9 +162,10 @@ under `skills/<feature>/domain/`. Audit via `kaizen-schema-coverage`.
 
 ### Coverage axes
 
-See `[[Notes/pref-coverage-axis-naming]]`. Current axes: code-to-test /
-schema / name-quality / frontmatter. Name new axes `<thing>-coverage` and
-register as their own `SUB_GATES` key in `kaizen-gatekeeper`.
+See `[[Notes/pref-coverage-axis-naming]]`. Live axis registry via
+`kaizen audit:axis` (the catalog drifts as axes are added). Name new
+axes `<thing>-coverage` and register as their own `SUB_GATES` key in
+`kaizen-gatekeeper`.
 
 ### JSONL-indexed deliverables
 
@@ -175,7 +176,7 @@ structured entries (plans, brainstorms, audit results), ship paired
 ### Audit surface (one-command sanity)
 
 ```bash
-kaizen-gatekeeper check --all   # 7 sub-gates aggregated (one verdict)
+kaizen-gatekeeper check --all   # every registered sub-gate (one verdict); `kaizen-gatekeeper list` for the live registry
 kaizen-token-bloat scan         # bloat axis
 kaizen-coverage gaps            # code-to-test-coverage axis
 kaizen-schema-coverage gaps     # schema-coverage axis
