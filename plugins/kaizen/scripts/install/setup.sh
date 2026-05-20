@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # kaizen setup — unified entry point for /kaizen:setup.
-# Run inside a git repo:  bash ~/.claude/skills/workflow/scripts/setup.sh [subcommand]
+# Run inside a git repo:  bash ~/.claude/scripts/install/setup.sh [subcommand]
 #
 # Subcommands (first positional):
 #   install      per-repo pre-commit gate (default when omitted) — see "Does"

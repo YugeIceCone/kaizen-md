@@ -131,8 +131,8 @@ Full code walkthrough in [references/auto-advance-pattern.md](references/auto-ad
 This system already wires four hooks via `~/.claude/settings.json`:
 
 - `SessionStart` → `~/.claude/scripts/inject-context.sh session` (injects active workflow / plans / git state)
-- `Stop` → `~/.claude/skills/workflow/scripts/workflow.sh stop-hook` (auto-continues `auto=yes` workflows)
-- `SubagentStop` → `~/.claude/skills/workflow/scripts/workflow.sh subagent-stop` (advances workflow on subagent completion)
-- `PreCompact` → `~/.claude/skills/workflow/scripts/workflow.sh pre-compact` (writes recap snapshot for post-compact recovery)
+- `Stop` → `~/.claude/scripts/ops/workflow.sh stop-hook` (auto-continues `auto=yes` workflows)
+- `SubagentStop` → `~/.claude/scripts/ops/workflow.sh subagent-stop` (advances workflow on subagent completion)
+- `PreCompact` → `~/.claude/scripts/ops/workflow.sh pre-compact` (writes recap snapshot for post-compact recovery)
 
 The `inject-context.sh` script reads the SessionStart `source` field and emits a richer recap when `source=compact` (recovery after auto-compaction).

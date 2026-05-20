@@ -33,8 +33,8 @@ repo is mergeable.
 ## How to run
 
 ```
-bash skills/workflow/scripts/ci-gate.sh              # full gate
-bash skills/workflow/scripts/ci-gate.sh --syntax-only  # static checks only
+bash scripts/ops/ci-gate.sh              # full gate
+bash scripts/ops/ci-gate.sh --syntax-only  # static checks only
 ```
 
 Or `kaizen-ci-gate` / `kaizen-ci-gate` from the shell. Exit 0 = green;

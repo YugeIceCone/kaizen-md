@@ -86,7 +86,7 @@ Sample Stop hook (project-agnostic):
         "hooks": [
           {
             "type": "command",
-            "command": "bash $​HOME/.claude/local-marketplaces/kaizen-md/plugins/kaizen/skills/workflow/scripts/workflow.sh stop-hook"
+            "command": "bash $​HOME/.claude/local-marketplaces/kaizen-md/plugins/kaizen/scripts/ops/workflow.sh stop-hook"
           }
         ]
       }
@@ -110,7 +110,7 @@ Surface active-workflow context on every session start:
         "hooks": [
           {
             "type": "command",
-            "command": "bash $​HOME/.claude/local-marketplaces/kaizen-md/plugins/kaizen/skills/workflow/scripts/workflow.sh status 2>/dev/null || true"
+            "command": "bash $​HOME/.claude/local-marketplaces/kaizen-md/plugins/kaizen/scripts/ops/workflow.sh status 2>/dev/null || true"
           }
         ]
       }
@@ -134,7 +134,7 @@ Block destructive bash during a workflow if `auto=yes`:
         "hooks": [
           {
             "type": "command",
-            "command": "bash $​HOME/.claude/local-marketplaces/kaizen-md/plugins/kaizen/skills/workflow/scripts/workflow.sh pre-tool-guard"
+            "command": "bash $​HOME/.claude/local-marketplaces/kaizen-md/plugins/kaizen/scripts/ops/workflow.sh pre-tool-guard"
           }
         ]
       }
@@ -158,7 +158,7 @@ Before context compaction, persist the workflow state summary so the post-compac
         "hooks": [
           {
             "type": "command",
-            "command": "bash $​HOME/.claude/local-marketplaces/kaizen-md/plugins/kaizen/skills/workflow/scripts/workflow.sh pre-compact"
+            "command": "bash $​HOME/.claude/local-marketplaces/kaizen-md/plugins/kaizen/scripts/ops/workflow.sh pre-compact"
           }
         ]
       }
@@ -182,7 +182,7 @@ When a dispatched subagent completes, auto-advance its mapped stage:
         "hooks": [
           {
             "type": "command",
-            "command": "bash $​HOME/.claude/local-marketplaces/kaizen-md/plugins/kaizen/skills/workflow/scripts/workflow.sh subagent-stop"
+            "command": "bash $​HOME/.claude/local-marketplaces/kaizen-md/plugins/kaizen/scripts/ops/workflow.sh subagent-stop"
           }
         ]
       }

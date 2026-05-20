@@ -72,7 +72,7 @@ else:
   "matcher": "*",
   "hooks": [{
     "type": "command",
-    "command": "bash $HOME/.claude/skills/workflow/scripts/workflow.sh stop-hook"
+    "command": "bash $HOME/.claude/scripts/ops/workflow.sh stop-hook"
   }]
 }]
 ```
@@ -128,7 +128,7 @@ if re.search(r'(sk-[A-Za-z0-9]{20,}|AKIA[0-9A-Z]{16}|ghp_[A-Za-z0-9]{30,})', p):
   "matcher": "*",
   "hooks": [{
     "type": "command",
-    "command": "bash $HOME/.claude/skills/workflow/scripts/workflow.sh pre-compact"
+    "command": "bash $HOME/.claude/scripts/ops/workflow.sh pre-compact"
   }]
 }]
 ```
@@ -142,7 +142,7 @@ Pair with a `SessionStart` hook that reads the snapshot when `source=compact`.
   "matcher": "*",
   "hooks": [{
     "type": "command",
-    "command": "bash $HOME/.claude/skills/workflow/scripts/workflow.sh subagent-stop"
+    "command": "bash $HOME/.claude/scripts/ops/workflow.sh subagent-stop"
   }]
 }]
 ```

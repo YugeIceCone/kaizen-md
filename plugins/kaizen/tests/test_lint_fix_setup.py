@@ -201,9 +201,9 @@ class SetupSummary(unittest.TestCase):
 
     def test_setup_summary_companion_shell_script_exists(self):
         """The standalone setup-local-llm.sh ships alongside the Python
-        module so users can run it without the MCP tool."""
-        script = (PLUGIN_ROOT / "skills" / "workflow" / "scripts" /
-                  "setup-local-llm.sh")
+        module so users can run it without the MCP tool. Post-shim-sweep
+        the canonical path is scripts/install/setup-local-llm.sh."""
+        script = (PLUGIN_ROOT / "scripts" / "install" / "setup-local-llm.sh")
         self.assertTrue(script.exists(), f"missing: {script}")
 
 

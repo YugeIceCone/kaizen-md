@@ -32,8 +32,8 @@ fi
 # ~/.claude/ standalone install as a last-ditch fallback.
 BACKUP_SH=""
 for candidate in \
-    "$PLUGIN_ROOT/skills/workflow/scripts/backup.sh" \
-    "$HOME/.claude/skills/workflow/scripts/backup.sh"; do
+    "$PLUGIN_ROOT/scripts/ops/backup.sh" \
+    "$HOME/.claude/scripts/ops/backup.sh"; do
     if [ -x "$candidate" ]; then
         BACKUP_SH="$candidate"
         break

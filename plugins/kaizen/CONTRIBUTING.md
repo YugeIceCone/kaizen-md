@@ -21,7 +21,7 @@ cd kaizen-md
 bash plugins/kaizen/scripts/setup.sh
 
 # 2. Run the test pipeline before changing anything
-bash plugins/kaizen/skills/workflow/scripts/test-pipeline.sh
+bash plugins/kaizen/scripts/ops/test-pipeline.sh
 # Should: 29/29 pass
 
 # 3. Make changes, re-run test
@@ -54,7 +54,7 @@ The plugin's own pre-commit gate enforces:
 
 ## Pull-request checklist
 
-- [ ] `bash plugins/kaizen/skills/workflow/scripts/test-pipeline.sh` → all green
+- [ ] `bash plugins/kaizen/scripts/ops/test-pipeline.sh` → all green
 - [ ] New scripts pass `bash -n` syntax check
 - [ ] New commands have proper YAML frontmatter (`name:` + `description:`)
 - [ ] `/kaizen:doctor` reports healthy

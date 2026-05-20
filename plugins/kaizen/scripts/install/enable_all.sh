@@ -224,11 +224,11 @@ if [ "$SKIP_GLOBALS" -eq 0 ]; then
 
   # disable-dupes — hide loose ~/.claude/skills/* that duplicate plugin
   step "disable duplicate loose skills" \
-    "bash '$PLUGIN_ROOT/skills/workflow/scripts/disable-skill.sh' all-loose-dupes"
+    "bash '$PLUGIN_ROOT/scripts/install/disable-skill.sh' all-loose-dupes"
 
   # statusline — adds the kaizen one-line status bar to CC settings
   step "install kaizen statusline" \
-    "bash '$PLUGIN_ROOT/skills/workflow/scripts/statusline.sh' install"
+    "bash '$PLUGIN_ROOT/scripts/ops/statusline.sh' install"
 
   # env — appends KAIZEN_* exports + aliases to shell rc
   step "install shell env (KAIZEN_ROOT + aliases)" \
@@ -239,7 +239,7 @@ if [ "$SKIP_GLOBALS" -eq 0 ]; then
   # skips the pre-warm. Runs before the watch daemon so daemon.py's
   # watchdog venv is warm when watch-start spawns it.
   step "bootstrap uv-script venvs" \
-    "bash '$PLUGIN_ROOT/skills/workflow/scripts/bootstrap.sh'"
+    "bash '$PLUGIN_ROOT/scripts/install/bootstrap.sh'"
 
   # plugin-index watch daemon — on by default; KAIZEN_DAEMON_INDEX_DISABLE
   # opts out. watch-start is idempotent + cron-supervised (daemon install).
@@ -263,7 +263,7 @@ if [ "$SKIP_PROJECT" -eq 0 ]; then
   else
     # kaizen:setup install — wires .kaizen/hooks/pre-commit + core.hooksPath
     step "install pre-commit gate (this repo)" \
-      "bash '$PLUGIN_ROOT/skills/workflow/scripts/setup.sh' install"
+      "bash '$PLUGIN_ROOT/scripts/install/setup.sh' install"
   fi
   echo ""
 else

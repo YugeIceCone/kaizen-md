@@ -283,6 +283,6 @@ When wiring a new feature, validate against:
 - `surface validate` — runs `kaizen surface validate` (orphan hooks, missing perms, unmounted MCP)
 - `iron-laws check` — runs `kaizen iron-laws check --all` (12+ structural laws)
 - `gatekeeper check --staged` — aggregates iron-laws + etu + plugin-validator
-- `test pipeline` — `bash plugins/kaizen/skills/workflow/scripts/test-pipeline.sh`
+- `test pipeline` — `bash plugins/kaizen/scripts/ops/test-pipeline.sh`
 
 Iron-law-blocking issues will fail the pre-commit gate.

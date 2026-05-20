@@ -1,6 +1,6 @@
 # Auto-Advance Pattern (Workflow Orchestration)
 
-A worked example: how `~/.claude/skills/workflow/scripts/workflow.sh` chains 4 hooks to drive a multi-stage routine without user intervention. This is the canonical "use hooks to give Claude a state machine" pattern.
+A worked example: how `~/.claude/scripts/ops/workflow.sh` chains 4 hooks to drive a multi-stage routine without user intervention. This is the canonical "use hooks to give Claude a state machine" pattern.
 
 ## State
 
@@ -55,7 +55,7 @@ Reads `.kaizen/workflow/state.json`, prints a Markdown recap of routine + next s
 ### 2. Stop — auto-continuation
 
 ```bash
-Stop → bash ~/.claude/skills/workflow/scripts/workflow.sh stop-hook
+Stop → bash ~/.claude/scripts/ops/workflow.sh stop-hook
 ```
 
 Pseudocode:
@@ -74,7 +74,7 @@ print(json.dumps({
 ### 3. SubagentStop — auto-advance on subagent completion
 
 ```bash
-SubagentStop → bash ~/.claude/skills/workflow/scripts/workflow.sh subagent-stop
+SubagentStop → bash ~/.claude/scripts/ops/workflow.sh subagent-stop
 ```
 
 Pseudocode:
@@ -100,7 +100,7 @@ else:
 ### 4. PreCompact — survive context loss
 
 ```bash
-PreCompact → bash ~/.claude/skills/workflow/scripts/workflow.sh pre-compact
+PreCompact → bash ~/.claude/scripts/ops/workflow.sh pre-compact
 ```
 
 Writes `.kaizen/workflow/snapshot.md` with the full state recap, completed history, last 3 artifact paths. The next SessionStart (with `source=compact`) loads this back into context.

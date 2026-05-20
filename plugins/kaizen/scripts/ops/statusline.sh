@@ -5,7 +5,7 @@
 #
 #   "statusLine": {
 #     "type": "command",
-#     "command": "bash ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/statusline.sh"
+#     "command": "bash ${CLAUDE_PLUGIN_ROOT}/scripts/ops/statusline.sh"
 #   }
 #
 # Or use kaizen-statusline install for guided setup.

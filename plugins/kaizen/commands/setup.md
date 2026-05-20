@@ -2,7 +2,7 @@
 name: setup
 description: "Unified plugin setup. No-args wizard (install/uninstall/health/maintenance) or direct dispatch. Triggers - "install kaizen", "setup plugin", "kaizen cache", "first-time setup"."
 argument-hint: "(empty = interactive super-menu) | [install|uninstall|cache ...] [--enable-all] [--with-index] [--with-browser] [--with-daemon] [--with-trace-proxy] [--no-globals] [--no-project] [--dry-run]"
-allowed-tools: ["AskUserQuestion", "Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/setup.sh:*)", "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/scripts/util/detect_stack.py:*)", "Bash(kaizen-detect-stack:*)"]
+allowed-tools: ["AskUserQuestion", "Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/install/setup.sh:*)", "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/scripts/util/detect_stack.py:*)", "Bash(kaizen-detect-stack:*)"]
 ---
 
 # kaizen setup
@@ -11,7 +11,7 @@ One entry point for activating, deactivating, inspecting, **and maintaining**
 kaizen in this repo. **Local-only** (per-clone `core.hooksPath`); never
 touches global git config.
 
-!`bash ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/setup.sh $ARGUMENTS`
+!`bash ${CLAUDE_PLUGIN_ROOT}/scripts/install/setup.sh $ARGUMENTS`
 
 ## Interactive super-menu (when `$ARGUMENTS` is empty)
 

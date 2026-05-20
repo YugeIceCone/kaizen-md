@@ -90,6 +90,11 @@ def plugin_src() -> Path:
 
 
 def scripts_dir() -> Path:
+    """Legacy resolver — kept for the .py shim cluster that still
+    occupies skills/workflow/scripts/. Per-script callers below use
+    feature-specific paths directly (scripts/install/, scripts/util/,
+    scripts/indexers/, etc.) — that's the canonical layout post the
+    v1.40 consolidation."""
     return plugin_src() / "skills" / "workflow" / "scripts"
 
 
@@ -175,7 +180,8 @@ def local_sha() -> str:
 
 
 def run_refresh_cache() -> tuple[bool, str]:
-    script = scripts_dir() / "refresh-cache.sh"
+    # Post-consolidation: refresh-cache.sh canonical lives at scripts/install/.
+    script = plugin_src() / "scripts" / "install" / "refresh-cache.sh"
     if not script.exists():
         return False, "refresh-cache.sh not found"
     try:

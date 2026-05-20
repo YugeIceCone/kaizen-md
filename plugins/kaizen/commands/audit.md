@@ -6,7 +6,7 @@ argument-hint: "[--scope <dir> | --no-report | --json | --agent]"
 
 # kaizen audit
 
-!`bash ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/audit.sh ${ARGUMENTS}`
+!`bash ${CLAUDE_PLUGIN_ROOT}/scripts/ops/audit.sh ${ARGUMENTS}`
 
 For per-axis audits (coverage / schema-coverage / name-quality / frontmatter / token-bloat), use `/kaizen:audit:axis <name>` — see `commands/audit/axis.md`.
 

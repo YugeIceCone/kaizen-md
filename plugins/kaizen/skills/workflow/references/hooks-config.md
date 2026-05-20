@@ -17,7 +17,7 @@ When `auto=yes` and a stage just finished, Claude would normally stop and wait f
         "hooks": [
           {
             "type": "command",
-            "command": "bash $HOME/.claude/skills/workflow/scripts/workflow.sh stop-hook"
+            "command": "bash $HOME/.claude/scripts/ops/workflow.sh stop-hook"
           }
         ]
       }
@@ -46,7 +46,7 @@ If a previous session left a workflow mid-flight, this hook injects a system rem
         "hooks": [
           {
             "type": "command",
-            "command": "bash -c 'STATE=\"${CLAUDE_PROJECT_DIR:-.}/.kaizen/workflow/state.json\"; [ -f \"$STATE\" ] && echo \"{\\\"hookSpecificOutput\\\":{\\\"hookEventName\\\":\\\"SessionStart\\\",\\\"additionalContext\\\":\\\"Active workflow detected. Run: bash $HOME/.claude/skills/workflow/scripts/workflow.sh status — and use the kaizen:workflow skill to resume.\\\"}}\" || echo \"{}\"'"
+            "command": "bash -c 'STATE=\"${CLAUDE_PROJECT_DIR:-.}/.kaizen/workflow/state.json\"; [ -f \"$STATE\" ] && echo \"{\\\"hookSpecificOutput\\\":{\\\"hookEventName\\\":\\\"SessionStart\\\",\\\"additionalContext\\\":\\\"Active workflow detected. Run: bash $HOME/.claude/scripts/ops/workflow.sh status — and use the kaizen:workflow skill to resume.\\\"}}\" || echo \"{}\"'"
           }
         ]
       }
@@ -68,7 +68,7 @@ When a workflow is mid-flight, prevent edits to files outside the current stage'
         "hooks": [
           {
             "type": "command",
-            "command": "bash $HOME/.claude/skills/workflow/scripts/workflow.sh scope-guard"
+            "command": "bash $HOME/.claude/scripts/ops/workflow.sh scope-guard"
           }
         ]
       }
@@ -90,18 +90,18 @@ When a workflow is mid-flight, prevent edits to files outside the current stage'
 
 ```bash
 # Confirm the script runs
-bash $HOME/.claude/skills/workflow/scripts/workflow.sh
+bash $HOME/.claude/scripts/ops/workflow.sh
 
 # Confirm Stop hook output (should be {} when no state)
-echo '{"event":"Stop"}' | bash $HOME/.claude/skills/workflow/scripts/workflow.sh stop-hook
+echo '{"event":"Stop"}' | bash $HOME/.claude/scripts/ops/workflow.sh stop-hook
 
 # Confirm Stop hook output mid-workflow
-bash $HOME/.claude/skills/workflow/scripts/workflow.sh init "test prompt auto=yes"
-echo '{"event":"Stop"}' | bash $HOME/.claude/skills/workflow/scripts/workflow.sh stop-hook
+bash $HOME/.claude/scripts/ops/workflow.sh init "test prompt auto=yes"
+echo '{"event":"Stop"}' | bash $HOME/.claude/scripts/ops/workflow.sh stop-hook
 # Should emit a {"decision":"block",...} response.
 
 # Cleanup
-bash $HOME/.claude/skills/workflow/scripts/workflow.sh reset
+bash $HOME/.claude/scripts/ops/workflow.sh reset
 ```
 
 ## Disabling the hook

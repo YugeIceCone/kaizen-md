@@ -16,13 +16,19 @@ import daemon  # noqa: E402
 
 class TestScriptsDir(unittest.TestCase):
     def test_scripts_dir_exists_and_holds_daemon(self):
-        # Post-DOMAIN-6 migration: scripts_dir() returns legacy
-        # skills/workflow/scripts/ for hygiene + refresh-cache (still
-        # there). daemon.py moved to scripts/daemon/ — check separately.
+        # Post-DOMAIN-6 + v1.40 consolidation: scripts_dir() returns
+        # the legacy skills/workflow/scripts/ for the .py shim cluster
+        # (e.g. hygiene.py — still a shim there). refresh-cache.sh
+        # canonical moved to scripts/install/ during the .sh shim
+        # sweep; daemon.run_refresh_cache uses the canonical path
+        # directly now.
         d = daemon.scripts_dir()
         self.assertTrue(d.is_dir(), f"{d} should exist")
         self.assertTrue((d / "hygiene.py").is_file())
-        self.assertTrue((d / "refresh-cache.sh").is_file())
+        plugin_root = daemon.plugin_src()
+        self.assertTrue(
+            (plugin_root / "scripts" / "install" / "refresh-cache.sh").is_file()
+        )
         # daemon.py is now under scripts/daemon/ (post-DOMAIN-6).
         plugin_root = daemon.plugin_src()
         self.assertTrue((plugin_root / "scripts" / "daemon" / "daemon.py").is_file(),

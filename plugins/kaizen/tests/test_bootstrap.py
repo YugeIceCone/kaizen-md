@@ -6,7 +6,7 @@ import unittest
 from pathlib import Path
 
 PLUGIN = Path(__file__).resolve().parent.parent
-BOOTSTRAP = PLUGIN / "skills" / "workflow" / "scripts" / "bootstrap.sh"
+BOOTSTRAP = PLUGIN / "scripts" / "install" / "bootstrap.sh"
 
 
 class TestBootstrap(unittest.TestCase):

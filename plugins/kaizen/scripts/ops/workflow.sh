@@ -89,10 +89,10 @@ _kz_loader() {
   local d
   d="$(dirname "$0")/../workflow/_loader.py"
   [ -f "$d" ] && { echo "$d"; return 0; }
-  # Legacy 1: skills/workflow/scripts/workflow.sh → ../application/_loader.py
+  # Legacy 1: scripts/ops/workflow.sh → ../application/_loader.py
   d="$(dirname "$0")/../application/_loader.py"
   [ -f "$d" ] && { echo "$d"; return 0; }
-  # Legacy 2: skills/workflow/scripts/workflow.sh older shape
+  # Legacy 2: scripts/ops/workflow.sh older shape
   d="$(dirname "$0")/../../workflow/application/_loader.py"
   [ -f "$d" ] && { echo "$d"; return 0; }
   return 1
@@ -592,9 +592,9 @@ snap = f"""# Workflow snapshot (PreCompact {now})
 - state file: {state_path}
 
 To resume after compaction:
-1. bash $HOME/.claude/skills/workflow/scripts/workflow.sh status
+1. bash $HOME/.claude/scripts/ops/workflow.sh status
 2. Run the next stage skill.
-3. bash $HOME/.claude/skills/workflow/scripts/workflow.sh advance <stage> "<result>"
+3. bash $HOME/.claude/scripts/ops/workflow.sh advance <stage> "<result>"
 """
 with open(snap_path, "w") as f: f.write(snap)
 PY

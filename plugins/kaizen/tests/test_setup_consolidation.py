@@ -19,7 +19,7 @@ from pathlib import Path
 
 PLUGIN_ROOT = Path(__file__).resolve().parent.parent
 SETUP_SH = PLUGIN_ROOT / "scripts" / "install" / "setup.sh"
-ENABLE_ALL_SH = PLUGIN_ROOT / "skills" / "workflow" / "scripts" / "enable_all.sh"
+ENABLE_ALL_SH = PLUGIN_ROOT / "scripts" / "install" / "enable_all.sh"
 
 
 def _run(cmd: list[str], cwd: Path, env=None) -> tuple[int, str, str]:

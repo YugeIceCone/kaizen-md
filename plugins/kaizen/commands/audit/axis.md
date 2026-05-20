@@ -2,7 +2,7 @@
 name: audit:axis
 description: "Per-axis audit dispatcher. Consolidates the 5 axis-specific commands under the audit:axis namespace — coverage / schema-coverage / name-quality / frontmatter / token-bloat. No args → multiSelect AskUserQuestion checklist (pick any subset to audit in one pass). With single axis name → direct dispatch. Triggers on \"audit some axes\", \"coverage audit\", \"schema coverage gap\", \"name quality\", \"frontmatter gaps\", \"token bloat scan\", \"audit menu\"."
 argument-hint: "(empty = multi-axis checklist) | [coverage | schema-coverage | name-quality | frontmatter | token-bloat | list]"
-allowed-tools: ["AskUserQuestion", "Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/audit.sh:*)", "Bash(${CLAUDE_PLUGIN_ROOT}/bin/kaizen-coverage:*)", "Bash(${CLAUDE_PLUGIN_ROOT}/bin/kaizen-schema-coverage:*)", "Bash(${CLAUDE_PLUGIN_ROOT}/bin/kaizen-name-quality:*)", "Bash(${CLAUDE_PLUGIN_ROOT}/bin/kaizen-frontmatter:*)", "Bash(${CLAUDE_PLUGIN_ROOT}/bin/kaizen-token-bloat:*)"]
+allowed-tools: ["AskUserQuestion", "Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/ops/audit.sh:*)", "Bash(${CLAUDE_PLUGIN_ROOT}/bin/kaizen-coverage:*)", "Bash(${CLAUDE_PLUGIN_ROOT}/bin/kaizen-schema-coverage:*)", "Bash(${CLAUDE_PLUGIN_ROOT}/bin/kaizen-name-quality:*)", "Bash(${CLAUDE_PLUGIN_ROOT}/bin/kaizen-frontmatter:*)", "Bash(${CLAUDE_PLUGIN_ROOT}/bin/kaizen-token-bloat:*)"]
 ---
 
 # /kaizen:audit:axis
@@ -12,7 +12,7 @@ axis-specific slash commands (`/kaizen:coverage`, `/kaizen:schema-coverage`,
 `/kaizen:name-quality`, `/kaizen:frontmatter`) remain as aliases for
 back-compat.
 
-!`bash ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/audit.sh axis ${ARGUMENTS:-list}`
+!`bash ${CLAUDE_PLUGIN_ROOT}/scripts/ops/audit.sh axis ${ARGUMENTS:-list}`
 
 ## Available axes
 
