@@ -117,10 +117,10 @@ jq -r '.[] | select(.type=="user") | .message.content' \
 ```
 skills/chatlog/
   SKILL.md
-  domain/
-    schemas/triggers.schema.json
-    examples.yaml
-skills/workflow/scripts/
+schemas/chatlog/
+  schemas/triggers.schema.json
+  examples.yaml
+scripts/chatlog/
   _chatlog.py       — pure-function core
   chatlog.py        — CLI
 bin/kaizen-chatlog  — bin wrapper

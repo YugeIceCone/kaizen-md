@@ -136,7 +136,7 @@ python3 ${CLAUDE_PLUGIN_ROOT}/scripts/handoff/handoff.py assess \
 `assess` reads the YAML, computes 5 mechanical signals
 (`done_count`, `blocker_count`, `next_blocking_count`,
 `completed_ratio`, `test_delta`), walks
-`domain/outcome-rubric.yaml`, and returns:
+`schemas/handoff/outcome-rubric.yaml`, and returns:
 
 - `bucket` ∈ {SUCCEEDED, PARTIAL_PLUS, PARTIAL_MINUS, FAILED,
   NEEDS_AGENT}
@@ -145,7 +145,7 @@ python3 ${CLAUDE_PLUGIN_ROOT}/scripts/handoff/handoff.py assess \
 
 When `method == "deterministic"` use the bucket as-is. When
 `bucket == "NEEDS_AGENT"` (rubric fell through), self-assess against
-the rubric in `domain/outcome-rubric.yaml` and pick the bucket
+the rubric in `schemas/handoff/outcome-rubric.yaml` and pick the bucket
 that fits — bias to the more conservative one when on the line.
 
 See the **`decision-rubric`** skill for the rubric pattern in detail.

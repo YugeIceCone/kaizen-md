@@ -71,8 +71,8 @@ Override via `--concurrency N` or `KAIZEN_TEST_CONCURRENCY=N` env.
 
 ```
 skills/test-runner/SKILL.md                    — this file
-skills/workflow/scripts/_tests_run.py        — pure core (classify/dispatch/report)
-skills/workflow/scripts/tests_run.py         — CLI (asyncio + argparse)
+scripts/tests/_tests_run.py                    — pure core (classify/dispatch/report)
+scripts/tests/tests_run.py                     — CLI (asyncio + argparse)
 bin/kaizen-tests                                — wrapper
 commands/test.md                               — slash command
 plugin.json::permissions.allow                 — 2 entries

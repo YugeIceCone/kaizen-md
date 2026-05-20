@@ -83,7 +83,7 @@ to add stages; the runner dispatches on stage `runner` field.
 
 | stage | Skill | Targets |
 |---|---|---|
-| `onion-ddd-checkpoint` | onion-ddd-workflow | skills/workflow/scripts/ |
+| `onion-ddd-checkpoint` | onion-ddd-workflow | scripts/ |
 | `kiss-checkpoint` | kiss | scripts/ |
 | `dry-checkpoint` | dry | scripts/ |
 | `yagni-checkpoint` | yagni | scripts/ |

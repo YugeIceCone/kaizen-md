@@ -54,9 +54,9 @@ requires `check` whenever `enforcement` is `auto`.
 
 ## Adding or changing a law
 
-1. Edit `domain/iron-laws.yaml` — the master, and the only file that holds law content.
+1. Edit `schemas/iron-laws/iron-laws.yaml` — the master, and the only file that holds law content.
 2. If `enforcement: auto`, add a matching `check_<check>(ctx)` function in
-   `skills/workflow/scripts/_iron_laws.py` with a positive + negative test in
+   `scripts/iron-laws/_iron_laws.py` with a positive + negative test in
    `tests/test_iron_laws.py`.
 3. Regenerate the reference: run the `iron-laws` codegen (the `kaizen-iron-laws`
    CLI `render` subcommand, or `application/codegen.py` directly).
@@ -91,6 +91,6 @@ skills/iron-laws/
 └── references/iron-laws.md        generated read-only copy
 ```
 
-Checker + CLI + MCP backing code lives flat in `skills/workflow/scripts/`
-(`_iron_laws.py`, `iron_laws.py`, `iron_laws_mcp.py`) per the canonical
-feature shape.
+Checker + CLI backing code lives at `scripts/iron-laws/` (`_iron_laws.py`,
+`iron_laws.py`); the MCP server lives at `scripts/mcp/iron_laws_mcp.py`.
+Per the canonical feature shape.

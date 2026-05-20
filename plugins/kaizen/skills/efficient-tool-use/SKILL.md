@@ -312,7 +312,7 @@ Each is faster than a hand-rolled grep + post-processing.
 
 ## Schema-driven anti-pattern catalog
 
-This skill ships a structured catalog at `domain/anti-patterns.yaml` (validated by `domain/schemas/anti-pattern.schema.json`). Each entry: `id`, `tool`, `bad_pattern`, `why_bad`, `replacement`, `severity`. A future scanner can grep staged scripts against this catalog as a pre-commit check.
+This skill ships a structured catalog at `schemas/efficient-tool-use/anti-patterns.yaml` (validated by `schemas/efficient-tool-use/schemas/anti-pattern.schema.json`). Each entry: `id`, `tool`, `bad_pattern`, `why_bad`, `replacement`, `severity`. A future scanner can grep staged scripts against this catalog as a pre-commit check.
 
 ## References
 

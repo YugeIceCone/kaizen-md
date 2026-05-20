@@ -41,7 +41,7 @@ drift on every new hook; the table below documents purpose only).
 - **Python handlers** (`*.py`, prefixed `_*` for private) —
   `plugins/kaizen/hooks/claude/`. Direct stdin-read + processing.
 - **Hot-path handlers** (consolidated Python entry-points) —
-  `plugins/kaizen/skills/workflow/scripts/{pretooluse_*, posttooluse_*,
+  `plugins/kaizen/scripts/handlers/{pretooluse_*, posttooluse_*,
   stop_*, subagentstop_*, userprompt_*, context_notifier, session_start,
   user_prompt}.py`.
 
@@ -100,7 +100,7 @@ declares its bypass knob.
 
 1. **Pick the event** — match the user-intent shape.
 2. **Write the handler** — shell or Python; under `hooks/claude/`
-   (lifecycle wrapper) OR `skills/workflow/scripts/<event>_<name>.py`
+   (lifecycle wrapper) OR `scripts/handlers/<event>_<name>.py`
    (hot-path Python).
 3. **Register in `hooks/hooks.json`** — under the right event, with
    matcher (usually `"*"`) + timeout (be conservative — 5s default).

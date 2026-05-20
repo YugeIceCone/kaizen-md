@@ -72,7 +72,7 @@ Take a specific learning from auto-memory or feedback notes and move it up the p
 
 - Project-scope correction → `<project>/CLAUDE.md` OR `.claude/rules/<topic>.md`
 - Cross-project belief → `~/.claude/.kaizen/brain/Notes/pref-<slug>.md` + link from Persona.md `## Top Beliefs`
-- Codified rule → `kaizen:workflow::domain/git-discipline.yaml::pre_commit_gates[]` if it's enforceable
+- Codified rule → `schemas/workflow/git-discipline.yaml::pre_commit_gates[]` if it's enforceable
 
 Each promotion:
 

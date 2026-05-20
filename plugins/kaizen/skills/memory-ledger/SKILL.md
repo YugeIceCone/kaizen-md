@@ -22,7 +22,7 @@ Memory + continuity surfaces grew organically across 30+ features.
 An agent asking "where does my state live?" or "what gets loaded at
 session start?" used to have to read 8 SKILL.md files. The ledger
 answers in one place via a declarative manifest
-(`domain/memory-surfaces.yaml`) walked by the CLI.
+(`schemas/memory-ledger/memory-surfaces.yaml`) walked by the CLI.
 
 Companion bounded-context discipline (BK-024): every surface
 declares its `scope: project | global` so future features stop

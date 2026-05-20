@@ -109,8 +109,8 @@ The runner mounts under the kaizen MCP gateway as
 |---|---|
 | `schemas/workflow/schemas/axis.schema.json` | JSON Schema SSOT (oneOf 3 scan-spec variants) |
 | `schemas/workflow/axes/*.yaml`              | Declared axes |
-| `skills/workflow/scripts/axis_runner.py`          | Loader + dispatcher + CLI |
-| `skills/workflow/scripts/axis_runner_rules.py`    | Pure-fn rule library |
+| `scripts/quality/axis_runner.py`                  | Loader + dispatcher + CLI |
+| `scripts/quality/axis_runner_rules.py`            | Pure-fn rule library |
 | `scripts/mcp/axis_runner_mcp.py`                  | FastMCP wrapper |
 | `bin/kaizen-axis-runner`                          | CLI symlink |
 | `bin/kaizen-axis-runner-mcp`                      | MCP-server symlink |

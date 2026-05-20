@@ -50,7 +50,7 @@ kaizen-coverage report --json    # {"summary": {...}, "scripts": [{...}]}
 
 ## Coverage rules
 
-A source `<name>.py` (under `skills/workflow/scripts/`) is covered
+A source `<name>.py` (under `scripts/<cluster>/`) is covered
 when ANY of these test files exists in `tests/`:
 
 1. `test_<name>.py` (exact match)

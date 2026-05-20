@@ -49,21 +49,21 @@ hit at scale:
 
 ```text
 skills/<feature>/
-├── SKILL.md                                 — agent-facing prose
-├── domain/
-│   ├── <feature>.yaml                       — v2 manifest (subcommands → schemas)
-│   ├── <rule-set>.yaml                      — data-driven rule yaml (rubric/checks/...)
-│   └── schemas/
-│       ├── <sub-1>-in.schema.json           — per-subcommand input
-│       ├── <sub-1>-out.schema.json          — per-subcommand output payload
-│       └── ...                              — one pair per subcommand that opts in
-plugins/kaizen/skills/workflow/scripts/
+└── SKILL.md                                 — agent-facing prose
+schemas/<feature>/
+├── <feature>.yaml                           — v2 manifest (subcommands → schemas)
+├── <rule-set>.yaml                          — data-driven rule yaml (rubric/checks/...)
+└── schemas/
+    ├── <sub-1>-in.schema.json               — per-subcommand input
+    ├── <sub-1>-out.schema.json              — per-subcommand output payload
+    └── ...                                  — one pair per subcommand that opts in
+scripts/<feature>/
 └── <feature>.py                             — CLI that loads the manifest + emits via lens
 ```
 
 ### Piece 1 — The v2 manifest
 
-`skills/<feature>/domain/<feature>.yaml` declares the feature's
+`schemas/<feature>/<feature>.yaml` declares the feature's
 subcommand → schema map. Validated against
 `schemas/schema-driven-cli/schemas/feature-manifest.schema.json`.
 
@@ -182,19 +182,19 @@ for the rich content.
 
 ### Step 1 — declare the manifest
 
-Write `skills/<feature>/domain/<feature>.yaml` (v2 shape above).
-Write per-subcommand input/output schemas in `domain/schemas/`.
+Write `schemas/<feature>/<feature>.yaml` (v2 shape above).
+Write per-subcommand input/output schemas in `schemas/<feature>/schemas/`.
 
 ### Step 2 — load the manifest at CLI startup
 
 ```python
-# In skills/workflow/scripts/<feature>.py
+# In scripts/<feature>/<feature>.py
 from pathlib import Path
 import schema_cli
 
 _MANIFEST_PATH = (
     Path(__file__).resolve().parent.parent.parent
-    / "skills" / "<feature>" / "domain" / "<feature>.yaml"
+    / "schemas" / "<feature>" / "<feature>.yaml"
 )
 _MANIFEST = schema_cli.Manifest.load(_MANIFEST_PATH)
 ```
@@ -305,8 +305,8 @@ The TDD pattern for a lens-wired subcommand:
 - **bin-wrapper-per-cli** — the lens is a library (`schema_cli.py`), no
   bin needed.
 - **plugin-manifest-permissions** — `schema_cli.py` lands under
-  `skills/workflow/scripts/` so the existing wildcard perm covers
-  it. No explicit entry needed.
+  `scripts/rules/` so the existing wildcard perm covers it. No
+  explicit entry needed.
 - **schema-driven domain yaml** (soft iron-law) — this skill MAKES
   the soft law concrete + machine-checkable.
 

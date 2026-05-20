@@ -91,7 +91,7 @@ domains, not the live count).
 
 ## Adding a new MCP server (checklist)
 
-1. **File**: `plugins/kaizen/skills/workflow/scripts/<name>_mcp.py`
+1. **File**: `plugins/kaizen/scripts/mcp/<name>_mcp.py`
 2. **Shape**:
 
 ```python

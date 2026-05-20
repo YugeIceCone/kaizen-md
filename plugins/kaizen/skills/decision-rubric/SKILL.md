@@ -62,7 +62,7 @@ the pattern to your own feature.
 ### Piece 1 — The rule yaml
 
 ```yaml
-# skills/<feature>/domain/<feature>-rubric.yaml
+# schemas/<feature>/<feature>-rubric.yaml
 rules:
   - bucket: SUCCEEDED
     require_all:
@@ -292,7 +292,7 @@ See `tests/test_handoff_assess.py` for the canonical layout.
 ## Quick reference
 
 ```yaml
-# Rubric shape — copy into skills/<feature>/domain/<feature>-rubric.yaml
+# Rubric shape — copy into schemas/<feature>/<feature>-rubric.yaml
 rules:
   - bucket: STRICTEST_HAPPY
     require_all: [{signal: S1, op: ">=", value: V1}, ...]
