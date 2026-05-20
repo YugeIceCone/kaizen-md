@@ -76,8 +76,8 @@ class TestList(YamlBase):
 
     def test_list_discovers_seeded_yamls(self):
         import json
-        self._seed("skills/foo/domain/foo-rubric.yaml", "version: 1\nrules: []\n")
-        self._seed("skills/bar/domain/config.yaml", "version: 1\nkey: value\n")
+        self._seed("schemas/foo/foo-rubric.yaml", "version: 1\nrules: []\n")
+        self._seed("schemas/bar/config.yaml", "version: 1\nkey: value\n")
         self._seed("schemas/audit/schema.yaml", "name: audit\nversion: 1\nartifacts: []\n")
         r = _run("list", "--json")
         data = json.loads(r.stdout)
@@ -89,7 +89,7 @@ class TestList(YamlBase):
 
     def test_list_carries_category(self):
         import json
-        self._seed("skills/foo/domain/foo-rubric.yaml", "version: 1\n")
+        self._seed("schemas/foo/foo-rubric.yaml", "version: 1\n")
         self._seed("schemas/audit/schema.yaml", "name: audit\n")
         r = _run("list", "--json")
         data = json.loads(r.stdout)
@@ -101,7 +101,7 @@ class TestList(YamlBase):
 class TestShow(YamlBase):
     def test_show_emits_parsed_yaml(self):
         import json
-        self._seed("skills/foo/domain/test.yaml", "version: 1\nkey: hello\n")
+        self._seed("schemas/foo/test.yaml", "version: 1\nkey: hello\n")
         r = _run("show", "test.yaml")
         self.assertEqual(r.returncode, 0)
         # Output should be parseable YAML or JSON (we emit JSON)
@@ -116,13 +116,13 @@ class TestShow(YamlBase):
 
 class TestLint(YamlBase):
     def test_lint_passes_on_valid_yaml(self):
-        self._seed("skills/foo/domain/ok.yaml", "version: 1\nkey: value\n")
+        self._seed("schemas/foo/ok.yaml", "version: 1\nkey: value\n")
         r = _run("lint")
         self.assertEqual(r.returncode, 0)
         self.assertIn("ok.yaml", r.stdout)
 
     def test_lint_reports_broken_yaml(self):
-        self._seed("skills/foo/domain/bad.yaml", "  invalid: : :")
+        self._seed("schemas/foo/bad.yaml", "  invalid: : :")
         r = _run("lint")
         # Exit 1 on any broken file
         self.assertEqual(r.returncode, 1)

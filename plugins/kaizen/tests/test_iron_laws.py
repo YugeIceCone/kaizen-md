@@ -442,7 +442,7 @@ class TestCodegen(unittest.TestCase):
             Path(stale).unlink()
 
     def test_generated_reference_has_do_not_edit_header(self):
-        ref = (_DOMAIN.parent / "references" / "iron-laws.md").read_text()
+        ref = (_PLUGIN_ROOT / "skills" / "iron-laws" / "references" / "iron-laws.md").read_text()
         self.assertIn("DO NOT HAND-EDIT", ref)
         self.assertIn("34 laws", ref)
 

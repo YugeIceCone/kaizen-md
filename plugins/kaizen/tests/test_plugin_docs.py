@@ -42,8 +42,8 @@ class _DocsBase(unittest.TestCase):
         (self.root / "skills/foo/SKILL.md").write_text("# foo skill\n")
         (self.root / "skills/foo/references").mkdir()
         (self.root / "skills/foo/references/api.md").write_text("# api\n")
-        (self.root / "skills/foo/domain").mkdir()
-        (self.root / "skills/foo/domain/rules.yaml").write_text("v: 1\n")
+        (self.root / "schemas/foo").mkdir()
+        (self.root / "schemas/foo/rules.yaml").write_text("v: 1\n")
         (self.root / "skills/bar").mkdir()
         (self.root / "skills/bar/SKILL.md").write_text("# bar skill\n")
         (self.root / "commands").mkdir()
@@ -77,8 +77,8 @@ class TestKindClassifier:
         from plugin_docs import classify_kind
         assert classify_kind(Path("plugins/kaizen/skills/foo/SKILL.md")) == "skill"
         assert classify_kind(Path("plugins/kaizen/skills/foo/references/api.md")) == "reference"
-        assert classify_kind(Path("plugins/kaizen/skills/foo/domain/x.yaml")) == "domain"
-        assert classify_kind(Path("plugins/kaizen/skills/foo/domain/schemas/x.json")) == "domain"
+        assert classify_kind(Path("plugins/kaizen/schemas/foo/x.yaml")) == "domain"
+        assert classify_kind(Path("plugins/kaizen/schemas/foo/schemas/x.json")) == "domain"
         assert classify_kind(Path("plugins/kaizen/commands/foo.md")) == "command"
         assert classify_kind(Path("plugins/kaizen/agents/sample-agent.md")) == "agent"
         assert classify_kind(Path("plugins/kaizen/README.md")) == "root"

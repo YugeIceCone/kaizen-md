@@ -17,9 +17,9 @@ class TestSchemaLoadCoverage(unittest.TestCase):
     def test_synthetic(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
-            (root / "skills/x/domain/schemas").mkdir(parents=True)
-            (root / "skills/x/domain/schemas/used.schema.json").write_text("{}")
-            (root / "skills/x/domain/schemas/orphan.schema.json").write_text("{}")
+            (root / "schemas/x/schemas").mkdir(parents=True)
+            (root / "schemas/x/schemas/used.schema.json").write_text("{}")
+            (root / "schemas/x/schemas/orphan.schema.json").write_text("{}")
             (root / "scripts/util").mkdir(parents=True)
             (root / "scripts/util/loader.py").write_text(
                 'open("used.schema.json")\n')

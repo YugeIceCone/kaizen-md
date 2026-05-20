@@ -54,13 +54,14 @@ import _bootstrap  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 # Layout (post-migration: scripts/plugin_development/validate.py):
 #   SCRIPT_DIR  → plugins/kaizen/scripts/plugin_development/
 #   PLUGIN_ROOT → plugins/kaizen/
-#   SKILL_DIR   → plugins/kaizen/skills/plugin-development/ (domain still
-#                 lives with the skill; only the .py adapters migrated)
+#   SKILL_DIR   → plugins/kaizen/skills/plugin-development/ (presentation)
+#   DOMAIN_DIR  → plugins/kaizen/schemas/plugin-development/ (yaml + schemas
+#                 post-consolidation; sibling routine schema.yaml co-located)
 #   REPO_ROOT   → kaizen-md repo root
 SCRIPT_DIR = Path(__file__).resolve().parent
 PLUGIN_ROOT = SCRIPT_DIR.parent.parent
 SKILL_DIR = PLUGIN_ROOT / "skills" / "plugin-development"
-DOMAIN_DIR = SKILL_DIR / "domain"
+DOMAIN_DIR = PLUGIN_ROOT / "schemas" / "plugin-development"
 REPO_ROOT = PLUGIN_ROOT.parent.parent   # kaizen-md repo root
 # iron-laws.yaml lives with its own skill (skills/iron-laws/).
 IRON_LAWS_YAML = PLUGIN_ROOT / "schemas" / "iron-laws" / "iron-laws.yaml"

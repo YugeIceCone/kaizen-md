@@ -58,7 +58,7 @@ class TestYamlTemplateScanner(unittest.TestCase):
         self._tmp = tempfile.TemporaryDirectory()
         self.tmp = Path(self._tmp.name)
         # Build minimal plugin layout
-        (self.tmp / "skills/x/domain").mkdir(parents=True)
+        (self.tmp / "schemas/x").mkdir(parents=True)
         (self.tmp / "skills").mkdir(exist_ok=True)
         (self.tmp / "commands").mkdir()
         (self.tmp / "hooks/claude").mkdir(parents=True)
@@ -75,7 +75,7 @@ class TestYamlTemplateScanner(unittest.TestCase):
         return findings
 
     def test_short_template_not_flagged(self):
-        (self.tmp / "skills/x/domain/cfg.yaml").write_text(
+        (self.tmp / "schemas/x/cfg.yaml").write_text(
             "version: 1\n"
             "on_fire:\n"
             "  reason_template: |\n"
@@ -86,7 +86,7 @@ class TestYamlTemplateScanner(unittest.TestCase):
 
     def test_long_template_flagged_high(self):
         body = "\n".join(f"    line {i}" for i in range(20))
-        (self.tmp / "skills/x/domain/cfg.yaml").write_text(
+        (self.tmp / "schemas/x/cfg.yaml").write_text(
             "version: 1\n"
             "on_fire:\n"
             "  reason_template: |\n"
@@ -252,9 +252,9 @@ class TestFindingsHaveQualityFields(unittest.TestCase):
     def test_yaml_finding_has_quality_keys(self):
         with tempfile.TemporaryDirectory() as tmp:
             tmp = Path(tmp)
-            (tmp / "skills/x/domain").mkdir(parents=True)
+            (tmp / "schemas/x").mkdir(parents=True)
             body = "\n".join(f"    line {i}" for i in range(20))
-            (tmp / "skills/x/domain/cfg.yaml").write_text(
+            (tmp / "schemas/x/cfg.yaml").write_text(
                 "version: 1\n"
                 "on_fire:\n"
                 "  reason_template: |\n"
