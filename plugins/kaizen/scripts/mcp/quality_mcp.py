@@ -31,20 +31,16 @@ from fastmcp import FastMCP
 _HERE = Path(os.path.realpath(__file__)).parent
 if str(_HERE) not in sys.path:
     sys.path.insert(0, str(_HERE))
-# MIGRATION BRIDGE — quality helpers (frontmatter, coverage, etc.) still at skills/workflow/scripts/
-_QUALITY = _HERE.parent / "quality"
-if str(_LEGACY) not in sys.path:
-    sys.path.insert(0, str(_LEGACY))
-if str(_QUALITY) not in sys.path:
-    sys.path.insert(0, str(_QUALITY))
+# Quality helpers (frontmatter, coverage, etc.) now live in scripts/quality/
+# (post DOMAIN-shells sweep); _bootstrap adds every scripts/<cluster>/ dir.
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import _bootstrap  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 
 import frontmatter as _fm          # noqa: E402
 import coverage as _cov             # noqa: E402
 import name_quality as _nq          # noqa: E402
 import schema_coverage as _sc       # noqa: E402
 import slash_collision as _sl       # noqa: E402
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-import _bootstrap  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 
 mcp = FastMCP("quality")
 
