@@ -27,7 +27,7 @@ Confirm before starting that the following are available; gather what is missing
 - a task list or set of task briefs (each with objective, files, verification)
 - shared invariants the batch must preserve (build green, public API stable, etc.)
 - the project's verification commands (tests, lint, typecheck, build)
-- the location and form for status updates (in-place edits to a plan file, a checklist comment, etc.)
+- the location and form for status updates — default is in-place mutations to `.kaizen/docs/<YYYY-MM-DD>-<topic>/plan.json` via `kaizen-blueprint set-task-status --task-id X --status completed` (1-roundtrip atomic). Fall back to plan-file checklist edits when no blueprint exists.
 
 ## Context Gathering
 
