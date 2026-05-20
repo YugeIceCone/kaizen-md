@@ -10,6 +10,8 @@ unchanged (still `bin/kaizen-<sub>` wrapper lookup) — what's new:
     (the `/kaizen:<name>` surface Claude Code exposes — separate from
     the `bin/kaizen-*` CLI wrapper surface this dispatcher routes to)
   - `kaizen help <sub>` — full docstring pulled from the wrapper header
+  - `kaizen patterns [--json]` — canonical CLI-patterns catalog
+    (sourced from skills/plugin-development/domain/cli-patterns.yaml)
   - `kaizen --time <sub> [args]` — dispatch + wall-clock timing
   - `kaizen --trace <sub> [args]` — dispatch + kaizen-trace events
   - `kaizen <sub> [args]` — vanilla dispatch (execv, zero overhead)
@@ -344,6 +346,64 @@ def cmd_version(args: argparse.Namespace) -> int:
     return 0
 
 
+# ─── kaizen patterns — canonical CLI-patterns catalog ────────────────
+
+
+_PATTERNS_YAML = (Path(__file__).resolve().parents[2]
+                    / "skills" / "plugin-development"
+                    / "domain" / "cli-patterns.yaml")
+
+
+def _load_patterns_catalog() -> dict:
+    """Parse the cli-patterns.yaml SSOT. Stdlib-only via a tiny YAML
+    subset reader — avoids forcing a pyyaml dep on the dispatcher."""
+    if not _PATTERNS_YAML.is_file():
+        return {"version": 0, "patterns": [], "error": f"missing {_PATTERNS_YAML}"}
+    try:
+        import yaml  # type: ignore
+        return yaml.safe_load(_PATTERNS_YAML.read_text(encoding="utf-8"))
+    except ImportError:
+        # Fallback: regex-extract id/shape/count/why per item — KISS,
+        # not a general YAML parser. Catalog shape is stable + flat.
+        text = _PATTERNS_YAML.read_text(encoding="utf-8")
+        out: list[dict] = []
+        cur: dict = {}
+        for line in text.splitlines():
+            if line.startswith("  - id:"):
+                if cur:
+                    out.append(cur)
+                cur = {"id": line.split(":", 1)[1].strip()}
+            elif line.startswith("    shape:"):
+                cur["shape"] = line.split(":", 1)[1].strip().strip('"')
+            elif line.startswith("    count:"):
+                cur["count"] = int(line.split(":", 1)[1].strip())
+            elif line.startswith("    why:"):
+                cur["why"] = line.split(":", 1)[1].strip().strip("|").strip()
+            elif line.startswith("    iron_law:"):
+                v = line.split(":", 1)[1].strip()
+                cur["iron_law"] = None if v == "null" else v
+        if cur:
+            out.append(cur)
+        return {"version": 1, "patterns": out}
+
+
+def cmd_patterns(args: argparse.Namespace) -> int:
+    catalog = _load_patterns_catalog()
+    if args.json:
+        print(json.dumps(catalog, indent=2, default=str))
+        return 0
+    patterns = catalog.get("patterns", [])
+    print(f"kaizen CLI patterns — {len(patterns)} canonical entries"
+          f"  (source: skills/plugin-development/domain/cli-patterns.yaml)")
+    print()
+    for p in patterns:
+        law = f"  [law: {p['iron_law']}]" if p.get("iron_law") else ""
+        print(f"  {p['id']:<28} (×{p.get('count', '?')})  {p.get('shape', '')}{law}")
+    print()
+    print("  json output:  kaizen patterns --json")
+    return 0
+
+
 def _dispatch(sub: str, sub_args: list[str], use_subprocess: bool = False) -> int:
     """Resolve sub → bin/kaizen-<sub> and exec/subprocess it."""
     wrapper = _BIN_DIR / f"kaizen-{sub}"
@@ -426,6 +486,11 @@ def main(argv: list[str]) -> int:
         return cmd_commands(ns)
     if cmd in ("version", "--version", "-v"):
         return cmd_version(argparse.Namespace())
+    if cmd == "patterns":
+        parser = argparse.ArgumentParser(prog="kaizen patterns")
+        parser.add_argument("--json", action="store_true")
+        ns = parser.parse_args(argv[1:])
+        return cmd_patterns(ns)
     if cmd in ("-h", "--help"):
         sys.stderr.write(__doc__ or "")
         return 0

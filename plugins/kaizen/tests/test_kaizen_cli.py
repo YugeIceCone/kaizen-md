@@ -185,6 +185,38 @@ class TestSlashCommandInventory(unittest.TestCase):
         self.assertEqual(audit["bin_wrapper"], "kaizen-audit")
 
 
+class TestPatternsSubcommand(unittest.TestCase):
+    """`kaizen patterns` exposes the canonical CLI-patterns catalog
+    (declared in skills/plugin-development/domain/cli-patterns.yaml)."""
+
+    def test_patterns_runs_clean(self):
+        r = subprocess.run([str(_BIN_KAIZEN), "patterns"],
+                            capture_output=True, text=True, timeout=10)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        # human-readable: header + at least a handful of pattern lines
+        self.assertIn("CLI patterns", r.stdout)
+
+    def test_patterns_lists_canonical_entries(self):
+        r = subprocess.run([str(_BIN_KAIZEN), "patterns"],
+                            capture_output=True, text=True, timeout=10)
+        for known_id in ("argparse-subparsers", "json-flag",
+                          "envelope-emitter", "disable-env-knob"):
+            self.assertIn(known_id, r.stdout,
+                          f"missing canonical pattern: {known_id}")
+
+    def test_patterns_json_returns_structured_catalog(self):
+        r = subprocess.run([str(_BIN_KAIZEN), "patterns", "--json"],
+                            capture_output=True, text=True, timeout=10)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        data = json.loads(r.stdout)
+        self.assertIn("patterns", data)
+        self.assertIsInstance(data["patterns"], list)
+        self.assertGreaterEqual(len(data["patterns"]), 10)
+        for p in data["patterns"]:
+            for k in ("id", "shape", "count", "why"):
+                self.assertIn(k, p, f"pattern {p.get('id','?')} missing {k}")
+
+
 class TestTimeMode(unittest.TestCase):
     """Standalone — `--time` is a subprocess-driven CLI mode, not
     inventory or commands-discovery related."""
