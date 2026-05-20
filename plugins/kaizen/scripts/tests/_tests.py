@@ -41,16 +41,14 @@ import tempfile
 import threading
 import unittest
 from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import _bootstrap  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR))
 # MIGRATION BRIDGE — _paths + sibling helpers still at skills/workflow/scripts/
-_LEGACY_SCRIPTS = Path(__file__).resolve().parents[2] / "skills" / "workflow" / "scripts"
-sys.path.insert(0, str(_LEGACY_SCRIPTS))
-
 
 # ─── Test harness ────────────────────────────────────────────────────
-
 
 class SandboxedTest(unittest.TestCase):
     """Isolate every test to its own temp `~/.claude/.kaizen`-shaped tree.
@@ -79,9 +77,7 @@ class SandboxedTest(unittest.TestCase):
             setattr(self._bs, k, v)
         shutil.rmtree(self._tmpdir, ignore_errors=True)
 
-
 # ─── _blobs core (14) ────────────────────────────────────────────────
-
 
 class TestBlobsCore(SandboxedTest):
     def test_01_put_bytes_returns_sha256(self):
@@ -173,9 +169,7 @@ class TestBlobsCore(SandboxedTest):
         self.assertEqual(sha, expected)
         self.assertEqual(self._bs.get(sha).stat().st_size, 5 * 1024 * 1024)
 
-
 # ─── _blobs manifest (5) ────────────────────────────────────────────
-
 
 class TestBlobsManifest(SandboxedTest):
     def test_15_manifest_atomic_write(self):
@@ -223,9 +217,7 @@ class TestBlobsManifest(SandboxedTest):
         d = self._bs._load_manifest()
         self.assertEqual(d, {"version": 1, "blobs": {}})
 
-
 # ─── _blobs refs (4) ────────────────────────────────────────────────
-
 
 class TestBlobsRefs(SandboxedTest):
     def test_20_ref_materialises_symlink(self):
@@ -255,9 +247,7 @@ class TestBlobsRefs(SandboxedTest):
         with self.assertRaises(KeyError):
             self._bs.add_ref("0" * 64, self._tmp / "x.txt")
 
-
 # ─── _blobs CLI (6) ─────────────────────────────────────────────────
-
 
 class TestBlobsCLI(SandboxedTest):
     def _cli(self, *args: str) -> subprocess.CompletedProcess:
@@ -318,9 +308,7 @@ class TestBlobsCLI(SandboxedTest):
         self.assertEqual(r2.returncode, 0)
         self.assertTrue(ref.is_symlink())
 
-
 # ─── _progress (6) ──────────────────────────────────────────────────
-
 
 class TestProgress(unittest.TestCase):
     def setUp(self):
@@ -376,9 +364,7 @@ class TestProgress(unittest.TestCase):
         # At least one ticked line should carry a "file-" suffix
         self.assertIn("file-", buf.getvalue())
 
-
 # ─── _paths (4) ─────────────────────────────────────────────────────
-
 
 class TestPaths(unittest.TestCase):
     def test_36_user_dir_default(self):
@@ -421,9 +407,7 @@ class TestPaths(unittest.TestCase):
         self.assertTrue(hasattr(_paths, "INSTALL_LOG"))
         self.assertTrue(hasattr(_paths, "LEGACY_ARCHIVE_DIR"))
 
-
 # ─── Integration: backup.sh (3) ──────────────────────────────────────
-
 
 class TestBackupShIntegration(unittest.TestCase):
     """End-to-end: invoke backup.sh in a synthetic git repo and verify the
@@ -493,9 +477,7 @@ class TestBackupShIntegration(unittest.TestCase):
         new = after - before
         self.assertEqual(new, set(), f"temp tarballs leaked: {new}")
 
-
 # ─── Integration: observe snapshot (2) ───────────────────────────────
-
 
 class TestObserveSnapshot(unittest.TestCase):
     def setUp(self):
@@ -529,9 +511,7 @@ class TestObserveSnapshot(unittest.TestCase):
         self.assertIn("composite_hash", data)
         self.assertEqual(len(data["composite_hash"]), 16)  # 16-char hash hex
 
-
 # ─── Audit-fix regressions (4) ───────────────────────────────────────
-
 
 class TestAuditFixes(SandboxedTest):
     def test_45_M1_manifest_lock_serialises_writers(self):
@@ -579,9 +559,7 @@ class TestAuditFixes(SandboxedTest):
         self.assertNotIn('${EXTRA:+', src, "EXTRA[0]-only check still present")
         self.assertIn('${#EXTRA[@]}', src, "array-length test missing")
 
-
 # ─── Runner ──────────────────────────────────────────────────────────
-
 
 def _build_suite(group: str | None) -> unittest.TestSuite:
     loader = unittest.TestLoader()
@@ -601,14 +579,12 @@ def _build_suite(group: str | None) -> unittest.TestSuite:
         suite.addTests(loader.loadTestsFromTestCase(cls))
     return suite
 
-
 def main() -> int:
     group = sys.argv[1] if len(sys.argv) > 1 else None
     suite = _build_suite(group)
     runner = unittest.TextTestRunner(verbosity=2)
     result = runner.run(suite)
     return 0 if result.wasSuccessful() else 1
-
 
 if __name__ == "__main__":
     sys.exit(main())

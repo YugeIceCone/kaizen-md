@@ -20,20 +20,16 @@ from pathlib import Path
 
 _SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(_SCRIPT_DIR))
-# MIGRATION BRIDGE — legacy helpers still at skills/workflow/scripts/
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "io"))
 
 import _envelope  # noqa: E402
 
 _emit = _envelope.emitter("kaizen-perm-coverage", tool_version="1.0.0")
 
-
 def _plugin_root() -> Path:
     return _SCRIPT_DIR.parents[1]
 
-
 _ARGPARSE_RE = re.compile(r"\bargparse\.ArgumentParser\b|\bimport argparse\b")
-
 
 def _argparse_main_scripts(scripts_dir: Path) -> list[Path]:
     """Scan scripts_dir (skills/workflow/scripts/) AND the post-DOMAIN
@@ -58,11 +54,9 @@ def _argparse_main_scripts(scripts_dir: Path) -> list[Path]:
             out.append(p)
     return out
 
-
 def _perm_index(plugin_json: Path) -> list[str]:
     raw = json.loads(plugin_json.read_text(encoding="utf-8"))
     return list(raw.get("permissions", {}).get("allow", []))
-
 
 def _has_perm(script_name: str, perm_index: list[str]) -> bool:
     bin_name = "kaizen-" + script_name.removesuffix(".py").replace("_", "-")
@@ -70,7 +64,6 @@ def _has_perm(script_name: str, perm_index: list[str]) -> bool:
         if script_name in entry or bin_name in entry:
             return True
     return False
-
 
 def scan(*, scripts_dir: Path, plugin_json: Path) -> dict:
     scripts = _argparse_main_scripts(scripts_dir)
@@ -88,14 +81,12 @@ def scan(*, scripts_dir: Path, plugin_json: Path) -> dict:
         ),
     }
 
-
 def _cmd_report(args) -> int:
     rep = scan(scripts_dir=_plugin_root() / "skills/workflow/scripts",
                 plugin_json=_plugin_root() / ".claude-plugin/plugin.json")
     verdict = "green" if not rep["gaps"] else ("yellow" if len(rep["gaps"]) <= 5 else "red")
     _emit(rep, verdict=verdict, counts={"gaps": len(rep["gaps"])})
     return 0
-
 
 def _cmd_gaps(args) -> int:
     rep = scan(scripts_dir=_plugin_root() / "skills/workflow/scripts",
@@ -109,7 +100,6 @@ def _cmd_gaps(args) -> int:
             print(g["path"])
     return 0 if not rep["gaps"] else 1
 
-
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="kaizen-perm-coverage",
         description="Audit plugin.json perm coverage of argparse-main scripts.")
@@ -121,7 +111,6 @@ def main(argv: list[str] | None = None) -> int:
     g.set_defaults(func=_cmd_gaps)
     args = ap.parse_args(argv)
     return args.func(args)
-
 
 if __name__ == "__main__":
     sys.exit(main())

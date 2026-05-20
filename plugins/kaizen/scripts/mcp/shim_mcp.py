@@ -53,8 +53,8 @@ from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR))
-# MIGRATION BRIDGE — relocated modules + legacy helpers
-sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "skills" / "workflow" / "scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import _bootstrap  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts" / "brain"))
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts" / "indexers"))
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts" / "handlers"))
@@ -69,9 +69,7 @@ except ImportError as e:
     )
     sys.exit(1)
 
-
 mcp = FastMCP("kaizen-shim")
-
 
 @mcp.tool()
 async def shim_init(slug: str) -> dict:
@@ -95,7 +93,6 @@ async def shim_init(slug: str) -> dict:
         }
     except (OSError, ValueError) as e:
         return {"error": str(e)}
-
 
 @mcp.tool()
 async def shim_carve(
@@ -132,7 +129,6 @@ async def shim_carve(
     except (ValueError, OSError) as e:
         return {"error": str(e)}
 
-
 @mcp.tool()
 async def shim_list(slug: str, include_keep: bool = False) -> list[dict]:
     """List manifest entries for a slug.
@@ -158,7 +154,6 @@ async def shim_list(slug: str, include_keep: bool = False) -> list[dict]:
             entry["keep_reason"] = keep_reason
         out.append(entry)
     return out
-
 
 @mcp.tool()
 async def shim_sweep(
@@ -191,7 +186,6 @@ async def shim_sweep(
         return {"error": str(e), "permission_denied": True}
     except (OSError, ValueError) as e:
         return {"error": str(e)}
-
 
 if __name__ == "__main__":
     mcp.run()

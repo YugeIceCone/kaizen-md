@@ -12,15 +12,14 @@ from pathlib import Path
 from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / "skills" / "workflow" / "scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 sys.path.insert(0, str(ROOT / "scripts" / "daemon"))
-
 
 def _flush_daemon_modules():
     for m in list(sys.modules):
         if m in ("daemon", "_daemon_jobs"):
             del sys.modules[m]
-
 
 class TestDaemonBrainAuditWire(unittest.TestCase):
 
@@ -57,7 +56,6 @@ class TestDaemonBrainAuditWire(unittest.TestCase):
                     "brain-evolve", "gold-mine", "memory-sync"):
             self.assertIn(key, actions, f"{key} should be wired into tick()")
             self.assertGreaterEqual(actions[key], 1)
-
 
 if __name__ == "__main__":
     unittest.main()

@@ -88,15 +88,12 @@ _RESULT_SCHEMA_PATH = (
     _core.DOMAIN_DIR / "schemas" / "checkpoint-result.schema.json"
 )
 
-
 # ─── Pure helpers ────────────────────────────────────────────────────
-
 
 def _run_id_now() -> str:
     """UTC timestamp usable as a directory name. Sorts lexically =
     chronologically, so _latest_run_id() is a plain max()."""
     return dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H-%M-%SZ")
-
 
 def _latest_run_id() -> Optional[str]:
     root = _core.agent_audit_dir()
@@ -105,7 +102,6 @@ def _latest_run_id() -> Optional[str]:
     runs = sorted(p.name for p in root.iterdir() if p.is_dir())
     return runs[-1] if runs else None
 
-
 def _substitute(template: str, mapping: dict) -> str:
     """Plain-string placeholder substitution. NOT str.format — the
     template and the injected JSON schema both carry literal braces."""
@@ -113,7 +109,6 @@ def _substitute(template: str, mapping: dict) -> str:
     for key, value in mapping.items():
         out = out.replace("{" + key + "}", value)
     return out
-
 
 def build_briefs(
     checkpoints: list[dict],
@@ -161,14 +156,12 @@ def build_briefs(
         })
     return briefs
 
-
 def _strip_meta_keys(d: dict) -> dict:
     """Drop JSON-Schema meta-keys ($schema, $id, …) from a dict. LLM
     subagents routinely echo these from the schema embedded in their
     brief into the result body; they carry no contract meaning, so
     strip rather than reject."""
     return {k: v for k, v in d.items() if not k.startswith("$")}
-
 
 def _prompt_schema(schema_text: str) -> str:
     """The schema embedded in a subagent brief, minus its own meta-keys.
@@ -183,7 +176,6 @@ def _prompt_schema(schema_text: str) -> str:
     for meta in ("$schema", "$id", "title", "description"):
         schema.pop(meta, None)
     return json.dumps(schema, indent=2)
-
 
 def _validate_result(raw: dict, schema: Optional[dict]) -> Optional[str]:
     """Return None when `raw` satisfies the checkpoint-result contract,
@@ -213,7 +205,6 @@ def _validate_result(raw: dict, schema: Optional[dict]) -> Optional[str]:
     if not isinstance(raw["findings"], list):
         return "findings is not a list"
     return None
-
 
 def merge_results(briefs: list[dict], collected: list[dict]) -> dict:
     """Flatten subagent results into a unified Finding list + a
@@ -314,9 +305,7 @@ def merge_results(briefs: list[dict], collected: list[dict]) -> dict:
     ))
     return {"findings": unique, "checkpoints": checkpoints}
 
-
 # ─── dispatch-plan flow ──────────────────────────────────────────────
-
 
 class LoadInputsNode(_flow.AsyncNode):
     """Run the mechanical audit + load the dispatch config + read the
@@ -339,7 +328,6 @@ class LoadInputsNode(_flow.AsyncNode):
         store.update(exec_result)
         return "default"
 
-
 class BuildBriefsNode(_flow.AsyncNode):
     async def prep_async(self, store: dict) -> dict:
         return {
@@ -358,7 +346,6 @@ class BuildBriefsNode(_flow.AsyncNode):
     async def post_async(self, store: dict, _prep, briefs: list) -> str:
         store["briefs"] = briefs
         return "default"
-
 
 class WriteManifestNode(_flow.AsyncNode):
     async def prep_async(self, store: dict) -> dict:
@@ -391,7 +378,6 @@ class WriteManifestNode(_flow.AsyncNode):
         store["manifest_path"] = exec_result["manifest_path"]
         return "default"
 
-
 def build_dispatch_flow() -> _flow.AsyncFlow:
     load = LoadInputsNode()
     briefs = BuildBriefsNode()
@@ -399,10 +385,8 @@ def build_dispatch_flow() -> _flow.AsyncFlow:
     load >> briefs >> write
     return _flow.AsyncFlow(load)
 
-
 def run_dispatch_plan() -> dict:
     return asyncio.run(_run_dispatch_plan_async())
-
 
 async def _run_dispatch_plan_async() -> dict:
     run_id = _run_id_now()
@@ -420,9 +404,7 @@ async def _run_dispatch_plan_async() -> dict:
         "briefs": store.get("briefs", []),
     }
 
-
 # ─── aggregate flow ──────────────────────────────────────────────────
-
 
 class LoadManifestNode(_flow.AsyncNode):
     async def prep_async(self, store: dict) -> Path:
@@ -439,7 +421,6 @@ class LoadManifestNode(_flow.AsyncNode):
     async def post_async(self, store: dict, _prep, manifest: dict) -> str:
         store["manifest"] = manifest
         return "default"
-
 
 class CollectResultsNode(_flow.AsyncParallelBatchNode):
     """Read each subagent's result file. I/O-bound fan-out — a missing
@@ -465,7 +446,6 @@ class CollectResultsNode(_flow.AsyncParallelBatchNode):
         store["collected"] = collected
         return "default"
 
-
 class ValidateAndMergeNode(_flow.AsyncNode):
     async def prep_async(self, store: dict) -> dict:
         return {
@@ -480,7 +460,6 @@ class ValidateAndMergeNode(_flow.AsyncNode):
         store["findings"] = merged["findings"]
         store["checkpoints"] = merged["checkpoints"]
         return "default"
-
 
 class WriteConsolidatedReportNode(_flow.AsyncNode):
     async def prep_async(self, store: dict) -> dict:
@@ -567,7 +546,6 @@ class WriteConsolidatedReportNode(_flow.AsyncNode):
         store["report"] = exec_result
         return "default"
 
-
 def build_aggregate_flow() -> _flow.AsyncFlow:
     load = LoadManifestNode()
     collect = CollectResultsNode()
@@ -576,10 +554,8 @@ def build_aggregate_flow() -> _flow.AsyncFlow:
     load >> collect >> merge >> write
     return _flow.AsyncFlow(load)
 
-
 def run_aggregate(run_id: Optional[str] = None) -> dict:
     return asyncio.run(_run_aggregate_async(run_id))
-
 
 async def _run_aggregate_async(run_id: Optional[str]) -> dict:
     run_id = run_id or _latest_run_id()
@@ -600,9 +576,7 @@ async def _run_aggregate_async(run_id: Optional[str]) -> dict:
         "findings": [f.to_dict() for f in store.get("findings", [])],
     }
 
-
 # ─── CLI ─────────────────────────────────────────────────────────────
-
 
 def _cmd_dispatch_plan(args) -> int:
     try:
@@ -628,7 +602,6 @@ def _cmd_dispatch_plan(args) -> int:
     print("  See /kaizen:agent-self-audit for the full playbook.")
     return 0
 
-
 def _cmd_aggregate(args) -> int:
     result = run_aggregate(run_id=args.run_id)
     if result.get("error"):
@@ -646,7 +619,6 @@ def _cmd_aggregate(args) -> int:
         print(f"\n→ report saved: {result['report_path']}")
     return 0
 
-
 def _cmd_path(args) -> int:
     _emit({
         "agent_audit_dir": str(_core.agent_audit_dir()),
@@ -655,7 +627,6 @@ def _cmd_path(args) -> int:
         "latest_run": _latest_run_id(),
     })
     return 0
-
 
 def main(argv: Optional[list[str]] = None) -> int:
     p = argparse.ArgumentParser(
@@ -685,7 +656,6 @@ def main(argv: Optional[list[str]] = None) -> int:
     if args.cmd is None:
         return _cmd_dispatch_plan(argparse.Namespace(json=False))
     return args.func(args)
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

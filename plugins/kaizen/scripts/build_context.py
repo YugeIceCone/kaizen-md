@@ -21,7 +21,6 @@ from pathlib import Path
 _OVERRIDE_PREFIX_RE = re.compile(r"^override:\s*", re.IGNORECASE)
 _HEADER_RE = re.compile(r"^##\s+(.+?)\s*$", re.MULTILINE)
 
-
 def parse_sections(text: str) -> list[dict]:
     """Parse ``## Section Name`` blocks. Returns ordered list of
     ``{name, content}`` dicts. Content excludes header + is trimmed."""
@@ -37,17 +36,14 @@ def parse_sections(text: str) -> list[dict]:
         sections.append({"name": name, "content": content})
     return sections
 
-
 def _read_safe(p: Path) -> str:
     try:
         return p.read_text(encoding="utf-8")
     except OSError:
         return ""
 
-
 def _normalize(name: str) -> str:
     return name.lower().strip()
-
 
 def merge_sections(plugin_sections: list[dict],
                    user_sections: list[dict]) -> tuple[list[dict], list[dict]]:
@@ -103,7 +99,6 @@ def merge_sections(plugin_sections: list[dict],
         })
     return merged, extras
 
-
 def render_sections(sections: list[dict]) -> str:
     """Render a list of ``{name, content}`` dicts as concatenated
     ``## Name\\n<content>`` blocks. Drops empty content."""
@@ -114,7 +109,6 @@ def render_sections(sections: list[dict]) -> str:
             continue
         out_blocks.append(f"## {s['name']}\n{content}")
     return "\n\n".join(out_blocks)
-
 
 def build_capture_context(
     brain: Path,
@@ -188,7 +182,6 @@ def build_capture_context(
         f"Brain: {brain}. Today: {date_str}."
     )
     return f"{header}\n\n{compact_index}\n\n{rulebook}{extras_block}\n"
-
 
 __all__ = [
     "parse_sections",

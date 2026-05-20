@@ -40,7 +40,6 @@ from typing import Callable, Iterable
 
 # ─── Pure: drift detection ───────────────────────────────────────────
 
-
 def compute_corpus_drift(root: Path, glob: str = "**/*.md",
                           exclude_files: Iterable[str] | None = None) -> str:
     """Stat-only sha-256[:16] over files matching ``glob`` under ``root``.
@@ -68,9 +67,7 @@ def compute_corpus_drift(root: Path, glob: str = "**/*.md",
         any_file = True
     return h.hexdigest()[:16] if any_file else ""
 
-
 # ─── Adapter: daemon-job factory ────────────────────────────────────
-
 
 def daemon_drift_job(
     action_key: str,
@@ -111,9 +108,7 @@ def daemon_drift_job(
 
     return job
 
-
 # ─── Adapter: SQLite open with migrations ────────────────────────────
-
 
 def atomic_open_with_migrations(
     db_path: Path,
@@ -141,7 +136,6 @@ def atomic_open_with_migrations(
     for migrate in migrations:
         migrate(conn)
     return conn
-
 
 __all__ = [
     "compute_corpus_drift",

@@ -98,7 +98,8 @@ from pathlib import Path
 _SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(_SCRIPT_DIR))
 # MIGRATION BRIDGE — until helpers move from skills/workflow/scripts/ → scripts/
-sys.path.insert(0, str(_SCRIPT_DIR.parents[1] / "skills" / "workflow" / "scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import _bootstrap  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 sys.path.insert(0, str(_SCRIPT_DIR.parents[1] / "scripts" / "brain"))
 
 import _sqlite as _kz_sqlite  # noqa: E402
@@ -107,9 +108,7 @@ import _envelope  # noqa: E402
 
 _emit = _envelope.emitter("kaizen-loc", tool_version="1.0.0")
 
-
 # ─── Language detection ──────────────────────────────────────────────
-
 
 LANG_BY_EXT: dict[str, str] = {
     "py": "Python",
@@ -177,9 +176,7 @@ IGNORE_SUFFIXES = (
 GOD_WARNING_LINES = 500
 GOD_CRITICAL_LINES = 1000
 
-
 # ─── Symbol record ───────────────────────────────────────────────────
-
 
 @dataclass
 class FunctionInfo:
@@ -216,9 +213,7 @@ class FunctionInfo:
         """`<file>:<start>-<end>` — copy-pasteable into editors."""
         return f"{self.path}:{self.line_start}-{self.line_end}"
 
-
 # ─── Python AST extractor ────────────────────────────────────────────
-
 
 class _PyComplexityVisitor(ast.NodeVisitor):
     """McCabe cyclomatic complexity walker. Mirrors loc.rs::ComplexityVisitor.
@@ -294,7 +289,6 @@ class _PyComplexityVisitor(ast.NodeVisitor):
         self.complexity += 1
         self.generic_visit(node)
 
-
 def _python_compute_complexity(body: list[ast.stmt]) -> int:
     """Compute McCabe complexity over the body of a function/method."""
     v = _PyComplexityVisitor()
@@ -302,11 +296,9 @@ def _python_compute_complexity(body: list[ast.stmt]) -> int:
         v.visit(stmt)
     return v.complexity
 
-
 _TEST_DECORATOR_NAMES = {
     "test", "fixture", "pytest.fixture", "pytest.mark.asyncio",
 }
-
 
 def _decorator_names(deco_list: list[ast.expr]) -> list[str]:
     """Render decorator AST nodes into 'name' / 'mod.name' strings."""
@@ -332,7 +324,6 @@ def _decorator_names(deco_list: list[ast.expr]) -> list[str]:
                 names.extend(_decorator_names([tgt]))
     return names
 
-
 def _is_test_function(name: str, decos: list[str], path: str) -> bool:
     if name.startswith("test_") or name == "test":
         return True
@@ -351,7 +342,6 @@ def _is_test_function(name: str, decos: list[str], path: str) -> bool:
         or base == "conftest.py"
     )
 
-
 def _render_signature(node: ast.FunctionDef | ast.AsyncFunctionDef) -> str:
     """Render `def name(args) -> ret:`. Uses ast.unparse (3.9+)."""
     try:
@@ -367,7 +357,6 @@ def _render_signature(node: ast.FunctionDef | ast.AsyncFunctionDef) -> str:
         except AttributeError:
             ret = " -> ..."
     return f"{prefix}{node.name}({args}){ret}"
-
 
 def extract_python_functions(source: str, file: str) -> list[FunctionInfo]:
     """Public entry point — parse a Python file's source into per-symbol
@@ -521,9 +510,7 @@ def extract_python_functions(source: str, file: str) -> list[FunctionInfo]:
     walk(tree, None)
     return out
 
-
 # ─── Regex fallback (non-Python languages) ───────────────────────────
-
 
 _REGEX_PATTERNS: dict[str, list[tuple[str, re.Pattern]]] = {
     "Rust": [
@@ -562,7 +549,6 @@ _REGEX_PATTERNS: dict[str, list[tuple[str, re.Pattern]]] = {
         ("function", re.compile(r"^\s*(?:function\s+)?(\w+)\s*\(\s*\)\s*\{", re.MULTILINE)),
     ],
 }
-
 
 def extract_regex_functions(source: str, file: str, language: str) -> list[FunctionInfo]:
     """Best-effort regex extraction for non-Python languages. Marks parser='regex'.
@@ -610,9 +596,7 @@ def extract_regex_functions(source: str, file: str, language: str) -> list[Funct
             ))
     return out
 
-
 # ─── File-level metrics + walker ─────────────────────────────────────
-
 
 @dataclass
 class FileMetrics:
@@ -651,7 +635,6 @@ class FileMetrics:
     def test_symbol_count(self) -> int:
         return sum(1 for s in self.symbols if s.is_test)
 
-
 _COMMENT_PREFIXES: dict[str, tuple[str, ...]] = {
     "Python": ("#",),
     "Shell": ("#",),
@@ -674,7 +657,6 @@ _COMMENT_PREFIXES: dict[str, tuple[str, ...]] = {
     "SQL": ("--",),
     "HTML": ("<!--",),
 }
-
 
 def analyze_file(path: Path, root: Path) -> FileMetrics | None:
     """Read a file, classify lines, extract symbols. Returns None for
@@ -731,7 +713,6 @@ def analyze_file(path: Path, root: Path) -> FileMetrics | None:
 
     return metrics
 
-
 def iter_source_files(root: Path) -> list[Path]:
     """Walk `root` for source files, skipping ignore dirs + binary suffixes.
     Sort for stable indexing order. Ignore-dir patterns are matched against
@@ -755,9 +736,7 @@ def iter_source_files(root: Path) -> list[Path]:
     out.sort()
     return out
 
-
 # ─── SQLite ──────────────────────────────────────────────────────────
-
 
 _SCHEMA_SQL = """
     CREATE TABLE IF NOT EXISTS loc_symbols (
@@ -823,7 +802,6 @@ _SCHEMA_SQL = """
     );
 """
 
-
 def db_path(root: Path) -> Path:
     """Project-scoped DB at `<root>/.kaizen/loc.db`, overridable via env."""
     env = os.environ.get("KAIZEN_LOC_DB")
@@ -831,21 +809,16 @@ def db_path(root: Path) -> Path:
         return Path(env).expanduser().resolve()
     return root / ".kaizen" / "loc.db"
 
-
 def open_db(root: Path, *, create: bool = True) -> sqlite3.Connection:
     return _kz_sqlite.open_indexer_db(db_path(root), _SCHEMA_SQL, create=create)
-
 
 def set_meta(conn: sqlite3.Connection, key: str, value: str) -> None:
     _kz_sqlite.set_meta(conn, "loc_meta", key, value)
 
-
 def get_meta(conn: sqlite3.Connection, key: str, default: str = "") -> str:
     return _kz_sqlite.get_meta(conn, "loc_meta", key, default)
 
-
 # ─── Data-returning helpers (also used by loc_mcp.py) ────────────────
-
 
 def index_one_file(conn: sqlite3.Connection, root: Path, fp: Path) -> int | None:
     """Index a single file into an already-open connection. sha-deduped.
@@ -895,12 +868,10 @@ def index_one_file(conn: sqlite3.Connection, root: Path, fp: Path) -> int | None
     )
     return len(metrics.symbols)
 
-
 def delete_file(conn: sqlite3.Connection, rel_path: str) -> None:
     """Remove all rows for a file no longer present. Caller commits."""
     conn.execute("DELETE FROM loc_symbols WHERE path = ?", (rel_path,))
     conn.execute("DELETE FROM loc_files WHERE path = ?", (rel_path,))
-
 
 def do_index(root: Path) -> dict:
     """Run an incremental index pass. Returns counts dict."""
@@ -953,9 +924,7 @@ def do_index(root: Path) -> dict:
         "db": str(db_path(root)),
     }
 
-
 _COMP_RE = re.compile(r"^(>=|<=|>|<|==|=)?\s*(-?\d+)$")
-
 
 def _parse_compare(expr: str) -> tuple[str, int] | None:
     """Parse '>=15' or '<100' into (op, value)."""
@@ -967,10 +936,8 @@ def _parse_compare(expr: str) -> tuple[str, int] | None:
         op = "=="
     return op, int(m.group(2))
 
-
 def _row_to_symbol(r: sqlite3.Row) -> dict:
     return {k: r[k] for k in r.keys()}
-
 
 def do_search(
     root: Path,
@@ -1076,7 +1043,6 @@ def do_search(
     conn.close()
     return [_row_to_symbol(r) for r in rows]
 
-
 def do_files(
     root: Path,
     *,
@@ -1119,7 +1085,6 @@ def do_files(
     conn.close()
     return [{k: r[k] for k in r.keys()} for r in rows]
 
-
 def do_show(root: Path, symbol_id: int) -> dict | None:
     """Fetch symbol + extract source via byte range."""
     p = db_path(root)
@@ -1145,7 +1110,6 @@ def do_show(root: Path, symbol_id: int) -> dict | None:
             sym["source"] = None
     return sym
 
-
 def do_get(root: Path, symbol_id: int) -> dict | None:
     """Bare row fetch (no source extraction). Mirrors knowledge_index.do_get."""
     p = db_path(root)
@@ -1157,7 +1121,6 @@ def do_get(root: Path, symbol_id: int) -> dict | None:
     ).fetchone()
     conn.close()
     return _row_to_symbol(r) if r else None
-
 
 def do_stats(root: Path, by: str | None = None) -> dict:
     """Index stats. `by` can be 'language' or 'kind' for grouped counts."""
@@ -1185,7 +1148,6 @@ def do_stats(root: Path, by: str | None = None) -> dict:
         out["by_kind"] = {r["symbol_kind"]: r["n"] for r in rows}
     conn.close()
     return out
-
 
 def do_report(root: Path) -> dict:
     """xtask-style verdict: god files, top largest fns, top complex fns,
@@ -1246,9 +1208,7 @@ def do_report(root: Path) -> dict:
         "top_complex": [_row_to_symbol(r) for r in top_complex],
     }
 
-
 # ─── CLI ─────────────────────────────────────────────────────────────
-
 
 def _resolve_root(args: argparse.Namespace) -> Path:
     if getattr(args, "root", None):
@@ -1262,7 +1222,6 @@ def _resolve_root(args: argparse.Namespace) -> Path:
         return Path(out) if out else Path.cwd()
     except (subprocess.CalledProcessError, FileNotFoundError):
         return Path.cwd()
-
 
 class LocCLI(IndexerCLI):
     PROG = "kaizen-loc"
@@ -1487,10 +1446,8 @@ class LocCLI(IndexerCLI):
                 for k, n in sorted(s[key].items(), key=lambda kv: kv[1], reverse=True):
                     print(f"  {k:<20} {n}")
 
-
 def main():
     LocCLI().run()
-
 
 if __name__ == "__main__":
     main()

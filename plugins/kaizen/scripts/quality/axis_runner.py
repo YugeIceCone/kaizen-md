@@ -50,7 +50,6 @@ _SCHEMA_PATH = (
 )
 _AXES_DIR = _PLUGIN_ROOT / "skills/workflow/domain/axes"
 
-
 # --- YAML loader (graceful-fallback) ---------------------------------------
 
 def _load_yaml(path: Path) -> dict:
@@ -61,14 +60,12 @@ def _load_yaml(path: Path) -> dict:
     with path.open("r", encoding="utf-8") as f:
         return yaml.safe_load(f) or {}
 
-
 def _is_jsonschema_available() -> bool:
     try:
         import jsonschema  # noqa: F401
         return True
     except ImportError:
         return False
-
 
 def _validate_spec(spec: dict) -> None:
     """Validate against axis.schema.json when jsonschema is installed;
@@ -82,7 +79,6 @@ def _validate_spec(spec: dict) -> None:
         schema = json.load(f)
     jsonschema.validate(instance=spec, schema=schema)
 
-
 def load(yaml_path: Path | str) -> dict:
     """Load + validate an axis YAML. Returns the parsed dict (AxisSpec
     is just `dict` — keep it stdlib-friendly)."""
@@ -90,7 +86,6 @@ def load(yaml_path: Path | str) -> dict:
     spec = _load_yaml(p)
     _validate_spec(spec)
     return spec
-
 
 # --- Dispatch + verdict -----------------------------------------------------
 
@@ -100,7 +95,6 @@ def _verdict_for(n: int, rule: dict) -> str:
     if n <= rule.get("yellow_max", 0):
         return "yellow"
     return "red"
-
 
 def _dispatch(spec: dict, *, root: Path) -> list[dict]:
     import axis_runner_rules as rules
@@ -115,7 +109,6 @@ def _dispatch(spec: dict, *, root: Path) -> list[dict]:
             scan["expected_glob"], scan["actual_glob"], root,
         )
     raise ValueError(f"unknown scan_spec.type: {t!r}")
-
 
 def run_axis(yaml_path: Path | str, *, root: Path | str) -> dict:
     """Load → dispatch → return canonical envelope.
@@ -138,7 +131,6 @@ def run_axis(yaml_path: Path | str, *, root: Path | str) -> dict:
     )
     return envelope
 
-
 # --- CLI --------------------------------------------------------------------
 
 def _cmd_list(_args) -> int:
@@ -148,7 +140,6 @@ def _cmd_list(_args) -> int:
     axes = sorted(p.stem for p in _AXES_DIR.glob("*.yaml"))
     _emit({"axes": axes}, verdict="green", counts={"axes": len(axes)})
     return 0
-
 
 def _cmd_run(args) -> int:
     yaml_path = Path(args.axis)
@@ -166,7 +157,6 @@ def _cmd_run(args) -> int:
     envelope = run_axis(yaml_path, root=root)
     print(_envelope.render(envelope))
     return 0 if envelope["verdict"] in ("green", "yellow") else 1
-
 
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(
@@ -191,7 +181,6 @@ def main(argv: list[str] | None = None) -> int:
 
     args = ap.parse_args(argv)
     return args.func(args)
-
 
 if __name__ == "__main__":
     sys.exit(main())

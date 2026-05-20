@@ -44,11 +44,9 @@ DOMAIN_DIR = (
 ANTI_PATTERNS_YAML = DOMAIN_DIR / "anti-patterns.yaml"
 ANTI_PATTERN_SCHEMA = DOMAIN_DIR / "schemas" / "anti-pattern.schema.json"
 
-
 def _die(msg: str, code: int = 2) -> None:
     sys.stderr.write(f"kaizen efficient-tool-use loader: {msg}\n")
     sys.exit(code)
-
 
 def load_anti_patterns() -> dict:
     """Load anti-patterns.yaml. Validates against anti-pattern.schema.json when jsonschema is available."""
@@ -72,14 +70,12 @@ def load_anti_patterns() -> dict:
         )
     return data
 
-
 def _anti_pattern(data: dict, ap_id: str) -> dict:
     for ap in data.get("anti_patterns", []):
         if ap.get("id") == ap_id:
             return ap
     _die(f"unknown anti-pattern id: {ap_id}")
     return {}  # unreachable
-
 
 def main(argv: list[str]) -> int:
     if not argv:
@@ -117,7 +113,6 @@ def main(argv: list[str]) -> int:
         return 0
     _die(f"unknown command: {cmd}")
     return 2
-
 
 if __name__ == "__main__":
     sys.exit(main(sys.argv[1:]))

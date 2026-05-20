@@ -48,13 +48,11 @@ import time
 from pathlib import Path
 from typing import Any, Optional
 
-
 def _dxm_dir() -> Path:
     env = os.environ.get("KAIZEN_DXM_DIR")
     if env:
         return Path(os.path.expandvars(env)).expanduser()
     return Path.home() / ".claude" / ".kaizen" / "dxm"
-
 
 def _discover_sid() -> Optional[str]:
     """Lazy-import _session_jsonl to avoid module-load-time cycles."""
@@ -66,7 +64,6 @@ def _discover_sid() -> Optional[str]:
         return _sj.discover_active_session_id()
     except Exception:
         return None
-
 
 def emit_event(
     evt_type: str,
@@ -107,7 +104,6 @@ def emit_event(
     except Exception:
         return False
 
-
 def emit_subcommand_complete(
     tool: str,
     subcommand: str,
@@ -129,6 +125,5 @@ def emit_subcommand_complete(
         payload=payload,
         session_id=session_id,
     )
-
 
 __all__ = ["emit_event", "emit_subcommand_complete"]

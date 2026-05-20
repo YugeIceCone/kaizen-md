@@ -75,7 +75,8 @@ from pathlib import Path
 SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR))
 # MIGRATION BRIDGE — until helpers move from skills/workflow/scripts/ → scripts/
-sys.path.insert(0, str(SCRIPT_DIR.parents[1] / "skills" / "workflow" / "scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import _bootstrap  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 sys.path.insert(0, str(SCRIPT_DIR.parents[1] / "scripts" / "brain"))
 import _paths as _p  # noqa: E402
 import _embed as _kz_embed  # noqa: E402
@@ -90,9 +91,7 @@ REPO_URL = _cfg.CLAUDE_DOCS_REPO_URL
 DEFAULT_MODEL = _cfg.EMBED_MODEL
 DEFAULT_DIM = _cfg.EMBED_DIM
 
-
 # ─── DB (M1 — shared base in _sqlite.py) ─────────────────────────────
-
 
 import _sqlite as _kz_sqlite  # noqa: E402
 
@@ -123,25 +122,19 @@ _SCHEMA_SQL = """
     );
 """
 
-
 def open_db(create: bool = True) -> sqlite3.Connection:
     return _kz_sqlite.open_indexer_db(DB_PATH, _SCHEMA_SQL, create=create)
-
 
 def set_meta(conn: sqlite3.Connection, key: str, value: str) -> None:
     _kz_sqlite.set_meta(conn, "claude_doc_meta", key, value)
 
-
 def get_meta(conn: sqlite3.Connection, key: str, default: str = "") -> str:
     return _kz_sqlite.get_meta(conn, "claude_doc_meta", key, default)
 
-
 # ─── Source scanning ────────────────────────────────────────────────
-
 
 MD_EXTS = {".md", ".mdx"}
 SKIP_DIRS = {".git", "node_modules", ".github", "scripts", "dist", "build"}
-
 
 def iter_md_files(src: Path):
     """Yield every .md/.mdx file under src (excluding SKIP_DIRS)."""
@@ -153,13 +146,11 @@ def iter_md_files(src: Path):
             if Path(fn).suffix.lower() in MD_EXTS:
                 yield Path(dirpath) / fn
 
-
 def first_h1(text: str) -> str:
     for line in text.split("\n"):
         if line.startswith("# "):
             return line[2:].strip()
     return ""
-
 
 def nearest_section(text: str, char_offset: int) -> str:
     """Return the most recent H1/H2/H3 header preceding char_offset."""
@@ -170,13 +161,10 @@ def nearest_section(text: str, char_offset: int) -> str:
         last_header = m.group(2).strip()
     return last_header
 
-
 def file_sha(content: bytes) -> str:
     return hashlib.sha256(content).hexdigest()
 
-
 # ─── Bootstrap / update (git ops) ───────────────────────────────────
-
 
 def cmd_bootstrap(args) -> dict:
     """git clone the upstream docs repo into SRC_DIR (if missing)."""
@@ -196,7 +184,6 @@ def cmd_bootstrap(args) -> dict:
     print(f"  ✓ cloned to {SRC_DIR}")
     return {"status": "cloned", "src": str(SRC_DIR)}
 
-
 def cmd_update(args) -> dict:
     """git pull the upstream docs repo (call before reindex)."""
     if not (SRC_DIR / ".git").exists():
@@ -214,9 +201,7 @@ def cmd_update(args) -> dict:
     print(f"  ✓ updated {SRC_DIR}")
     return {"status": "updated", "src": str(SRC_DIR)}
 
-
 # ─── Index ──────────────────────────────────────────────────────────
-
 
 def cmd_index(args) -> dict:
     """Incremental index — sha-deduped per file."""
@@ -311,7 +296,6 @@ def cmd_index(args) -> dict:
         "db": str(DB_PATH),
     }
 
-
 def cmd_reindex(args) -> dict:
     """Drop tables + rebuild from scratch."""
     if DB_PATH.exists():
@@ -324,9 +308,7 @@ def cmd_reindex(args) -> dict:
         conn.commit(); conn.close()
     return cmd_index(args)
 
-
 # ─── Search ─────────────────────────────────────────────────────────
-
 
 def do_search(query: str, top_k: int = 8) -> list[dict]:
     """Programmatic search — returns ranked chunks. Used by both the CLI
@@ -362,7 +344,6 @@ def do_search(query: str, top_k: int = 8) -> list[dict]:
         })
     return results
 
-
 def do_stats() -> dict:
     """Programmatic stats — returns the meta dict. Used by MCP + CLI."""
     if not DB_PATH.exists():
@@ -382,7 +363,6 @@ def do_stats() -> dict:
         "last_indexed_ts": get_meta(conn, "last_indexed_ts", ""),
         "size_bytes": DB_PATH.stat().st_size,
     }
-
 
 def do_get(chunk_id: int) -> dict | None:
     """Programmatic single-chunk fetch by id. Returns None if absent."""
@@ -404,7 +384,6 @@ def do_get(chunk_id: int) -> dict | None:
         "text": row["text"],
     }
 
-
 def do_list_files(limit: int = 200) -> list[dict]:
     """Programmatic file listing — returns the file index (no embeddings)."""
     if not DB_PATH.exists():
@@ -415,7 +394,6 @@ def do_list_files(limit: int = 200) -> list[dict]:
         "ORDER BY path LIMIT ?", (limit,),
     ).fetchall()
     return [dict(r) for r in rows]
-
 
 def cmd_search(args) -> dict:
     if not DB_PATH.exists():
@@ -431,15 +409,12 @@ def cmd_search(args) -> dict:
             print(f"        {r['snippet']}…")
     return {"query": args.query, "count": len(results), "results": results}
 
-
 # ─── Inspection helpers ─────────────────────────────────────────────
-
 
 def cmd_stats(args) -> dict:
     out = do_stats()
     _emit(out)
     return out
-
 
 def cmd_get(args) -> dict:
     out = do_get(args.id)
@@ -448,10 +423,8 @@ def cmd_get(args) -> dict:
     _emit(out)
     return out
 
-
 def cmd_path(args) -> str:
     print(DB_PATH); return str(DB_PATH)
-
 
 def cmd_clear(args) -> dict:
     """Remove the DB. Pre-deletion belief: this is destructive — require --yes."""
@@ -468,22 +441,17 @@ def cmd_clear(args) -> dict:
         print(f"  ∘ already gone: {DB_PATH}")
     return {"removed": str(DB_PATH)}
 
-
 from _time import iso  # M5 dedup
-
 
 def _now() -> str:
     return iso(precision="seconds")
 
-
 # ─── CLI (M7: thin IndexerCLI subclass) ─────────────────────────────
-
 
 from _indexer_cli import IndexerCLI  # noqa: E402
 import _envelope  # noqa: E402
 
 _emit = _envelope.emitter("kaizen-claude-docs", tool_version="1.0.0")
-
 
 class ClaudeDocsCLI(IndexerCLI):
     PROG = "claude_docs_index"
@@ -531,14 +499,12 @@ class ClaudeDocsCLI(IndexerCLI):
         sub.add_parser("update", help="git pull the upstream docs repo") \
             .set_defaults(func=lambda args: cmd_update(args))
 
-
 def main():
     cli = ClaudeDocsCLI()
     parser = cli.build_parser()
     argv = sys.argv[1:] or ["stats"]
     args = parser.parse_args(argv)
     args.func(args)
-
 
 if __name__ == "__main__":
     main()

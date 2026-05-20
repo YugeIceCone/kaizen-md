@@ -51,12 +51,11 @@ from typing import Iterable, Sequence
 _SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(_SCRIPT_DIR))
 # MIGRATION BRIDGE — cross-cluster sibs still at legacy or shimmed there.
-sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "skills" / "workflow" / "scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import _bootstrap  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 import _embed  # noqa: E402
 
-
 # ─── FTS5 setup ───────────────────────────────────────────────────────
-
 
 def ensure_fts_mirror(conn: sqlite3.Connection, base_table: str) -> None:
     """Create `<base_table>_fts` virtual table + sync triggers if absent.
@@ -105,7 +104,6 @@ def ensure_fts_mirror(conn: sqlite3.Connection, base_table: str) -> None:
     """)
     conn.commit()
 
-
 def rebuild_fts(conn: sqlite3.Connection, base_table: str) -> None:
     """Force-rebuild the FTS mirror from the base table contents.
 
@@ -115,9 +113,7 @@ def rebuild_fts(conn: sqlite3.Connection, base_table: str) -> None:
     conn.execute(f"INSERT INTO {fts}({fts}) VALUES('rebuild')")
     conn.commit()
 
-
 # ─── BM25 retrieval ──────────────────────────────────────────────────
-
 
 def _fts5_safe(query: str) -> str:
     """Wrap each whitespace-separated token in double quotes so FTS5
@@ -135,7 +131,6 @@ def _fts5_safe(query: str) -> str:
         cleaned = cleaned.replace('"', '""')
         tokens.append(f'"{cleaned}"')
     return " OR ".join(tokens) if tokens else '""'
-
 
 def bm25_search(
     conn: sqlite3.Connection,
@@ -160,9 +155,7 @@ def bm25_search(
     # SQLite bm25 returns NEGATIVE values (lower = better). Flip sign.
     return [(int(r[0]), -float(r[1])) for r in rows]
 
-
 # ─── Dense retrieval ─────────────────────────────────────────────────
-
 
 def dense_search(
     conn: sqlite3.Connection,
@@ -229,17 +222,14 @@ def dense_search(
     order = np.argsort(-scores)[:top_k]
     return [(ids[i], float(scores[i])) for i in order]
 
-
 def _warn_dim_skip(skipped: int, q_dim: int) -> None:
     sys.stderr.write(
         f"kaizen search: skipped {skipped} row(s) with dim != {q_dim} — "
         "reindex after embed-backend change\n"
     )
 
-
 # ─── Whole-row cosine (M6 — shared by knowledge / claude_docs / scrape /
 #     trace; onboard uses the chunked hybrid_search path above) ────────
-
 
 def cosine_topk(
     conn: sqlite3.Connection,
@@ -316,7 +306,6 @@ def cosine_topk(
     order = np.argsort(-scores)[:top_k]
     return [(kept_rows[i], float(scores[i])) for i in order]
 
-
 def try_load_sqlite_vec(conn: sqlite3.Connection) -> bool:
     """Best-effort load of the sqlite-vec extension. Returns True on
     success, False otherwise.
@@ -337,7 +326,6 @@ def try_load_sqlite_vec(conn: sqlite3.Connection) -> bool:
     except (sqlite3.OperationalError, AttributeError):
         return False
     return True
-
 
 def ensure_vec_table(conn: sqlite3.Connection, base_table: str, dim: int) -> bool:
     """Create the sqlite-vec virtual table mirror for `base_table` if absent.
@@ -375,7 +363,6 @@ def ensure_vec_table(conn: sqlite3.Connection, base_table: str, dim: int) -> boo
             continue
     conn.commit()
     return True
-
 
 def dense_search_vec(
     conn: sqlite3.Connection,
@@ -433,7 +420,6 @@ def dense_search_vec(
         (int(r[0]), max(0.0, min(1.0, 1.0 - (float(r[1]) ** 2) / 2.0)))
         for r in rows
     ]
-
 
 def dense_search_q8(
     conn: sqlite3.Connection,
@@ -500,7 +486,6 @@ def dense_search_q8(
     order = np.argsort(-scores)[:top_k]
     return [(ids[i], float(scores[i])) for i in order]
 
-
 # ─── Sparse retrieval (E9 — SPLADE) ──────────────────────────────────
 #
 # Sparse vectors are stored as JSON {token_id: weight} in the
@@ -515,7 +500,6 @@ def dense_search_q8(
 # Falls back to an empty list (NOT to dense_search) when sparse is
 # unavailable or the column is empty — the caller (hybrid_search) folds
 # sparse in via RRF when results are present and skips it otherwise.
-
 
 def sparse_search(
     conn: sqlite3.Connection,
@@ -569,7 +553,6 @@ def sparse_search(
     scored.sort(key=lambda x: x[1], reverse=True)
     return scored[:top_k]
 
-
 # ─── ColBERT late-interaction (E10) ──────────────────────────────────
 #
 # Token-level multi-vector retrieval. Each chunk in the
@@ -580,7 +563,6 @@ def sparse_search(
 # Returns [] when the sidecar table is absent or empty — hybrid_search
 # does not auto-fold ColBERT; callers opt in explicitly via the
 # `colbert_search` MCP tool or by composing in RRF.
-
 
 def colbert_search(
     conn: sqlite3.Connection,
@@ -643,9 +625,7 @@ def colbert_search(
     scored.sort(key=lambda x: x[1], reverse=True)
     return scored[:top_k]
 
-
 # ─── Hybrid (linear) ─────────────────────────────────────────────────
-
 
 def _minmax_normalize(scored: Iterable[tuple[int, float]]) -> dict[int, float]:
     """Min-max normalize a (id, score) list into a {id: [0,1]} dict.
@@ -660,7 +640,6 @@ def _minmax_normalize(scored: Iterable[tuple[int, float]]) -> dict[int, float]:
     if span <= 0:
         return {i: 1.0 for i, _ in scored}
     return {i: (s - lo) / span for i, s in scored}
-
 
 def hybrid_search(
     conn: sqlite3.Connection,
@@ -735,9 +714,7 @@ def hybrid_search(
     fused.sort(key=lambda x: x[1], reverse=True)
     return fused[:top_k]
 
-
 # ─── Reciprocal Rank Fusion (for multi-query expansion) ──────────────
-
 
 # ─── E2: cross-encoder reranking ─────────────────────────────────────
 #
@@ -751,7 +728,6 @@ def hybrid_search(
 
 _cross_encoder = None  # module-level cache; loaded on first use
 
-
 def _default_cross_encoder_model() -> str:
     """KAIZEN_RERANK_MODEL — defaults to cross-encoder/ms-marco-MiniLM-L-6-v2
     (90 MB, fast). For multilingual or domain-specific corpora, point at
@@ -760,7 +736,6 @@ def _default_cross_encoder_model() -> str:
     return _os.environ.get(
         "KAIZEN_RERANK_MODEL", "cross-encoder/ms-marco-MiniLM-L-6-v2"
     )
-
 
 def _load_cross_encoder():
     """Lazy load. Returns None when sentence-transformers isn't installed."""
@@ -773,7 +748,6 @@ def _load_cross_encoder():
         return None
     _cross_encoder = CrossEncoder(_default_cross_encoder_model())
     return _cross_encoder
-
 
 def cross_encoder_rerank(
     query: str,
@@ -811,7 +785,6 @@ def cross_encoder_rerank(
     scored = list(zip([rid for rid, _ in candidates], scores))
     scored.sort(key=lambda x: x[1], reverse=True)
     return scored[:top_k]
-
 
 def reciprocal_rank_fusion(
     rankings: Sequence[Sequence[tuple[int, float]]],

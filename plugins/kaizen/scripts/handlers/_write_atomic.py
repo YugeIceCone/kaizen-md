@@ -47,19 +47,15 @@ import os
 import sys
 from pathlib import Path
 
-_SCRIPTS = Path(__file__).resolve().parents[2] / "skills" / "workflow" / "scripts"
-sys.path.insert(0, str(_SCRIPTS))
-
 import _atomic  # noqa: E402
-
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import _bootstrap  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 
 def _emit(payload: dict) -> int:
     print(json.dumps(payload))
     return 0
 
-
 _VALID_MODES = ("note", "enforce")
-
 
 def main() -> int:
     # Hook is OFF unless ENABLE=1 explicitly set.
@@ -184,7 +180,6 @@ def main() -> int:
             ),
         },
     })
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

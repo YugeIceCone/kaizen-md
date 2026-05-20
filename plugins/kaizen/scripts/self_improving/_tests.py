@@ -23,7 +23,6 @@ try:
 except ImportError:
     _HAS_JSONSCHEMA = False
 
-
 class TestLifecycle(unittest.TestCase):
     def setUp(self):
         self.path = DOMAIN / "lifecycle.yaml"
@@ -72,7 +71,6 @@ class TestLifecycle(unittest.TestCase):
         data = yaml.safe_load(self.path.read_text())
         schema = json.loads(self.schema_path.read_text())
         validate(data, schema)
-
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

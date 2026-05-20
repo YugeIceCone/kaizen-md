@@ -79,7 +79,6 @@ import _envelope  # noqa: E402
 
 _emit = _envelope.emitter("kaizen-config", tool_version="1.0.0")
 
-
 # ═══════════════════════════════════════════════════════════════════════
 # PLUGIN ▸ DEFAULTS — edit this one block to retune the plugin.
 # ═══════════════════════════════════════════════════════════════════════
@@ -165,11 +164,9 @@ try:
 except ValueError:
     pass  # keep the default if env var is malformed
 
-
 # ═══════════════════════════════════════════════════════════════════════
 # Per-project .kaizen.toml parser (v1.5.0+ contract; unchanged).
 # ═══════════════════════════════════════════════════════════════════════
-
 
 DEFAULTS: dict = {
     "compile_check_cmd": "",
@@ -177,7 +174,6 @@ DEFAULTS: dict = {
     "backlog_path": f"{PROJECT_KAIZEN_NAME}/{PROJECT_WORKFLOW_NAME}/backlog.md",
     "architecture_log": f"{PROJECT_KAIZEN_NAME}/{PROJECT_WORKFLOW_NAME}/progress.md",
 }
-
 
 def repo_root(start: Path | None = None) -> Path | None:
     """Walk up from `start` (default: cwd) looking for `.git/` or `.kaizen.toml`.
@@ -190,11 +186,9 @@ def repo_root(start: Path | None = None) -> Path | None:
             return None
         cur = cur.parent
 
-
 def config_path(repo: Path | None = None) -> Path | None:
     r = repo if repo is not None else repo_root()
     return (r / ".kaizen.toml") if r is not None else None
-
 
 def load_config(repo: Path | None = None) -> dict:
     """Load `.kaizen.toml` and merge over DEFAULTS. Returns DEFAULTS on any
@@ -217,7 +211,6 @@ def load_config(repo: Path | None = None) -> dict:
             result[k] = v
     return result
 
-
 def _legacy_parse(p: Path) -> dict:
     """Fallback for Python <3.11 without tomllib. Handles only top-level
     `key = "value"` and `key = value` lines (no tables, no nested)."""
@@ -238,16 +231,13 @@ def _legacy_parse(p: Path) -> dict:
         result[key] = val
     return result
 
-
 def get(key: str, default: str = "", repo: Path | None = None) -> str:
     """Convenience: fetch one key as a string. Bash callers use this."""
     cfg = load_config(repo)
     v = cfg.get(key, default)
     return str(v) if v is not None else default
 
-
 # ─── CLI ─────────────────────────────────────────────────────────────
-
 
 KNOWN_KEYS = set(DEFAULTS.keys()) | {
     "plan_dir",
@@ -259,7 +249,6 @@ KNOWN_KEYS = set(DEFAULTS.keys()) | {
     "trace_embedding_model",
     "trace_index_path",
 }
-
 
 def validate(repo: Path | None = None) -> dict:
     """Validate the loaded config against KNOWN_KEYS + filesystem checks.
@@ -301,7 +290,6 @@ def validate(repo: Path | None = None) -> dict:
 
     return out
 
-
 def plugin_defaults_dict() -> dict:
     """Return the PLUGIN ▸ DEFAULTS section as a flat dict (v1.22.0+).
 
@@ -339,7 +327,6 @@ def plugin_defaults_dict() -> dict:
         "SCRAPE_LLM_AUTO": SCRAPE_LLM_AUTO,
         "SCRAPE_LLM_PROBE_TIMEOUT": SCRAPE_LLM_PROBE_TIMEOUT,
     }
-
 
 def main():
     p = argparse.ArgumentParser(prog="config.py", description=__doc__,
@@ -392,7 +379,6 @@ def main():
         return
 
     print(get(args.key, args.default))
-
 
 if __name__ == "__main__":
     main()

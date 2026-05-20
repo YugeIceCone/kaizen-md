@@ -38,10 +38,8 @@ from pathlib import Path
 _DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 _KEBAB_RE = re.compile(r"[^a-z0-9]+")
 
-
 class BundleError(ValueError):
     """Invalid bundle spec (bad date, missing fields, etc.)."""
-
 
 def _superpowers_dir() -> Path:
     """Root of .kaizen/superpowers/. Env-overridable for tests.
@@ -60,10 +58,8 @@ def _superpowers_dir() -> Path:
         base=Path.cwd() / ".kaizen" / "superpowers",
     )
 
-
 def _kebab(text: str) -> str:
     return _KEBAB_RE.sub("-", text.lower()).strip("-")
-
 
 def bundle_folder_name(date: str, project: str, sid: str | None) -> str:
     """Pure compute: deterministic folder name for (date, project, sid).
@@ -82,23 +78,19 @@ def bundle_folder_name(date: str, project: str, sid: str | None) -> str:
             parts.append(sid_short)
     return "-".join(parts)
 
-
 def bundle_path(date: str, project: str, sid: str | None,
                   *, root: Path | None = None) -> Path:
     """Pure compute: full path. Doesn't require the folder to exist."""
     base = root if root else _superpowers_dir()
     return base / bundle_folder_name(date, project, sid)
 
-
 # ─── git automation ──────────────────────────────────────────────────
 
 def _git_available() -> bool:
     return shutil.which("git") is not None
 
-
 def _is_git_repo(root: Path) -> bool:
     return (root / ".git").is_dir()
-
 
 def _git_run(root: Path, *args: str) -> subprocess.CompletedProcess:
     """Run git inside the superpowers root. Returns CompletedProcess."""
@@ -106,7 +98,6 @@ def _git_run(root: Path, *args: str) -> subprocess.CompletedProcess:
         ["git", *args], cwd=str(root),
         capture_output=True, text=True, timeout=15,
     )
-
 
 def _git_commit(root: Path, message: str) -> str | None:
     """Atomic stage-all + commit + write patch-journal entry. Returns
@@ -131,7 +122,6 @@ def _git_commit(root: Path, message: str) -> str | None:
     except (OSError, subprocess.TimeoutExpired):
         return None
 
-
 def _backup_dir() -> Path:
     """Patch-journal backup root. Env-overridable via KAIZEN_BACKUP_DIR.
 
@@ -144,7 +134,6 @@ def _backup_dir() -> Path:
     if env:
         return Path(env) / "superpowers"
     return Path.home() / ".claude" / ".kaizen" / "backups" / "superpowers"
-
 
 def _write_patch_journal(root: Path, commit_sha: str) -> Path | None:
     """Write `git format-patch -1 <sha>` to <KAIZEN_BACKUP_DIR>/
@@ -176,14 +165,12 @@ def _write_patch_journal(root: Path, commit_sha: str) -> Path | None:
     except (OSError, subprocess.TimeoutExpired):
         return None
 
-
 def _commit_subject(action: str, bundle_name: str, *, extra: str = "") -> str:
     """Deterministic commit-message subject. Same inputs → same subject."""
     parts = [f"{action}", f"bundle({bundle_name})"]
     if extra:
         parts.append(extra)
     return " ".join(parts)
-
 
 # ─── state — docs-state tracker (kind + status metadata) ─────────────
 
@@ -209,7 +196,6 @@ _STATUS_PATTERNS = [
     (re.compile(r"\*\*(State|Status):\*\*\s*wip", re.IGNORECASE),         "in-progress"),
 ]
 
-
 def _classify_kind(filename: str) -> str:
     """Filename → kind (plan/spec/brainstorm/audit/notes/README/data/other)."""
     if filename == "README.md":
@@ -221,7 +207,6 @@ def _classify_kind(filename: str) -> str:
             return kind
     return "other"
 
-
 def _extract_status(text: str) -> str:
     """Walk the first window of text for status markers; return verdict."""
     # Only scan the top 50 lines — status markers belong at the top
@@ -231,7 +216,6 @@ def _extract_status(text: str) -> str:
             return status
     return "unknown"
 
-
 def _extract_status_for_file(filename: str, text: str) -> str:
     """Filename-aware wrapper. READMEs are reference docs (folder
     descriptions, not work items) — always return `reference` regardless
@@ -239,7 +223,6 @@ def _extract_status_for_file(filename: str, text: str) -> str:
     if filename == "README.md":
         return "reference"
     return _extract_status(text)
-
 
 def _scan_state(root: Path) -> dict:
     """Walk root → emit per-bundle + per-file metadata + aggregate totals."""
@@ -299,14 +282,11 @@ def _scan_state(root: Path) -> dict:
         },
     }
 
-
 def _now_iso() -> str:
     return datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
-
 def _mtime_iso(path: Path) -> str:
     return datetime.fromtimestamp(path.stat().st_mtime, UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
-
 
 def _cmd_state(args) -> int:
     root = _superpowers_dir()
@@ -330,7 +310,6 @@ def _cmd_state(args) -> int:
         else:
             print(f"  (dry run — pass --apply to write .state.json)")
     return 0
-
 
 def _cmd_tasks(args) -> int:
     root = _superpowers_dir()
@@ -371,7 +350,6 @@ def _cmd_tasks(args) -> int:
                   f"  ({t['status']})")
     return 0
 
-
 def _cmd_git_init(args) -> int:
     if not _git_available():
         sys.stderr.write("kaizen-bundle: `git` not found on PATH\n")
@@ -394,7 +372,6 @@ def _cmd_git_init(args) -> int:
     if status.stdout.strip():
         _git_commit(root, _commit_subject("bootstrap", "superpowers"))
     return 0
-
 
 def _cmd_init(args) -> int:
     try:
@@ -421,7 +398,6 @@ def _cmd_init(args) -> int:
             _git_commit(root, _commit_subject("init", folder.name))
     print(str(folder))
     return 0
-
 
 def _cmd_list(args) -> int:
     root = _superpowers_dir()
@@ -463,7 +439,6 @@ def _cmd_list(args) -> int:
                    f"sid={b.get('sid') or '-':<12}  {b['path']}")
     return 0
 
-
 def _cmd_path(args) -> int:
     try:
         folder = bundle_path(args.date, args.project, args.sid)
@@ -472,7 +447,6 @@ def _cmd_path(args) -> int:
         return 1
     print(str(folder))
     return 0
-
 
 def _cmd_add(args) -> int:
     src = Path(args.file)
@@ -498,16 +472,13 @@ def _cmd_add(args) -> int:
     print(str(target))
     return 0
 
-
 # ─── scan — orphan artifact tracker ───────────────────────────────────
 
 # Top-level entries that are NOT orphans (durable / docs / git):
 _NON_ORPHAN_TOP_LEVEL = frozenset({"README.md", "templates", ".git", ".gitignore"})
 
-
 def _sha256_file(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
-
 
 def _scan_bundles(root: Path) -> dict[str, list[tuple[str, str]]]:
     """Walk every bundle folder and index its files by content hash.
@@ -534,7 +505,6 @@ def _scan_bundles(root: Path) -> dict[str, list[tuple[str, str]]]:
             index.setdefault(sha, []).append((bundle.name, f.name))
     return index
 
-
 def _suggest_date(file_name: str, file_path: Path) -> str:
     """Suggested date for the bundle this orphan should land in.
 
@@ -545,7 +515,6 @@ def _suggest_date(file_name: str, file_path: Path) -> str:
         return m.group(1)
     mtime = datetime.fromtimestamp(file_path.stat().st_mtime, tz=UTC)
     return mtime.strftime("%Y-%m-%d")
-
 
 def _cmd_scan(args) -> int:
     root = _superpowers_dir()
@@ -633,7 +602,6 @@ def _cmd_scan(args) -> int:
                 print(f"  {m['orphan']} → {m['target']}")
     return 0
 
-
 def _cmd_backup(args) -> int:
     """`backup list` — show patch-journal entries from manifest.jsonl."""
     if args.backup_action == "list":
@@ -660,7 +628,6 @@ def _cmd_backup(args) -> int:
     sys.stderr.write(f"kaizen-bundle backup: unknown action "
                        f"{args.backup_action!r}\n")
     return 1
-
 
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(
@@ -747,7 +714,6 @@ def main(argv: list[str] | None = None) -> int:
         p.print_help()
         return 2
     return args.fn(args)
-
 
 if __name__ == "__main__":
     sys.exit(main())

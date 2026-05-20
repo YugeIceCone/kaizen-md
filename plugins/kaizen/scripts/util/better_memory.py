@@ -33,7 +33,6 @@ import re
 import sys
 from pathlib import Path
 
-
 def _yaml_unescape(s: str) -> str:
     """Decode a YAML scalar value to its raw string.
 
@@ -60,14 +59,11 @@ def _yaml_unescape(s: str) -> str:
         return s[1:-1].replace("''", "'")
     return s
 
-
 def _trim(s: str, n: int) -> str:
     return s if len(s) <= n else s[:n - 1].rstrip() + "…"
 
-
 _NAME_RE = re.compile(r"^name:\s*(.+?)$", re.M)
 _DESC_RE = re.compile(r"^description:\s*(.+?)$", re.M)
-
 
 def _entry_for(path: Path) -> tuple[str, str]:
     """Return (name, description) for a memory file, with normalization."""
@@ -77,7 +73,6 @@ def _entry_for(path: Path) -> tuple[str, str]:
     name = _yaml_unescape(name_m.group(1)) if name_m else path.stem
     desc = _yaml_unescape(desc_m.group(1)) if desc_m else ""
     return name, desc
-
 
 def regen_index(memory_dir: Path) -> int:
     """Rebuild MEMORY.md from *.md siblings. Returns count of indexed files."""
@@ -117,7 +112,6 @@ def regen_index(memory_dir: Path) -> int:
     (memory_dir / "MEMORY.md").write_text("\n".join(out), encoding="utf-8")
     return len(files)
 
-
 def _default_memory_dir() -> Path:
     """Resolve the auto-memory dir for the current cwd.
 
@@ -148,7 +142,6 @@ def _default_memory_dir() -> Path:
     slug = str(root).replace("/", "-")
     return Path.home() / ".claude" / "projects" / slug / "memory"
 
-
 def _cmd_regen(args) -> int:
     d = Path(args.dir) if args.dir else _default_memory_dir()
     count = regen_index(d)
@@ -158,12 +151,10 @@ def _cmd_regen(args) -> int:
         print(f"kaizen-better-memory regen: indexed {count} entries -> {d / 'MEMORY.md'}")
     return 0
 
-
 def _cmd_path(args) -> int:
     d = Path(args.dir) if args.dir else _default_memory_dir()
     print(d)
     return 0
-
 
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(prog="kaizen-better-memory",
@@ -181,7 +172,6 @@ def main(argv: list[str] | None = None) -> int:
 
     args = p.parse_args(argv)
     return args.func(args)
-
 
 if __name__ == "__main__":
     sys.exit(main())

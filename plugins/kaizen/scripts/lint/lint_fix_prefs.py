@@ -31,10 +31,8 @@ PREFS_FILE_NAME = "lint_dispatch_prefs.json"
 SCHEMA_VERSION  = 1
 _VALID_STRATEGIES = ("subagent", "local_llm")
 
-
 def _prefs_path(repo_root: str | Path) -> Path:
     return Path(repo_root) / PREFS_DIR_NAME / PREFS_FILE_NAME
-
 
 def load_prefs(repo_root: str | Path) -> dict[str, Any]:
     """Return the saved prefs dict, or {} when the file doesn't exist /
@@ -46,7 +44,6 @@ def load_prefs(repo_root: str | Path) -> dict[str, Any]:
         return json.loads(p.read_text(encoding="utf-8"))
     except (json.JSONDecodeError, OSError):
         return {}
-
 
 def save_prefs(repo_root: str | Path, data: dict[str, Any]) -> None:
     """Atomically write `data` (with schema_version + updated_at
@@ -73,14 +70,12 @@ def save_prefs(repo_root: str | Path, data: dict[str, Any]) -> None:
             pass
         raise
 
-
 def get_strategy(repo_root: str | Path, *, default: str = "subagent") -> str:
     data = load_prefs(repo_root)
     val = data.get("strategy")
     if val in _VALID_STRATEGIES:
         return val
     return default
-
 
 def set_strategy(repo_root: str | Path, strategy: str) -> None:
     if strategy not in _VALID_STRATEGIES:
@@ -90,7 +85,6 @@ def set_strategy(repo_root: str | Path, strategy: str) -> None:
     data = load_prefs(repo_root)
     data["strategy"] = strategy
     save_prefs(repo_root, data)
-
 
 __all__ = [
     "load_prefs", "save_prefs", "get_strategy", "set_strategy",

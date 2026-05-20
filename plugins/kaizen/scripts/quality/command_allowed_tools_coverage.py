@@ -23,7 +23,6 @@ from pathlib import Path
 
 _SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(_SCRIPT_DIR))
-# MIGRATION BRIDGE — legacy helpers still at skills/workflow/scripts/
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "io"))
 
 import _envelope  # noqa: E402
@@ -40,18 +39,14 @@ _TOOL_SIGNALS = (
     re.compile(r"python3 \$\{CLAUDE_PLUGIN_ROOT\}"),
 )
 
-
 def _plugin_root() -> Path:
     return _SCRIPT_DIR.parents[1]
-
 
 def _invokes_tools(body: str) -> bool:
     return any(p.search(body) for p in _TOOL_SIGNALS)
 
-
 def _has_allowed_tools(frontmatter: str) -> bool:
     return bool(_ALLOWED_RE.search(frontmatter))
-
 
 def scan(*, commands_dir: Path) -> dict:
     if not commands_dir.is_dir():
@@ -75,7 +70,6 @@ def scan(*, commands_dir: Path) -> dict:
         ),
     }
 
-
 def _run(args) -> int:
     rep = scan(commands_dir=_plugin_root() / "commands")
     gaps = len(rep["gaps"])
@@ -87,7 +81,6 @@ def _run(args) -> int:
     _emit(rep, verdict=verdict, counts={"gaps": gaps})
     return 0
 
-
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="kaizen-command-allowed-tools-coverage",
         description="Audit commands/*.md for allowed-tools frontmatter coverage.")
@@ -98,7 +91,6 @@ def main(argv: list[str] | None = None) -> int:
         s.set_defaults(func=_run)
     args = ap.parse_args(argv)
     return args.func(args)
-
 
 if __name__ == "__main__":
     sys.exit(main())

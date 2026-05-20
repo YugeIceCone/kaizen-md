@@ -62,7 +62,8 @@ from pathlib import Path
 _SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(_SCRIPT_DIR))
 # MIGRATION BRIDGE — _paths + other helpers still at skills/workflow/scripts/
-sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "skills" / "workflow" / "scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import _bootstrap  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 import _paths  # noqa: E402
 
 BRAIN = _paths.BRAIN_DIR
@@ -72,15 +73,12 @@ VALID_RULE_TYPES = {"deletion-allow", "check-severity", "custom-pattern", "depen
 VALID_SEVERITY = {"skip", "warn", "block"}
 VALID_ACTION = {"warn", "block"}
 
-
 # ─── Parser ───────────────────────────────────────────────────────────
-
 
 def _extract_frontmatter(text: str) -> str | None:
     """Return the YAML frontmatter content (between --- markers), or None."""
     m = re.match(r"^---\s*\n(.*?)\n---\s*\n", text, re.DOTALL)
     return m.group(1) if m else None
-
 
 def _flat_keys(fm: str) -> dict:
     """Read top-level scalar `key: value` pairs (one per line) from frontmatter."""
@@ -95,7 +93,6 @@ def _flat_keys(fm: str) -> dict:
                 v = v[1:-1]
             out[m.group(1)] = v
     return out
-
 
 def _kaizen_block(fm: str) -> dict | None:
     """Extract the nested kaizen: block (two-space indent). Returns dict or None."""
@@ -113,7 +110,6 @@ def _kaizen_block(fm: str) -> dict | None:
                 v = v[1:-1]
             block[kv.group(1)] = v
     return block
-
 
 def load_rules() -> list[dict]:
     """Scan brain Notes/ for kaizen rules. Returns list of rule dicts."""
@@ -143,9 +139,7 @@ def load_rules() -> list[dict]:
         rules.append(rule)
     return rules
 
-
 # ─── Lookups ──────────────────────────────────────────────────────────
-
 
 def deletion_allowed(path: str) -> tuple[bool, str | None]:
     """Return (allowed, rule_name)."""
@@ -157,7 +151,6 @@ def deletion_allowed(path: str) -> tuple[bool, str | None]:
             return True, r["name"]
     return False, None
 
-
 def get_severity(check_id: str) -> str | None:
     for r in load_rules():
         if r.get("rule_type") == "check-severity" and r.get("check_id") == check_id:
@@ -166,14 +159,11 @@ def get_severity(check_id: str) -> str | None:
                 return sev
     return None
 
-
 def custom_patterns() -> list[dict]:
     return [r for r in load_rules() if r.get("rule_type") == "custom-pattern"]
 
-
 def _split_csv(value: str) -> list[str]:
     return [item.strip() for item in value.split(",") if item.strip()]
-
 
 def dependency_allowed(name: str) -> tuple[bool, str | None]:
     """Return (allowed, rule_name) — union over all dependency-allowlist rules."""
@@ -184,9 +174,7 @@ def dependency_allowed(name: str) -> tuple[bool, str | None]:
             return True, r["name"]
     return False, None
 
-
 # ─── Validation ───────────────────────────────────────────────────────
-
 
 def validate_rule(r: dict) -> list[str]:
     """Return list of error strings (empty = valid)."""
@@ -217,9 +205,7 @@ def validate_rule(r: dict) -> list[str]:
             errs.append("dependency-allowlist requires non-empty allowlist (comma-separated)")
     return errs
 
-
 # ─── Templates ────────────────────────────────────────────────────────
-
 
 def template(rule_type: str) -> str:
     today = "2026-05-11"  # caller can replace
@@ -310,9 +296,7 @@ dependency-allowlist rules across notes are unioned at lookup time.
     }
     return templates.get(rule_type, f"Unknown rule_type: {rule_type}\nExpected one of {VALID_RULE_TYPES}")
 
-
 # ─── CLI ──────────────────────────────────────────────────────────────
-
 
 def main():
     cmd = sys.argv[1] if len(sys.argv) > 1 else "list"
@@ -391,7 +375,6 @@ def main():
 
     else:
         sys.exit(f"unknown subcommand: {cmd}\ntry: list|show|deletion-allowed|severity|custom-patterns|dependency-allowed|validate|template")
-
 
 if __name__ == "__main__":
     main()

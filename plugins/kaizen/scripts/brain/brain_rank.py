@@ -44,12 +44,12 @@ from typing import Optional
 _SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(_SCRIPT_DIR))
 sys.path.insert(0, str(_SCRIPT_DIR.parent))  # for evolution_log
-sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "skills" / "workflow" / "scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import _bootstrap  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 
 import _brain  # noqa: E402
 
 # ─── Thresholds ──────────────────────────────────────────────────────
-
 
 DEFAULT_THRESHOLDS = {
     "promotion_confidence": 0.85,
@@ -75,13 +75,11 @@ TOP_BELIEFS_HEADING = "## Top Beliefs"
 
 # ─── Pure functions ──────────────────────────────────────────────────
 
-
 def score(rec: dict) -> float:
     """Score a belief: confidence × log(sources_count + 1). Mirrors
     upstream promote.js::score. The +1 prevents log(0); the log
     dampens runaway growth from one extremely well-sourced belief."""
     return float(rec["confidence"]) * math.log(int(rec["sources_count"]) + 1)
-
 
 def filter_candidates(beliefs: list[dict], thresholds: dict) -> list[dict]:
     """Gate by confidence + sources + freshness. Mirrors
@@ -93,12 +91,10 @@ def filter_candidates(beliefs: list[dict], thresholds: dict) -> list[dict]:
         and b.get("freshness", "stable") in ELIGIBLE_FRESHNESS
     ]
 
-
 def rank_and_take(candidates: list[dict], n: int) -> list[dict]:
     """Sort by score (desc), take top-N. Mirrors
     upstream promote.js::rankAndTake."""
     return sorted(candidates, key=score, reverse=True)[:n]
-
 
 def effective_thresholds(beliefs_count: int, config: dict) -> tuple[dict, bool]:
     """Pick (thresholds, bootstrap) tuple. Mirrors
@@ -122,7 +118,6 @@ def effective_thresholds(beliefs_count: int, config: dict) -> tuple[dict, bool]:
             BOOTSTRAP_THRESHOLDS["promotion_sources"],
         ),
     }, True
-
 
 def find_beliefs(brain_root: Path) -> list[dict]:
     """Walk Notes/, return list of belief records.
@@ -157,7 +152,6 @@ def find_beliefs(brain_root: Path) -> list[dict]:
         })
     return out
 
-
 def render_top_beliefs_section(
     top: list[dict],
     *,
@@ -187,7 +181,6 @@ def render_top_beliefs_section(
     ]
     return f"{TOP_BELIEFS_HEADING}\n\n" + "\n".join(lines) + "\n"
 
-
 def compute_deltas(current_links: list[str], top: list[dict]) -> dict:
     """Diff existing Top Beliefs vs new top-N. Mirrors
     upstream promote.js::computeDeltas.
@@ -197,7 +190,6 @@ def compute_deltas(current_links: list[str], top: list[dict]) -> dict:
     promoted = [t for t in top if t["path"] not in current_links]
     demoted = [link for link in current_links if link not in top_paths]
     return {"promoted": promoted, "demoted": demoted}
-
 
 def read_current_top_beliefs(persona_path: Path) -> list[str]:
     """Pull the ``[[link]]`` text from the existing ## Top Beliefs block.
@@ -225,7 +217,6 @@ def read_current_top_beliefs(persona_path: Path) -> list[str]:
         if m:
             links.append(m.group(1))
     return links
-
 
 def write_top_beliefs(persona_path: Path, top: list[dict], **opts) -> None:
     """Replace the ## Top Beliefs section atomically.
@@ -259,9 +250,7 @@ def write_top_beliefs(persona_path: Path, top: list[dict], **opts) -> None:
     tmp.write_text(text, encoding="utf-8")
     tmp.replace(persona_path)
 
-
 # ─── Config loader ───────────────────────────────────────────────────
-
 
 def _evolution_config_path() -> Path:
     """Path to user's evolution-config override file. Diverges from
@@ -272,7 +261,6 @@ def _evolution_config_path() -> Path:
     if env:
         return Path(os.path.expandvars(env)).expanduser()
     return _brain.brain_root() / "evolution.json"
-
 
 def load_evolution_config() -> dict:
     """Load user threshold overrides + auto_promote flag.
@@ -306,9 +294,7 @@ def load_evolution_config() -> dict:
         "paths": user.get("paths") or {},
     }
 
-
 # ─── Belief stats (extracted from self_improving/brain_validator) ────
-
 
 def belief_stats(brain_root: Path) -> dict:
     """Distribution stats over the brain's belief Notes.
@@ -351,9 +337,7 @@ def belief_stats(brain_root: Path) -> dict:
         },
     }
 
-
 # ─── Orchestration ───────────────────────────────────────────────────
-
 
 def run(
     brain: Optional[Path] = None,
@@ -434,9 +418,7 @@ def run(
         "effective_thresholds": effective,
     }
 
-
 # ─── CLI ─────────────────────────────────────────────────────────────
-
 
 def _emit_json(result: dict) -> None:
     """Emit a structured envelope mirroring kaizen conventions."""
@@ -449,7 +431,6 @@ def _emit_json(result: dict) -> None:
             "schema_version": 1,
         },
     }, default=str, indent=2) + "\n")
-
 
 def main(argv: Optional[list[str]] = None) -> int:
     ap = argparse.ArgumentParser(
@@ -509,7 +490,6 @@ def main(argv: Optional[list[str]] = None) -> int:
     if args.dry_run:
         sys.stdout.write("(dry run — no changes written)\n")
     return 0
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

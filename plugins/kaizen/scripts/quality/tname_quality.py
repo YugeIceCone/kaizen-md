@@ -14,23 +14,19 @@ from pathlib import Path
 
 _SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(_SCRIPT_DIR))
-# MIGRATION BRIDGE — legacy helpers still at skills/workflow/scripts/
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "io"))
 
 import _envelope  # noqa: E402
 
 _emit = _envelope.emitter("kaizen-tname-quality", tool_version="1.0.0")
 
-
 def _plugin_root() -> Path:
     return _SCRIPT_DIR.parents[1]
-
 
 def _too_short(name: str) -> bool:
     suffix = name.removeprefix("test_")
     parts = [p for p in suffix.split("_") if p]
     return len(parts) < 2 and len(suffix) < 5
-
 
 def scan_text(source: str, *, path: str) -> list[dict]:
     try:
@@ -52,7 +48,6 @@ def scan_text(source: str, *, path: str) -> list[dict]:
                                   "rule": "test-name-too-short"})
     return findings
 
-
 def scan(*, tests_dir: Path) -> dict:
     if not tests_dir.is_dir():
         return {"tests_total": 0, "findings": []}
@@ -68,7 +63,6 @@ def scan(*, tests_dir: Path) -> dict:
     return {"tests_total": len(tests), "findings": findings,
             "violation_count": len(findings)}
 
-
 def _run(args) -> int:
     rep = scan(tests_dir=_plugin_root() / "tests")
     n = len(rep["findings"])
@@ -80,7 +74,6 @@ def _run(args) -> int:
     _emit(rep, verdict=verdict, counts={"findings": n})
     return 0
 
-
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="kaizen-tname-quality",
         description="Test-method name quality (too-short flags).")
@@ -91,7 +84,6 @@ def main(argv: list[str] | None = None) -> int:
         s.set_defaults(func=_run)
     args = ap.parse_args(argv)
     return args.func(args)
-
 
 if __name__ == "__main__":
     sys.exit(main())

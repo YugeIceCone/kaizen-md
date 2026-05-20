@@ -65,9 +65,7 @@ import _envelope  # noqa: E402
 
 _emit = _envelope.emitter("kaizen-metrics", tool_version="1.0.0")
 
-
 # ─── CLI ─────────────────────────────────────────────────────────────
-
 
 def _cmd_session(args) -> int:
     sid = args.sid or latest_session_id()
@@ -83,7 +81,6 @@ def _cmd_session(args) -> int:
     _print_rollup(d, title=f"Session {sid[:12]}")
     return 0
 
-
 def _cmd_lifetime(args) -> int:
     since = parse_duration(args.since) if args.since else None
     r = rollup_events(since=since)
@@ -93,7 +90,6 @@ def _cmd_lifetime(args) -> int:
         return 0
     _print_rollup(d, title=f"Lifetime{(' since ' + args.since) if args.since else ''}")
     return 0
-
 
 def _cmd_never_used(args) -> int:
     result = never_used(args.kind)
@@ -114,7 +110,6 @@ def _cmd_never_used(args) -> int:
             print(f"    - {name}")
     return 0
 
-
 def _cmd_top(args) -> int:
     items = top_n(args.kind, args.n)
     if args.json:
@@ -129,11 +124,9 @@ def _cmd_top(args) -> int:
         print(f"  {count:>6}  {name}")
     return 0
 
-
 def _cmd_path(args) -> int:
     _emit({"trace_log": str(trace_log_path())})
     return 0
-
 
 def _cmd_skips(args) -> int:
     skips = detect_skips(sid=args.sid)
@@ -152,7 +145,6 @@ def _cmd_skips(args) -> int:
         for p in s["touched_files"][:5]:
             print(f"        {p}")
     return 0
-
 
 def _cmd_graveyard(args) -> int:
     result = graveyard(kind=args.kind, stale_days=args.stale_days)
@@ -176,14 +168,12 @@ def _cmd_graveyard(args) -> int:
         print(f"  caveat: {result['caveat']}")
     return 0
 
-
 _NOISE_AXES: list[tuple[str, str]] = [
     # (axis-id, scripts/quality/<file>.py basename)
     ("hook_cascade",  "hook_cascade.py"),
     ("silent_fail",   "silent_fail.py"),
     ("turn_density",  "turn_density.py"),
 ]
-
 
 def _run_axis(script: str) -> dict:
     """Invoke one quality axis with `gaps --json`. Returns the parsed
@@ -203,7 +193,6 @@ def _run_axis(script: str) -> dict:
         return {"error": f"non-JSON output: {e}", "verdict": "red",
                 "counts": {}, "data": {}}
 
-
 def _rollup_verdict(verdicts: list[str]) -> str:
     """Merge axis verdicts: any red → red; any yellow → yellow; else green."""
     if "red" in verdicts:
@@ -211,7 +200,6 @@ def _rollup_verdict(verdicts: list[str]) -> str:
     if "yellow" in verdicts:
         return "yellow"
     return "green"
-
 
 def _cmd_noise(args) -> int:
     """Hook/tool noise dashboard — aggregates the 3 dynamic-trace axes
@@ -255,7 +243,6 @@ def _cmd_noise(args) -> int:
             print(f"      turns scanned: {len(data['turns'])}")
     return 0 if verdict != "red" else 2
 
-
 def _cmd_smoke(args) -> int:
     if args.kind != "mcp":
         print(json.dumps({"error": f"smoke --kind {args.kind} not implemented "
@@ -279,7 +266,6 @@ def _cmd_smoke(args) -> int:
     print("  ✓ all MCP servers import + expose a FastMCP instance")
     return 0
 
-
 def _print_rollup(d: dict, title: str) -> None:
     print(f"\n[kaizen-metrics] {title}")
     print(f"  events     : {d['total_events']:>6}")
@@ -299,7 +285,6 @@ def _print_rollup(d: dict, title: str) -> None:
         print("\n  by_mcp (top 10):")
         for name, count in list(d["by_mcp"].items())[:10]:
             print(f"    {count:>6}  {name}")
-
 
 def main(argv: Optional[list[str]] = None) -> int:
     p = argparse.ArgumentParser(
@@ -377,7 +362,6 @@ def main(argv: Optional[list[str]] = None) -> int:
         # Bare invocation — default to the 7-day lifetime rollup.
         return _cmd_lifetime(argparse.Namespace(since="7d", json=False))
     return args.func(args)
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

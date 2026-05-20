@@ -51,7 +51,6 @@ _DEFAULT_MODEL = "local"
 # local LLM is unreachable.
 _VALID_STRATEGIES = ("subagent", "local_llm", "auto")
 
-
 # ───────────────────────────────────────────────────────────────────────
 # Prompt rendering
 # ───────────────────────────────────────────────────────────────────────
@@ -71,7 +70,6 @@ If a finding can't be safely fixed without changing behavior, leave it
 and note why in a comment at the top of the diff.
 """
 
-
 def _finding_line(f: dict) -> str:
     loc = ""
     if f.get("line") is not None:
@@ -80,18 +78,15 @@ def _finding_line(f: dict) -> str:
             loc += f":{f['col']}"
     return f"  - [{f.get('code', '?')}]{loc} {f.get('message', '').strip()}"
 
-
 def _render_prompt(file: str, findings: list[dict]) -> str:
     return _PROMPT_HEADER.format(
         file=file,
         finding_block="\n".join(_finding_line(f) for f in findings),
     )
 
-
 def _short_description(file: str, n_findings: int) -> str:
     name = os.path.basename(file) or file
     return f"Fix {n_findings} lint finding(s) in {name}"
-
 
 # ───────────────────────────────────────────────────────────────────────
 # Diff extraction + apply
@@ -99,7 +94,6 @@ def _short_description(file: str, n_findings: int) -> str:
 
 _FENCED_DIFF = re.compile(r"```(?:diff|patch)?\s*\n(.*?)\n```", re.DOTALL)
 _BARE_UNIFIED = re.compile(r"(--- [^\n]+\n\+\+\+ [^\n]+\n.*)", re.DOTALL)
-
 
 def _extract_diff(text: str) -> str:
     for m in _FENCED_DIFF.finditer(text):
@@ -111,7 +105,6 @@ def _extract_diff(text: str) -> str:
         return m.group(1).strip()
     return ""
 
-
 # Scope guard helpers (SEC-3): an LLM-generated diff must touch only
 # the file(s) we asked it to fix. Without a scope check a prompt-
 # injected lint server could patch `.github/workflows/`, hook scripts,
@@ -120,7 +113,6 @@ def _extract_diff(text: str) -> str:
 _DIFF_TARGET_RE = re.compile(
     r"^\+\+\+\s+(?:b/)?(\S+)$", re.MULTILINE
 )
-
 
 def _diff_targets(diff: str) -> set[str]:
     """Extract every `+++ b/<path>` target from a unified diff. Strips
@@ -134,13 +126,11 @@ def _diff_targets(diff: str) -> set[str]:
         targets.add(path)
     return targets
 
-
 def _diff_in_scope(diff: str, allowed_paths: set[str]) -> bool:
     """True iff every target in `diff` is a member of `allowed_paths`.
     Empty target set = vacuously in-scope (nothing to apply)."""
     targets = _diff_targets(diff)
     return targets.issubset(allowed_paths)
-
 
 def _apply_patch(diff: str, repo_root: str,
                   allowed_paths: set[str] | None = None) -> bool:
@@ -168,13 +158,11 @@ def _apply_patch(diff: str, repo_root: str,
     except (subprocess.SubprocessError, OSError):
         return False
 
-
 # ───────────────────────────────────────────────────────────────────────
 # Local LLM HTTP — minimal OpenAI-compatible client
 # ───────────────────────────────────────────────────────────────────────
 
 _ALLOWED_SCHEMES = frozenset({"http", "https"})
-
 
 def _http_post(url: str, payload: dict, *, api_key: str | None = None,
                 timeout: float = 60.0) -> dict:
@@ -194,7 +182,6 @@ def _http_post(url: str, payload: dict, *, api_key: str | None = None,
     with urllib.request.urlopen(req, timeout=timeout) as r:        # noqa: S310
         return json.loads(r.read().decode("utf-8"))
 
-
 def _local_llm_call(prompt: str, *, model: str, base_url: str,
                      api_key: str | None) -> str:
     payload = {
@@ -210,7 +197,6 @@ def _local_llm_call(prompt: str, *, model: str, base_url: str,
     except (KeyError, IndexError, TypeError):
         return ""
 
-
 # ───────────────────────────────────────────────────────────────────────
 # Main entry
 # ───────────────────────────────────────────────────────────────────────
@@ -223,7 +209,6 @@ def _group_by_file(findings: list[dict]) -> dict[str, list[dict]]:
             continue
         groups[path].append(f)
     return groups
-
 
 def dispatch(
     findings: list[dict],
@@ -336,7 +321,6 @@ def dispatch(
         )
     return result
 
-
 def _llm_reachable() -> bool:
     """Cheap reachability probe — does any candidate LLM server respond?"""
     try:
@@ -347,6 +331,5 @@ def _llm_reachable() -> bool:
         return bool(_setup.detect_servers())
     except Exception:                                       # noqa: BLE001
         return False
-
 
 __all__ = ["dispatch", "DEFAULT_ENV_VARS"]

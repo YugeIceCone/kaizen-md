@@ -22,13 +22,10 @@ import re
 import sys
 from pathlib import Path
 
-
 _SCRIPT_DIR = Path(__file__).resolve().parent
-
 
 def _plugin_root() -> Path:
     return _SCRIPT_DIR.parents[1]
-
 
 _FM_RE   = re.compile(r"^---\n(.*?)\n---", re.DOTALL)
 _NAME_RE = re.compile(r"^name:\s*(\S+)\s*$", re.MULTILINE)
@@ -38,7 +35,6 @@ _QUOTED_RE = re.compile(r"\"[^\"\n]{2,}\"|'[^'\n]{2,}'")
 
 # Minimum quoted trigger phrases — fewer than this is "weak routing"
 _MIN_TRIGGERS = 3
-
 
 def audit_skill(skill_dir: Path) -> dict:
     """Per-skill audit. Returns {skill, name_match, name_field,
@@ -85,7 +81,6 @@ def audit_skill(skill_dir: Path) -> dict:
                           and out["trigger_count"] >= _MIN_TRIGGERS)
     return out
 
-
 def all_audits(root: Path | None = None) -> list[dict]:
     root = root or _plugin_root()
     skills = root / "skills"
@@ -100,7 +95,6 @@ def all_audits(root: Path | None = None) -> list[dict]:
         out.append(audit_skill(p))
     return out
 
-
 def _print_text(reports: list[dict]) -> None:
     conformant = [r for r in reports if r["conformant"]]
     with_gaps = [r for r in reports if r["gaps"]]
@@ -114,7 +108,6 @@ def _print_text(reports: list[dict]) -> None:
         for g in r["gaps"]:
             print(f"      ⚠ {g}")
 
-
 def _cmd_report(args) -> int:
     reports = all_audits()
     if args.json:
@@ -123,7 +116,6 @@ def _cmd_report(args) -> int:
         _print_text(reports)
     return 0
 
-
 def _cmd_gaps(args) -> int:
     reports = [r for r in all_audits() if r["gaps"]]
     if args.json:
@@ -131,7 +123,6 @@ def _cmd_gaps(args) -> int:
     else:
         _print_text(reports)
     return 1 if reports else 0
-
 
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(
@@ -150,7 +141,6 @@ def main(argv=None) -> int:
 
     args = p.parse_args(argv)
     return args.func(args)
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

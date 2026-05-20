@@ -18,7 +18,6 @@ import json
 import sys
 from pathlib import Path
 
-
 _TOOL_IDENT_EXTRACTORS = {
     "Skill":        lambda inp: inp.get("skill", ""),
     "Edit":         lambda inp: inp.get("file_path", ""),
@@ -31,7 +30,6 @@ _TOOL_IDENT_EXTRACTORS = {
     "TaskCreate":   lambda inp: inp.get("subject", ""),
     "WebFetch":     lambda inp: inp.get("url", ""),
 }
-
 
 def _extract_ident(tool_name: str, tool_input: dict) -> str:
     """Per-tool ident extraction. MCP tools use their full name as
@@ -46,7 +44,6 @@ def _extract_ident(tool_name: str, tool_input: dict) -> str:
         return str(extractor(tool_input) or "")[:120]
     except Exception:
         return ""
-
 
 def main() -> int:
     try:
@@ -70,8 +67,8 @@ def main() -> int:
     # Import trace.append_event directly — no subprocess. One process
     # for the entire hot path.
     sys.path.insert(0, str(Path(__file__).resolve().parent))
-    # MIGRATION BRIDGE — kaizen modules (trace, inbox) still at skills/workflow/scripts/
-    sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "skills" / "workflow" / "scripts"))
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    import _bootstrap  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
     try:
         import trace as _trace
     except ImportError:
@@ -90,7 +87,6 @@ def main() -> int:
 
     _trace.append_event(record)
     return 0
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

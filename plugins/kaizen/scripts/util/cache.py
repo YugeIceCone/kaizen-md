@@ -44,7 +44,6 @@ import subprocess
 import sys
 from pathlib import Path
 
-
 def _repo_root() -> Path:
     override = os.environ.get("KAIZEN_CACHE_DIR")
     if override:
@@ -58,19 +57,16 @@ def _repo_root() -> Path:
     except (subprocess.CalledProcessError, FileNotFoundError):
         return Path.cwd()
 
-
 def cache_dir() -> Path:
     override = os.environ.get("KAIZEN_CACHE_DIR")
     if override:
         return Path(override)
     return _repo_root() / ".kaizen" / "cache"
 
-
 def _ensure() -> Path:
     d = cache_dir()
     d.mkdir(parents=True, exist_ok=True)
     return d
-
 
 def key_of(*parts: object) -> str:
     """Compose a 16-hex-char SHA1 key from input parts.
@@ -84,7 +80,6 @@ def key_of(*parts: object) -> str:
         h.update(b"\x00")
     return h.hexdigest()[:16]
 
-
 def get(key: str) -> dict | None:
     d = _ensure()
     p = d / f"{key}.json"
@@ -95,12 +90,10 @@ def get(key: str) -> dict | None:
     except (OSError, json.JSONDecodeError):
         return None
 
-
 def put(key: str, value: dict) -> None:
     d = _ensure()
     p = d / f"{key}.json"
     p.write_text(json.dumps(value, indent=2, sort_keys=True))
-
 
 def delete(key: str) -> bool:
     p = cache_dir() / f"{key}.json"
@@ -108,7 +101,6 @@ def delete(key: str) -> bool:
         p.unlink()
         return True
     return False
-
 
 def clear() -> int:
     d = cache_dir()
@@ -120,7 +112,6 @@ def clear() -> int:
         n += 1
     return n
 
-
 def stats() -> dict:
     d = cache_dir()
     if not d.exists():
@@ -128,7 +119,6 @@ def stats() -> dict:
     files = list(d.glob("*.json"))
     total = sum(f.stat().st_size for f in files)
     return {"count": len(files), "bytes": total, "dir": str(d), "exists": True}
-
 
 def main():
     cmd = sys.argv[1] if len(sys.argv) > 1 else "stats"
@@ -171,7 +161,6 @@ def main():
 
     else:
         sys.exit(f"unknown subcommand: {cmd}\ntry: key|get|put|delete|clear|stats")
-
 
 if __name__ == "__main__":
     main()

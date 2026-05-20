@@ -46,35 +46,28 @@ DOMAIN_DIR = (
 INTENT_YAML = DOMAIN_DIR / "intent_routing.yaml"
 INTENT_SCHEMA = DOMAIN_DIR / "schemas" / "intent_routing.schema.json"
 
-
 def load() -> dict:
     """Return the validated intent_routing.yaml as a dict."""
     data = _load_yaml(INTENT_YAML)
     _check(data, INTENT_SCHEMA, "intent_routing.yaml")
     return data
 
-
 def routes_by_id(cfg: dict | None = None) -> dict[str, dict]:
     cfg = cfg or load()
     return {r["id"]: r for r in cfg.get("routes", [])}
-
 
 def disambiguation_index(cfg: dict | None = None) -> dict[frozenset, dict]:
     """Return {frozenset({a, b}): rule_dict} for set-based lookup."""
     cfg = cfg or load()
     return {frozenset(d["pair"]): d for d in cfg.get("disambiguation", [])}
 
-
 # ─── Matcher ─────────────────────────────────────────────────────────
 
-
 _WORD_RE = re.compile(r"[a-z0-9]+")
-
 
 def _normalize(s: str) -> str:
     """Lowercase + collapse whitespace for substring match."""
     return " ".join(_WORD_RE.findall(s.lower()))
-
 
 def match(prompt: str, cfg: dict | None = None, top_k: int = 4) -> list[tuple[str, int]]:
     """Substring-match `prompt` against each route's `cues`.
@@ -94,7 +87,6 @@ def match(prompt: str, cfg: dict | None = None, top_k: int = 4) -> list[tuple[st
     scored.sort(key=lambda x: -x[1])
     return scored[:top_k]
 
-
 def match_composition(prompt: str, cfg: dict | None = None) -> list[dict]:
     """Match the prompt against composition `prompt_shape` text (substring match).
 
@@ -110,15 +102,12 @@ def match_composition(prompt: str, cfg: dict | None = None) -> list[dict]:
             out.append(c)
     return out
 
-
 def disambiguate(a: str, b: str, cfg: dict | None = None) -> dict | None:
     """Look up the disambiguation rule between two route ids. Order-independent."""
     cfg = cfg or load()
     return disambiguation_index(cfg).get(frozenset([a, b]))
 
-
 # ─── CLI ─────────────────────────────────────────────────────────────
-
 
 def _cli() -> int:
     argv = sys.argv[1:]
@@ -200,7 +189,6 @@ def _cli() -> int:
 
     sys.stderr.write(f"[route_intent] unknown command: {cmd}\n")
     return 2
-
 
 if __name__ == "__main__":
     sys.exit(_cli())

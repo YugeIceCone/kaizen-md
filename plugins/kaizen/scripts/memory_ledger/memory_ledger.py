@@ -34,7 +34,6 @@ _SCRIPT_DIR = Path(__file__).resolve().parent
 _PLUGIN_ROOT = _SCRIPT_DIR.parent.parent
 _MANIFEST = _PLUGIN_ROOT / "skills" / "memory-ledger" / "domain" / "memory-surfaces.yaml"
 
-
 def _load_manifest() -> dict:
     try:
         import yaml
@@ -46,7 +45,6 @@ def _load_manifest() -> dict:
         sys.stderr.write(f"kaizen-memory-ledger: manifest missing at {_MANIFEST}\n")
         sys.exit(1)
     return yaml.safe_load(_MANIFEST.read_text(encoding="utf-8")) or {}
-
 
 def _repo_root() -> Path:
     """Resolve repo root for path expansion of `<repo>` placeholders."""
@@ -61,10 +59,8 @@ def _repo_root() -> Path:
         pass
     return Path.cwd().resolve()
 
-
 def _repo_slug() -> str:
     return str(_repo_root()).replace("/", "-")
-
 
 def _expand_path(p: str) -> Path:
     """Expand placeholders + ~ in a manifest path. Returns the
@@ -74,9 +70,7 @@ def _expand_path(p: str) -> Path:
          .replace("<repo-slug>", _repo_slug()))
     return Path(s).expanduser()
 
-
 # ─── Verbs ──────────────────────────────────────────────────────────
-
 
 def cmd_catalog(args) -> int:
     m = _load_manifest()
@@ -120,7 +114,6 @@ def cmd_catalog(args) -> int:
         badge = "★" if s["auto_load"] else " "
         print(f"  {badge} {s['id']:24s} {s['scope']:7s} {s['owner_feature']:14s} {s['path']}")
     return 0
-
 
 def cmd_status(args) -> int:
     m = _load_manifest()
@@ -179,7 +172,6 @@ def cmd_status(args) -> int:
     # `set -e` scripts.
     return 0
 
-
 def cmd_flow(args) -> int:
     m = _load_manifest()
     phases = m.get("continuity_flow") or []
@@ -199,9 +191,7 @@ def cmd_flow(args) -> int:
             print(f"  verbs:    {' | '.join(verbs)}")
     return 0
 
-
 # ─── CLI ────────────────────────────────────────────────────────────
-
 
 def main(argv: list[str] | None = None) -> int:
     if os.environ.get("KAIZEN_MEMORY_LEDGER_DISABLE") == "1":
@@ -227,7 +217,6 @@ def main(argv: list[str] | None = None) -> int:
 
     args = p.parse_args(argv)
     return args.func(args)
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

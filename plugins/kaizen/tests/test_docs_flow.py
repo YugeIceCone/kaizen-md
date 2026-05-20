@@ -14,11 +14,10 @@ import tempfile
 import unittest
 from pathlib import Path
 
-SCRIPT_DIR = Path(__file__).resolve().parent.parent / "skills" / "workflow" / "scripts"
-sys.path.insert(0, str(SCRIPT_DIR))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 
 import docs_flow as df  # noqa: E402
-
 
 def _seed_workspace(root: Path) -> None:
     """Two packages — one rust, one python — both with minimal source."""
@@ -46,7 +45,6 @@ def _seed_workspace(root: Path) -> None:
         '"""beta — example."""\n\ndef public(): pass\nclass W: pass\n'
     )
 
-
 class TestDetectPackages(unittest.TestCase):
     def test_finds_two_packages_in_workspace(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -68,7 +66,6 @@ class TestDetectPackages(unittest.TestCase):
             action = asyncio.run(node.run_async(store))
             self.assertEqual(action, "empty")
             self.assertEqual(store["package_count"], 0)
-
 
 class TestEndToEndDocsFlow(unittest.TestCase):
     def test_writes_md_and_json_per_package(self) -> None:
@@ -113,7 +110,6 @@ class TestEndToEndDocsFlow(unittest.TestCase):
             files = sorted(p.name for p in out_dir.iterdir())
             self.assertEqual(files, ["ALPHA.json", "ALPHA.md"])
 
-
 class TestEmptyWorkspace(unittest.TestCase):
     def test_empty_dir_returns_zero_report(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -122,7 +118,6 @@ class TestEmptyWorkspace(unittest.TestCase):
             report = df.docs_scan(root, out_dir)
             self.assertEqual(report["package_count"], 0)
             self.assertEqual(report["files_written"], 0)
-
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

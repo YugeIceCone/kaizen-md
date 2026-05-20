@@ -15,15 +15,13 @@ import tempfile
 import unittest
 from pathlib import Path
 
-SCRIPT_DIR = Path(__file__).resolve().parent.parent / "skills" / "workflow" / "scripts"
-sys.path.insert(0, str(SCRIPT_DIR))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts" / "indexers"))
 
 import loc_index as li  # noqa: E402
 
-
 # ─── 1. AST extraction (mirrors loc.rs::extract_rust_functions tests) ───
-
 
 class TestExtractPythonFunctions(unittest.TestCase):
     def test_extracts_free_function(self):
@@ -103,9 +101,7 @@ class TestExtractPythonFunctions(unittest.TestCase):
         self.assertEqual(fns[0].symbol_kind, "async-function")
         self.assertTrue(fns[0].is_async)
 
-
 # ─── 2. McCabe complexity (mirrors loc.rs::ComplexityVisitor tests) ────
-
 
 class TestComplexity(unittest.TestCase):
     def _cx(self, src: str, name: str) -> int:
@@ -165,9 +161,7 @@ class TestComplexity(unittest.TestCase):
         # Base 1 + 1 (for-gen) + 1 (if) = 3.
         self.assertEqual(self._cx(src, "f"), 3)
 
-
 # ─── 3. Attribute / flag detection ─────────────────────────────────────
-
 
 class TestAttributes(unittest.TestCase):
     def test_detects_test_function_by_name(self):
@@ -206,9 +200,7 @@ class TestAttributes(unittest.TestCase):
         fns = li.extract_python_functions(src, "t.py")
         self.assertEqual(fns, [])
 
-
 # ─── 4. Symbol metadata ────────────────────────────────────────────────
-
 
 class TestFunctionInfo(unittest.TestCase):
     def test_citation_format(self):
@@ -224,9 +216,7 @@ class TestFunctionInfo(unittest.TestCase):
         )
         self.assertEqual(info.citation(), "src/foo.py:10-25")
 
-
 # ─── 5. Comparison string parser ───────────────────────────────────────
-
 
 class TestCompareParser(unittest.TestCase):
     def test_parses_gte(self):
@@ -244,9 +234,7 @@ class TestCompareParser(unittest.TestCase):
     def test_returns_none_for_garbage(self):
         self.assertIsNone(li._parse_compare("not-a-number"))
 
-
 # ─── 6. Regex fallback (Rust, JS, Shell) ───────────────────────────────
-
 
 class TestRegexFallback(unittest.TestCase):
     def test_extracts_rust_function(self):
@@ -262,9 +250,7 @@ class TestRegexFallback(unittest.TestCase):
         self.assertEqual(len(fns), 1)
         self.assertEqual(fns[0].symbol_name, "Hello")
 
-
 # ─── 7. File analysis ──────────────────────────────────────────────────
-
 
 class TestAnalyzeFile(unittest.TestCase):
     def test_counts_lines_for_python(self):
@@ -310,9 +296,7 @@ class TestAnalyzeFile(unittest.TestCase):
             mw = li.analyze_file(warn, root)
             self.assertEqual(mw.god_tier, "warning")
 
-
 # ─── 8. End-to-end indexer round-trip ──────────────────────────────────
-
 
 class TestIndexerRoundTrip(unittest.TestCase):
     def setUp(self):
@@ -412,9 +396,7 @@ class TestIndexerRoundTrip(unittest.TestCase):
         r = li.do_index(self.root)
         self.assertGreaterEqual(r["stale_removed"], 1)
 
-
 # ─── 9. Source-file walker ─────────────────────────────────────────────
-
 
 class TestSourceWalker(unittest.TestCase):
     def test_skips_ignore_dirs(self):
@@ -439,7 +421,6 @@ class TestSourceWalker(unittest.TestCase):
             names = [f.name for f in files]
             self.assertIn("ok.py", names)
             self.assertNotIn("bundle.min.js", names)
-
 
 class TestSingleFileEntryPoints(unittest.TestCase):
     """index_one_file() + delete_file() — the watch-loop primitives."""
@@ -499,7 +480,6 @@ class TestSingleFileEntryPoints(unittest.TestCase):
         self.assertEqual(
             conn.execute("SELECT COUNT(*) c FROM loc_symbols "
                          "WHERE path = ?", ("sample.py",)).fetchone()["c"], 0)
-
 
 if __name__ == "__main__":
     unittest.main()

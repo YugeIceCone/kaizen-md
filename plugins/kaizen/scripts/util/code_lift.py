@@ -55,9 +55,7 @@ _SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(_SCRIPT_DIR))
 sys.path.insert(0, str(_SCRIPT_DIR.parent / "io"))
 
-
 # ─── TOML loader (stdlib in 3.11+; tomli fallback) ───────────────────
-
 
 def _load_toml(path: Path) -> dict:
     """Load a TOML file. Prefers stdlib ``tomllib`` (3.11+) with a
@@ -77,19 +75,15 @@ def _load_toml(path: Path) -> dict:
             )
     return tomllib.loads(text)
 
-
 # ─── Config ───────────────────────────────────────────────────────────
 
-
 DEFAULT_CONFIG_NAME = "kaizen-migrations.toml"
-
 
 @dataclasses.dataclass
 class SiblingCluster:
     file: str
     must_lift_with: list[str]
     note: str = ""
-
 
 class Config:
     """Parsed ``kaizen-migrations.toml``.
@@ -185,19 +179,15 @@ class Config:
     def required_deps_for(self, target: str) -> list[str]:
         return list(self.required_deps.get(target, []))
 
-
 # ─── Rewriter ─────────────────────────────────────────────────────────
 
-
 _BOUNDARY_BYTES = frozenset(b":;, \t\n})./")
-
 
 @dataclasses.dataclass
 class RewriteEvent:
     from_: str
     to: str
     occurrences: int
-
 
 def rewrite(src: str, cfg: Config) -> tuple[str, list[RewriteEvent]]:
     """Apply ``[paths]`` text rewrites to ``src``.
@@ -242,16 +232,13 @@ def rewrite(src: str, cfg: Config) -> tuple[str, list[RewriteEvent]]:
             current = "".join(new_parts)
     return current, events
 
-
 # ─── Manifest detection (multi-language deps-gap) ────────────────────
-
 
 @dataclasses.dataclass
 class ManifestInfo:
     path: Path
     kind: str  # 'cargo' | 'npm' | 'pyproject' | 'go-mod'
     body: str
-
 
 def detect_manifest(target_dir: Path) -> Optional[ManifestInfo]:
     """Probe a target directory for its manifest file. First match wins,
@@ -272,7 +259,6 @@ def detect_manifest(target_dir: Path) -> Optional[ManifestInfo]:
                 continue
             return ManifestInfo(path=p, kind=kind, body=body)
     return None
-
 
 def manifest_has_dep(manifest: ManifestInfo, dep: str) -> bool:
     """Heuristic substring/regex match for a dep in a manifest body.
@@ -313,9 +299,7 @@ def manifest_has_dep(manifest: ManifestInfo, dep: str) -> bool:
         return re.search(rf"\b{escaped}\b\s+v", manifest.body) is not None
     return False
 
-
 # ─── Lift ─────────────────────────────────────────────────────────────
-
 
 def collect_lift_pairs(
     src: Path,
@@ -356,7 +340,6 @@ def collect_lift_pairs(
             pairs.append((p, dst))
     return pairs
 
-
 def _compute_dest(
     src_file: Path, source_root: Path, target_dir: Path
 ) -> Path:
@@ -376,14 +359,12 @@ def _compute_dest(
         return target_dir / Path(*parts[1:])
     return target_dir / rel
 
-
 @dataclasses.dataclass
 class LiftResult:
     pairs: list[tuple[Path, Path]]
     rewrites_per_file: dict[str, list[RewriteEvent]]
     total_rewrites: int
     applied: bool
-
 
 def do_lift(
     src: Path,
@@ -423,9 +404,7 @@ def do_lift(
         applied=apply,
     )
 
-
 # ─── Preview ──────────────────────────────────────────────────────────
-
 
 @dataclasses.dataclass
 class PreviewResult:
@@ -437,7 +416,6 @@ class PreviewResult:
     sibling_note: str
     missing_deps: list[str]
     status: str  # 'ok' | 'skipped' | 'no-mapping'
-
 
 def do_preview(
     source_path: Path,
@@ -509,9 +487,7 @@ def do_preview(
         status="ok",
     )
 
-
 # ─── Deps-gap ─────────────────────────────────────────────────────────
-
 
 @dataclasses.dataclass
 class DepsGapResult:
@@ -520,7 +496,6 @@ class DepsGapResult:
     manifest_kind: Optional[str]
     required: list[str]
     missing: list[str]
-
 
 def do_deps_gap(target: str, repo_root: Path, cfg: Config) -> DepsGapResult:
     """Check ``[required_deps].<target>`` against the target's manifest.
@@ -547,9 +522,7 @@ def do_deps_gap(target: str, repo_root: Path, cfg: Config) -> DepsGapResult:
         missing=missing,
     )
 
-
 # ─── Audit ────────────────────────────────────────────────────────────
-
 
 @dataclasses.dataclass
 class AuditRow:
@@ -558,7 +531,6 @@ class AuditRow:
     status: str  # 'lifted' | 'pending' | 'skipped' | 'missing-target'
     source_files: int
     target_files: int
-
 
 def do_audit(repo_root: Path, cfg: Config) -> list[AuditRow]:
     """Workspace-wide lift status table. One row per source project
@@ -592,7 +564,6 @@ def do_audit(repo_root: Path, cfg: Config) -> list[AuditRow]:
         ))
     return rows
 
-
 def _count_source_files(d: Path) -> int:
     count = 0
     for p in d.rglob("*"):
@@ -607,9 +578,7 @@ def _count_source_files(d: Path) -> int:
             count += 1
     return count
 
-
 # ─── CLI ──────────────────────────────────────────────────────────────
-
 
 def _resolve_repo_root(explicit: Optional[str]) -> Path:
     """Pick a repo root. Explicit flag > CWD > git-toplevel walk."""
@@ -623,12 +592,10 @@ def _resolve_repo_root(explicit: Optional[str]) -> Path:
         cur = cur.parent
     return cwd
 
-
 def _resolve_config_path(repo_root: Path, explicit: Optional[str]) -> Path:
     if explicit:
         return Path(explicit).resolve()
     return repo_root / DEFAULT_CONFIG_NAME
-
 
 def _cmd_path(args) -> int:
     repo_root = _resolve_repo_root(args.root)
@@ -640,7 +607,6 @@ def _cmd_path(args) -> int:
     }
     print(json.dumps(out, indent=2))
     return 0
-
 
 def _cmd_audit(args) -> int:
     repo_root = _resolve_repo_root(args.root)
@@ -657,7 +623,6 @@ def _cmd_audit(args) -> int:
         print(f"  {r.source_project:<28} {r.target:<24} "
               f"{r.status:<16} {r.source_files:>3} {r.target_files:>3}")
     return 0
-
 
 def _cmd_preview(args) -> int:
     repo_root = _resolve_repo_root(args.root)
@@ -708,7 +673,6 @@ def _cmd_preview(args) -> int:
             print(f"    - {d}")
     return 0
 
-
 def _cmd_deps_gap(args) -> int:
     repo_root = _resolve_repo_root(args.root)
     cfg = Config.from_file(_resolve_config_path(repo_root, args.config))
@@ -737,7 +701,6 @@ def _cmd_deps_gap(args) -> int:
     for m in result.missing:
         print(f"    - {m}")
     return 2
-
 
 def _cmd_lift(args) -> int:
     repo_root = _resolve_repo_root(args.root)
@@ -801,7 +764,6 @@ def _cmd_lift(args) -> int:
         print("dry-run — re-run with --apply to write.")
     return 0
 
-
 def main(argv: Optional[list[str]] = None) -> int:
     p = argparse.ArgumentParser(
         prog="kaizen-code-lift",
@@ -837,7 +799,6 @@ def main(argv: Optional[list[str]] = None) -> int:
 
     args = p.parse_args(argv)
     return args.func(args)
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

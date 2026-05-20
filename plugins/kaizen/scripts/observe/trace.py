@@ -59,7 +59,6 @@ _SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(_SCRIPT_DIR))
 sys.path.insert(0, str(_SCRIPT_DIR.parent / "io"))
 
-
 def _trace_dir() -> Path:
     # v1.22.0+: default moved to ~/.claude/.kaizen/indexes/trace/. KAIZEN_TRACE_DIR still wins.
     env = os.environ.get("KAIZEN_TRACE_DIR")
@@ -70,10 +69,8 @@ def _trace_dir() -> Path:
     import _paths as _p  # noqa: E402
     return _p.TRACE_DIR
 
-
 def _events_file() -> Path:
     return _trace_dir() / "events.jsonl"
-
 
 def _max_mb() -> int:
     try:
@@ -81,30 +78,24 @@ def _max_mb() -> int:
     except ValueError:
         return 100
 
-
 def _retention_days() -> int:
     try:
         return int(os.environ.get("KAIZEN_TRACE_RETENTION_DAYS", "7"))
     except ValueError:
         return 7
 
-
 def _disabled() -> bool:
     return os.environ.get("KAIZEN_TRACE_DISABLE") == "1"
-
 
 from _time import iso  # M5 dedup
 import _envelope  # noqa: E402
 
 _emit = _envelope.emitter("kaizen-trace", tool_version="1.0.0")
 
-
 def _now_iso() -> str:
     return iso()
 
-
 # ─── Append + rotation ───────────────────────────────────────────────
-
 
 def append_event(record: dict) -> None:
     if _disabled():
@@ -123,7 +114,6 @@ def append_event(record: dict) -> None:
     except OSError:
         pass  # never raise from trace; tracing must not break the host
 
-
 def _rotate(f: Path) -> None:
     ts = dt.datetime.now(dt.timezone.utc).strftime("%Y%m%d-%H%M%SZ")
     rotated = f.parent / f"events-{ts}.jsonl"
@@ -140,7 +130,6 @@ def _rotate(f: Path) -> None:
         pass
     _prune_rotated()
 
-
 def _prune_rotated() -> None:
     cutoff = dt.datetime.now(dt.timezone.utc).timestamp() - _retention_days() * 86400
     for p in _trace_dir().glob("events-*.jsonl.gz"):
@@ -150,9 +139,7 @@ def _prune_rotated() -> None:
         except OSError:
             pass
 
-
 # ─── Read + parse ────────────────────────────────────────────────────
-
 
 def _iter_events(path: Path):
     if not path.exists():
@@ -171,7 +158,6 @@ def _iter_events(path: Path):
     except OSError:
         return
 
-
 def _all_event_files() -> list[Path]:
     d = _trace_dir()
     if not d.exists():
@@ -180,7 +166,6 @@ def _all_event_files() -> list[Path]:
     if _events_file().exists():
         files.append(_events_file())
     return files
-
 
 def _parse_duration(s: str) -> dt.datetime | None:
     """Parse `1h`, `30m`, `7d`, `5s`, or ISO timestamp."""
@@ -193,7 +178,6 @@ def _parse_duration(s: str) -> dt.datetime | None:
         return dt.datetime.fromisoformat(s.replace("Z", "+00:00"))
     except ValueError:
         return None
-
 
 def _matches(ev: dict, src=None, evt=None, tool=None, sid=None, since=None) -> bool:
     if src and ev.get("src") != src:
@@ -213,9 +197,7 @@ def _matches(ev: dict, src=None, evt=None, tool=None, sid=None, since=None) -> b
             return False
     return True
 
-
 # ─── Commands ────────────────────────────────────────────────────────
-
 
 def cmd_event(args) -> None:
     record: dict = {
@@ -251,7 +233,6 @@ def cmd_event(args) -> None:
 
     append_event(record)
 
-
 def do_tail(n: int = 20, src: str = "", evt: str = "") -> list[dict]:
     """Programmatic tail — returns most recent N events as dicts.
 
@@ -270,7 +251,6 @@ def do_tail(n: int = 20, src: str = "", evt: str = "") -> list[dict]:
     buf.sort(key=lambda e: e.get("ts", ""))
     return buf[-n:]
 
-
 def cmd_tail(args) -> None:
     events = do_tail(n=args.n, src=args.src or "", evt=args.evt or "")
     if not events:
@@ -278,7 +258,6 @@ def cmd_tail(args) -> None:
         return
     for ev in events:
         print(_format_event(ev))
-
 
 def cmd_query(args) -> None:
     since = None
@@ -302,7 +281,6 @@ def cmd_query(args) -> None:
             print(_format_event(ev))
     if args.count:
         print(f"\n--- {len(out)} events", file=sys.stderr)
-
 
 def cmd_stats(args) -> None:
     since = None
@@ -345,7 +323,6 @@ def cmd_stats(args) -> None:
         }
     _emit(out, counts={"total": total})
 
-
 def cmd_clear(args) -> None:
     d = _trace_dir()
     if not d.exists():
@@ -360,13 +337,10 @@ def cmd_clear(args) -> None:
             pass
     print(f"cleared {n} files from {d}")
 
-
 def cmd_path(args) -> None:
     print(_events_file())
 
-
 # ─── Formatting ──────────────────────────────────────────────────────
-
 
 def _format_event(ev: dict) -> str:
     ts = ev.get("ts", "?")[:23]  # trim ms precision tail
@@ -386,9 +360,7 @@ def _format_event(ev: dict) -> str:
         parts.append(data_str)
     return "  ".join(parts)
 
-
 # ─── CLI ─────────────────────────────────────────────────────────────
-
 
 def main() -> None:
     p = argparse.ArgumentParser(prog="trace.py",
@@ -439,7 +411,6 @@ def main() -> None:
         cmd_tail(args)
         return
     args.func(args)
-
 
 if __name__ == "__main__":
     main()

@@ -49,7 +49,6 @@ _ABBREVIATIONS = {
     "etc", "e.g", "i.e", "vs", "fig", "st", "ave", "jr", "sr",
 }
 
-
 @dataclass(frozen=True)
 class Chunk:
     """A semantic unit of text with char-offset back to the source.
@@ -62,9 +61,7 @@ class Chunk:
     char_end: int
     chunk_idx: int  # 0..N-1 within the source document
 
-
 # ─── Sentence splitter ───────────────────────────────────────────────
-
 
 def _is_false_boundary(text: str, end_pos: int) -> bool:
     """Was the last 'word' before end_pos an abbreviation?
@@ -80,9 +77,7 @@ def _is_false_boundary(text: str, end_pos: int) -> bool:
     word = word.rstrip(".!?")  # the punctuation that triggered the match
     return word.lower() in _ABBREVIATIONS
 
-
 # ─── Chunker ─────────────────────────────────────────────────────────
-
 
 def chunk_text(
     text: str,
@@ -155,7 +150,6 @@ def chunk_text(
 
     return chunks
 
-
 def chunk_into_dicts(
     text: str,
     max_tokens: int = DEFAULT_TOKEN_CAP,
@@ -167,7 +161,6 @@ def chunk_into_dicts(
          "char_end": c.char_end, "chunk_idx": c.chunk_idx}
         for c in chunk_text(text, max_tokens=max_tokens)
     ]
-
 
 # ─── Asymmetric prefixes (v1.27.0 borrows Onyx default) ──────────────
 
@@ -212,7 +205,6 @@ MODEL_PREFIXES: dict[str, tuple[str, str]] = {
 QUERY_PREFIX = _NOMIC_QUERY
 PASSAGE_PREFIX = _NOMIC_PASSAGE
 
-
 def detect_model_family(model: str) -> str:
     """Substring-match the model name against known embedding families.
 
@@ -234,12 +226,10 @@ def detect_model_family(model: str) -> str:
         return "jina"
     return "generic"
 
-
 def prefixes_for_model(model: str) -> tuple[str, str]:
     """Return (query_prefix, passage_prefix) for the model. Tuple shape
     is stable; an empty string indicates "no prefix for this slot"."""
     return MODEL_PREFIXES[detect_model_family(model)]
-
 
 def apply_query_prefix(text: str, model: str = "") -> str:
     """Prepend the model's query prefix. Idempotent: if `text` already
@@ -257,7 +247,6 @@ def apply_query_prefix(text: str, model: str = "") -> str:
             return text
     return q_pref + text
 
-
 def apply_passage_prefix(text: str, model: str = "") -> str:
     """Prepend the model's passage prefix. Same idempotence rules as
     apply_query_prefix."""
@@ -269,13 +258,10 @@ def apply_passage_prefix(text: str, model: str = "") -> str:
             return text
     return p_pref + text
 
-
 def apply_passage_prefix_batch(texts: Iterable[str], model: str = "") -> list[str]:
     return [apply_passage_prefix(t, model) for t in texts]
 
-
 # ─── O3 (v1.32) — metadata-rich passage prefix ───────────────────────
-
 
 def build_metadata_prefix(
     *,
@@ -311,7 +297,6 @@ def build_metadata_prefix(
         return ""
     return "\n".join(lines) + "\n---\n"
 
-
 def apply_passage_prefix_with_metadata(
     text: str,
     *,
@@ -338,7 +323,6 @@ def apply_passage_prefix_with_metadata(
         path=path, language=language, kind=kind, symbol=symbol
     )
     return p_pref + meta + text
-
 
 def apply_passage_prefix_batch_with_metadata(
     items: Iterable[dict],

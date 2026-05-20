@@ -19,9 +19,9 @@ import unittest
 from pathlib import Path
 
 PLUGIN_ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(PLUGIN_ROOT / "skills" / "workflow" / "scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 sys.path.insert(0, str(PLUGIN_ROOT / "scripts" / "mcp"))
-
 
 def _init_git_repo(path: Path) -> None:
     """Initialize a minimal git repo so shim's git operations don't error."""
@@ -32,7 +32,6 @@ def _init_git_repo(path: Path) -> None:
     subprocess.run(
         ["git", "config", "user.name", "Test"], cwd=path, check=True
     )
-
 
 class _CwdMixin:
     def setUp(self):
@@ -49,7 +48,6 @@ class _CwdMixin:
     def tearDown(self):
         os.chdir(self._cwd)
         self._tmpcm.cleanup()
-
 
 class TestShimMcpModule(unittest.TestCase):
     """The module imports cleanly and exposes the expected tools."""
@@ -76,7 +74,6 @@ class TestShimMcpModule(unittest.TestCase):
         import gateway
         module_names = [m for _, m in gateway.SUBSERVERS]
         self.assertIn("shim_mcp", module_names)
-
 
 class TestShimMcpDelegates(_CwdMixin, unittest.TestCase):
     """The wrappers call shim.py with the right arguments."""
@@ -148,7 +145,6 @@ class TestShimMcpDelegates(_CwdMixin, unittest.TestCase):
         entries = self._run(shim_mcp.shim_list("never-existed"))
         self.assertEqual(entries, [])
 
-
 class TestShimSweepGate(_CwdMixin, unittest.TestCase):
     """Iron Law 4: sweep refuses without explicit user authorization."""
 
@@ -200,7 +196,6 @@ class TestShimSweepGate(_CwdMixin, unittest.TestCase):
         # The shim file at alpha.ts is still on disk
         self.assertTrue((self.tmp / "alpha.ts").is_file())
         self.assertIn("alpha.ts", result["deleted"])
-
 
 if __name__ == "__main__":
     unittest.main()

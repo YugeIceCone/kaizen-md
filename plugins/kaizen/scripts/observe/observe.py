@@ -70,7 +70,6 @@ import _envelope
 
 _emit = _envelope.emitter("kaizen-observe", tool_version="1.0.0")
 
-
 HOME = Path(os.path.expanduser("~"))
 
 # v1.22.0+ unified layout — paths come from _paths (SSOT) so an env override
@@ -97,16 +96,12 @@ PLUGINS_DIR = HOME / ".claude" / "plugins"
 SETTINGS_FILE = HOME / ".claude" / "settings.json"
 BRAIN_DIR = HOME / ".claude" / "brain"
 
-
 # ─── Helpers ─────────────────────────────────────────────────────────
-
 
 from _time import iso  # M5 dedup
 
-
 def now_iso() -> str:
     return iso()
-
 
 def parse_since(s: str) -> Optional[dt.datetime]:
     """Same parser as trace.py — supports 1h/30m/7d/Ns + ISO."""
@@ -121,9 +116,7 @@ def parse_since(s: str) -> Optional[dt.datetime]:
     except ValueError:
         return None
 
-
 from _jsonl import iter_jsonl  # noqa: E402 — shared helper (M4 dedup)
-
 
 def dir_size_bytes(p: Path) -> int:
     if not p.exists():
@@ -137,7 +130,6 @@ def dir_size_bytes(p: Path) -> int:
             pass
     return total
 
-
 def fmt_bytes(n: int) -> str:
     for unit in ("B", "KB", "MB", "GB"):
         if n < 1024:
@@ -145,9 +137,7 @@ def fmt_bytes(n: int) -> str:
         n = n / 1024
     return f"{n:.1f}TB"
 
-
 # ─── L2: CC transcript ───────────────────────────────────────────────
-
 
 def l2_transcript_path(sid: str) -> Optional[Path]:
     """Find the transcript JSONL for a session_id. Walks projects/*/sid.jsonl."""
@@ -160,7 +150,6 @@ def l2_transcript_path(sid: str) -> Optional[Path]:
         if candidate.exists():
             return candidate
     return None
-
 
 def l2_transcript_summary(sid: str) -> dict:
     p = l2_transcript_path(sid)
@@ -176,9 +165,7 @@ def l2_transcript_summary(sid: str) -> dict:
         "last_ts": records[-1].get("timestamp") if records else None,
     }
 
-
 # ─── L3: Kaizen trace ────────────────────────────────────────────────
-
 
 def l3_iter_events(since: Optional[dt.datetime] = None):
     """Iterate all trace events (current file + rotated .gz)."""
@@ -207,7 +194,6 @@ def l3_iter_events(since: Optional[dt.datetime] = None):
                     pass
             yield ev
 
-
 def l3_query(sid: str = "", src: str = "", evt: str = "", since: Optional[dt.datetime] = None) -> list[dict]:
     out = []
     for ev in l3_iter_events(since):
@@ -219,7 +205,6 @@ def l3_query(sid: str = "", src: str = "", evt: str = "", since: Optional[dt.dat
             continue
         out.append(ev)
     return out
-
 
 def l3_stats(since: Optional[dt.datetime] = None, sid: str = "") -> dict:
     by_src: dict = {}
@@ -257,9 +242,7 @@ def l3_stats(since: Optional[dt.datetime] = None, sid: str = "") -> dict:
         }
     return out
 
-
 # ─── L4: Domain logs ─────────────────────────────────────────────────
-
 
 def l4_summary() -> dict:
     out = {}
@@ -305,9 +288,7 @@ def l4_summary() -> dict:
         }
     return out
 
-
 # ─── L5: Per-repo state ──────────────────────────────────────────────
-
 
 def l5_summary(repo: Optional[Path] = None) -> dict:
     if repo is None:
@@ -376,9 +357,7 @@ def l5_summary(repo: Optional[Path] = None) -> dict:
         }
     return out
 
-
 # ─── L6: Plugin + global state ───────────────────────────────────────
-
 
 def l6_summary() -> dict:
     out = {}
@@ -432,9 +411,7 @@ def l6_summary() -> dict:
         }
     return out
 
-
 # ─── Composite operations ────────────────────────────────────────────
-
 
 def cmd_layers() -> dict:
     """Summary of all 6 layers."""
@@ -455,7 +432,6 @@ def cmd_layers() -> dict:
         "L5_per_repo": l5_summary(),
         "L6_plugin_global": l6_summary(),
     }
-
 
 def cmd_drill(sid: str) -> str:
     """Guided drill-down report following the canonical recipe."""
@@ -575,12 +551,10 @@ def cmd_drill(sid: str) -> str:
         lines.append("- No L3 events for this sid → look at L2 transcript directly or check if hooks are firing (`kaizen-trace tail`)")
     return "\n".join(lines)
 
-
 def _hash_layer(d: dict) -> str:
     """SHA1 of the canonical-JSON serialization of a layer's summary."""
     s = json.dumps(d, sort_keys=True, default=str)
     return hashlib.sha256(s.encode()).hexdigest()[:16]
-
 
 def cmd_snapshot(name: str = "") -> dict:
     """Capture all 6 layers to a content-keyed snapshot file.
@@ -625,7 +599,6 @@ def cmd_snapshot(name: str = "") -> dict:
         ref_path.write_bytes(payload)
         return {"path": str(ref_path), "composite_hash": bundle["composite_hash"]}
 
-
 def cmd_compare(a: Path, b: Path) -> dict:
     """Diff two snapshots — return added/removed/changed per layer."""
     try:
@@ -647,9 +620,7 @@ def cmd_compare(a: Path, b: Path) -> dict:
         }
     return out
 
-
 # ─── CLI ─────────────────────────────────────────────────────────────
-
 
 def main():
     p = argparse.ArgumentParser(prog="observe.py", description=__doc__,
@@ -744,7 +715,6 @@ def main():
     else:
         p.print_help()
         sys.exit(1)
-
 
 if __name__ == "__main__":
     main()

@@ -26,15 +26,13 @@ from pathlib import Path
 from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / "skills" / "workflow" / "scripts"))
-
-
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 def _seed_note(brain: Path, name: str, frontmatter: str, body: str = "body"):
     notes = brain / "Notes"
     notes.mkdir(parents=True, exist_ok=True)
     (notes / f"{name}.md").write_text(
         f"---\n{frontmatter}\n---\n\n{body}\n", encoding="utf-8")
-
 
 class TestScanPathScopedNotes(unittest.TestCase):
 
@@ -97,7 +95,6 @@ class TestScanPathScopedNotes(unittest.TestCase):
         slugs = [n["slug"] for n in found]
         self.assertIn("ok-note", slugs)
         self.assertNotIn("broken", slugs)
-
 
 class TestWriteNoteRules(unittest.TestCase):
 
@@ -176,7 +173,6 @@ class TestWriteNoteRules(unittest.TestCase):
         # Hand-authored preserved
         self.assertIn("note-custom.md", remaining)
         self.assertIn("note-pref-new.md", remaining)
-
 
 if __name__ == "__main__":
     unittest.main()

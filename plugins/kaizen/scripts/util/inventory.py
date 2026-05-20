@@ -168,7 +168,6 @@ _HASH_COMMENT_TYPES = _PY_TYPES | {"sh", "bash", "hook-sh", "git-hook"} | _YAML_
 
 # ─── Core walk ────────────────────────────────────────────────────
 
-
 def file_type(p: Path, rel_path: str | None = None) -> str | None:
     """Return canonical type label. Resolution: PATH_PATTERNS → .schema.json →
     bare-name → file extension."""
@@ -184,15 +183,12 @@ def file_type(p: Path, rel_path: str | None = None) -> str | None:
     suf = p.suffix.lstrip(".")
     return suf if suf in CANONICAL_TYPES else None
 
-
 def matches_any(path_str: str, patterns: list[str]) -> bool:
     return any(fnmatch.fnmatch(path_str, pat) for pat in patterns)
-
 
 def _rel_for_walk(p: Path, root: Path) -> str:
     anchor = root.parent if root.parent != Path() else root
     return str(p.relative_to(anchor))
-
 
 def iter_files(root: Path, types: list[str], include: list[str],
                 exclude: list[str], not_types: list[str] | None = None) -> list[Path]:
@@ -216,7 +212,6 @@ def iter_files(root: Path, types: list[str], include: list[str],
         out.append(p)
     return out
 
-
 def read_safe(p: Path, max_size: int) -> tuple[str, bool]:
     try:
         size = p.stat().st_size
@@ -226,18 +221,14 @@ def read_safe(p: Path, max_size: int) -> tuple[str, bool]:
     except OSError as e:
         return (f"[read error: {e}]", True)
 
-
 # ─── Per-file enrichment (Batch A) ───────────────────────────────
-
 
 def estimate_tokens(content: str) -> int:
     """Approximate GPT/Claude tokens — KISS chars/4."""
     return max(1, len(content) // 4)
 
-
 def sha256_of(content: str) -> str:
     return hashlib.sha256(content.encode("utf-8", errors="replace")).hexdigest()
-
 
 def loc_stats(content: str, t: str | None) -> dict:
     lines = content.splitlines()
@@ -247,7 +238,6 @@ def loc_stats(content: str, t: str | None) -> dict:
     if t in _HASH_COMMENT_TYPES:
         comment = sum(1 for l in lines if l.lstrip().startswith("#"))
     return {"lines": total, "nonblank_lines": nonblank, "comment_lines": comment}
-
 
 def extract_py_symbols(content: str) -> list[dict]:
     out = []
@@ -266,7 +256,6 @@ def extract_py_symbols(content: str) -> list[dict]:
             out.append({"kind": "function", "name": node.name, "line": node.lineno})
     return out
 
-
 def extract_md_headings(content: str) -> list[dict]:
     out = []
     for i, line in enumerate(content.splitlines(), 1):
@@ -275,7 +264,6 @@ def extract_md_headings(content: str) -> list[dict]:
             out.append({"kind": f"h{len(m.group(1))}",
                           "name": m.group(2).strip(), "line": i})
     return out
-
 
 def extract_yaml_top_keys(content: str) -> list[dict]:
     out = []
@@ -287,7 +275,6 @@ def extract_yaml_top_keys(content: str) -> list[dict]:
             out.append({"kind": "key", "name": m.group(1), "line": i})
     return out
 
-
 def extract_symbols(content: str, t: str | None) -> list[dict]:
     if t in _PY_TYPES:
         return extract_py_symbols(content)
@@ -297,16 +284,13 @@ def extract_symbols(content: str, t: str | None) -> list[dict]:
         return extract_yaml_top_keys(content)
     return []
 
-
 def first_docstring(content: str) -> str | None:
     try:
         return ast.get_docstring(ast.parse(content))
     except (SyntaxError, ValueError):
         return None
 
-
 # ─── Import graph (Batch E) ──────────────────────────────────────
-
 
 def extract_py_imports(content: str) -> list[str]:
     out = []
@@ -322,7 +306,6 @@ def extract_py_imports(content: str) -> list[str]:
             if node.module:
                 out.append(node.module.split(".")[0])
     return list(dict.fromkeys(out))
-
 
 def build_import_graph(files: list[Path]) -> tuple[dict, dict]:
     """Return (imports_by_path, imported_by_stem).
@@ -349,9 +332,7 @@ def build_import_graph(files: list[Path]) -> tuple[dict, dict]:
                 consumers.setdefault(imp, []).append(Path(src).stem)
     return imports_by, consumers
 
-
 # ─── Filters (Batch C) ────────────────────────────────────────────
-
 
 def parse_mtime_since(spec: str) -> float:
     """'7d' / '24h' / '2026-01-01' / unix-ts → float seconds-since-epoch."""
@@ -367,7 +348,6 @@ def parse_mtime_since(spec: str) -> float:
     except ValueError:
         return float(spec)
 
-
 def git_changed_since(root: Path, rev: str) -> set[str] | None:
     """Return set of paths (relative to git root) changed since rev, or None
     if git is unavailable / no repo."""
@@ -380,7 +360,6 @@ def git_changed_since(root: Path, rev: str) -> set[str] | None:
         return {line.strip() for line in r.stdout.splitlines() if line.strip()}
     except (subprocess.SubprocessError, FileNotFoundError):
         return None
-
 
 def apply_post_filters(files: list[Path], root: Path, args) -> list[Path]:
     out = list(files)
@@ -435,7 +414,6 @@ def apply_post_filters(files: list[Path], root: Path, args) -> list[Path]:
 
     return out
 
-
 # ─── Schema validation (Batch D) ─────────────────────────────────
 
 def validate_against_schema(content: str, t: str | None) -> str:
@@ -469,9 +447,7 @@ def validate_against_schema(content: str, t: str | None) -> str:
             return f"errors:{e}"
     return "no-schema"
 
-
 # ─── Output emitters ──────────────────────────────────────────────
-
 
 def _record_for(p: Path, root: Path, max_size: int, with_graph: bool,
                 graph: tuple[dict, dict] | None, validate: bool) -> dict:
@@ -500,7 +476,6 @@ def _record_for(p: Path, root: Path, max_size: int, with_graph: bool,
         rec["validation_status"] = validate_against_schema(content, t)
     return rec
 
-
 def _lang_for(rec_type: str | None, p: Path) -> str:
     """Resolve a syntax-highlighting language tag from the record's
     semantic type, falling back to the file's actual extension when
@@ -509,7 +484,6 @@ def _lang_for(rec_type: str | None, p: Path) -> str:
         return EXT_TO_LANG[rec_type]
     suf = p.suffix.lstrip(".")
     return EXT_TO_LANG.get(suf, "")
-
 
 def emit_markdown(files: list[Path], root: Path, args, out) -> None:
     """Per-file shape (consistent across the bundle):
@@ -537,7 +511,6 @@ def emit_markdown(files: list[Path], root: Path, args, out) -> None:
         out.write(f"\n## `{rec['path']}`\n\n{meta}\n\n")
         out.write(f"```{lang}\n{rec['content']}\n```\n")
 
-
 def emit_jsonl(files: list[Path], root: Path, args, out) -> None:
     graph = build_import_graph(files) if getattr(args, "with_graph", False) else None
     for p in files:
@@ -545,7 +518,6 @@ def emit_jsonl(files: list[Path], root: Path, args, out) -> None:
                             getattr(args, "with_graph", False), graph,
                             getattr(args, "validate", False))
         out.write(json.dumps(rec, ensure_ascii=False) + "\n")
-
 
 def emit_raw(files: list[Path], root: Path, args, out) -> None:
     for p in files:
@@ -555,7 +527,6 @@ def emit_raw(files: list[Path], root: Path, args, out) -> None:
         out.write(content)
         if not content.endswith("\n"):
             out.write("\n")
-
 
 def emit_html(files: list[Path], root: Path, args, out) -> None:
     out.write("<!DOCTYPE html>\n<html><head><meta charset='utf-8'>"
@@ -574,7 +545,6 @@ def emit_html(files: list[Path], root: Path, args, out) -> None:
         out.write(f"<details><summary>{rel} <small>· {t}</small></summary>\n")
         out.write(f"<pre><code>{esc}</code></pre></details>\n")
     out.write("</body></html>\n")
-
 
 def emit_for_rag(files: list[Path], root: Path, args, out,
                   window: int = 1000, overlap: int = 100) -> None:
@@ -618,7 +588,6 @@ def emit_for_rag(files: list[Path], root: Path, args, out,
                     j -= 1
                 i = max(start_line, j + 1)
 
-
 def emit_sqlite(files: list[Path], root: Path, args, db_path: Path) -> None:
     con = sqlite3.connect(db_path)
     try:
@@ -647,14 +616,12 @@ def emit_sqlite(files: list[Path], root: Path, args, db_path: Path) -> None:
     finally:
         con.close()
 
-
 _EMITTERS = {
     "markdown": (emit_markdown, "md"),
     "jsonl":    (emit_jsonl,    "jsonl"),
     "raw":      (emit_raw,      "raw"),
     "html":     (emit_html,     "html"),
 }
-
 
 def _bucketize_by_type(files: list[Path], root: Path) -> dict[str, list[Path]]:
     buckets: dict[str, list[Path]] = {}
@@ -663,17 +630,13 @@ def _bucketize_by_type(files: list[Path], root: Path) -> dict[str, list[Path]]:
         buckets.setdefault(t, []).append(p)
     return buckets
 
-
 def _safe_type_filename(t: str) -> str:
     return t.replace(".", "-").lstrip("-") or "unknown"
 
-
 # ─── Subcommands ──────────────────────────────────────────────────
-
 
 def _resolve_types(args) -> list[str]:
     return args.type or (ALL_TYPES)
-
 
 def _resolved_files(args) -> tuple[Path, list[Path]]:
     root = args.root.resolve()
@@ -682,7 +645,6 @@ def _resolved_files(args) -> tuple[Path, list[Path]]:
     files = iter_files(root, types, args.include, args.exclude, not_types=not_types)
     files = apply_post_filters(files, root, args)
     return root, files
-
 
 def _structure_tree(root: Path, files: list[Path]) -> str:
     """Return a directory tree string."""
@@ -696,7 +658,6 @@ def _structure_tree(root: Path, files: list[Path]) -> str:
         for p in sorted(by_dir[d]):
             lines.append(f"    {Path(_rel_for_walk(p, root)).name}")
     return "\n".join(lines)
-
 
 def cmd_dump(args) -> int:
     root, files = _resolved_files(args)
@@ -774,7 +735,6 @@ def cmd_dump(args) -> int:
             print(f"wrote {len(files)} files to {args.out}", file=sys.stderr)
     return 0
 
-
 def cmd_list(args) -> int:
     root, files = _resolved_files(args)
     if args.json:
@@ -787,7 +747,6 @@ def cmd_list(args) -> int:
         for p in files:
             print(_rel_for_walk(p, root))
     return 0
-
 
 def cmd_stats(args) -> int:
     root = args.root.resolve()
@@ -807,11 +766,9 @@ def cmd_stats(args) -> int:
         print(f"  {t:18s} {s['count']:6d} files  {s['bytes']:>10d} bytes")
     return 0
 
-
 _CLI_PATTERNS_YAML = (Path(__file__).resolve().parents[2]
                         / "skills" / "plugin-development"
                         / "domain" / "cli-patterns.yaml")
-
 
 def _load_cli_patterns() -> list[dict]:
     """Load cli-patterns.yaml catalog (stdlib regex fallback if pyyaml absent)."""
@@ -840,7 +797,6 @@ def _load_cli_patterns() -> list[dict]:
             out.append(cur)
         return out
 
-
 def _grep_count(detect_cmd: str, cwd: Path) -> int:
     # shopt -s globstar — the catalog recipes use `**` globs which
     # bash leaves literal unless globstar is enabled.
@@ -852,7 +808,6 @@ def _grep_count(detect_cmd: str, cwd: Path) -> int:
         return int((r.stdout.strip() or "0").splitlines()[-1])
     except (subprocess.SubprocessError, ValueError, IndexError):
         return -1
-
 
 def _find_repo_root(start: Path) -> Path:
     """Walk up to find the git repo root. Falls back to walking until a
@@ -875,7 +830,6 @@ def _find_repo_root(start: Path) -> Path:
             break
         cur = cur.parent
     return start
-
 
 def _cmd_drift_patterns(args) -> int:
     patterns = _load_cli_patterns()
@@ -906,7 +860,6 @@ def _cmd_drift_patterns(args) -> int:
     total = sum(r["drift"] for r in results if r["drift"] is not None)
     print(f"\n  total adoption drift: {total:+d}")
     return 0
-
 
 def cmd_drift(args) -> int:
     if getattr(args, "patterns", False):
@@ -965,7 +918,6 @@ def cmd_drift(args) -> int:
             print(f"    {o}")
     return 0
 
-
 def cmd_tree(args) -> int:
     root, files = _resolved_files(args)
     print(f"# directory tree — {root}\n")
@@ -980,7 +932,6 @@ def cmd_tree(args) -> int:
             t = file_type(p, rel) or "?"
             print(f"    {rel:60s} · {t:14s} · {p.stat().st_size:>7d}B")
     return 0
-
 
 def cmd_outline(args) -> int:
     root, files = _resolved_files(args)
@@ -1003,7 +954,6 @@ def cmd_outline(args) -> int:
                     depth = int(s["kind"][1:])
                     print(f"    {'#' * depth} {s['name']}")
     return 0
-
 
 def cmd_map(args) -> int:
     root, files = _resolved_files(args)
@@ -1032,7 +982,6 @@ def cmd_map(args) -> int:
                 print(f"  {s['name']}:")
     return 0
 
-
 def cmd_grep_symbol(args) -> int:
     needle = args.symbol
     root = args.root.resolve()
@@ -1051,9 +1000,7 @@ def cmd_grep_symbol(args) -> int:
                 hits += 1
     return 0 if hits else 1
 
-
 # ─── CLI ──────────────────────────────────────────────────────────
-
 
 def _detect_root() -> Path:
     cwd = Path.cwd()
@@ -1061,7 +1008,6 @@ def _detect_root() -> Path:
         if cand.is_dir():
             return cand
     return cwd
-
 
 def _add_filter_args(p: argparse.ArgumentParser) -> None:
     p.add_argument("--type", action="append", metavar="TYPE",
@@ -1084,7 +1030,6 @@ def _add_filter_args(p: argparse.ArgumentParser) -> None:
                     help="skip files with more than N lines")
     p.add_argument("--dedupe", action="store_true",
                     help="collapse files with identical sha256")
-
 
 def build_parser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(prog="kaizen-inventory",
@@ -1154,11 +1099,9 @@ def build_parser() -> argparse.ArgumentParser:
 
     return ap
 
-
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     return args.func(args)
-
 
 if __name__ == "__main__":
     sys.exit(main())

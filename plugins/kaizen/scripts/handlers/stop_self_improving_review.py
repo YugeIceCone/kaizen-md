@@ -21,18 +21,16 @@ from pathlib import Path
 
 _SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(_SCRIPT_DIR))
-# MIGRATION BRIDGE — kaizen modules still at skills/workflow/scripts/
-sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "skills" / "workflow" / "scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import _bootstrap  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 
 import _session_jsonl as _sj  # noqa: E402
-
 
 def _dxm_dir() -> Path:
     env = os.environ.get("KAIZEN_DXM_DIR")
     if env:
         return Path(os.path.expandvars(env)).expanduser()
     return Path.home() / ".claude" / ".kaizen" / "dxm"
-
 
 def _every_n() -> int:
     raw = os.environ.get("KAIZEN_SELF_IMPROVING_EVERY_N", "5")
@@ -41,7 +39,6 @@ def _every_n() -> int:
         return n if n >= 1 else 5
     except ValueError:
         return 5
-
 
 def _stop_count(session_id: str) -> int:
     """Count of Stop events in dxm for this session."""
@@ -58,7 +55,6 @@ def _stop_count(session_id: str) -> int:
     except OSError:
         return 0
     return count
-
 
 def check(session_id: str | None = None) -> dict:
     if os.environ.get("KAIZEN_SELF_IMPROVING_REVIEW_DISABLE") == "1":
@@ -80,11 +76,9 @@ def check(session_id: str | None = None) -> dict:
     )
     return {"systemMessage": msg}
 
-
 def _cmd_check(args) -> int:
     print(json.dumps(check(session_id=args.session) or {}))
     return 0
-
 
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(
@@ -97,7 +91,6 @@ def main(argv=None) -> int:
     sc.set_defaults(func=_cmd_check)
     args = p.parse_args(argv)
     return args.func(args)
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

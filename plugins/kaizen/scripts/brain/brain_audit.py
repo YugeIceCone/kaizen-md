@@ -39,15 +39,14 @@ from typing import Optional
 
 _SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(_SCRIPT_DIR))
-# MIGRATION BRIDGE — kaizen helpers still at skills/workflow/scripts/
-sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "skills" / "workflow" / "scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import _bootstrap  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 
 import _brain  # noqa: E402
 import flow as _flow  # noqa: E402
 import _envelope  # noqa: E402
 
 _emit = _envelope.emitter("kaizen-brain-audit", tool_version="1.0.0")
-
 
 def _yaml_safe(text: str, maxlen: int | None = None) -> str:
     """Collapse arbitrary text into a single-line YAML single-quoted body.
@@ -70,9 +69,7 @@ def _yaml_safe(text: str, maxlen: int | None = None) -> str:
     # (by doubling). Backslashes, double quotes, colons all literal.
     return flat.replace("'", "''")
 
-
 # ─── Source readers ──────────────────────────────────────────────────
-
 
 def _read_inbox_items(brain_root: Path, limit: int = 20) -> list[dict]:
     """Read pending inbox items if the kaizen inbox is configured.
@@ -101,7 +98,6 @@ def _read_inbox_items(brain_root: Path, limit: int = 20) -> list[dict]:
                 continue
     return items
 
-
 def _read_recent_commits(repo: Path, limit: int = 10) -> list[dict]:
     """Last N commit subjects + bodies from cwd's git repo."""
     if not (repo / ".git").exists():
@@ -128,7 +124,6 @@ def _read_recent_commits(repo: Path, limit: int = 10) -> list[dict]:
         })
     return items
 
-
 def _read_project_memory_drafts(cwd: Path) -> list[dict]:
     """Look for memory/_draft_*.md files in this session's project."""
     pm = _brain.project_memory_root(cwd)
@@ -146,7 +141,6 @@ def _read_project_memory_drafts(cwd: Path) -> list[dict]:
             "text": text[:2000],
         })
     return items
-
 
 def _read_loop_state(cwd: Path) -> list[dict]:
     """The ralph-loop captures completed items in .kaizen/loop.state.md.
@@ -168,9 +162,7 @@ def _read_loop_state(cwd: Path) -> list[dict]:
         })
     return items
 
-
 # ─── Candidate extraction ────────────────────────────────────────────
-
 
 # Quote-shaped patterns that signal "this is a user statement worth capturing"
 _QUOTE_PATTERNS = [
@@ -192,7 +184,6 @@ _CAPTURE_PHRASES = [
     "we decided",
     "the rule is",
 ]
-
 
 def _extract_candidates_from_text(text: str, source: str, kind: str) -> list[dict]:
     """Pull quote-shaped + phrase-marker spans out of free text."""
@@ -225,9 +216,7 @@ def _extract_candidates_from_text(text: str, source: str, kind: str) -> list[dic
                 })
     return out
 
-
 # ─── Flow nodes ──────────────────────────────────────────────────────
-
 
 class ScanSourcesNode(_flow.AsyncNode):
     """Pull recent text from multiple sources into one list."""
@@ -252,7 +241,6 @@ class ScanSourcesNode(_flow.AsyncNode):
         store["sources"] = sources
         return "default"
 
-
 class ExtractCandidatesNode(_flow.AsyncNode):
     """Pull quote + phrase candidates out of each source's text."""
 
@@ -270,7 +258,6 @@ class ExtractCandidatesNode(_flow.AsyncNode):
     async def post_async(self, store: dict, _prep, candidates: list) -> str:
         store["candidates"] = candidates
         return "default"
-
 
 class ClassifyNode(_flow.AsyncNode):
     """Apply _brain.detect_type to each candidate."""
@@ -291,7 +278,6 @@ class ClassifyNode(_flow.AsyncNode):
     async def post_async(self, store: dict, _prep, classified: list) -> str:
         store["classified"] = classified
         return "default"
-
 
 class InboxNode(_flow.AsyncNode):
     """Write each candidate to the brain Inbox as a draft for review.
@@ -363,7 +349,6 @@ class InboxNode(_flow.AsyncNode):
         store["inbox_writes"] = written
         return "default"
 
-
 class ReportNode(_flow.AsyncNode):
     async def prep_async(self, store: dict) -> None:
         return None
@@ -380,7 +365,6 @@ class ReportNode(_flow.AsyncNode):
         }
         return "default"
 
-
 def build_audit_flow() -> _flow.AsyncFlow:
     scan = ScanSourcesNode()
     extract = ExtractCandidatesNode()
@@ -393,7 +377,6 @@ def build_audit_flow() -> _flow.AsyncFlow:
     f.add_successor(classify, "default", inbox)
     f.add_successor(inbox, "default", report)
     return f
-
 
 def audit(
     *,
@@ -408,7 +391,6 @@ def audit(
         limit_commits=limit_commits, limit_inbox=limit_inbox,
     ))
 
-
 async def _audit_async(**kwargs) -> dict:
     store: dict = {
         "cwd": kwargs.get("cwd") or Path.cwd(),
@@ -421,9 +403,7 @@ async def _audit_async(**kwargs) -> dict:
     await build_audit_flow().run_async(store)
     return store.get("report") or {}
 
-
 # ─── CLI ─────────────────────────────────────────────────────────────
-
 
 def _cmd_run(args) -> int:
     report = audit(
@@ -449,7 +429,6 @@ def _cmd_run(args) -> int:
         print("dry-run — re-run with --apply to write Inbox drafts.")
     return 0
 
-
 def main(argv: Optional[list[str]] = None) -> int:
     p = argparse.ArgumentParser(
         prog="kaizen-brain-audit",
@@ -464,7 +443,6 @@ def main(argv: Optional[list[str]] = None) -> int:
     p.set_defaults(func=_cmd_run)
     args = p.parse_args(argv)
     return args.func(args)
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

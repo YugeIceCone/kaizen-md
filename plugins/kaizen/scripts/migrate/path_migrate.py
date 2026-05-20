@@ -61,9 +61,7 @@ _LABEL = "kaizen-migrate path"
 
 _BACKUP_PREFIX = "path-restructure-"
 
-
 # ─── The move set (v1.38 → v1.39) ────────────────────────────────────
-
 
 def _moves() -> list[tuple[str, Path, Path]]:
     """Return [(label, src, dst), ...] for the v1.39 restructure.
@@ -81,10 +79,8 @@ def _moves() -> list[tuple[str, Path, Path]]:
         out.append((label.removesuffix("_v138"), src, dst))
     return out
 
-
 def _utc_stamp() -> str:
     return _mig.utc_stamp()
-
 
 def _has_content(p: Path) -> bool:
     """True if `p` exists AND has migration-worthy presence.
@@ -103,7 +99,6 @@ def _has_content(p: Path) -> bool:
             return False
     return False
 
-
 def _classify_move(src: Path, dst: Path) -> str:
     src_has = _has_content(src)
     dst_has = _has_content(dst)
@@ -115,9 +110,7 @@ def _classify_move(src: Path, dst: Path) -> str:
         return "already-migrated"
     return "neither"
 
-
 # ─── Subcommand: status ──────────────────────────────────────────────
-
 
 def cmd_status(args) -> int:
     moves = _moves()
@@ -154,9 +147,7 @@ def cmd_status(args) -> int:
             print("\naction: nothing to migrate (greenfield)")
     return 0
 
-
 # ─── Subcommand: dry-run ─────────────────────────────────────────────
-
 
 def cmd_dry_run(args) -> int:
     moves = _moves()
@@ -185,9 +176,7 @@ def cmd_dry_run(args) -> int:
             print(f"  • {a}")
     return 0
 
-
 # ─── Subcommand: apply ───────────────────────────────────────────────
-
 
 def cmd_apply(args) -> int:
     moves = _moves()
@@ -252,7 +241,6 @@ def cmd_apply(args) -> int:
             f"  rollback: `kaizen-migrate path rollback`")
     return 0
 
-
 def _backup_tree() -> Optional[Path]:
     """Whole-tree backup via _migrator.make_backup_tarball (DEBT-1)."""
     # We need to thread the self-exclusion filter through, but the
@@ -280,15 +268,12 @@ def _backup_tree() -> Optional[Path]:
     # appears for older code that tar'd cwd; we never do.
     return backup_path
 
-
 # Back-compat thin wrappers — tests may monkey-patch these.
 def _write_sha256_sidecar(tar_path: Path) -> bool:
     return _mig.write_sha256_sidecar(tar_path, label=_LABEL)
 
-
 def _verify_sha256_sidecar(tar_path: Path) -> bool:
     return _mig.verify_sha256_sidecar(tar_path, label=_LABEL)
-
 
 def _skip_self_backup(backup_path: Path):
     """Tarfile filter that excludes the backup tarball itself
@@ -300,7 +285,6 @@ def _skip_self_backup(backup_path: Path):
         return tarinfo
     return _filter
 
-
 # DEBT-1: rsync + verify + file-move delegate to _migrator (SSOT).
 # These thin wrappers stay because tests monkey-patch them.
 def _move_dir(src: Path, dst: Path) -> bool:
@@ -311,19 +295,15 @@ def _move_dir(src: Path, dst: Path) -> bool:
     shutil.rmtree(src, ignore_errors=False)
     return True
 
-
 def _verify_dir(src: Path, dst: Path) -> bool:
     # path_migrate's per-file verify is stricter (no size tolerance band)
     # than brain_migrate's (1% band for sqlite WAL drift). Pin to 0% here.
     return _mig.verify_dir(src, dst, size_tolerance_pct=0.0)["ok"]
 
-
 def _move_file(src: Path, dst: Path) -> bool:
     return _mig.move_file(src, dst, label=_LABEL)
 
-
 # ─── Subcommand: rollback ────────────────────────────────────────────
-
 
 def cmd_rollback(args) -> int:
     backups = sorted(_paths.BACKUP_DIR.glob(f"{_BACKUP_PREFIX}*.tar.gz"))
@@ -351,21 +331,17 @@ def cmd_rollback(args) -> int:
             f"[kaizen-migrate path rollback] restored from {latest}")
     return 0
 
-
 def _report(args, payload: dict, *, verdict: str, text: str) -> None:
     if args.json:
         _emit(payload, verdict=verdict)
     else:
         print(text)
 
-
 # ─── CLI ─────────────────────────────────────────────────────────────
-
 
 def _add_common_flags(sp):
     sp.add_argument("--json", action="store_true",
                     help="emit canonical envelope JSON")
-
 
 def main(argv: Optional[list[str]] = None) -> int:
     p = argparse.ArgumentParser(
@@ -398,7 +374,6 @@ def main(argv: Optional[list[str]] = None) -> int:
 
     args = p.parse_args(argv)
     return args.func(args)
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

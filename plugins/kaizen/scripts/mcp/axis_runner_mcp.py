@@ -37,7 +37,6 @@ except ImportError as e:
 
 mcp = FastMCP("kaizen-axis-runner")
 
-
 def _run_cli(*args: str) -> dict:
     cmd = ["python3", str(_SCRIPT), *args]
     r = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
@@ -48,13 +47,11 @@ def _run_cli(*args: str) -> dict:
     except json.JSONDecodeError:
         return {"output": r.stdout.strip(), "rc": r.returncode}
 
-
 @mcp.tool()
 async def list_axes() -> dict:
     """List declarative axis YAML stems under skills/workflow/domain/axes/.
     Returns the canonical envelope with `data.axes: [...]`."""
     return await asyncio.to_thread(_run_cli, "list")
-
 
 @mcp.tool()
 async def run_axis(name: str) -> dict:
@@ -63,13 +60,11 @@ async def run_axis(name: str) -> dict:
     and `counts.findings`."""
     return await asyncio.to_thread(_run_cli, "run", "--axis", name)
 
-
 @mcp.tool()
 async def report(name: str) -> dict:
     """Alias for run_axis — kept for parity with the report/gaps verb
     convention used by other kaizen quality MCPs."""
     return await asyncio.to_thread(_run_cli, "report", "--axis", name)
-
 
 if __name__ == "__main__":
     mcp.run()

@@ -20,9 +20,8 @@ import sys
 import unittest
 from pathlib import Path
 
-SCRIPT_DIR = Path(__file__).resolve().parent.parent / "skills" / "workflow" / "scripts"
-sys.path.insert(0, str(SCRIPT_DIR))
-
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 
 def _fresh():
     """Reimport context module (no env mutation — caller controls env)."""
@@ -31,14 +30,12 @@ def _fresh():
     import context  # noqa: E402
     return context
 
-
 def _clear_env():
     for k in (
         "CLAUDE_CONTEXT_TOKENS", "CLAUDE_USAGE_TOTAL_TOKENS",
         "KAIZEN_CONTEXT_LIMIT", "KAIZEN_MODEL_ID", "CLAUDE_MODEL_ID",
     ):
         os.environ.pop(k, None)
-
 
 class TestGetTokens(unittest.TestCase):
     def setUp(self):
@@ -81,7 +78,6 @@ class TestGetTokens(unittest.TestCase):
         # env=100 wins over stdin=999
         self.assertEqual(c.get_tokens('{"total_tokens": 999}'), 100)
 
-
 class TestGetLimit(unittest.TestCase):
     def setUp(self):
         _clear_env()
@@ -99,7 +95,6 @@ class TestGetLimit(unittest.TestCase):
         os.environ["KAIZEN_CONTEXT_LIMIT"] = "garbage"
         c = _fresh()
         self.assertEqual(c.get_limit(), 200_000)
-
 
 class TestModelAwareLimit(unittest.TestCase):
     """Limit must reflect the *active model's* context window.
@@ -186,7 +181,6 @@ class TestModelAwareLimit(unittest.TestCase):
         finally:
             c.get_usage_summary = orig
 
-
 class TestZone(unittest.TestCase):
     def setUp(self):
         self.c = _fresh()
@@ -207,13 +201,10 @@ class TestZone(unittest.TestCase):
     def test_unknown(self):
         self.assertEqual(self.c.zone_of(None), "unknown")
 
-
 # ─── BK-015: peak-aware get_usage_summary ───────────────────────────
-
 
 import json
 import tempfile
-
 
 def _usage_record(tokens: int, ts: str = "2026-01-01T00:00:00Z") -> dict:
     """Build a minimal assistant JSONL record with the given total tokens
@@ -231,7 +222,6 @@ def _usage_record(tokens: int, ts: str = "2026-01-01T00:00:00Z") -> dict:
         },
     }
 
-
 def _compact_marker() -> dict:
     return {
         "type": "user",
@@ -240,7 +230,6 @@ def _compact_marker() -> dict:
         "isVisibleInTranscriptOnly": True,
         "message": {"role": "user", "content": "summary…"},
     }
-
 
 class PeakAwareReaderBase(unittest.TestCase):
     def setUp(self):
@@ -272,7 +261,6 @@ class PeakAwareReaderBase(unittest.TestCase):
         with self.jsonl.open("w") as f:
             for r in records:
                 f.write(json.dumps(r) + "\n")
-
 
 class TestPeakDetection(PeakAwareReaderBase):
     def test_peak_equals_max_assistant_usage(self):
@@ -359,7 +347,6 @@ class TestPeakDetection(PeakAwareReaderBase):
         c = _fresh()
         self.assertEqual(c.get_tokens_from_jsonl(cwd_path=self.cwd), 30_000)
 
-
 class TestStatuslineLineSubcommand(unittest.TestCase):
     """`context.py line` emits a pre-formatted statusline segment
     (icon + tokens/limit + pct) in ONE python3 spawn — replacing the
@@ -405,11 +392,9 @@ class TestStatuslineLineSubcommand(unittest.TestCase):
         # Empty stdout (or whitespace) — caller treats as "no segment"
         self.assertEqual(r.stdout.strip(), "")
 
-
 # Imports needed by the subprocess test above (added at use site to
 # avoid pollution of earlier classes that use `_fresh()` reimport).
 import subprocess
-
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

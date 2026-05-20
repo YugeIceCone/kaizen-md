@@ -40,7 +40,6 @@ build if this file ever drifts from the yaml.
 
 """
 
-
 def _render() -> str:
     laws = load_laws()
     auto = [law for law in laws if law["enforcement"] == "auto"]
@@ -75,7 +74,6 @@ def _render() -> str:
         out.append(f"**Why:** {law['why']}\n\n")
     return "".join(out)
 
-
 def _write_atomic(path: Path, content: str) -> bool:
     """Write only if content differs. Returns True iff a write happened."""
     if path.exists() and path.read_text(encoding="utf-8") == content:
@@ -83,7 +81,6 @@ def _write_atomic(path: Path, content: str) -> bool:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(content, encoding="utf-8")
     return True
-
 
 def generate(check_only: bool = False) -> int:
     content = _render()
@@ -97,7 +94,6 @@ def generate(check_only: bool = False) -> int:
     changed = _write_atomic(REF_PATH, content)
     print(f"{'wrote' if changed else 'unchanged'}: {REF_PATH}")
     return 0
-
 
 if __name__ == "__main__":
     sys.exit(generate(check_only="--check" in sys.argv))

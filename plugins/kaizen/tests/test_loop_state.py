@@ -18,14 +18,14 @@ import unittest
 from pathlib import Path
 
 PLUGIN_ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(PLUGIN_ROOT / "skills" / "workflow" / "scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 sys.path.insert(0, str(PLUGIN_ROOT / "scripts" / "mcp"))
 
 import loop_state as ls  # noqa: E402
 
 SETUP_SCRIPT = PLUGIN_ROOT / "skills" / "loop" / "scripts" / "setup-ralph-loop.sh"
 BIN_LOOP = PLUGIN_ROOT / "bin" / "kaizen-loop"
-
 
 def _init_loop(tmpdir: Path, items: list[str] | None = None,
                max_iter: int = 10) -> Path:
@@ -71,7 +71,6 @@ started_at: "2026-05-19T00:00:00Z"
         encoding="utf-8")
     return state_path
 
-
 class _CwdMixin:
     """Run each test from a private tmpdir so loop_state's cwd resolution works."""
 
@@ -84,7 +83,6 @@ class _CwdMixin:
     def tearDown(self):
         os.chdir(self._cwd)
         self._tmpcm.cleanup()
-
 
 class TestAddItem(_CwdMixin, unittest.TestCase):
     def test_appends_with_auto_id(self):
@@ -120,7 +118,6 @@ class TestAddItem(_CwdMixin, unittest.TestCase):
         with self.assertRaises(FileNotFoundError):
             ls.add_item("anything")
 
-
 class TestListAndStatus(_CwdMixin, unittest.TestCase):
     def test_list_pending_after_setup(self):
         _init_loop(self.tmp, items=["A|true", "B"])
@@ -145,7 +142,6 @@ class TestListAndStatus(_CwdMixin, unittest.TestCase):
     def test_status_inactive_when_no_loop(self):
         s = ls.status()
         self.assertFalse(s["active"])
-
 
 class TestCompleteItem(_CwdMixin, unittest.TestCase):
     def test_complete_verify_null_item(self):
@@ -190,7 +186,6 @@ class TestCompleteItem(_CwdMixin, unittest.TestCase):
         with self.assertRaises(KeyError):
             ls.complete_item("nonexistent")
 
-
 class TestCancel(_CwdMixin, unittest.TestCase):
     def test_cancel_removes_state_file(self):
         _init_loop(self.tmp, items=["A|true"])
@@ -202,7 +197,6 @@ class TestCancel(_CwdMixin, unittest.TestCase):
     def test_cancel_no_loop_returns_noop(self):
         result = ls.cancel()
         self.assertFalse(result["cancelled"])
-
 
 class TestBinWrapper(unittest.TestCase):
     """The bin/kaizen-loop bash wrapper exists and forwards subcommands."""
@@ -247,12 +241,10 @@ class TestBinWrapper(unittest.TestCase):
             data = json.loads(body)
             self.assertEqual(len(data["pending"]), 2)
 
-
 class TestMcpServerImports(unittest.TestCase):
     """loop_mcp.py imports cleanly and exposes the expected tools."""
 
     def test_mcp_module_loads(self):
-        sys.path.insert(0, str(PLUGIN_ROOT / "skills" / "workflow" / "scripts"))
         if "loop_mcp" in sys.modules:
             del sys.modules["loop_mcp"]
         import loop_mcp  # noqa: E402
@@ -264,7 +256,6 @@ class TestMcpServerImports(unittest.TestCase):
                 hasattr(loop_mcp, name),
                 f"loop_mcp missing tool: {name}",
             )
-
 
 class TestSetupAutoIds(unittest.TestCase):
     """Setup script auto-assigns IDs to --item entries (lets `complete <id>` work)."""
@@ -303,7 +294,6 @@ class TestSetupAutoIds(unittest.TestCase):
             # The auto-assigned id should NOT collide with iX
             self.assertNotEqual(data["pending"][1].get("id"), "iX")
             self.assertTrue(data["pending"][1].get("id"))
-
 
 if __name__ == "__main__":
     unittest.main()

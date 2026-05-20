@@ -30,14 +30,12 @@ import os
 import sys
 from pathlib import Path
 
-
 _VALID_MODES = ("loop", "workflow", "neither")
 
 # User-pickable thresholds (% of context-window limit) at which the
 # auto-handoff handler fires. Single-select at intake. None means
 # auto-handoff is disabled for this session.
 _VALID_THRESHOLDS = (25, 50, 75, 85)
-
 
 # Discipline bundles — picked by the SessionStart QA multiSelect.
 # Logical grouping so users don't have to pick 25+ individual skills.
@@ -113,7 +111,6 @@ _BUNDLES: dict[str, list[str]] = {
                       "create-plan", "execute-plan", "decision-rubric"],
 }
 
-
 # Per-skill short descriptions for the per-prompt reminder hook.
 # One imperative line each — the agent re-reads these every turn so
 # they have to sting. NOT the same as the SKILL.md description (which
@@ -181,11 +178,9 @@ _SKILL_DESCRIPTIONS: dict[str, str] = {
     "execute-plan":             "execute-plan — drive a plan to completion with per-phase verification",
 }
 
-
 def describe_skill(skill_id: str) -> str:
     """One-liner for a skill id, or the bare id when unknown."""
     return _SKILL_DESCRIPTIONS.get(skill_id, skill_id)
-
 
 def expand_bundles(bundle_csv: str) -> list[str]:
     """Expand a comma-separated list of bundle names to a flat list of
@@ -200,7 +195,6 @@ def expand_bundles(bundle_csv: str) -> list[str]:
         out.extend(_BUNDLES[name])
     return out
 
-
 def _merge_unique(*lists: list[str]) -> list[str]:
     """Concatenate lists preserving first-seen order, deduping case-sensitive."""
     seen: set[str] = set()
@@ -212,17 +206,14 @@ def _merge_unique(*lists: list[str]) -> list[str]:
                 out.append(x)
     return out
 
-
 def _state_path() -> Path:
     env = os.environ.get("KAIZEN_SESSION_MODE_PATH")
     if env:
         return Path(os.path.expandvars(env)).expanduser()
     return Path(".kaizen") / "session-mode.json"
 
-
 def _iso_now() -> str:
     return _dt.datetime.now(_dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-
 
 def read_state() -> dict | None:
     path = _state_path()
@@ -233,7 +224,6 @@ def read_state() -> dict | None:
     except (OSError, json.JSONDecodeError):
         return None
 
-
 def write_state(data: dict) -> bool:
     path = _state_path()
     try:
@@ -242,7 +232,6 @@ def write_state(data: dict) -> bool:
         return True
     except OSError:
         return False
-
 
 def _cmd_set(args) -> int:
     if args.mode not in _VALID_MODES:
@@ -279,7 +268,6 @@ def _cmd_set(args) -> int:
     print(json.dumps(state))
     return 0
 
-
 def _cmd_get(args) -> int:
     state = read_state()
     if state is None:
@@ -292,7 +280,6 @@ def _cmd_get(args) -> int:
         print(state.get("mode", ""))
     return 0
 
-
 def _cmd_clear(args) -> int:
     path = _state_path()
     try:
@@ -301,10 +288,8 @@ def _cmd_clear(args) -> int:
     except OSError:
         return 1
 
-
 def _cmd_exists(args) -> int:
     return 0 if read_state() is not None else 1
-
 
 def _cmd_bundles(args) -> int:
     """Print the bundle catalog so callers (intake hook, agents,
@@ -315,7 +300,6 @@ def _cmd_bundles(args) -> int:
         for name, skills in _BUNDLES.items():
             print(f"{name}: {', '.join(skills)}")
     return 0
-
 
 def _cmd_threshold(args) -> int:
     """Print the auto-handoff threshold (int %) or empty when unset/disabled.
@@ -328,7 +312,6 @@ def _cmd_threshold(args) -> int:
         return 1
     print(t)
     return 0
-
 
 def _cmd_reminder(args) -> int:
     """Emit the active-skills reminder for hook injection.
@@ -362,7 +345,6 @@ def _cmd_reminder(args) -> int:
     for s in known:
         print(f"  - {s}: {_SKILL_DESCRIPTIONS[s]}")
     return 0
-
 
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(prog="kaizen-session-mode",
@@ -410,7 +392,6 @@ def main(argv=None) -> int:
 
     args = p.parse_args(argv)
     return args.func(args)
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

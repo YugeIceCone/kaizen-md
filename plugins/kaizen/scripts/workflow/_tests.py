@@ -19,7 +19,6 @@ import _loader  # noqa: E402
 import codegen  # noqa: E402
 import route_intent  # noqa: E402
 
-
 class TestLoader(unittest.TestCase):
     def test_load_routines_returns_dict(self):
         r = _loader.load_routines()
@@ -82,7 +81,6 @@ class TestLoader(unittest.TestCase):
         self.assertFalse(_loader.verb_matched_explicitly("xyzzy"))
         self.assertFalse(_loader.verb_matched_explicitly(""))
 
-
 class TestCodegen(unittest.TestCase):
     def test_render_routines_nonempty(self):
         s = codegen._render_routines()
@@ -115,7 +113,6 @@ class TestCodegen(unittest.TestCase):
             self.assertTrue(codegen._write_atomic(p, content))   # first write
             self.assertFalse(codegen._write_atomic(p, content))  # no-op second write
             self.assertTrue(codegen._write_atomic(p, content + "x"))  # diff content writes
-
 
 class TestCLI(unittest.TestCase):
     def _run(self, *args, expect_rc: int = 0) -> tuple[int, str, str]:
@@ -157,7 +154,6 @@ class TestCLI(unittest.TestCase):
         self.assertEqual(rc, 0)
         self.assertEqual(out.strip(), "audit")
 
-
 class TestRoutingDefaults(unittest.TestCase):
     def test_load_defaults_returns_required_keys(self):
         d = _loader.load_defaults()
@@ -185,7 +181,6 @@ class TestRoutingDefaults(unittest.TestCase):
     def test_detect_routine_no_match_uses_defaults(self):
         d = _loader.load_defaults()
         self.assertEqual(_loader.detect_routine("xyzzy nonsense prompt"), d["routine"])
-
 
 class TestStageSkillMap(unittest.TestCase):
     """Phase C — stage_skill_map block in routines.yaml."""
@@ -225,7 +220,6 @@ class TestStageSkillMap(unittest.TestCase):
                 skill_md.is_file(),
                 f"stage_skill_map: {stage} -> {full_skill} but {skill_md} missing",
             )
-
 
 class TestIntentRouting(unittest.TestCase):
     def test_load_validates_and_returns_dict(self):
@@ -274,7 +268,6 @@ class TestIntentRouting(unittest.TestCase):
 
     def test_disambiguate_unknown_pair_returns_none(self):
         self.assertIsNone(route_intent.disambiguate("kiss", "law-of-demeter"))
-
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

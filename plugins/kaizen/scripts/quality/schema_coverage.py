@@ -31,11 +31,9 @@ from pathlib import Path
 
 _SCRIPT_DIR = Path(__file__).resolve().parent
 
-
 def _plugin_root() -> Path:
     # Post-DOMAIN-5: _SCRIPT_DIR = scripts/quality → parents[1] = plugins/kaizen
     return _SCRIPT_DIR.parents[1]
-
 
 # ── Shape detectors (pure, regex-only — no PyYAML required) ───────────
 
@@ -47,13 +45,11 @@ _OUTPUT_SCHEMA_RE = re.compile(r"output_schema:\s*\S+", re.MULTILINE)
 _RULES_RE         = re.compile(r"^rules:\s*$", re.MULTILINE)
 _REQUIRE_RE       = re.compile(r"require_(all|any):\s*$", re.MULTILINE)
 
-
 def _read(p: Path) -> str:
     try:
         return p.read_text(encoding="utf-8")
     except OSError:
         return ""
-
 
 def detect_lens_manifest(domain_dir: Path) -> dict | None:
     """Match shape #1 — Lens manifest v2 (handoff, intent, etc.)."""
@@ -75,7 +71,6 @@ def detect_lens_manifest(domain_dir: Path) -> dict | None:
             }
     return None
 
-
 def detect_decision_rubric(domain_dir: Path) -> dict | None:
     """Match shape #2 — rubric.yaml / *-rubric.yaml with `rules:`."""
     candidates = list(domain_dir.glob("rubric.yaml")) + \
@@ -92,7 +87,6 @@ def detect_decision_rubric(domain_dir: Path) -> dict | None:
             }
     return None
 
-
 def detect_plain_config(domain_dir: Path) -> dict | None:
     """Match shape #3 — config.yaml with `version:`."""
     p = domain_dir / "config.yaml"
@@ -102,7 +96,6 @@ def detect_plain_config(domain_dir: Path) -> dict | None:
     if not text or not _VERSION_RE.search(text):
         return None
     return {"yaml": str(p.name)}
-
 
 def detect_rule_catalog(domain_dir: Path) -> dict | None:
     """Match shape #4 — non-rubric, non-config yaml with `version:` + list entries.
@@ -122,7 +115,6 @@ def detect_rule_catalog(domain_dir: Path) -> dict | None:
         if re.search(r"^\s*-\s+id:\s*\S+", text, re.MULTILINE):
             return {"yaml": str(p.name)}
     return None
-
 
 def feature_report(feature_dir: Path) -> dict:
     """Build a coverage entry for one skill / feature."""
@@ -169,7 +161,6 @@ def feature_report(feature_dir: Path) -> dict:
         "conformant":  has_domain and bool(matched) and not gaps,
     }
 
-
 def all_reports(root: Path | None = None) -> list[dict]:
     root = root or _plugin_root()
     skills = root / "skills"
@@ -181,7 +172,6 @@ def all_reports(root: Path | None = None) -> list[dict]:
             continue
         out.append(feature_report(p))
     return out
-
 
 def _print_text(reports: list[dict]) -> None:
     with_domain = [r for r in reports if r["has_domain"]]
@@ -204,7 +194,6 @@ def _print_text(reports: list[dict]) -> None:
         for g in r["gaps"]:
             print(f"      ⚠ {g}")
 
-
 def _cmd_report(args) -> int:
     reports = all_reports()
     if args.json:
@@ -212,7 +201,6 @@ def _cmd_report(args) -> int:
     else:
         _print_text(reports)
     return 0
-
 
 def _cmd_feature(args) -> int:
     p = _plugin_root() / "skills" / args.name
@@ -226,7 +214,6 @@ def _cmd_feature(args) -> int:
         _print_text([r])
     return 0
 
-
 def _cmd_gaps(args) -> int:
     reports = [r for r in all_reports()
                if r["has_domain"] and r["gaps"]]
@@ -235,7 +222,6 @@ def _cmd_gaps(args) -> int:
     else:
         _print_text(reports)
     return 1 if reports else 0
-
 
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(
@@ -259,7 +245,6 @@ def main(argv=None) -> int:
 
     args = p.parse_args(argv)
     return args.func(args)
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

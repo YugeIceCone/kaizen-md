@@ -24,9 +24,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-
 _EMPTY = "{}"
-
 
 def _resolve_repo() -> Path | None:
     try:
@@ -39,7 +37,6 @@ def _resolve_repo() -> Path | None:
     except (OSError, subprocess.SubprocessError):
         pass
     return None
-
 
 def _backlog_path(repo: Path) -> Path | None:
     """Read backlog_path from .kaizen.toml. Returns absolute path
@@ -62,7 +59,6 @@ def _backlog_path(repo: Path) -> Path | None:
     json_rel = md_path[:-3] + ".json" if md_path.endswith(".md") else md_path + ".json"
     return repo / json_rel
 
-
 def _scan_in_flight(backlog_json: Path) -> tuple[int, list[tuple[str, str]]]:
     """Returns (count, [(id, title), ...]) for items in in_flight section."""
     try:
@@ -75,10 +71,8 @@ def _scan_in_flight(backlog_json: Path) -> tuple[int, list[tuple[str, str]]]:
                   if isinstance(it, dict) and it.get("section") == "in_flight"]
     return len(in_flight), in_flight
 
-
 def _format_titles(items: list[tuple[str, str]]) -> str:
     return "\n".join(f"  - {bk_id}: {title}" for bk_id, title in items)
-
 
 def main() -> int:
     if os.environ.get("KAIZEN_BACKLOG_DISABLE") == "1":
@@ -113,7 +107,6 @@ def main() -> int:
                 "(set KAIZEN_STOP_BLOCK_INFLIGHT=1 to make this a hard block)")
         print(json.dumps({"systemMessage": msg}))
     return 0
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

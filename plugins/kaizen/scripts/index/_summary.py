@@ -46,11 +46,10 @@ from pathlib import Path
 _SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(_SCRIPT_DIR))
 # MIGRATION BRIDGE — cross-cluster sibs still at legacy or shimmed there.
-sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "skills" / "workflow" / "scripts"))
-
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import _bootstrap  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 
 # ─── Python summarizer (stdlib ast) ──────────────────────────────────
-
 
 def _first_docstring_line(node: ast.AST) -> str:
     """Return the first line of the node's docstring, or ''."""
@@ -63,7 +62,6 @@ def _first_docstring_line(node: ast.AST) -> str:
         return ""
     first = doc.strip().split("\n", 1)[0].strip()
     return first
-
 
 def _python_signature(node: ast.AST) -> str:
     """Render a function/class signature *header* only — no body.
@@ -111,7 +109,6 @@ def _python_signature(node: ast.AST) -> str:
         return f"class {node.name}{base_clause}:"
     return ""
 
-
 def _python_imports(tree: ast.Module) -> list[str]:
     """Collect import module names from the top of a module.
 
@@ -140,7 +137,6 @@ def _python_imports(tree: ast.Module) -> list[str]:
             seen.add(name)
             uniq.append(name)
     return uniq
-
 
 def _python_summary(source: str, max_chars: int) -> str:
     """Build a smart Python summary. Returns '' on parse failure so the
@@ -192,9 +188,7 @@ def _python_summary(source: str, max_chars: int) -> str:
         cut = cut[:last_nl] + "\n"
     return cut
 
-
 # ─── Tree-sitter summarizer (other languages) ────────────────────────
-
 
 def _ts_summary(source: str, language: str, max_chars: int) -> str:
     """Build a summary via tree-sitter symbol chunks. Returns '' when
@@ -242,9 +236,7 @@ def _ts_summary(source: str, language: str, max_chars: int) -> str:
         cut = cut[:last_nl] + "\n"
     return cut
 
-
 # ─── Public dispatch ─────────────────────────────────────────────────
-
 
 def smart_summary(
     source: str,
@@ -276,9 +268,7 @@ def smart_summary(
             return out
     return fallback_text[:max_chars] if fallback_text else ""
 
-
 # ─── CLI inspector ────────────────────────────────────────────────────
-
 
 if __name__ == "__main__":
     import argparse

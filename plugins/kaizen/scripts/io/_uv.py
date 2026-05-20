@@ -38,7 +38,6 @@ callers may want different timeout/cwd/text handling, and a separate
 """
 from __future__ import annotations
 
-
 def uv_cmd(tool: str, args: list[str]) -> list[str]:
     """Build a `uv run --with <tool> -- <tool> <args...>` command list.
 

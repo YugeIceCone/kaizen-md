@@ -19,19 +19,17 @@ import unittest
 from pathlib import Path
 
 PLUGIN_ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(PLUGIN_ROOT / "skills" / "workflow" / "scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 sys.path.insert(0, str(PLUGIN_ROOT / "scripts" / "mcp"))
 
 import _manifests as m  # noqa: E402
-
 
 def _write(path: Path, body: str):
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(textwrap.dedent(body).lstrip("\n"))
 
-
 # ─── Cargo adapter ────────────────────────────────────────────────────
-
 
 class TestCargoAdapter(unittest.TestCase):
     def setUp(self):
@@ -91,9 +89,7 @@ class TestCargoAdapter(unittest.TestCase):
             self.assertTrue(self.a.used_in_source("serde-json", files))
             self.assertFalse(self.a.used_in_source("totally-unused", files))
 
-
 # ─── package.json adapter ────────────────────────────────────────────
-
 
 class TestPackageJsonAdapter(unittest.TestCase):
     def setUp(self):
@@ -135,9 +131,7 @@ class TestPackageJsonAdapter(unittest.TestCase):
             files = list((tmp / "src").rglob("*.ts"))
             self.assertFalse(self.a.used_in_source("react", files))
 
-
 # ─── pyproject adapter ───────────────────────────────────────────────
-
 
 class TestPyprojectAdapter(unittest.TestCase):
     def setUp(self):
@@ -186,9 +180,7 @@ class TestPyprojectAdapter(unittest.TestCase):
             self.assertTrue(self.a.used_in_source("google-auth", files))
             self.assertFalse(self.a.used_in_source("absent", files))
 
-
 # ─── go.mod adapter ──────────────────────────────────────────────────
-
 
 class TestGoModAdapter(unittest.TestCase):
     def setUp(self):
@@ -213,9 +205,7 @@ class TestGoModAdapter(unittest.TestCase):
                 names, {"github.com/foo/bar", "github.com/baz/qux"},
             )
 
-
 # ─── Orchestrator ────────────────────────────────────────────────────
-
 
 class TestOrchestrator(unittest.TestCase):
     def test_audit_polyglot(self):
@@ -253,9 +243,7 @@ class TestOrchestrator(unittest.TestCase):
             _write(tmp / "go.mod", "module x\ngo 1.21\n")
             self.assertEqual(m.languages_present(tmp), ["go"])
 
-
 # ─── MCP ─────────────────────────────────────────────────────────────
-
 
 class _CwdMixin:
     def setUp(self):
@@ -267,7 +255,6 @@ class _CwdMixin:
     def tearDown(self):
         os.chdir(self._cwd)
         self._tmpcm.cleanup()
-
 
 class TestManifestsMcp(_CwdMixin, unittest.TestCase):
     def _import(self):
@@ -293,7 +280,6 @@ class TestManifestsMcp(_CwdMixin, unittest.TestCase):
         self.assertIsInstance(out["manifests"][0], dict)
         self.assertEqual(out["manifests"][0]["deps"][0]["name"], "serde")
 
-
 class TestRegistration(unittest.TestCase):
     def test_manifests_in_mcp_json(self):
         data = json.loads((PLUGIN_ROOT / ".mcp.json").read_text())
@@ -302,7 +288,6 @@ class TestRegistration(unittest.TestCase):
         import gateway
         module_names = [m for _, m in gateway.SUBSERVERS]
         self.assertIn("manifests_mcp", module_names)
-
 
 if __name__ == "__main__":
     unittest.main()

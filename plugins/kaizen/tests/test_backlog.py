@@ -23,11 +23,10 @@ import unittest
 from pathlib import Path
 
 # Make backlog.py importable
-SCRIPT_DIR = Path(__file__).resolve().parent.parent / "skills" / "workflow" / "scripts"
-sys.path.insert(0, str(SCRIPT_DIR))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 
 import backlog as bl  # noqa: E402
-
 
 class TestEnvelope(unittest.TestCase):
     def test_empty_store_shape(self):
@@ -53,7 +52,6 @@ class TestEnvelope(unittest.TestCase):
         finally:
             p.unlink()
 
-
 class TestNextId(unittest.TestCase):
     def test_empty_store_starts_at_001(self):
         s = bl.empty_store()
@@ -73,7 +71,6 @@ class TestNextId(unittest.TestCase):
         s = bl.empty_store()
         s["items"] = [{"id": "FOO-1"}, {"id": "BK-002"}, {"id": "weird"}]
         self.assertEqual(bl.next_id(s), "BK-003")
-
 
 class TestRender(unittest.TestCase):
     def test_render_empty_has_all_sections(self):
@@ -134,7 +131,6 @@ class TestRender(unittest.TestCase):
         self.assertIn("JSON is source", md)
         self.assertIn("drift detection", md)
 
-
 class TestRoundTrip(unittest.TestCase):
     def setUp(self):
         # Save_store has a memory-ledger side-effect (BK-023). This test
@@ -177,7 +173,6 @@ class TestRoundTrip(unittest.TestCase):
         finally:
             p.unlink()
 
-
 class TestFmtItem(unittest.TestCase):
     def test_in_flight_item_unchecked(self):
         it = {"id": "BK-001", "section": "in_flight", "title": "X", "tags": []}
@@ -188,7 +183,6 @@ class TestFmtItem(unittest.TestCase):
         it = {"id": "BK-002", "section": "done", "title": "Y", "tags": []}
         line = bl.fmt_item(it)
         self.assertTrue(line.startswith("- [x] **BK-002**"))
-
 
 class TestMdRoundTripStable(unittest.TestCase):
     """BK-019. Mutating ops save_store then render_md. The rendered
@@ -230,7 +224,6 @@ class TestMdRoundTripStable(unittest.TestCase):
         finally:
             p.unlink()
 
-
 class TestRenderHeaderPath(unittest.TestCase):
     """BK-019. Stale path in the generated header tripped up users who
     followed the link. The canonical CLI now ships as
@@ -245,7 +238,6 @@ class TestRenderHeaderPath(unittest.TestCase):
     def test_header_points_at_canonical_cli(self):
         md = bl.render_md(bl.empty_store())
         self.assertIn("kaizen backlog", md)
-
 
 class TestMemoryLedger(unittest.TestCase):
     """BK-023. save_store side-effect writes a token-efficient ledger
@@ -335,7 +327,6 @@ class TestMemoryLedger(unittest.TestCase):
         finally:
             os.environ.pop("KAIZEN_BACKLOG_LEDGER_DISABLE", None)
 
-
 class TestDoneAliasForTick(unittest.TestCase):
     """BK-019. `kaizen backlog done BK-N` is the more discoverable verb;
     aliases the existing `tick` behavior. No new state — just a parser
@@ -365,7 +356,6 @@ class TestDoneAliasForTick(unittest.TestCase):
         args = argparse.Namespace(id="BK-001", committed="abc1234")
         bl.cmd_tick(s, args)  # cmd_tick is the underlying handler
         self.assertEqual(s["items"][0]["section"], "done")
-
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

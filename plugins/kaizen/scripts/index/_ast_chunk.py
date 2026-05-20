@@ -35,7 +35,6 @@ from __future__ import annotations
 import ast
 import dataclasses
 
-
 @dataclasses.dataclass
 class SymbolChunk:
     text: str
@@ -46,7 +45,6 @@ class SymbolChunk:
     kind: str
     line_start: int = 0   # 1-indexed, inclusive. 0 = unknown (pre-Phase-1 callers).
     line_end: int = 0     # 1-indexed, inclusive. 0 = unknown.
-
 
 def chunk_python_by_symbol(source: str, max_chars: int = 2000) -> list[SymbolChunk]:
     """Symbol-aware chunking. Returns [] when the source doesn't parse.
@@ -123,7 +121,6 @@ def chunk_python_by_symbol(source: str, max_chars: int = 2000) -> list[SymbolChu
                 chunk_idx += 1
     return chunks
 
-
 def _chunk_function(
     node: ast.FunctionDef | ast.AsyncFunctionDef,
     src_bytes: bytes,
@@ -147,7 +144,6 @@ def _chunk_function(
         line_start=node.lineno,
         line_end=getattr(node, "end_lineno", node.lineno) or node.lineno,
     )]
-
 
 def _chunk_class(
     node: ast.ClassDef,
@@ -209,9 +205,7 @@ def _chunk_class(
         out.extend(method_chunks)
     return out
 
-
 # ─── Imports extraction (for O6 xref) ─────────────────────────────────
-
 
 @dataclasses.dataclass
 class ImportRef:
@@ -219,7 +213,6 @@ class ImportRef:
     symbol: str        # the importable name as visible in the source
     module: str        # the source module (`from X import Y` → X; `import X` → X)
     kind: str = "import"
-
 
 def extract_python_imports(source: str) -> list[ImportRef]:
     """Pull every imported symbol. Returns [] on parse failure."""
@@ -240,9 +233,7 @@ def extract_python_imports(source: str) -> list[ImportRef]:
                 out.append(ImportRef(symbol=bind_as, module=mod))
     return out
 
-
 # ─── Source-position helpers ─────────────────────────────────────────
-
 
 def _line_starts(src_bytes: bytes) -> list[int]:
     """Byte offset of the first byte of each line. line_starts[N-1] =
@@ -253,7 +244,6 @@ def _line_starts(src_bytes: bytes) -> list[int]:
             out.append(i + 1)
     return out
 
-
 def _byte_offset(src_bytes: bytes, line_starts: list[int], lineno: int, col: int) -> int:
     if lineno < 1 or lineno > len(line_starts):
         return 0
@@ -262,7 +252,6 @@ def _byte_offset(src_bytes: bytes, line_starts: list[int], lineno: int, col: int
     # ASCII. For non-ASCII we'd need full UTF-8 decode walk; this is a
     # known limitation we live with (loc indexer has the same one).
     return line_starts[lineno - 1] + col
-
 
 def _node_end_byte(src_bytes: bytes, line_starts: list[int], node: ast.AST) -> int:
     end_line = getattr(node, "end_lineno", None)

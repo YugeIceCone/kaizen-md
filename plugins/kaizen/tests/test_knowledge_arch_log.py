@@ -16,10 +16,9 @@ import tempfile
 import unittest
 from pathlib import Path
 
-SCRIPT_DIR = Path(__file__).resolve().parent.parent / "skills" / "workflow" / "scripts"
-sys.path.insert(0, str(SCRIPT_DIR))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts" / "indexers"))
-
 
 def _setup_repo(tmpdir: Path, *, live_rows: list[str], archive_rows: list[str] | None = None):
     """Create a fake repo tree with progress.md + optional archive."""
@@ -43,7 +42,6 @@ def _setup_repo(tmpdir: Path, *, live_rows: list[str], archive_rows: list[str] |
             + "\n".join(archive_rows) + "\n",
             encoding="utf-8",
         )
-
 
 class TestIterArchLog(unittest.TestCase):
     def setUp(self):
@@ -177,7 +175,6 @@ class TestIterArchLog(unittest.TestCase):
             any("unique-arch-row-marker" in it.get("title", "") for it in items),
             msg=f"arch-log row not surfaced via iter_all_sources(); got {len(items)} items",
         )
-
 
 if __name__ == "__main__":
     unittest.main()

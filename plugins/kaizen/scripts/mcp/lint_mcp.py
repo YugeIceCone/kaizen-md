@@ -58,8 +58,8 @@ mcp = FastMCP("lint")
 SCRIPT_DIR = Path(__file__).resolve().parent
 # Curator + severity rank are shared with other MCPs — import from sibling.
 sys.path.insert(0, str(SCRIPT_DIR))
-# MIGRATION BRIDGE — relocated modules + legacy helpers
-sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "skills" / "workflow" / "scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import _bootstrap  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts" / "brain"))
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts" / "indexers"))
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts" / "handlers"))
@@ -68,7 +68,6 @@ from _uv import uv_cmd  # noqa: E402
 from _subproc import git_repo_root as _repo_root  # noqa: E402, F401 — M2 dedup
 from _subproc import run as _run_base  # noqa: E402
 import flow as _flow  # noqa: E402  # AsyncParallelBatchNode for fan-outs
-
 
 class _LintFilesBatch(_flow.AsyncParallelBatchNode):
     """Fan-out: lint_path per file in parallel. Subclasses
@@ -82,23 +81,18 @@ class _LintFilesBatch(_flow.AsyncParallelBatchNode):
     async def exec_one_async(self, path: str) -> dict:
         return await lint_path(path, verbose=self.verbose)
 
-
 # ─── Subprocess wrapper — lint-MCP variant ────────────────────────────
-
 
 def _run(cmd: list[str], cwd: str | None = None, timeout: int = 120) -> dict:
     """List-form subprocess. timeout=120s default for `uv run --with ty`
     cold-starts (uv resolves + downloads on first call)."""
     return _run_base(cmd, cwd=cwd, timeout=timeout)
 
-
 # ─── Curator ──────────────────────────────────────────────────────────
 # `_curate` and `SEVERITY_RANK` are imported from `_curate.py` above
 # (shared with other MCPs to keep the compression shape consistent).
 
-
 # ─── ruff_check ───────────────────────────────────────────────────────
-
 
 def _normalize_ruff(raw: list[dict]) -> list[dict]:
     """Normalise ruff's JSON output into the curator's expected shape."""
@@ -114,7 +108,6 @@ def _normalize_ruff(raw: list[dict]) -> list[dict]:
             "fix_available": bool(r.get("fix")),
         })
     return out
-
 
 @mcp.tool()
 async def ruff_check(
@@ -168,9 +161,7 @@ async def ruff_check(
         return {**base, "findings": findings}
     return {**base, **_curate(findings, top_n=top_n, severity_min=severity_min)}
 
-
 # ─── ruff_format ──────────────────────────────────────────────────────
-
 
 @mcp.tool()
 async def ruff_format(path: str = ".", check: bool = True, diff: bool = False) -> dict:
@@ -203,9 +194,7 @@ async def ruff_format(path: str = ".", check: bool = True, diff: bool = False) -
         "diff_output": r["stdout"] if diff else None,
     }
 
-
 # ─── ruff_rules ───────────────────────────────────────────────────────
-
 
 @mcp.tool()
 async def ruff_rules(category: str = "", top_n: int = 50) -> dict:
@@ -246,9 +235,7 @@ async def ruff_rules(category: str = "", top_n: int = 50) -> dict:
         ],
     }
 
-
 # ─── ty_check ─────────────────────────────────────────────────────────
-
 
 _TY_CONCISE_RE = re.compile(
     # ty concise format: <file>:<line>:<col>: <severity>[<code>] <message>
@@ -258,7 +245,6 @@ _TY_CONCISE_RE = re.compile(
     r"(?:\[(?P<code>[^\]]+)\])?\s+"
     r"(?P<message>.+)$"
 )
-
 
 def _parse_ty_concise(text: str) -> tuple[list[dict], list[str]]:
     """Parse ty's `--output-format=concise` line format.
@@ -286,7 +272,6 @@ def _parse_ty_concise(text: str) -> tuple[list[dict], list[str]]:
         else:
             unparsed.append(line)
     return findings, unparsed
-
 
 @mcp.tool()
 async def ty_check(
@@ -327,9 +312,7 @@ async def ty_check(
         return {**base, "findings": findings, "unparsed_lines": unparsed[:50]}
     return {**base, **_curate(findings, top_n=top_n, severity_min=severity_min)}
 
-
 # ─── ty_explain ───────────────────────────────────────────────────────
-
 
 @mcp.tool()
 async def ty_explain(rule: str = "") -> dict:
@@ -349,15 +332,12 @@ async def ty_explain(rule: str = "") -> dict:
     except json.JSONDecodeError as e:
         return {"error": f"parse_error: {e}", "raw_stdout": r["stdout"][:2000]}
 
-
 # ─── Composite tools ──────────────────────────────────────────────────
-
 
 def _max_severity(by_sev: dict) -> str:
     if not by_sev:
         return "none"
     return max(by_sev.keys(), key=lambda s: SEVERITY_RANK.get(s, 0))
-
 
 @mcp.tool()
 async def lint_path(path: str, verbose: bool = False, top_n: int = 10) -> dict:
@@ -393,7 +373,6 @@ async def lint_path(path: str, verbose: bool = False, top_n: int = 10) -> dict:
             "ty_findings": ty_n,
         },
     }
-
 
 @mcp.tool()
 async def lint_changed_files(
@@ -456,7 +435,6 @@ async def lint_changed_files(
             "by_severity": all_sev,
         },
     }
-
 
 # ─── auto_fix_lint — dispatch fixable findings via subagent / local LLM
 
@@ -549,9 +527,7 @@ async def auto_fix_lint(
             result["remembered"] = False
     return result
 
-
 # ─── lint_fix_setup_local_llm — surface the setup spec to Claude ─────
-
 
 @mcp.tool()
 async def lint_fix_setup_local_llm() -> dict:
@@ -570,9 +546,7 @@ async def lint_fix_setup_local_llm() -> dict:
     import lint_fix_setup as _setup
     return _setup.setup_summary()
 
-
 # ─── Entry point ──────────────────────────────────────────────────────
-
 
 if __name__ == "__main__":
     mcp.run()

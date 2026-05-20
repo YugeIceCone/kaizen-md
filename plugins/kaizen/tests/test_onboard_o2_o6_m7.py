@@ -19,15 +19,14 @@ import unittest
 from pathlib import Path
 
 PLUGIN_ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(PLUGIN_ROOT / "skills" / "workflow" / "scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 sys.path.insert(0, str(PLUGIN_ROOT / "scripts" / "mcp"))
 sys.path.insert(0, str(PLUGIN_ROOT / "scripts" / "indexers"))
 
 import onboard_index as oi  # noqa: E402
 
-
 # ─── Schema migration ───────────────────────────────────────────────
-
 
 class TestSymbolNameMigration(unittest.TestCase):
     def test_new_db_has_symbol_name_column(self):
@@ -75,7 +74,6 @@ class TestSymbolNameMigration(unittest.TestCase):
             self.assertIn("symbol_name", cols_after)
             conn.close()
 
-
 class TestXrefTable(unittest.TestCase):
     def test_xref_table_exists(self):
         with tempfile.TemporaryDirectory() as td:
@@ -92,9 +90,7 @@ class TestXrefTable(unittest.TestCase):
             )
             conn.close()
 
-
 # ─── chunk_record routes Python through ast chunker ─────────────────
-
 
 class TestChunkRecordAstRouting(unittest.TestCase):
     def _make(self, language: str, source: str):
@@ -143,9 +139,7 @@ class TestChunkRecordAstRouting(unittest.TestCase):
             for c in kept:
                 self.assertEqual(c.get("symbol_name", ""), "")
 
-
 # ─── _populate_xref_imports ─────────────────────────────────────────
-
 
 class TestPopulateXrefImports(unittest.TestCase):
     def test_python_imports_get_xref_rows(self):
@@ -204,9 +198,7 @@ class TestPopulateXrefImports(unittest.TestCase):
             self.assertEqual(count, 0)
             conn.close()
 
-
 # ─── M7 MCP tools ────────────────────────────────────────────────────
-
 
 class _CwdMixin:
     def setUp(self):
@@ -218,7 +210,6 @@ class _CwdMixin:
     def tearDown(self):
         os.chdir(self._cwd)
         self._tmpcm.cleanup()
-
 
 class TestOnboardMcpSymbolSearch(_CwdMixin, unittest.TestCase):
     def _import(self):
@@ -273,7 +264,6 @@ class TestOnboardMcpSymbolSearch(_CwdMixin, unittest.TestCase):
         names = {r["symbol_name"] for r in out}
         self.assertIn("Foo", names)
 
-
 class TestOnboardMcpXref(_CwdMixin, unittest.TestCase):
     def _import(self):
         for m in ("onboard_mcp", "onboard_index"):
@@ -325,7 +315,6 @@ class TestOnboardMcpXref(_CwdMixin, unittest.TestCase):
         m = self._import()
         out = asyncio.run(m.onboard_xref("anything"))
         self.assertEqual(out, [])
-
 
 if __name__ == "__main__":
     unittest.main()

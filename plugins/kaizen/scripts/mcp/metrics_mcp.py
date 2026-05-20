@@ -30,8 +30,8 @@ from typing import Optional
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR))
-# MIGRATION BRIDGE — relocated modules + legacy helpers
-sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "skills" / "workflow" / "scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import _bootstrap  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts" / "brain"))
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts" / "indexers"))
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts" / "handlers"))
@@ -46,9 +46,7 @@ except ImportError as e:
     )
     sys.exit(1)
 
-
 mcp = FastMCP("kaizen-metrics")
-
 
 @mcp.tool()
 async def metrics_session(sid: Optional[str] = None) -> dict:
@@ -62,7 +60,6 @@ async def metrics_session(sid: Optional[str] = None) -> dict:
     out["sid"] = sid
     return out
 
-
 @mcp.tool()
 async def metrics_lifetime(since: Optional[str] = None) -> dict:
     """All-time rollup (or --since DUR — accepts '7d', '30m', ISO).
@@ -71,7 +68,6 @@ async def metrics_lifetime(since: Optional[str] = None) -> dict:
     r = await asyncio.to_thread(metrics.rollup_events, since=cutoff)
     return r.to_dict()
 
-
 @mcp.tool()
 async def metrics_never_used(kind: str = "skill") -> dict:
     """Features available but never invoked in the trace.
@@ -79,7 +75,6 @@ async def metrics_never_used(kind: str = "skill") -> dict:
     kind: 'skill' | 'tool' | 'mcp' | 'bin'
     """
     return await asyncio.to_thread(metrics.never_used, kind)
-
 
 @mcp.tool()
 async def metrics_top(kind: str = "skill", n: int = 10) -> list:
@@ -90,7 +85,6 @@ async def metrics_top(kind: str = "skill", n: int = 10) -> list:
     """
     items = await asyncio.to_thread(metrics.top_n, kind, n)
     return [{"name": name, "count": count} for name, count in items]
-
 
 @mcp.tool()
 async def metrics_skips(sid: Optional[str] = None) -> dict:
@@ -104,12 +98,10 @@ async def metrics_skips(sid: Optional[str] = None) -> dict:
         "skips": skips,
     }
 
-
 @mcp.tool()
 async def metrics_path() -> dict:
     """Print the resolved trace log path."""
     return {"trace_log": str(metrics.trace_log_path())}
-
 
 @mcp.tool()
 async def metrics_graveyard(kind: str = "skill", stale_days: int = 14) -> dict:
@@ -122,7 +114,6 @@ async def metrics_graveyard(kind: str = "skill", stale_days: int = 14) -> dict:
     """
     return await asyncio.to_thread(metrics.graveyard, kind, stale_days)
 
-
 @mcp.tool()
 async def metrics_smoke_mcp() -> dict:
     """Smoke-test every MCP server — import each *_mcp.py module,
@@ -131,7 +122,6 @@ async def metrics_smoke_mcp() -> dict:
     that sys.exit()s on a missing opt-in dep counts as a failure,
     not a crash."""
     return await asyncio.to_thread(metrics.smoke_mcp)
-
 
 @mcp.tool()
 async def metrics_noise() -> dict:
@@ -181,7 +171,6 @@ async def metrics_noise() -> dict:
         for k, v in env.get("counts", {}).items():
             counts[f"{axis_id}.{k}"] = v
     return {"verdict": verdict, "counts": counts, "axes": axes_envs}
-
 
 if __name__ == "__main__":
     mcp.run()

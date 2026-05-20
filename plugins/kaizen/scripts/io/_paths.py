@@ -99,10 +99,9 @@ from pathlib import Path
 # Single-source-of-truth: import the editable knobs from config.py.
 SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR))
-# MIGRATION BRIDGE — config.py + other legacy helpers still at skills/workflow/scripts/
-sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "skills" / "workflow" / "scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import _bootstrap  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 import config as _cfg  # noqa: E402  — relative import for self-contained scripts
-
 
 HOME = Path(os.path.expanduser("~"))
 
@@ -112,7 +111,6 @@ HOME = Path(os.path.expanduser("~"))
 # dir, symlink-resolved (the default marketplace path is a symlink into
 # ~/workspace/kaizen-md).
 _DEFAULT_MARKETPLACE = HOME / ".claude" / "local-marketplaces" / "kaizen-md"
-
 
 def plugin_index_root() -> Path:
     """Resolve the kaizen-md repo root to index. Override:
@@ -124,13 +122,11 @@ def plugin_index_root() -> Path:
     base = Path(market).expanduser() if market else _DEFAULT_MARKETPLACE
     return base.resolve()
 
-
 # ─── User-global root ────────────────────────────────────────────────
 
 KAIZEN_USER_DIR = Path(
     os.environ.get("KAIZEN_DIR", HOME / ".claude" / _cfg.USER_DIR_NAME)
 )
-
 
 # ─── DRY helper for env-overridable feature dirs (consolidation 2026-05-18) ─
 
@@ -164,7 +160,6 @@ def env_overridable_dir(env_name: str, *default_segments: str,
         base = Path.home() / ".claude" / ".kaizen"
     return base.joinpath(*default_segments)
 
-
 # ─── v1.39.0 umbrella dirs ───────────────────────────────────────────
 #
 # Flatten + categorize: 4 search-style dirs go under `indexes/`,
@@ -185,7 +180,6 @@ SNAPSHOTS_DIR = Path(
 ARCHIVE_DIR = Path(
     os.environ.get("KAIZEN_ARCHIVE_DIR", KAIZEN_USER_DIR / _cfg.ARCHIVE_NAME)
 )
-
 
 # ─── Indexes (search-style state — under indexes/) ───────────────────
 
@@ -215,7 +209,6 @@ CLAUDE_DOCS_SRC = Path(
     os.environ.get("KAIZEN_CLAUDE_DOCS_SRC", CLAUDE_DOCS_DIR / "src")
 )
 
-
 # ─── Data (operational singletons — under data/) ─────────────────────
 
 DAEMON_DIR = Path(
@@ -236,7 +229,6 @@ PROFILE_ENV = Path(
     os.environ.get("KAIZEN_PROFILE_ENV", DATA_DIR / "profile.env")
 )
 
-
 # ─── Snapshots (observe captures, hoisted from observe/snapshots/) ───
 
 OBSERVE_SNAPSHOTS = SNAPSHOTS_DIR
@@ -244,7 +236,6 @@ OBSERVE_SNAPSHOTS = SNAPSHOTS_DIR
 # now snapshots are top-level. Code that imported OBSERVE_DIR for the
 # parent dir of snapshots/ still gets a working path.
 OBSERVE_DIR = SNAPSHOTS_DIR
-
 
 # ─── Singletons at the user-global root ──────────────────────────────
 
@@ -280,9 +271,7 @@ BRAIN_PERSONA = BRAIN_DIR / "Persona.md"
 # Replaces the v1.30 `_legacy` dir (kept reachable in LEGACY_PATHS).
 LEGACY_ARCHIVE_DIR = ARCHIVE_DIR
 
-
 # ─── Project-side (resolved at call time, per cwd) ───────────────────
-
 
 def project_workflow_dir(project_root: Path | None = None) -> Path:
     """Return <repo>/.kaizen/workflow (or WORKFLOW_STATE_DIR override).
@@ -295,17 +284,14 @@ def project_workflow_dir(project_root: Path | None = None) -> Path:
     root = project_root or Path.cwd()
     return root / _cfg.PROJECT_KAIZEN_NAME / _cfg.PROJECT_WORKFLOW_NAME
 
-
 def project_schemas_dir(project_root: Path | None = None) -> Path:
     """Per-project workflow schemas: <repo>/.kaizen/workflow/schemas/."""
     return project_workflow_dir(project_root) / "schemas"
-
 
 def project_kaizen_dir(project_root: Path | None = None) -> Path:
     """Per-project kaizen root: <repo>/.kaizen/."""
     root = project_root or Path.cwd()
     return root / _cfg.PROJECT_KAIZEN_NAME
-
 
 # ─── Legacy paths (consulted by the migrator only) ───────────────────
 
@@ -367,9 +353,7 @@ LEGACY_TO_NEW: dict[Path, Path] = {
     LEGACY_PATHS["vestigial_scripts"]: ARCHIVE_DIR / "scripts-pre-v1.22",
 }
 
-
 # ─── Self-test ───────────────────────────────────────────────────────
-
 
 def _self_test() -> None:
     # v1.39.0 layout — TRACE / KNOWLEDGE / SCRAPE / CLAUDE_DOCS under indexes/
@@ -410,7 +394,6 @@ def _self_test() -> None:
     print(f"  HANDOFF_DB      = {HANDOFF_DB}")
     print(f"  BRAIN_DIR       = {BRAIN_DIR}")
     print(f"  ARCHIVE_DIR     = {ARCHIVE_DIR}")
-
 
 if __name__ == "__main__":
     _self_test()

@@ -19,13 +19,12 @@ from pathlib import Path
 
 _SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(_SCRIPT_DIR))
-# MIGRATION BRIDGE — legacy helpers still at skills/workflow/scripts/
-sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "skills" / "workflow" / "scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import _bootstrap  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 
 import _envelope  # noqa: E402
 
 _emit = _envelope.emitter("kaizen-sql", tool_version="1.0.0")
-
 
 def is_available() -> bool:
     try:
@@ -33,7 +32,6 @@ def is_available() -> bool:
         return True
     except ImportError:
         return False
-
 
 def query(sql: str, *, limit: int | None = None) -> dict:
     if not is_available():
@@ -52,7 +50,6 @@ def query(sql: str, *, limit: int | None = None) -> dict:
     finally:
         con.close()
 
-
 def _cmd_query(args) -> int:
     res = query(args.sql, limit=args.limit)
     if not res["available"]:
@@ -70,7 +67,6 @@ def _cmd_query(args) -> int:
             print(json.dumps(r, default=str))
     return 0
 
-
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="kaizen-sql",
         description="DuckDB ad-hoc query CLI over JSONL files.")
@@ -82,7 +78,6 @@ def main(argv: list[str] | None = None) -> int:
     q.set_defaults(func=_cmd_query)
     args = ap.parse_args(argv)
     return args.func(args)
-
 
 if __name__ == "__main__":
     sys.exit(main())

@@ -16,13 +16,12 @@ import unittest
 from pathlib import Path
 
 PLUGIN_ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(PLUGIN_ROOT / "skills" / "workflow" / "scripts"))
-
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 import loop_ledger as ll  # noqa: E402
 import loop_state as ls  # noqa: E402
 
 SETUP_SCRIPT = PLUGIN_ROOT / "skills" / "loop" / "scripts" / "setup-ralph-loop.sh"
-
 
 def _write_state(tmp: Path, *, started_at: str = None, body: str = "do work",
                  last_body_sha: str = None, stuck_run: int = 0,
@@ -45,9 +44,7 @@ def _write_state(tmp: Path, *, started_at: str = None, body: str = "do work",
     )
     return state_file
 
-
 # ─── Stale state auto-cancel ──────────────────────────────────────────
-
 
 class TestStaleStateAutoCancel(unittest.TestCase):
     def test_fresh_state_is_not_stale(self):
@@ -88,9 +85,7 @@ class TestStaleStateAutoCancel(unittest.TestCase):
             result = ll.decide(state, 1)
             self.assertNotEqual(result.get("mode"), "stale")
 
-
 # ─── No-progress detection ────────────────────────────────────────────
-
 
 class TestNoProgressDetection(unittest.TestCase):
     def test_first_iteration_persists_sha(self):
@@ -146,9 +141,7 @@ class TestNoProgressDetection(unittest.TestCase):
                 del os.environ["KAIZEN_LOOP_STUCK_ITERATIONS"]
             self.assertEqual(result["mode"], "stuck")
 
-
 # ─── Token-saving accessors ──────────────────────────────────────────
-
 
 class _CwdMixin:
     def setUp(self):
@@ -160,7 +153,6 @@ class _CwdMixin:
     def tearDown(self):
         os.chdir(self._cwd)
         self._tmpcm.cleanup()
-
 
 def _init_ledger_loop(tmpdir: Path, items: list[str], promise: str = "DONE"):
     """Direct file-write — same fix as test_loop_state._init_loop.
@@ -196,7 +188,6 @@ started_at: "2026-05-19T00:00:00Z"
 """,
         encoding="utf-8")
 
-
 class TestNextPending(_CwdMixin, unittest.TestCase):
     def test_returns_first_pending(self):
         _init_ledger_loop(self.tmp, ["Implement A|true", "Implement B"])
@@ -225,7 +216,6 @@ class TestNextPending(_CwdMixin, unittest.TestCase):
     def test_none_when_no_loop_active(self):
         self.assertIsNone(ls.next_pending())
 
-
 class TestProgress(_CwdMixin, unittest.TestCase):
     def test_counters_for_active_loop(self):
         _init_ledger_loop(self.tmp, ["A", "B", "C"])
@@ -238,7 +228,6 @@ class TestProgress(_CwdMixin, unittest.TestCase):
     def test_inactive_when_no_loop(self):
         p = ls.progress()
         self.assertFalse(p["active"])
-
 
 class TestTldr(_CwdMixin, unittest.TestCase):
     def test_one_line_summary(self):
@@ -254,9 +243,7 @@ class TestTldr(_CwdMixin, unittest.TestCase):
     def test_empty_string_when_inactive(self):
         self.assertEqual(ls.tldr(), "")
 
-
 # ─── CLI subcommands (next/progress/tldr) ────────────────────────────
-
 
 class TestCliAccessors(_CwdMixin, unittest.TestCase):
     HELPER = PLUGIN_ROOT / "scripts" / "state" / "loop_state.py"
@@ -297,7 +284,6 @@ class TestCliAccessors(_CwdMixin, unittest.TestCase):
             cwd=self.tmp, capture_output=True, text=True,
         )
         self.assertEqual(result.returncode, 1)
-
 
 if __name__ == "__main__":
     unittest.main()

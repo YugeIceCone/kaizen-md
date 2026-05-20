@@ -38,7 +38,6 @@ VENDORED: set[str] = set()
 ADDITIVE_EVENTS = {"SubagentStop", "SessionEnd", "Notification"}
 HEAVY_DEPS = ("torch", "transformers", "tree_sitter", "sentence_transformers")
 
-
 @dataclass
 class Finding:
     law_id: str
@@ -46,7 +45,6 @@ class Finding:
     message: str
     path: str = ""
     detail: str = ""
-
 
 @dataclass
 class CheckContext:
@@ -82,7 +80,6 @@ class CheckContext:
         src = self.added if self.scope == "staged" else self.changed
         return [c for c in src if any(c.startswith(p) for p in prefixes)]
 
-
 # ─── auto-law checks ─────────────────────────────────────────────────────
 
 def check_no_modify_vendored(ctx: CheckContext) -> list[Finding]:
@@ -96,12 +93,10 @@ def check_no_modify_vendored(ctx: CheckContext) -> list[Finding]:
                 "patch upstream first, then bundle-refresh"))
     return out
 
-
 # Fan-out gather call: `gather(*<expr>)` — unpacked iterable. The
 # fixed-pair shape `gather(task_a, task_b)` is correct (heterogeneous
 # tasks, not a fan-out). Iron-law targets ONLY the fan-out pattern.
 _FANOUT_GATHER_RE = re.compile(r"asyncio\.gather\s*\(\s*\*")
-
 
 def check_node_flow_for_multi_step(ctx: CheckContext) -> list[Finding]:
     """Flag files that fan-out work via `asyncio.gather(*<iter>)` without
@@ -120,7 +115,6 @@ def check_node_flow_for_multi_step(ctx: CheckContext) -> list[Finding]:
                 ctx.rel(p)))
     return out
 
-
 def check_lazy_heavy_deps(ctx: CheckContext) -> list[Finding]:
     pat = re.compile(rf"^(?:import|from) (?:{'|'.join(HEAVY_DEPS)})\b")
     out = []
@@ -132,7 +126,6 @@ def check_lazy_heavy_deps(ctx: CheckContext) -> list[Finding]:
                     f"top-level heavy import: {line.strip()}", ctx.rel(p),
                     f"line {i} — wrap in try/except + is_available()"))
     return out
-
 
 def check_sandbox_tests(ctx: CheckContext) -> list[Finding]:
     out = []
@@ -148,16 +141,13 @@ def check_sandbox_tests(ctx: CheckContext) -> list[Finding]:
                 ctx.rel(p)))
     return out
 
-
 _MAIN_BLOCK = re.compile(r"""if\s+__name__\s*==\s*["']__main__["']""")
-
 
 def _has_argparse_main(text: str) -> bool:
     """A real argparse-based CLI entry point — a `__main__` block AND
     `ArgumentParser` usage. Deliberately strict: a bare `import argparse`
     or a `__main__` block used only for a smoke test must not trip it."""
     return bool(_MAIN_BLOCK.search(text)) and "ArgumentParser" in text
-
 
 def _wrapper_name(stem: str) -> str:
     """demo.py -> kaizen-demo ; build_index.py -> kaizen-build-index.
@@ -174,11 +164,9 @@ def _wrapper_name(stem: str) -> str:
         return clean.replace("_", "-")
     return "kaizen-" + clean.replace("_", "-")
 
-
 _CONSOLIDATED_PARENT = re.compile(
     r"^#\s*consolidated-cli-parent:\s*(\S+)\s*$", re.MULTILINE
 )
-
 
 def check_bin_wrapper_per_cli(ctx: CheckContext) -> list[Finding]:
     """Each `scripts/<name>.py` argparse-main script needs a matching
@@ -221,7 +209,6 @@ def check_bin_wrapper_per_cli(ctx: CheckContext) -> list[Finding]:
                 ctx.rel(p)))
     return out
 
-
 def check_plugin_manifest_permissions(ctx: CheckContext) -> list[Finding]:
     # The law targets NEW invocable surfaces: scripts/<cluster>/*.py OR
     # hooks/claude/*.sh. NOT top-level scripts/*.sh (infra: pre-commit.sh,
@@ -254,7 +241,6 @@ def check_plugin_manifest_permissions(ctx: CheckContext) -> list[Finding]:
                 f"new {base} has no matching plugin.json permission entry", c))
     return out
 
-
 def check_hook_bypass_knob(ctx: CheckContext) -> list[Finding]:
     out = []
     for p in ctx.plugin_files("hooks/claude/*.sh"):
@@ -268,12 +254,10 @@ def check_hook_bypass_knob(ctx: CheckContext) -> list[Finding]:
                 ctx.rel(p)))
     return out
 
-
 _SHA_NEAR_COMMIT = re.compile(
     r"\b(?:commit|sha|landed in|rev)\b[^\n]{0,40}\b[0-9a-f]{7,40}\b", re.I)
 _ISO_DATE = re.compile(r"\b20\d\d-[01]\d-[0-3]\d\b")
 _LOC_COUNT = re.compile(r"\b\d[\d,]*\s*(?:LOC|lines of code)\b", re.I)
-
 
 def check_claude_md_no_volatile_data(ctx: CheckContext) -> list[Finding]:
     out = []
@@ -300,7 +284,6 @@ def check_claude_md_no_volatile_data(ctx: CheckContext) -> list[Finding]:
                 "move to CHANGELOG / git log / progress.md"))
     return out
 
-
 def check_paired_tests(ctx: CheckContext) -> list[Finding]:
     new = [c for c in ctx.added_under("plugins/kaizen/scripts/")
            if c.endswith(".py")]
@@ -317,10 +300,8 @@ def check_paired_tests(ctx: CheckContext) -> list[Finding]:
                 f"new script {Path(c).name} has no paired tests/test_{stem}*.py", c))
     return out
 
-
 _PROG_RE = re.compile(r'ArgumentParser\s*\([^)]*?\bprog\s*=\s*"([^"]+)"')
 _EMITTER_RE = re.compile(r'_envelope\.emitter\s*\(\s*"([^"]+)"')
-
 
 def check_cli_naming_consistency(ctx: CheckContext) -> list[Finding]:
     """When a CLI script ships both `ArgumentParser(prog="X")` and
@@ -353,7 +334,6 @@ def check_cli_naming_consistency(ctx: CheckContext) -> list[Finding]:
             ctx.rel(p)))
     return out
 
-
 def check_bin_wrapper_per_cli_strict(ctx: CheckContext) -> list[Finding]:
     new = [c for c in ctx.added_under("plugins/kaizen/scripts/")
            if c.endswith(".py") and not Path(c).name.startswith("_")]
@@ -373,9 +353,7 @@ def check_bin_wrapper_per_cli_strict(ctx: CheckContext) -> list[Finding]:
                 c))
     return out
 
-
 _ARGS_DEFAULT_SPACE = re.compile(r"\$\{ARGUMENTS:-[^}]* [^}]*\}")
-
 
 def check_slash_command_args_no_default_spaces(ctx: CheckContext) -> list[Finding]:
     out = []
@@ -386,7 +364,6 @@ def check_slash_command_args_no_default_spaces(ctx: CheckContext) -> list[Findin
                 f"{p.name} uses ${{ARGUMENTS:-<default with spaces>}}", ctx.rel(p),
                 "give the script a no-arg default; pass bare $ARGUMENTS"))
     return out
-
 
 def check_hooks_json_additive_event_multi_command(ctx: CheckContext) -> list[Finding]:
     hj = ctx.plugin_root / "hooks" / "hooks.json"
@@ -408,13 +385,11 @@ def check_hooks_json_additive_event_multi_command(ctx: CheckContext) -> list[Fin
                 ctx.rel(hj)))
     return out
 
-
 _EXEC_MARKER = re.compile(r"![`]")
 # Real exec marker: line-start (after optional whitespace) followed by
 # !` — distinguishes "!`bash …`" (real directive) from inline prose
 # like `` `!` `` (documentation about the syntax).
 _LINE_START_EXEC_MARKER = re.compile(r"^[ \t]*![`]")
-
 
 def _exec_marker_outside_fence(text: str) -> bool:
     """True iff a real `!`-backtick exec marker appears at the start
@@ -432,7 +407,6 @@ def _exec_marker_outside_fence(text: str) -> bool:
             return True
     return False
 
-
 def check_skill_md_no_exec_markers(ctx: CheckContext) -> list[Finding]:
     out = []
     for p in ctx.plugin_files("skills/*/SKILL.md"):
@@ -443,7 +417,6 @@ def check_skill_md_no_exec_markers(ctx: CheckContext) -> list[Finding]:
                 f"{ctx.rel(p)} contains a !-backtick exec marker", ctx.rel(p),
                 "the Skill tool runs these at load time — use prose / indented blocks"))
     return out
-
 
 def check_skill_md_no_external_script_paths(ctx: CheckContext) -> list[Finding]:
     out = []
@@ -465,7 +438,6 @@ def check_skill_md_no_external_script_paths(ctx: CheckContext) -> list[Finding]:
                     ctx.rel(p), f"line {i}: {line.strip()}"))
     return out
 
-
 _PY_INVOKE_RE = re.compile(
     r'python3\s+(?:"[^"]*?\$[A-Z_]+[^"]*?/|[^\s"\']*/)?([a-zA-Z_][a-zA-Z0-9_]*\.py)'
 )
@@ -473,7 +445,6 @@ _TRACE_USAGE_RE = re.compile(
     r'(_trace\.sh|trace\.py event|trace\.append_event|import trace'
     r'|_dxm_emit\.emit_event|import _dxm_emit)'
 )
-
 
 def _hook_traces_via_helper(text: str, ctx: CheckContext) -> bool:
     """A hook may delegate tracing to a python helper it invokes — the
@@ -494,7 +465,6 @@ def _hook_traces_via_helper(text: str, ctx: CheckContext) -> bool:
                 return True
     return False
 
-
 def check_every_hook_script_traces_its_firing(ctx: CheckContext) -> list[Finding]:
     out = []
     for p in ctx.plugin_files("hooks/claude/*.sh"):
@@ -512,7 +482,6 @@ def check_every_hook_script_traces_its_firing(ctx: CheckContext) -> list[Finding
             f"hook {p.name} never fires _trace.sh — its firing is invisible to metrics",
             ctx.rel(p)))
     return out
-
 
 # ─── dispatch ────────────────────────────────────────────────────────────
 
@@ -552,7 +521,6 @@ _PERSONAL_PATTERNS = [
      "shodan workspace"),
 ]
 
-
 def _parse_frontmatter(text: str) -> dict:
     """Flat-scalar YAML frontmatter parser. Returns empty dict if no FM.
     Doesn't handle nested mappings (those use _parse_kaizen_block)."""
@@ -572,7 +540,6 @@ def _parse_frontmatter(text: str) -> dict:
         fm[k] = v
     return fm
 
-
 def _parse_kaizen_block(text: str) -> dict | None:
     m = _FRONTMATTER_RE.match(text)
     if not m:
@@ -591,7 +558,6 @@ def _parse_kaizen_block(text: str) -> dict | None:
                 v = v[1:-1]
             block[kv.group(1)] = v
     return block
-
 
 def _iter_starter_notes(ctx: CheckContext):
     """Yield (note_path, text) for every `assets/starters/*/Notes/*.md`
@@ -613,7 +579,6 @@ def _iter_starter_notes(ctx: CheckContext):
             except OSError:
                 continue
             yield note, text
-
 
 def check_brain_note_schema(ctx: CheckContext) -> list[Finding]:
     """BRAIN-LAW-1: every starter Note has frontmatter with `name` +
@@ -651,7 +616,6 @@ def check_brain_note_schema(ctx: CheckContext) -> list[Finding]:
                 "Top Beliefs)",
                 ctx.rel(note)))
     return out
-
 
 def check_brain_rule_schema(ctx: CheckContext) -> list[Finding]:
     """BRAIN-LAW-2: starter Notes with a `kaizen:` block must have
@@ -696,7 +660,6 @@ def check_brain_rule_schema(ctx: CheckContext) -> list[Finding]:
                 ctx.rel(note)))
     return out
 
-
 def check_starter_no_personal_data(ctx: CheckContext) -> list[Finding]:
     """BRAIN-LAW-3: `assets/starters/**/*.md` content must not contain
     personal identifiers (real usernames, emails, specific project names).
@@ -722,7 +685,6 @@ def check_starter_no_personal_data(ctx: CheckContext) -> list[Finding]:
                 break   # one finding per file is enough
     return out
 
-
 def check_brain_no_orphan_toplevel(ctx: CheckContext) -> list[Finding]:
     """BRAIN-LAW-4: starter root dir contains only sanctioned files +
     PARA-pattern subdirs. Stray files signal accumulation drift."""
@@ -747,7 +709,6 @@ def check_brain_no_orphan_toplevel(ctx: CheckContext) -> list[Finding]:
                 ctx.rel(entry)))
     return out
 
-
 CHECKS = {
     "no_modify_vendored": check_no_modify_vendored,
     "node_flow_for_multi_step": check_node_flow_for_multi_step,
@@ -771,7 +732,6 @@ CHECKS = {
     "brain_no_orphan_toplevel": check_brain_no_orphan_toplevel,
 }
 
-
 def _detect_repo_root() -> Path:
     try:
         out = subprocess.run(
@@ -781,7 +741,6 @@ def _detect_repo_root() -> Path:
     except (subprocess.CalledProcessError, FileNotFoundError):
         return Path.cwd()
 
-
 def _git_staged(repo_root: Path, diff_filter: str) -> list[str]:
     try:
         out = subprocess.run(
@@ -790,7 +749,6 @@ def _git_staged(repo_root: Path, diff_filter: str) -> list[str]:
         return [ln for ln in out.stdout.splitlines() if ln.strip()]
     except (subprocess.CalledProcessError, FileNotFoundError):
         return []
-
 
 def build_context(scope: str = "staged", repo_root: Path | None = None) -> CheckContext:
     root = repo_root or _detect_repo_root()
@@ -803,7 +761,6 @@ def build_context(scope: str = "staged", repo_root: Path | None = None) -> Check
         changed=changed,
         added=added,
     )
-
 
 def run_checks(
     scope: str = "staged",
@@ -823,7 +780,6 @@ def run_checks(
             continue
         findings.extend(fn(ctx))
     return findings
-
 
 if __name__ == "__main__":
     _scope = "all" if "--all" in sys.argv else "staged"

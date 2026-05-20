@@ -74,9 +74,7 @@ except ImportError as e:
     )
     sys.exit(1)
 
-
 mcp = FastMCP("trace-search")
-
 
 @mcp.tool()
 async def trace_search(
@@ -99,13 +97,11 @@ async def trace_search(
     return ti.cmd_search(query, top_k=top_k, src=src, sid=sid, evt=evt,
                            since=since if since else None)
 
-
 @mcp.tool()
 async def trace_index_status() -> dict:
     """Index health: total events, model, dim, earliest/latest ts.
     Call this first to verify the index is built + current."""
     return ti.cmd_stats()
-
 
 @mcp.tool()
 async def trace_index_run(embed_data: bool = False, max_n: int = 0) -> dict:
@@ -117,13 +113,11 @@ async def trace_index_run(embed_data: bool = False, max_n: int = 0) -> dict:
     max_n: cap new events this run (0 = unlimited)."""
     return ti.cmd_index(max_n=(max_n if max_n > 0 else None), embed_data=embed_data)
 
-
 @mcp.tool()
 async def trace_get(event_id: int) -> dict:
     """Fetch one indexed event by SQLite id (returned by trace_search)."""
     r = ti.cmd_get(event_id)
     return r if r else {"error": f"event id={event_id} not found"}
-
 
 @mcp.tool()
 async def trace_recent(limit: int = 20, src: str = "") -> list[dict]:
@@ -155,7 +149,6 @@ async def trace_recent(limit: int = 20, src: str = "") -> list[dict]:
             "data": _json.loads(r["data_json"]) if r["data_json"] else {},
         })
     return out
-
 
 if __name__ == "__main__":
     mcp.run()

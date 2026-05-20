@@ -60,14 +60,12 @@ _emit = _envelope.emitter("kaizen-models", tool_version="1.0.0")
 
 # ─── Connect ──────────────────────────────────────────────────────────
 
-
 def _host() -> str:
     return (
         os.environ.get("KAIZEN_OLLAMA_HOST")
         or os.environ.get("OLLAMA_HOST")
         or "http://localhost:11434"
     )
-
 
 def _client():
     try:
@@ -79,7 +77,6 @@ def _client():
         )
         sys.exit(1)
     return ollama.Client(host=_host())
-
 
 def _check_reachable() -> Optional[str]:
     """Return None if Ollama is reachable, else a human-readable error string."""
@@ -95,9 +92,7 @@ def _check_reachable() -> Optional[str]:
         return f"Ollama at {_host()} connection error ({e})"
     return None
 
-
 # ─── Subcommands ──────────────────────────────────────────────────────
-
 
 def _human_bytes(n: int) -> str:
     """Format byte size as KB/MB/GB."""
@@ -106,7 +101,6 @@ def _human_bytes(n: int) -> str:
             return f"{n:.1f} {unit}" if unit != "B" else f"{n} B"
         n /= 1024
     return f"{n} B"
-
 
 def _normalize_list(items: Iterable) -> list[dict]:
     """ollama-python returns ListResponse with .models; older / dict shapes differ."""
@@ -137,7 +131,6 @@ def _normalize_list(items: Iterable) -> list[dict]:
             })
     return out
 
-
 def cmd_list(args) -> int:
     err = _check_reachable()
     if err:
@@ -164,7 +157,6 @@ def cmd_list(args) -> int:
         )
     return 0
 
-
 def cmd_ps(args) -> int:
     err = _check_reachable()
     if err:
@@ -184,7 +176,6 @@ def cmd_ps(args) -> int:
         exp = getattr(m, "expires_at", None) or m.get("expires_at", "")
         print(f"{name:<40} {_human_bytes(size):>10}  {exp}")
     return 0
-
 
 def cmd_pull(args) -> int:
     err = _check_reachable()
@@ -217,7 +208,6 @@ def cmd_pull(args) -> int:
     print(f"✓ pulled {args.name}")
     return 0
 
-
 def cmd_show(args) -> int:
     err = _check_reachable()
     if err:
@@ -248,7 +238,6 @@ def cmd_show(args) -> int:
                 print(f"  {k}: {v}")
     return 0
 
-
 def cmd_delete(args) -> int:
     err = _check_reachable()
     if err:
@@ -264,7 +253,6 @@ def cmd_delete(args) -> int:
     print(f"✓ deleted {args.name}")
     return 0
 
-
 def cmd_cp(args) -> int:
     err = _check_reachable()
     if err:
@@ -274,7 +262,6 @@ def cmd_cp(args) -> int:
     client.copy(args.src, args.dst)
     print(f"✓ copied {args.src} → {args.dst}")
     return 0
-
 
 def cmd_embed(args) -> int:
     err = _check_reachable()
@@ -302,7 +289,6 @@ def cmd_embed(args) -> int:
     print(f"  first 8: [{', '.join(f'{v:.4f}' for v in vec[:8])}]")
     return 0
 
-
 def _read_text_arg(text: str | None) -> str:
     """Allow piping text via stdin when the positional is omitted/empty."""
     if text:
@@ -312,7 +298,6 @@ def _read_text_arg(text: str | None) -> str:
     sys.stderr.write("kaizen models: no input text (pass as arg or pipe via stdin)\n")
     sys.exit(2)
 
-
 def _load_image(path: str) -> str | bytes:
     """Ollama-python accepts a filesystem path string OR raw bytes; pass path
     directly so the client streams it."""
@@ -321,7 +306,6 @@ def _load_image(path: str) -> str | bytes:
         sys.stderr.write(f"kaizen models: --image not found: {p}\n")
         sys.exit(2)
     return str(p)
-
 
 def _parse_format(spec: str | None):
     """Parse --format. Accepts:
@@ -341,7 +325,6 @@ def _parse_format(spec: str | None):
             f"kaizen models: --format must be 'json', '@path.json', or inline JSON; got: {spec[:60]}\n"
         )
         sys.exit(2)
-
 
 def cmd_chat(args) -> int:
     err = _check_reachable()
@@ -414,7 +397,6 @@ def cmd_chat(args) -> int:
         print(content)
     return 0
 
-
 def cmd_web_search(args) -> int:
     """Ollama Cloud web-search. Requires an Ollama Cloud account (sign in via
     `ollama signin`) — the client picks up credentials automatically. Reads
@@ -461,16 +443,13 @@ def cmd_web_search(args) -> int:
         print()
     return 0
 
-
 # ─── Pin helpers (write profile.env) ──────────────────────────────────
-
 
 def _profile_env_path() -> Path:
     env = os.environ.get("KAIZEN_PROFILE_ENV")
     if env:
         return Path(env)
     return _p.DATA_DIR / "profile.env"
-
 
 def _set_env_lines(path: Path, updates: dict[str, str]) -> None:
     """Idempotently set `export KEY=VALUE` lines in profile.env."""
@@ -498,7 +477,6 @@ def _set_env_lines(path: Path, updates: dict[str, str]) -> None:
         text += "\n"
     path.write_text(text)
 
-
 def cmd_pin_embed(args) -> int:
     host = _host()
     base_url = host.rstrip("/") + "/v1"
@@ -513,7 +491,6 @@ def cmd_pin_embed(args) -> int:
     print(f"  wrote {path}")
     print(f"  reload: source {path}")
     return 0
-
 
 def cmd_pin_chat(args) -> int:
     """Pin a chat model for scrape. v1.29.4+: writes the native Ollama
@@ -539,14 +516,11 @@ def cmd_pin_chat(args) -> int:
     print(f"  reload: source {path}")
     return 0
 
-
 def cmd_host(args) -> int:
     print(_host())
     return 0
 
-
 # ─── CLI ──────────────────────────────────────────────────────────────
-
 
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(
@@ -638,7 +612,6 @@ def main(argv: list[str] | None = None) -> int:
             json = False
         return cmd_list(_Args())
     return args.func(args)
-
 
 if __name__ == "__main__":
     sys.exit(main())

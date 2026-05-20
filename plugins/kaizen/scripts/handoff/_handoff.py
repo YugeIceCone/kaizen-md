@@ -29,7 +29,8 @@ from typing import Optional
 SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR))
 # MIGRATION BRIDGE — _sqlite has a shim at legacy scripts/.
-sys.path.insert(0, str(SCRIPT_DIR.parents[1] / "skills" / "workflow" / "scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import _bootstrap  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 
 import _sqlite as _kz_sqlite  # noqa: E402  — shared SQLite open/meta helpers
 
@@ -70,9 +71,7 @@ CREATE TABLE IF NOT EXISTS handoff_meta (
 # Handoffs are durable records — favour durability over write speed.
 _PRAGMAS = "PRAGMA journal_mode=WAL;\nPRAGMA synchronous=FULL;\n"
 
-
 # ─── Path resolution (env-aware, mirrors _brain.brain_root) ──────────
-
 
 def handoff_db_path() -> Path:
     """SQLite handoff-index path. v1.39.0+: lives under data/ via the
@@ -85,7 +84,6 @@ def handoff_db_path() -> Path:
     import _paths
     return _paths.HANDOFF_DB.expanduser()
 
-
 def handoffs_dir() -> Path:
     """Root dir for the canonical handoff YAML files — the system of
     record. Env-overridable (KAIZEN_HANDOFF_DIR)."""
@@ -93,7 +91,6 @@ def handoffs_dir() -> Path:
     if env:
         return Path(os.path.expandvars(env)).expanduser()
     return Path("~/.claude/handoff").expanduser()
-
 
 def now_iso() -> str:
     """UTC ISO-8601 timestamp, millisecond precision (matches the
@@ -104,9 +101,7 @@ def now_iso() -> str:
         .replace("+00:00", "Z")
     )
 
-
 # ─── Frontmatter rewrite (auto-finalize Step 4) ──────────────────────
-
 
 # Keys auto-finalize is allowed to touch. Everything else in the
 # frontmatter is preserved verbatim.
@@ -116,7 +111,6 @@ _FINALIZE_KEYS = (
     "outcome_assigned_by",
     "outcome_justification",
 )
-
 
 def update_frontmatter(text: str, updates: dict[str, str]) -> str:
     """Rewrite a YAML handoff's frontmatter in-place (line-based,
@@ -170,9 +164,7 @@ def update_frontmatter(text: str, updates: dict[str, str]) -> str:
     )
     return rebuilt
 
-
 # ─── Store ───────────────────────────────────────────────────────────
-
 
 def open_db(create: bool = True) -> sqlite3.Connection:
     """Open the handoff index DB via the shared `_sqlite` helper.
@@ -180,7 +172,6 @@ def open_db(create: bool = True) -> sqlite3.Connection:
     return _kz_sqlite.open_indexer_db(
         handoff_db_path(), _SCHEMA_SQL, pragmas=_PRAGMAS, create=create
     )
-
 
 def save_handoff(
     session_id: str,
@@ -225,7 +216,6 @@ def save_handoff(
         if own:
             conn.close()
 
-
 def latest_handoffs(
     limit: int = 1, *, conn: Optional[sqlite3.Connection] = None
 ) -> list[dict]:
@@ -250,7 +240,6 @@ def latest_handoffs(
         if own:
             conn.close()
 
-
 # ─── Bridge to brain ─────────────────────────────────────────────────
 #
 # A handoff carries two kinds of content. Session-EPHEMERAL state
@@ -267,7 +256,6 @@ _BRAIN_SECTIONS = ("decisions", "findings", "worked", "failed")
 _SECTION_RE = re.compile(r"^(decisions|findings|worked|failed):\s*$")
 _ITEM_RE = re.compile(r"^\s+-\s+(.*\S)\s*$")
 
-
 def _strip_frontmatter(text: str) -> str:
     """Return the body after a leading `---...---` frontmatter block."""
     if not text.lstrip().startswith("---"):
@@ -277,7 +265,6 @@ def _strip_frontmatter(text: str) -> str:
     if len(fences) >= 2:
         return "\n".join(lines[fences[1] + 1:])
     return text
-
 
 def extract_brain_candidates(yaml_text: str) -> list[dict]:
     """Pull the durable-learning items out of a handoff's decisions /
@@ -330,7 +317,6 @@ def extract_brain_candidates(yaml_text: str) -> list[dict]:
             cur += " " + line.strip()
     _flush()
     return out
-
 
 def list_handoffs(
     limit: int = 20,

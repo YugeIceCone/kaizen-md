@@ -35,7 +35,6 @@ except ImportError as e:
 
 mcp = FastMCP("kaizen-debug")
 
-
 def _run(verb: str, *extra: str) -> dict:
     cmd = ["python3", str(_TARGET), verb, *extra, "--json"]
     r = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
@@ -47,7 +46,6 @@ def _run(verb: str, *extra: str) -> dict:
     except json.JSONDecodeError:
         return {"output": r.stdout.strip()}
 
-
 @mcp.tool()
 async def debug_smoke() -> dict:
     """Exercise every kaizen-* bin with `--help`. Returns
@@ -58,7 +56,6 @@ async def debug_smoke() -> dict:
     deny-list. Failure = bad rc OR crash-signature in stderr."""
     return await asyncio.to_thread(_run, "smoke")
 
-
 @mcp.tool()
 async def debug_lint(paths: list[str] | None = None) -> dict:
     """Static-scan for common bug patterns (heredoc unbound vars,
@@ -66,7 +63,6 @@ async def debug_lint(paths: list[str] | None = None) -> dict:
     Returns {findings: [{file, line, kind, hint}, ...], counts}."""
     extra = tuple(paths) if paths else ()
     return await asyncio.to_thread(_run, "lint", *extra)
-
 
 @mcp.tool()
 async def debug_check(
@@ -87,7 +83,6 @@ async def debug_check(
     if path:
         extra.extend(["--path", path])
     return await asyncio.to_thread(_run, "check", *extra)
-
 
 if __name__ == "__main__":
     mcp.run()

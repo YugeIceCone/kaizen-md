@@ -40,7 +40,6 @@ SECTION_LABELS = {
     "parked":    "## Parked / deferred",
 }
 
-
 # ─── Config / paths ──────────────────────────────────────────────────
 
 def repo_root() -> Path:
@@ -51,7 +50,6 @@ def repo_root() -> Path:
         p = p.parent
     print("backlog: not in a git repo", file=sys.stderr)
     sys.exit(2)
-
 
 def read_config(root: Path) -> dict:
     cfg = root / ".kaizen.toml"
@@ -64,14 +62,12 @@ def read_config(root: Path) -> dict:
             out[m.group(1)] = m.group(2).strip()
     return out
 
-
 def resolve_paths(root: Path):
     cfg = read_config(root)
     md_path = root / cfg.get("backlog_path", "BACKLOG.md")
     json_path = md_path.with_suffix(".json")
     md_path = md_path.with_suffix(".md")
     return json_path, md_path
-
 
 # ─── Store IO ────────────────────────────────────────────────────────
 
@@ -89,7 +85,6 @@ def empty_store() -> dict:
         "decisions": [],
     }
 
-
 def load_store(path: Path) -> dict:
     if not path.exists():
         return empty_store()
@@ -102,7 +97,6 @@ def load_store(path: Path) -> dict:
     data.setdefault("metadata", {"created": "", "updated": "", "active_workflow_ref": None})
     return data
 
-
 def save_store(path: Path, store: dict):
     store["metadata"]["updated"] = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -113,7 +107,6 @@ def save_store(path: Path, store: dict):
     # (per-repo memory slug), not global.
     if os.environ.get("KAIZEN_BACKLOG_LEDGER_DISABLE") != "1":
         write_memory_ledger(store)
-
 
 def _project_memory_dir() -> Path:
     """Resolve the per-project auto-memory dir. Matches the resolution
@@ -133,7 +126,6 @@ def _project_memory_dir() -> Path:
         root = Path.cwd().resolve()
     slug = str(root).replace("/", "-")
     return Path.home() / ".claude" / "projects" / slug / "memory"
-
 
 def render_ledger(store: dict) -> str:
     """Compact, scannable backlog summary for agent auto-load.
@@ -185,7 +177,6 @@ def render_ledger(store: dict) -> str:
     out.append("")
     return "\n".join(out)
 
-
 def write_memory_ledger(store: dict) -> Path | None:
     """Atomic write of the compact ledger to the project memory dir."""
     target_dir = _project_memory_dir()
@@ -200,7 +191,6 @@ def write_memory_ledger(store: dict) -> Path | None:
     tmp.replace(target)
     return target
 
-
 # ─── Item helpers ────────────────────────────────────────────────────
 
 def next_id(store: dict) -> str:
@@ -209,7 +199,6 @@ def next_id(store: dict) -> str:
     n = (max(nums) if nums else 0) + 1
     return f"BK-{n:03d}"
 
-
 def find_item(store: dict, item_id: str) -> dict:
     for it in store["items"]:
         if it["id"] == item_id:
@@ -217,10 +206,8 @@ def find_item(store: dict, item_id: str) -> dict:
     print(f"backlog: id not found: {item_id}", file=sys.stderr)
     sys.exit(2)
 
-
 def now_utc() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-
 
 # ─── Subcommands ─────────────────────────────────────────────────────
 
@@ -234,10 +221,8 @@ def cmd_list(store, args):
         flag = "[x]" if it["section"] == "done" else "[ ]"
         print(f"{it['id']}  {flag}  {it['title']}")
 
-
 def cmd_show(store, args):
     print(json.dumps(find_item(store, args.id), indent=2))
-
 
 def cmd_add(store, args):
     item = {
@@ -259,13 +244,11 @@ def cmd_add(store, args):
     print(f"added {item['id']} → {item['section']}")
     return item
 
-
 def cmd_start(store, args):
     it = find_item(store, args.id)
     it["section"] = "in_flight"
     it["started_at"] = now_utc()
     print(f"{args.id} → in_flight")
-
 
 def cmd_tick(store, args):
     it = find_item(store, args.id)
@@ -274,20 +257,17 @@ def cmd_tick(store, args):
     it["committed_at"] = now_utc()
     print(f"{args.id} → done")
 
-
 def cmd_park(store, args):
     it = find_item(store, args.id)
     it["section"] = "parked"
     it["parked_reason"] = args.reason
     print(f"{args.id} → parked: {args.reason}")
 
-
 def cmd_unpark(store, args):
     it = find_item(store, args.id)
     it["section"] = args.section
     it["parked_reason"] = None
     print(f"{args.id} → {args.section}")
-
 
 def cmd_decision(store, args):
     store["decisions"].append({
@@ -296,7 +276,6 @@ def cmd_decision(store, args):
         "why": args.why or "",
     })
     print(f"decision recorded: {args.text}")
-
 
 # ─── Render (.json → .md) ───────────────────────────────────────────
 
@@ -317,7 +296,6 @@ def fmt_item(it: dict) -> str:
     if it.get("tags"):
         line += f"  `[{' '.join(it['tags'])}]`"
     return line
-
 
 def render_md(store: dict) -> str:
     out = ["# Backlog", ""]
@@ -346,7 +324,6 @@ def render_md(store: dict) -> str:
         out.append("")
     return "\n".join(out)
 
-
 def cmd_render(store, args, *, json_path: Path, md_path: Path):
     md = render_md(store)
     md_path.parent.mkdir(parents=True, exist_ok=True)
@@ -360,7 +337,6 @@ def cmd_render(store, args, *, json_path: Path, md_path: Path):
         write_memory_ledger(store)
     print(f"rendered → {md_path}")
 
-
 def cmd_verify(store, args, *, json_path: Path, md_path: Path):
     expected = render_md(store)
     if not md_path.exists():
@@ -371,7 +347,6 @@ def cmd_verify(store, args, *, json_path: Path, md_path: Path):
         print(f"verify: {md_path} drifted from {json_path} — run render", file=sys.stderr)
         sys.exit(1)
     print(f"verify: ok ({md_path} matches {json_path})")
-
 
 # ─── CLI ─────────────────────────────────────────────────────────────
 
@@ -421,7 +396,6 @@ def build_parser():
     sp.add_parser("verify")
     return p
 
-
 def main():
     args = build_parser().parse_args()
     # No subcommand → default to `list all` (avoids ${ARGUMENTS:-list all}
@@ -451,7 +425,6 @@ def main():
         # Auto-render so the .md view stays in sync
         md_path.parent.mkdir(parents=True, exist_ok=True)
         md_path.write_text(render_md(store))
-
 
 if __name__ == "__main__":
     main()

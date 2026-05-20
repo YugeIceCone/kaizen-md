@@ -34,8 +34,8 @@ from typing import Any
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR))
-# MIGRATION BRIDGE — relocated modules + legacy helpers
-sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "skills" / "workflow" / "scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import _bootstrap  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts" / "brain"))
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts" / "indexers"))
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts" / "handlers"))
@@ -49,9 +49,7 @@ except ImportError as e:
     )
     sys.exit(1)
 
-
 mcp = FastMCP("discovery")
-
 
 # Per-surface catalog — single source of truth for the 4 indexes.
 # Loaded lazily inside _do_*_surface so an absent index doesn't break
@@ -79,7 +77,6 @@ SURFACES: dict[str, dict[str, str]] = {
     },
 }
 
-
 def _do_search_surface(surface: str, query: str, top_k: int) -> list[dict]:
     """Dispatch a search to one surface. Raises on failure; the
     aggregator wraps the exception per-surface so other surfaces
@@ -89,20 +86,17 @@ def _do_search_surface(surface: str, query: str, top_k: int) -> list[dict]:
     mod = __import__(SURFACES[surface]["index_module"])
     return mod.do_search(query, top_k=top_k)
 
-
 def _do_stats_surface(surface: str) -> dict:
     if surface not in SURFACES:
         raise ValueError(f"unknown surface: {surface}")
     mod = __import__(SURFACES[surface]["index_module"])
     return mod.do_stats()
 
-
 def _resolved_surfaces(picked: list[str] | None) -> list[str]:
     """None / empty → all known surfaces; otherwise honor the pick."""
     if not picked:
         return list(SURFACES.keys())
     return list(picked)
-
 
 def _fetch_ollama_models_with_caps() -> list[dict]:
     """Query Ollama for every local model + per-model capabilities.
@@ -156,7 +150,6 @@ def _fetch_ollama_models_with_caps() -> list[dict]:
         out.append({"name": name, "capabilities": caps, "dim": dim})
     return out
 
-
 def _list_available_embed_models() -> list[dict]:
     """Locally-available embedding-capable models. Empty when Ollama
     is down — the discovery surface still works (sentence-transformers
@@ -166,7 +159,6 @@ def _list_available_embed_models() -> list[dict]:
     except ConnectionError:
         return []
     return [m for m in models if "embedding" in (m.get("capabilities") or [])]
-
 
 @mcp.tool()
 async def discovery_list_embed_models() -> list[dict]:
@@ -182,7 +174,6 @@ async def discovery_list_embed_models() -> list[dict]:
     """
     return _list_available_embed_models()
 
-
 @mcp.tool()
 async def discovery_list_surfaces() -> list[dict]:
     """List the 4 known discovery surfaces with their underlying slash
@@ -195,7 +186,6 @@ async def discovery_list_surfaces() -> list[dict]:
         {"name": name, "slash": meta["slash"], "desc": meta["desc"]}
         for name, meta in SURFACES.items()
     ]
-
 
 @mcp.tool()
 async def discovery_search(
@@ -234,9 +224,7 @@ async def discovery_search(
     )
     return {name: result for name, result in results}
 
-
 # ─── Phase 4.B: unified kaizen_search with auto-corpus routing ──────
-
 
 # First-match-wins regex routing rules. Order matters: more specific
 # patterns first. Each rule maps (pattern → corpus name).
@@ -253,7 +241,6 @@ _CORPUS_ROUTING_RULES: list[tuple[str, str]] = [
     # Claude-docs cues
     (r"\b(claude code|anthropic|claude api|hooks?|MCP)\b", "claude-docs"),
 ]
-
 
 def pick_corpus(query: str, corpus: str = "auto") -> str:
     """Resolve a corpus name from explicit hint or query auto-routing.
@@ -275,7 +262,6 @@ def pick_corpus(query: str, corpus: str = "auto") -> str:
         if re.search(pattern, q, re.I):
             return name
     return "all"
-
 
 @mcp.tool()
 async def kaizen_search(
@@ -323,7 +309,6 @@ async def kaizen_search(
     }
     return out
 
-
 @mcp.tool()
 async def discovery_stats(
     surfaces: list[str] | None = None,
@@ -350,7 +335,6 @@ async def discovery_stats(
         *(asyncio.to_thread(_run, n) for n in picked)
     )
     return {name: result for name, result in results}
-
 
 if __name__ == "__main__":
     mcp.run()

@@ -14,17 +14,15 @@ import unittest
 from pathlib import Path
 
 PLUGIN_ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(PLUGIN_ROOT / "skills" / "workflow" / "scripts"))
-
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 import _hygiene_lang as h  # noqa: E402
-
 
 def _make_repo(tmp: Path, manifests: list[str]) -> Path:
     """Touch the given manifest files in tmp to mark languages present."""
     for m in manifests:
         (tmp / m).write_text("")
     return tmp
-
 
 def _stub_runner(ret_map: dict):
     """Build a subprocess-stub. ret_map: cmd-prefix → (rc, stdout, stderr)."""
@@ -38,17 +36,13 @@ def _stub_runner(ret_map: dict):
         return 0, "", ""
     return runner
 
-
 def _all_present(_tool):
     return True
-
 
 def _none_present(_tool):
     return False
 
-
 # ─── Detection ────────────────────────────────────────────────────────
-
 
 class TestDetectLanguages(unittest.TestCase):
     def test_rust_only(self):
@@ -85,9 +79,7 @@ class TestDetectLanguages(unittest.TestCase):
             tmp = _make_repo(Path(td), ["go.mod"])
             self.assertIn("go", h.detect_languages(tmp))
 
-
 # ─── Probe execution ─────────────────────────────────────────────────
-
 
 class TestRunProbe(unittest.TestCase):
     def test_tool_missing_returns_ok_with_flag(self):
@@ -117,9 +109,7 @@ class TestRunProbe(unittest.TestCase):
             self.assertFalse(f.tool_missing)
             self.assertIn("vulnerability X found", f.detail)
 
-
 # ─── Composite ────────────────────────────────────────────────────────
-
 
 class TestRunComposite(unittest.TestCase):
     def test_polyglot_runs_all_languages(self):
@@ -162,9 +152,7 @@ class TestRunComposite(unittest.TestCase):
             self.assertEqual(result.findings, [])
             self.assertTrue(result.ok)
 
-
 # ─── Reporting ───────────────────────────────────────────────────────
-
 
 class TestFormatReport(unittest.TestCase):
     def test_text_format_lists_findings(self):
@@ -200,7 +188,6 @@ class TestFormatReport(unittest.TestCase):
             )
             text = h.format_report(result)
             self.assertIn("OK", text)
-
 
 if __name__ == "__main__":
     unittest.main()

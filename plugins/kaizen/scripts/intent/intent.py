@@ -66,10 +66,8 @@ import _dxm_emit  # noqa: E402  — BK-001 per-handler trace events
 
 _emit = _envelope.emitter("kaizen-intent", tool_version="1.0.0")
 
-
 def _disabled() -> bool:
     return os.environ.get("KAIZEN_INTENT_DISABLE") == "1"
-
 
 def _intents_path() -> Path:
     env = os.environ.get("KAIZEN_INTENTS_FILE")
@@ -78,7 +76,6 @@ def _intents_path() -> Path:
     # Default: skills/intent/domain/intents.yaml
     plugin_root = _SCRIPT_DIR.parent.parent  # plugins/kaizen
     return plugin_root / "skills" / "intent" / "domain" / "intents.yaml"
-
 
 def _load_intents() -> list[dict]:
     path = _intents_path()
@@ -97,9 +94,7 @@ def _load_intents() -> list[dict]:
         return []
     return intents
 
-
 # ─── Matchers ────────────────────────────────────────────────────────
-
 
 def _phrase_matches(trigger: dict, text: str) -> bool:
     pat = trigger.get("pattern")
@@ -110,7 +105,6 @@ def _phrase_matches(trigger: dict, text: str) -> bool:
         return bool(re.search(pat, text, flags=flags))
     except re.error:
         return False
-
 
 def _event_pattern_matches(trigger: dict, events: list[dict]) -> bool:
     """Check if events satisfy the trigger's threshold within window."""
@@ -149,7 +143,6 @@ def _event_pattern_matches(trigger: dict, events: list[dict]) -> bool:
             return True
     return False
 
-
 def _intent_matches(intent: dict, text: str, events: list[dict]) -> bool:
     """An intent fires when ANY of its triggers matches."""
     triggers = intent.get("triggers") or []
@@ -163,13 +156,10 @@ def _intent_matches(intent: dict, text: str, events: list[dict]) -> bool:
                 return True
     return False
 
-
 def _intent_confidence(intent: dict) -> float:
     return float((intent.get("action") or {}).get("confidence", 0.5))
 
-
 # ─── CLI handlers ────────────────────────────────────────────────────
-
 
 def _gather_text(args) -> str:
     if args.text is not None:
@@ -177,7 +167,6 @@ def _gather_text(args) -> str:
     if not sys.stdin.isatty():
         return sys.stdin.read()
     return ""
-
 
 def _gather_events(args) -> list[dict]:
     if args.events_json:
@@ -188,7 +177,6 @@ def _gather_events(args) -> list[dict]:
         except json.JSONDecodeError:
             pass
     return []
-
 
 def _cmd_list(args) -> int:
     try:
@@ -216,7 +204,6 @@ def _cmd_list(args) -> int:
             print(f"  {s['id']:30s}  conf={s['confidence']:.2f}  "
                   f"triggers={s['trigger_kinds']}")
     return 0
-
 
 def _cmd_match(args) -> int:
     if _disabled():
@@ -259,7 +246,6 @@ def _cmd_match(args) -> int:
                 print(f"  {m['id']:30s}  conf={m['confidence']:.2f}  "
                       f"action={(m['action'] or {}).get('suggest', '')[:60]}")
     return 0
-
 
 def _cmd_suggest(args) -> int:
     if _disabled():
@@ -304,7 +290,6 @@ def _cmd_suggest(args) -> int:
                   f"(conf={_intent_confidence(best):.2f})")
             print(f"  → {act.get('suggest', '<no suggestion>')}")
     return 0
-
 
 def _cmd_scan(args) -> int:
     """Pull last N seconds of events from dxm, run match against them.
@@ -384,7 +369,6 @@ def _cmd_scan(args) -> int:
             print(f"  {m['id']:30s}  conf={m['confidence']:.2f}")
     return 0
 
-
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(
         prog="kaizen-intent",
@@ -425,7 +409,6 @@ def main(argv=None) -> int:
 
     args = p.parse_args(argv)
     return args.func(args)
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

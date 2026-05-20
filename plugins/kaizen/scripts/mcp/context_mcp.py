@@ -34,9 +34,7 @@ if str(_HERE) not in sys.path:
 
 import context as _ctx  # noqa: E402
 
-
 mcp = FastMCP("context")
-
 
 _RECS = {
     "green":  "OK to continue current work.",
@@ -44,7 +42,6 @@ _RECS = {
     "red":    "Near context limit — handoff or /compact now.",
     "unknown": "No CLAUDE_CONTEXT_TOKENS env, no stdin JSON, no active session JSONL.",
 }
-
 
 def context_status() -> dict:
     """Report Claude Code's current context-window state.
@@ -73,9 +70,7 @@ def context_status() -> dict:
         "recommendation": _RECS.get(zone, _RECS["unknown"]),
     }
 
-
 mcp.tool()(context_status)
-
 
 if __name__ == "__main__":
     mcp.run()

@@ -23,11 +23,9 @@ VALID_TYPES = frozenset({
     "STALE", "CONTRADICT", "ARCHIVE_CANDIDATE",
 })
 
-
 def default_log_path() -> Path:
     state = os.environ.get("XDG_STATE_HOME") or os.path.expanduser("~/.local/state")
     return Path(state) / "remember" / "evolution.log"
-
 
 def append_event(event_type: str, message: str,
                  log_path: Path | None = None) -> None:
@@ -49,7 +47,6 @@ def append_event(event_type: str, message: str,
     with p.open("a", encoding="utf-8") as f:
         f.write(f"{ts}  {event_type}  {message}\n")
 
-
 def main(argv: list[str] | None = None) -> int:
     args = argv if argv is not None else sys.argv[1:]
     if len(args) < 2:
@@ -66,7 +63,6 @@ def main(argv: list[str] | None = None) -> int:
         sys.stderr.write(f"evolution_log: {e}\n")
         return 1
     return 0
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

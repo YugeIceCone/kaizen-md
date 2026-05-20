@@ -31,7 +31,6 @@ except ImportError as e:
 
 mcp = FastMCP("kaizen-coverage")
 
-
 def _run(verb: str, *extra: str, want_json: bool = True) -> dict:
     cmd = ["python3", str(_TARGET), verb, *extra]
     if want_json:
@@ -44,13 +43,11 @@ def _run(verb: str, *extra: str, want_json: bool = True) -> dict:
     except json.JSONDecodeError:
         return {"output": r.stdout.strip()}
 
-
 @mcp.tool()
 async def coverage_gaps() -> dict:
     """Script stems under skills/workflow/scripts that have no matching
     test in tests/. Returns {uncovered: [...]} sorted by name."""
     return await asyncio.to_thread(_run, "gaps")
-
 
 @mcp.tool()
 async def coverage_summary() -> dict:
@@ -58,14 +55,12 @@ async def coverage_summary() -> dict:
     gap_count: int} — counts only, no individual file list."""
     return await asyncio.to_thread(_run, "summary")
 
-
 @mcp.tool()
 async def coverage_report() -> dict:
     """Full 1:1 mapping: per-source-script → [matching test files].
     Heavier than `gaps` — use when you want the full report.
     Returns {mapping: {script: [tests, ...]}, total_scripts, total_tests}."""
     return await asyncio.to_thread(_run, "report")
-
 
 if __name__ == "__main__":
     mcp.run()

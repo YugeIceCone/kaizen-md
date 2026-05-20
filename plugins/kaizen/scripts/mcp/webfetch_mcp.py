@@ -39,9 +39,7 @@ from fastmcp import FastMCP
 
 mcp = FastMCP("webfetch")
 
-
 # ─── Pure helpers ────────────────────────────────────────────────────
-
 
 def _jsonl_path() -> Path:
     env = os.environ.get("KAIZEN_WEBFETCH_CAPTURE_LOG")
@@ -49,7 +47,6 @@ def _jsonl_path() -> Path:
         return Path(env).expanduser()
     base = os.environ.get("KAIZEN_DIR") or (Path.home() / ".claude" / ".kaizen")
     return Path(base) / "web-fetches.jsonl"
-
 
 def _read_entries(limit: int | None = None) -> list[dict]:
     """Load fetches from the jsonl store (newest last). Empty when absent."""
@@ -73,14 +70,12 @@ def _read_entries(limit: int | None = None) -> list[dict]:
         return out[-limit:]
     return out
 
-
 def _parse_ts(ts: str) -> _dt.datetime | None:
     try:
         return _dt.datetime.strptime(ts, "%Y-%m-%dT%H:%M:%SZ").replace(
             tzinfo=_dt.timezone.utc)
     except (TypeError, ValueError):
         return None
-
 
 def _match_cache(entries: list[dict], url: str, prompt: str,
                   ttl_min: int) -> Optional[dict]:
@@ -94,11 +89,9 @@ def _match_cache(entries: list[dict], url: str, prompt: str,
             return e
     return None
 
-
 def _domain_of(url: str) -> str:
     m = re.match(r"^[a-z]+://([^/]+)", url, re.I)
     return m.group(1).lower() if m else ""
-
 
 def _policy_verdict(url: str) -> dict:
     """Read KAIZEN_WEBFETCH_DENY_DOMAINS (csv) + KAIZEN_WEBFETCH_RATE_LIMIT_PER_MIN."""
@@ -127,9 +120,7 @@ def _policy_verdict(url: str) -> dict:
                               f"(cap {rate_cap})"}
     return {"verdict": "allow", "reason": ""}
 
-
 # ─── MCP tools ───────────────────────────────────────────────────────
-
 
 def webfetch_cached(url: str, prompt: str, ttl_min: int = 60) -> dict:
     """Recall a past WebFetch result for (url, prompt) if within TTL.
@@ -147,7 +138,6 @@ def webfetch_cached(url: str, prompt: str, ttl_min: int = 60) -> dict:
         return {"hit": False}
     return {"hit": True, "body": e.get("response", ""),
             "ts": e.get("ts", ""), "session_id": e.get("session_id", "")}
-
 
 def webfetch_session_seen(url: str, prompt: str = "",
                            session_id: str = "") -> dict:
@@ -169,7 +159,6 @@ def webfetch_session_seen(url: str, prompt: str = "",
         return {"seen": True, "ts": e.get("ts", ""),
                 "url": e.get("url", ""), "prompt": e.get("prompt", "")}
     return {"seen": False}
-
 
 def webfetch_search(query: str, top_k: int = 5) -> dict:
     """Substring search across past fetches' (url, prompt, response).
@@ -196,7 +185,6 @@ def webfetch_search(query: str, top_k: int = 5) -> dict:
                 break
     return {"matches": out}
 
-
 def _snippet(text: str, needle: str, width: int) -> str:
     """Return text around the first occurrence of needle (case-insensitive)."""
     low = text.lower()
@@ -209,7 +197,6 @@ def _snippet(text: str, needle: str, width: int) -> str:
     post = "…" if end < len(text) else ""
     return f"{pre}{text[start:end]}{post}"
 
-
 def webfetch_policy(url: str) -> dict:
     """Return the policy verdict for ``url``: allow / deny / rate-limited.
 
@@ -219,9 +206,7 @@ def webfetch_policy(url: str) -> dict:
     """
     return _policy_verdict(url)
 
-
 # ─── Token-free storage (no-read) ────────────────────────────────────
-
 
 def _atomic_append_jsonl(path: Path, entry: dict) -> None:
     """Append one JSON line to ``path`` atomically (POSIX < PIPE_BUF safe)."""
@@ -229,7 +214,6 @@ def _atomic_append_jsonl(path: Path, entry: dict) -> None:
     line = json.dumps(entry, ensure_ascii=False) + "\n"
     with path.open("a", encoding="utf-8") as f:
         f.write(line)
-
 
 def webfetch_store(url: str, prompt: str = "",
                     max_bytes: int = 20000,
@@ -299,9 +283,7 @@ def webfetch_store(url: str, prompt: str = "",
         "ts": ts,
     }
 
-
 # ─── Semantic search (lazy embed + substring fallback) ───────────────
-
 
 def _cosine(a: bytes, b: bytes) -> float:
     """Cosine similarity for two float32-packed embeddings of equal dim.
@@ -318,7 +300,6 @@ def _cosine(a: bytes, b: bytes) -> float:
     if na == 0 or nb == 0:
         return 0.0
     return dot / (na * nb)
-
 
 def webfetch_semsearch(query: str, top_k: int = 5,
                        snippet_width: int = 240) -> dict:
@@ -382,14 +363,12 @@ def webfetch_semsearch(query: str, top_k: int = 5,
         ],
     }
 
-
 mcp.tool()(webfetch_cached)
 mcp.tool()(webfetch_session_seen)
 mcp.tool()(webfetch_search)
 mcp.tool()(webfetch_policy)
 mcp.tool()(webfetch_store)
 mcp.tool()(webfetch_semsearch)
-
 
 if __name__ == "__main__":
     mcp.run()

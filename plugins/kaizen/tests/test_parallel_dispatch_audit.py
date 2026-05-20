@@ -11,9 +11,8 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / "skills" / "workflow" / "scripts"))
-
-
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 class TestAudit(unittest.TestCase):
 
     def _skip_if_no_yaml(self):
@@ -103,7 +102,6 @@ class TestAudit(unittest.TestCase):
         errs = [f for f in findings if f["severity"] == "error"]
         self.assertEqual(errs, [])
 
-
 class TestMainCLI(unittest.TestCase):
 
     def _skip_if_no_yaml(self):
@@ -127,7 +125,6 @@ class TestMainCLI(unittest.TestCase):
             plan = Path(td) / "plan.yaml"
             plan.write_text("chunks:\n  - id: dup\n  - id: dup\n")
             self.assertEqual(pda.main([str(plan)]), 1)
-
 
 if __name__ == "__main__":
     unittest.main()

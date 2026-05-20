@@ -123,9 +123,7 @@ import _envelope  # noqa: E402
 
 _emit = _envelope.emitter("kaizen-search", tool_version="1.0.0")
 
-
 # ─── Nodes ───────────────────────────────────────────────────────────
-
 
 class EmbedQueryNode(_flow.AsyncNode):
     """Embed the query into a unit vector. One LLM/HTTP round-trip;
@@ -147,7 +145,6 @@ class EmbedQueryNode(_flow.AsyncNode):
     async def post_async(self, store: dict, prep_res: str, exec_res: Any) -> str:
         store["query_vec"] = exec_res
         return "default"
-
 
 class FanOutSearchNode(_flow.AsyncNode):
     """Run dense + BM25 retrieval in parallel via asyncio.gather.
@@ -242,7 +239,6 @@ class FanOutSearchNode(_flow.AsyncNode):
         store["_base_table"] = exec_res["base_table"]
         return "default"
 
-
 class FusionNode(_flow.AsyncNode):
     """Merge dense + bm25 pools via the configured fusion strategy."""
 
@@ -278,7 +274,6 @@ class FusionNode(_flow.AsyncNode):
         store["fused"] = exec_res
         return "rerank" if store.get("rerank") else "citation"
 
-
 class RerankNode(_flow.AsyncNode):
     """Cross-encoder rerank — opt-in via store["rerank"].
 
@@ -297,7 +292,6 @@ class RerankNode(_flow.AsyncNode):
     async def post_async(self, store: dict, prep: list, exec_res: list) -> str:
         store["reranked"] = exec_res
         return "citation"
-
 
 class CitationNode(_flow.AsyncNode):
     """Resolve fused/reranked (id, score) tuples to full result rows.
@@ -388,9 +382,7 @@ class CitationNode(_flow.AsyncNode):
         store["results"] = exec_res
         return None  # terminal
 
-
 # ─── Builder + sync wrapper ──────────────────────────────────────────
-
 
 def build_search_flow() -> _flow.AsyncFlow:
     """Construct the canonical search flow.
@@ -408,7 +400,6 @@ def build_search_flow() -> _flow.AsyncFlow:
     f.add_successor(fuse, "rerank", rerank)
     f.add_successor(rerank, "citation", cite)
     return f
-
 
 def search(root: Path, query: str, *, top_k: int = 10,
            language: str | None = None, alpha: float = 0.5,
@@ -436,9 +427,7 @@ def search(root: Path, query: str, *, top_k: int = 10,
     asyncio.run(f.run_async(store))
     return store.get("results", [])
 
-
 # ─── CLI ─────────────────────────────────────────────────────────────
-
 
 def main():
     import argparse
@@ -488,7 +477,6 @@ def main():
         print("--- timing (ms) ---", file=sys.stderr)
         for name, ms in store.get("_timing", {}).items():
             print(f"  {name:<22} {ms} ms", file=sys.stderr)
-
 
 if __name__ == "__main__":
     main()

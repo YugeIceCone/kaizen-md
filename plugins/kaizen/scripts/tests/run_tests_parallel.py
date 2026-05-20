@@ -33,7 +33,6 @@ import sys
 import time
 from pathlib import Path
 
-
 def discover_test_modules(tests_dir: Path,
                             pattern: str = "test_*.py") -> list[str]:
     """Return module names (``tests.<stem>``) for every matching file.
@@ -45,7 +44,6 @@ def discover_test_modules(tests_dir: Path,
         for p in sorted(tests_dir.glob(pattern))
         if p.is_file() and p.name != "__init__.py"
     ]
-
 
 def _resolve_concurrency(arg_value: int | None) -> int:
     """CLI > env > nproc (autodetection), floor=1.
@@ -67,7 +65,6 @@ def _resolve_concurrency(arg_value: int | None) -> int:
         except ValueError:
             pass
     return max(1, os.cpu_count() or 1)
-
 
 async def _run_one(mod: str, sem: asyncio.Semaphore, cwd: Path
                      ) -> tuple[str, int, str]:
@@ -109,7 +106,6 @@ async def _run_one(mod: str, sem: asyncio.Semaphore, cwd: Path
             return mod, rc2, combined + "\n[pytest fallback]\n" + combined2
         return mod, proc.returncode, combined
 
-
 async def run_parallel(test_modules: list[str], cwd: Path,
                          concurrency: int) -> tuple[int, list[tuple[str, int, str]]]:
     """Run every module in bounded-parallel async batch.
@@ -118,7 +114,6 @@ async def run_parallel(test_modules: list[str], cwd: Path,
     results = await asyncio.gather(*(_run_one(m, sem, cwd) for m in test_modules))
     failed = sum(1 for _, rc, _ in results if rc != 0)
     return failed, results
-
 
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(
@@ -172,7 +167,6 @@ def main(argv: list[str] | None = None) -> int:
                 print(tail, file=sys.stderr)
                 print("---", file=sys.stderr)
     return 1 if failed_count else 0
-
 
 if __name__ == "__main__":
     sys.exit(main())

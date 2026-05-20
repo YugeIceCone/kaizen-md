@@ -42,10 +42,8 @@ _TASKCREATE_RESULT_RE = re.compile(
     re.MULTILINE,
 )
 
-
 # Tool names whose `file_path` input we want to harvest into files_touched
 _FILE_TOOLS = frozenset({"Read", "Edit", "Write", "NotebookEdit"})
-
 
 def cwd_to_slug(cwd: Path) -> str:
     """Translate an absolute cwd to the Claude Code project-slug shape.
@@ -54,7 +52,6 @@ def cwd_to_slug(cwd: Path) -> str:
     Round-trip cousin of how CC creates `~/.claude/projects/<slug>/`."""
     s = str(cwd.resolve())
     return s.replace("/", "-")
-
 
 def discover_session_jsonl(jsonl_dir: Path) -> Optional[Path]:
     """Return the most-recently-modified *.jsonl in `jsonl_dir`, or None.
@@ -73,7 +70,6 @@ def discover_session_jsonl(jsonl_dir: Path) -> Optional[Path]:
         return None
     return max(candidates, key=lambda p: p.stat().st_mtime)
 
-
 def discover_active_session_id(cwd: Optional[Path] = None) -> Optional[str]:
     """One-call helper: cwd → ~/.claude/projects/<slug>/ → latest JSONL → stem.
 
@@ -88,7 +84,6 @@ def discover_active_session_id(cwd: Optional[Path] = None) -> Optional[str]:
     proj = Path.home() / ".claude" / "projects" / slug
     jsonl = discover_session_jsonl(proj)
     return jsonl.stem if jsonl else None
-
 
 def _iter_records(jsonl_path: Path):
     """Yield parsed JSON records from a JSONL file, skipping malformed
@@ -107,7 +102,6 @@ def _iter_records(jsonl_path: Path):
     except OSError:
         return
 
-
 def _extract_tool_use_blocks(record: dict):
     """For an assistant record, yield each tool_use content block dict."""
     if record.get("type") != "assistant":
@@ -122,7 +116,6 @@ def _extract_tool_use_blocks(record: dict):
         if isinstance(blk, dict) and blk.get("type") == "tool_use":
             yield blk
 
-
 def _extract_tool_result_blocks(record: dict):
     """For a user record, yield each tool_result content block dict."""
     if record.get("type") != "user":
@@ -136,7 +129,6 @@ def _extract_tool_result_blocks(record: dict):
     for blk in content:
         if isinstance(blk, dict) and blk.get("type") == "tool_result":
             yield blk
-
 
 def mine_session(jsonl_path: Path) -> dict[str, Any]:
     """Walk a session JSONL once and extract the mining payload.
@@ -258,7 +250,6 @@ def mine_session(jsonl_path: Path) -> dict[str, Any]:
         "skills_used":        skills_used,
         "tools_used_counts":  dict(tools_used),
     }
-
 
 __all__ = ["cwd_to_slug", "discover_session_jsonl",
             "discover_active_session_id", "mine_session"]

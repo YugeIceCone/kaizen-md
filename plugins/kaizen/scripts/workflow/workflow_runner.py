@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import _bootstrap  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 """kaizen workflow_runner — load + validate + topo-order schema-driven workflows.
 
 OpenSpec-inspired declarative workflow schemas. A schema is a yaml file
@@ -57,14 +59,11 @@ import sys
 from collections import deque
 from pathlib import Path
 
-
 SCRIPT_DIR = Path(__file__).resolve().parent
 PLUGIN_ROOT = SCRIPT_DIR.parent.parent  # scripts/workflow → plugin root
 
 # v1.22.0+: pull path defaults from the kaizen plugin's _paths SSOT.
 # v1.30.0+: renamed from skills/kaizen/scripts → skills/workflow/scripts.
-_KAIZEN_SCRIPTS = PLUGIN_ROOT / "skills" / "workflow" / "scripts"
-sys.path.insert(0, str(_KAIZEN_SCRIPTS))
 import _paths as _p  # noqa: E402
 
 BUILTIN_DIR = Path(
@@ -73,14 +72,12 @@ BUILTIN_DIR = Path(
 USER_DIR = _p.USER_SCHEMAS  # ~/.claude/.kaizen/schemas/ (was ~/.claude/kaizen-schemas/)
 PROJECT_DIR = _p.project_schemas_dir()  # <repo>/.kaizen/workflow/schemas/ (was .workflow/schemas/)
 
-
 # ─── Parser ───────────────────────────────────────────────────────────
 #
 # Stdlib-only YAML subset parser. Covers exactly what our schemas use:
 # top-level scalars, nested mappings (2-space indent), a list of mappings
 # under `artifacts:`, inline lists `[a, b]`, and `|` multi-line scalars.
 # Not a general YAML parser — strict layout match required.
-
 
 def _strip_comment(line: str) -> str:
     """Remove # comment from end of line, respecting quotes."""
@@ -101,13 +98,11 @@ def _strip_comment(line: str) -> str:
         out.append(ch)
     return "".join(out).rstrip()
 
-
 def _unquote(v: str) -> str:
     v = v.strip()
     if len(v) >= 2 and v[0] == v[-1] and v[0] in ('"', "'"):
         return v[1:-1]
     return v
-
 
 def _parse_inline_list(s: str) -> list[str]:
     """Parse `[a, b, "c"]` → ['a', 'b', 'c']. Brackets stripped already."""
@@ -115,7 +110,6 @@ def _parse_inline_list(s: str) -> list[str]:
     if not s:
         return []
     return [_unquote(x.strip()) for x in s.split(",") if x.strip()]
-
 
 def _scalar(value: str) -> object:
     v = value.strip()
@@ -128,7 +122,6 @@ def _scalar(value: str) -> object:
     if v.startswith("[") and v.endswith("]"):
         return _parse_inline_list(v[1:-1])
     return _unquote(v)
-
 
 def parse_schema_yaml(text: str) -> dict:
     """Parse our schema subset. Returns dict; raises ValueError on layout mismatch."""
@@ -278,16 +271,13 @@ def parse_schema_yaml(text: str) -> dict:
         i += 1
     return out
 
-
 # ─── Resolution ───────────────────────────────────────────────────────
-
 
 # v1.30.0+: schemas can ship as .yaml, .yml, or .json — extension dispatch.
 # JSON is preferred for LLM-generated schemas (LLMs emit valid JSON more
 # reliably than indent-sensitive YAML); YAML is preferred for human-authored
 # (comments + multiline). Both parse to the same in-memory dict shape.
 _SCHEMA_EXTS = (".yaml", ".yml", ".json")
-
 
 def resolve_schema(name: str) -> Path | None:
     for base in (PROJECT_DIR, USER_DIR, BUILTIN_DIR):
@@ -297,7 +287,6 @@ def resolve_schema(name: str) -> Path | None:
                 return candidate
     return None
 
-
 def _parse_schema_file(path: Path) -> dict:
     """Dispatch by extension. JSON: stdlib json.loads. YAML: our subset parser."""
     text = path.read_text()
@@ -305,7 +294,6 @@ def _parse_schema_file(path: Path) -> dict:
         import json as _json  # local — keeps top-of-file imports lean
         return _json.loads(text)
     return parse_schema_yaml(text)
-
 
 def load_schema(name: str) -> dict:
     """Load + validate. Returns a dict (back-compat); raises on schema bugs.
@@ -327,9 +315,7 @@ def load_schema(name: str) -> dict:
         sys.exit(f"schema {name!r} failed validation:\n  • {msg}")
     return data
 
-
 # ─── Topo-sort (Kahn) + validation ────────────────────────────────────
-
 
 def topo_order(artifacts: list[dict]) -> list[str]:
     """Return artifact ids in execution order. Raises on cycle/unknown ref."""
@@ -357,7 +343,6 @@ def topo_order(artifacts: list[dict]) -> list[str]:
         cycle_nodes = [aid for aid, d in indeg.items() if d > 0]
         raise ValueError(f"cycle detected among: {cycle_nodes}")
     return out
-
 
 def validate_schema(schema: dict) -> list[str]:
     errs: list[str] = []
@@ -389,9 +374,7 @@ def validate_schema(schema: dict) -> list[str]:
             errs.append(f"DAG: {e}")
     return errs
 
-
 # ─── List ──────────────────────────────────────────────────────────────
-
 
 def list_schemas() -> list[tuple[str, Path]]:
     """Return (name, path) for every schema found across the 3 dirs. First hit wins on name conflicts.
@@ -412,12 +395,9 @@ def list_schemas() -> list[tuple[str, Path]]:
                     break
     return list(seen.items())
 
-
 # ─── CLI ───────────────────────────────────────────────────────────────
 
-
 # ─── State machine (Phase 3 of /kaizen:workflow automation) ──────────
-
 
 def _state_path() -> Path:
     """Resolve <repo>/.kaizen/workflow/state.json (env override honored)."""
@@ -430,7 +410,6 @@ def _state_path() -> Path:
             return cur / ".kaizen" / "workflow" / "state.json"
         cur = cur.parent
     return Path.cwd() / ".kaizen" / "workflow" / "state.json"
-
 
 def _load_state() -> dict | None:
     p = _state_path()
@@ -448,17 +427,14 @@ def _load_state() -> dict | None:
         return None
     return state
 
-
 def _save_state(state: dict) -> None:
     p = _state_path()
     p.parent.mkdir(parents=True, exist_ok=True)
     p.write_text(json.dumps(state, indent=2) + "\n", encoding="utf-8")
 
-
 def _now_iso() -> str:
     import datetime as _dt
     return _dt.datetime.now(_dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-
 
 def _emit_trace(evt: str, data: dict) -> None:
     """Best-effort kaizen trace emit. Never raises (trace is observability,
@@ -475,7 +451,6 @@ def _emit_trace(evt: str, data: dict) -> None:
         })
     except Exception:
         pass
-
 
 def cmd_start(name: str, force: bool = False) -> int:
     """Initialize state.json for a schema. Refuses to clobber unless --force."""
@@ -518,7 +493,6 @@ def cmd_start(name: str, force: bool = False) -> int:
     print(f"workflow_runner: started {name!r} @ stage {state['current_stage']!r}")
     return 0
 
-
 def cmd_current(emit_json: bool = False) -> int:
     state = _load_state()
     if state is None:
@@ -542,7 +516,6 @@ def cmd_current(emit_json: bool = False) -> int:
     print(f"workflow_runner: current stage {cur_id!r} missing from schema",
           file=sys.stderr)
     return 1
-
 
 def cmd_advance() -> int:
     state = _load_state()
@@ -580,7 +553,6 @@ def cmd_advance() -> int:
         print(f"workflow_runner: {cur!r} done → schema complete")
     return 0
 
-
 def cmd_state(emit_json: bool = False) -> int:
     state = _load_state()
     if state is None:
@@ -595,7 +567,6 @@ def cmd_state(emit_json: bool = False) -> int:
         print(f"remaining:     {state.get('remaining', [])}")
         print(f"done:          {state.get('done', False)}")
     return 0
-
 
 def cmd_state_reset(yes: bool = False) -> int:
     sp = _state_path()
@@ -617,12 +588,10 @@ def cmd_state_reset(yes: bool = False) -> int:
     print(f"workflow_runner: deleted {sp}")
     return 0
 
-
 def _need(arg_idx: int, what: str) -> str:
     if len(sys.argv) <= arg_idx:
         sys.exit(f"usage: {sys.argv[0]} {sys.argv[1] if len(sys.argv) > 1 else '<cmd>'} <{what}>")
     return sys.argv[arg_idx]
-
 
 def main():
     cmd = sys.argv[1] if len(sys.argv) > 1 else "list"
@@ -719,7 +688,6 @@ def main():
             "start <name> [--force] | current [--json] | advance | "
             "state [--json] | state-reset [--yes]"
         )
-
 
 if __name__ == "__main__":
     main()

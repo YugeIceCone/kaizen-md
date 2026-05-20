@@ -51,7 +51,6 @@ try:
 except ImportError:
     _HAS_JSONSCHEMA = False
 
-
 def _local_registry() -> "Registry":
     """Build a referencing Registry that resolves the audit schemas locally,
     so the `$ref: audit-finding.schema.json` in audit-report doesn't trigger
@@ -64,7 +63,6 @@ def _local_registry() -> "Registry":
         # Also register the bare filename so relative $refs resolve.
         reg = reg.with_resource(sp.name, resource)
     return reg
-
 
 def _validate(instance, schema_path: Path, source: str) -> None:
     if not _HAS_JSONSCHEMA:
@@ -80,11 +78,9 @@ def _validate(instance, schema_path: Path, source: str) -> None:
         )
         sys.exit(2)
 
-
 def _run_id(now: _dt.datetime | None = None) -> str:
     now = now or _dt.datetime.now(_dt.timezone.utc)
     return now.strftime("audit-%Y%m%d-%H%M%S")
-
 
 def _verdict(findings: list[dict]) -> str:
     sevs = {f["severity"] for f in findings}
@@ -93,7 +89,6 @@ def _verdict(findings: list[dict]) -> str:
     if "P1" in sevs:
         return "leaks"
     return "green"
-
 
 def _counts(findings: list[dict]) -> dict[str, int]:
     out = {"p0": 0, "p1": 0, "p2": 0, "p3": 0,
@@ -106,14 +101,12 @@ def _counts(findings: list[dict]) -> dict[str, int]:
             out[disp] += 1
     return out
 
-
 def _recommended(verdict: str, counts: dict[str, int]) -> str:
     if verdict == "violated" or verdict == "leaks":
         return "plan-execute"
     if counts["p2"] + counts["p3"] == 0:
         return "ship-as-is"
     return "ship-as-is"  # no P0/P1; minor smells only
-
 
 def aggregate(
     findings: list[dict],
@@ -148,7 +141,6 @@ def aggregate(
     _validate(report, _REPORT_SCHEMA, source="output report")
     return report
 
-
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(prog="audit-reporter")
     sub = parser.add_subparsers(dest="cmd", required=True)
@@ -176,7 +168,6 @@ def main(argv: list[str]) -> int:
     else:
         print(out_text)
     return 0
-
 
 if __name__ == "__main__":
     sys.exit(main(sys.argv[1:]))

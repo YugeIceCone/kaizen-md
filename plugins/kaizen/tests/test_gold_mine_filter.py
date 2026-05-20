@@ -10,10 +10,9 @@ import unittest
 from pathlib import Path
 
 _KZ = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(_KZ / "skills" / "workflow" / "scripts"))
-
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 import gold_mine  # noqa: E402
-
 
 class TestFilterEvents(unittest.TestCase):
     """`_filter_events` keeps:
@@ -68,7 +67,6 @@ class TestFilterEvents(unittest.TestCase):
         self.assertEqual(len(out), 1)
         self.assertEqual(out[0]["evt_type"], "context.warn.red")
 
-
 class TestNormalize(unittest.TestCase):
     """`_normalize` strips volatile substrings to produce a stable template.
     Strips:
@@ -101,7 +99,6 @@ class TestNormalize(unittest.TestCase):
         n1 = gold_mine._normalize(s)
         n2 = gold_mine._normalize(n1)
         self.assertEqual(n1, n2)
-
 
 class TestDedup(unittest.TestCase):
     """`_dedup_templates` keeps:
@@ -138,7 +135,6 @@ class TestDedup(unittest.TestCase):
         self.assertEqual(len(out), 1)
         self.assertEqual(out[0][1], 3)
 
-
 class TestEventToTemplate(unittest.TestCase):
     """`event_to_template(evt)` returns the normalized template string used
     for dedup — combines evt_type + payload signal."""
@@ -150,7 +146,6 @@ class TestEventToTemplate(unittest.TestCase):
               "payload": {"pct": 92, "ts": "2026-05-17T15:00:00Z"}}
         self.assertEqual(gold_mine.event_to_template(e1),
                           gold_mine.event_to_template(e2))
-
 
 if __name__ == "__main__":
     unittest.main()

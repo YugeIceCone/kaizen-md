@@ -15,11 +15,11 @@ import unittest
 from pathlib import Path
 
 PLUGIN_ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(PLUGIN_ROOT / "skills" / "workflow" / "scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 sys.path.insert(0, str(PLUGIN_ROOT / "scripts" / "mcp"))
 
 import roadmap_status as rs  # noqa: E402
-
 
 SAMPLE_HANDOFF = """# Handoff
 
@@ -49,14 +49,12 @@ Not a phase table.
 | Z | Speculative item | ⬜ pending |
 """
 
-
 def _write_handoff(tmp: Path, body: str = SAMPLE_HANDOFF) -> Path:
     plans = tmp / "plans"
     plans.mkdir(exist_ok=True)
     p = plans / "2026-05-13-handoff.md"
     p.write_text(body)
     return p
-
 
 class _CwdMixin:
     def setUp(self):
@@ -73,9 +71,7 @@ class _CwdMixin:
             os.environ["KAIZEN_ROADMAP_HANDOFF"] = self._saved_env
         self._tmpcm.cleanup()
 
-
 # ─── Handoff resolution ──────────────────────────────────────────────
-
 
 class TestResolveHandoff(_CwdMixin, unittest.TestCase):
     def test_returns_none_when_no_plans_dir(self):
@@ -96,9 +92,7 @@ class TestResolveHandoff(_CwdMixin, unittest.TestCase):
         finally:
             del os.environ["KAIZEN_ROADMAP_HANDOFF"]
 
-
 # ─── Parser ───────────────────────────────────────────────────────────
-
 
 class TestParsePhases(unittest.TestCase):
     def test_finds_all_phases_with_tables(self):
@@ -136,9 +130,7 @@ class TestParsePhases(unittest.TestCase):
         item_ids = [it.item_id for it in p2.items]
         self.assertNotIn("Z", item_ids)
 
-
 # ─── Rendering ────────────────────────────────────────────────────────
-
 
 class TestRender(unittest.TestCase):
     def test_dashboard_contains_phase_lines(self):
@@ -194,9 +186,7 @@ class TestRender(unittest.TestCase):
         )
         self.assertIsNone(rs.find_next_pending(phases))
 
-
 # ─── CLI ──────────────────────────────────────────────────────────────
-
 
 class TestCli(_CwdMixin, unittest.TestCase):
     HELPER = PLUGIN_ROOT / "scripts" / "util" / "roadmap_status.py"
@@ -246,7 +236,6 @@ class TestCli(_CwdMixin, unittest.TestCase):
         self.assertIn("Big feature", result.stdout)
         self.assertIn("Another", result.stdout)
 
-
 class TestMcp(_CwdMixin, unittest.TestCase):
     def _import(self):
         # Need to force-reload roadmap_status too because it reads cwd
@@ -281,7 +270,6 @@ class TestMcp(_CwdMixin, unittest.TestCase):
         out = asyncio.run(m.roadmap_progress())
         self.assertFalse(out["present"])
 
-
 class TestRegistration(unittest.TestCase):
     def test_mcp_json_lists_roadmap_server(self):
         data = json.loads((PLUGIN_ROOT / ".mcp.json").read_text())
@@ -292,7 +280,6 @@ class TestRegistration(unittest.TestCase):
         import gateway
         module_names = [m for _, m in gateway.SUBSERVERS]
         self.assertIn("roadmap_mcp", module_names)
-
 
 if __name__ == "__main__":
     unittest.main()

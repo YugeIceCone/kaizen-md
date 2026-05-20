@@ -44,7 +44,6 @@ def run_grep(pattern: str, glob: str, root: Path | str) -> list[dict]:
                 })
     return findings
 
-
 # --- ast-rule ---------------------------------------------------------------
 
 _AST_RULES: dict[str, str] = {
@@ -52,7 +51,6 @@ _AST_RULES: dict[str, str] = {
     "class-camelcase":     "Class names must be CamelCase",
     "subprocess-rc-check": "subprocess.run / call rc must be assigned or check=True",
 }
-
 
 def _ast_rule_class_camelcase(tree: ast.AST, rel_path: str) -> list[dict]:
     rx = re.compile(r"^_?[A-Z][A-Za-z0-9]*$")
@@ -63,7 +61,6 @@ def _ast_rule_class_camelcase(tree: ast.AST, rel_path: str) -> list[dict]:
                         "rule": "class-camelcase", "name": node.name})
     return out
 
-
 def _is_subprocess_call(call: ast.Call) -> bool:
     f = call.func
     if isinstance(f, ast.Attribute) and isinstance(f.value, ast.Name):
@@ -72,13 +69,11 @@ def _is_subprocess_call(call: ast.Call) -> bool:
         }
     return False
 
-
 def _has_check_true(call: ast.Call) -> bool:
     for k in call.keywords:
         if k.arg == "check" and isinstance(k.value, ast.Constant) and k.value.value is True:
             return True
     return False
-
 
 def _ast_rule_subprocess_rc(tree: ast.AST, rel_path: str) -> list[dict]:
     out: list[dict] = []
@@ -91,12 +86,10 @@ def _ast_rule_subprocess_rc(tree: ast.AST, rel_path: str) -> list[dict]:
                             "call": call.func.attr})
     return out
 
-
 _AST_RULE_IMPLS = {
     "class-camelcase":     _ast_rule_class_camelcase,
     "subprocess-rc-check": _ast_rule_subprocess_rc,
 }
-
 
 def run_ast_rule(rule: str, glob: str, root: Path | str) -> list[dict]:
     """Run a named AST rule across `root/<glob>`."""
@@ -118,7 +111,6 @@ def run_ast_rule(rule: str, glob: str, root: Path | str) -> list[dict]:
             continue
         findings.extend(impl(tree, _relpath(path, root)))
     return findings
-
 
 # --- file-coverage ----------------------------------------------------------
 
@@ -146,7 +138,6 @@ def run_file_coverage(expected_glob: str, actual_glob: str,
             })
     return findings
 
-
 # --- glob helpers -----------------------------------------------------------
 
 def _iter_glob(root: Path, glob: str):
@@ -156,7 +147,6 @@ def _iter_glob(root: Path, glob: str):
     for p in root.glob(glob):
         if p.is_file():
             yield p
-
 
 def _relpath(path: Path, root: Path) -> str:
     try:

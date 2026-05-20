@@ -29,13 +29,11 @@ import os
 import sys
 from pathlib import Path
 
-
 def _kaizen_dir() -> Path:
     env = os.environ.get("KAIZEN_DIR")
     if env:
         return Path(os.path.expandvars(env)).expanduser()
     return Path.home() / ".claude" / ".kaizen"
-
 
 # Category tagging — folder-prefix → human label. First match wins.
 _CATEGORIES: list[tuple[str, str]] = [
@@ -49,7 +47,6 @@ _CATEGORIES: list[tuple[str, str]] = [
     ("token-bloat",   "audit"),
 ]
 
-
 def _classify(rel: str) -> str:
     for prefix, label in _CATEGORIES:
         if rel.startswith(prefix) or rel.startswith("./" + prefix):
@@ -57,7 +54,6 @@ def _classify(rel: str) -> str:
         if prefix in rel:
             return label
     return "other"
-
 
 def _walk_json_files(root: Path) -> list[Path]:
     if not root.is_dir():
@@ -71,7 +67,6 @@ def _walk_json_files(root: Path) -> list[Path]:
             if name.endswith(".json"):
                 out.append(Path(dirpath) / name)
     return sorted(out)
-
 
 def _file_record(p: Path, root: Path) -> dict:
     try:
@@ -87,13 +82,11 @@ def _file_record(p: Path, root: Path) -> dict:
         "category": _classify(rel),
     }
 
-
 def _safe_load(p: Path):
     try:
         return json.loads(p.read_text(encoding="utf-8"))
     except (json.JSONDecodeError, OSError, ValueError):
         return None
-
 
 def cmd_list(args) -> int:
     root = _kaizen_dir()
@@ -115,7 +108,6 @@ def cmd_list(args) -> int:
                 print(f"    {r['size']:>8}  {r['relpath']}")
     return 0
 
-
 def cmd_show(args) -> int:
     root = _kaizen_dir()
     matches = [p for p in _walk_json_files(root) if p.name == args.name]
@@ -130,7 +122,6 @@ def cmd_show(args) -> int:
         return 1
     print(json.dumps(data, indent=2))
     return 0
-
 
 def cmd_dump(args) -> int:
     root = _kaizen_dir()
@@ -152,11 +143,9 @@ def cmd_dump(args) -> int:
         print(json.dumps(aggregate, indent=2))
     return 0
 
-
 def cmd_path(args) -> int:
     print(_kaizen_dir())
     return 0
-
 
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(
@@ -183,7 +172,6 @@ def main(argv=None) -> int:
 
     args = p.parse_args(argv)
     return args.func(args)
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

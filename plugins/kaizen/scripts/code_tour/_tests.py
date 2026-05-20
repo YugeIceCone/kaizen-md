@@ -26,7 +26,6 @@ try:
 except ImportError:
     _HAS_JSONSCHEMA = False
 
-
 class TestPersonas(unittest.TestCase):
     def setUp(self):
         self.path = DOMAIN / "personas.yaml"
@@ -67,7 +66,6 @@ class TestPersonas(unittest.TestCase):
         schema = json.loads(self.schema_path.read_text())
         validate(data, schema)
 
-
 class TestDepths(unittest.TestCase):
     def setUp(self):
         self.path = DOMAIN / "depths.yaml"
@@ -102,7 +100,6 @@ class TestDepths(unittest.TestCase):
         schema = json.loads(self.schema_path.read_text())
         validate(data, schema)
 
-
 class TestStepTypes(unittest.TestCase):
     def setUp(self):
         self.path = DOMAIN / "step-types.yaml"
@@ -120,7 +117,6 @@ class TestStepTypes(unittest.TestCase):
         content = next(s for s in data["step_types"] if s["id"] == "content")
         self.assertEqual(content.get("max_per_tour"), 2,
                          "content steps capped at 2 per tour (upstream rule)")
-
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

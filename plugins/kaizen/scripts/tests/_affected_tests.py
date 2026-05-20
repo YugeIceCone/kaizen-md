@@ -20,7 +20,6 @@ import os
 import sys
 from pathlib import Path
 
-
 def _resolve_plugin_root() -> Path:
     """`KAIZEN_AFFECTED_PLUGIN_ROOT` overrides (used by tests); otherwise
     walk up from this script — it lives at <plugin>/scripts/tests/."""
@@ -28,7 +27,6 @@ def _resolve_plugin_root() -> Path:
     if env:
         return Path(env)
     return Path(__file__).resolve().parents[2]
-
 
 def derive_modules(staged_files: list[str], repo_root: Path,
                      plugin_root: Path) -> tuple[list[str], str]:
@@ -74,13 +72,11 @@ def derive_modules(staged_files: list[str], repo_root: Path,
         return [], "no test impact derived"
     return sorted(modules), f"direct map ({len(modules)} module(s))"
 
-
 def _read_staged() -> list[str]:
     """One path per line on stdin; CLI args also accepted as a convenience."""
     if len(sys.argv) > 1:
         return [a for a in sys.argv[1:] if a.strip()]
     return [line.strip() for line in sys.stdin if line.strip()]
-
 
 def main() -> int:
     staged = _read_staged()
@@ -97,7 +93,6 @@ def main() -> int:
     # the parseable stdout.
     sys.stderr.write(f"[_affected_tests] {reason}\n")
     return 0
-
 
 if __name__ == "__main__":
     sys.exit(main())

@@ -47,14 +47,11 @@ _KIND_FLAGS: list[tuple[str, str, list[str]]] = [
     ("guide",      "note",       ["guide"]),
 ]
 
-
 def _now_iso() -> str:
     return _dt.datetime.now(_dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
-
 def _today() -> str:
     return _dt.date.today().isoformat()
-
 
 def _git(repo: Path, *args: str) -> str | None:
     """Run a `git` command in `repo`; return stripped stdout or None on error."""
@@ -68,7 +65,6 @@ def _git(repo: Path, *args: str) -> str | None:
         return r.stdout.strip() or None
     except (subprocess.SubprocessError, OSError):
         return None
-
 
 def _derive_session_meta(repo: Path, project: str) -> dict:
     """Best-effort session_meta. Never raises — missing pieces left out.
@@ -133,7 +129,6 @@ def _derive_session_meta(repo: Path, project: str) -> dict:
 
     return meta
 
-
 def _build_item(seq: int, kind: str, title: str,
                  extra_tags: list[str]) -> dict:
     today = _today()
@@ -167,7 +162,6 @@ def _build_item(seq: int, kind: str, title: str,
         item["agent"] = None
     return item
 
-
 def _parse_task_subject(raw: str) -> tuple[str, str | None]:
     """`subject@agent-name` → (subject, agent). Bare subject → (subject, None).
     Only splits on the LAST `@` to allow `@` characters inside subjects."""
@@ -177,7 +171,6 @@ def _parse_task_subject(raw: str) -> tuple[str, str | None]:
     if not subj or not agent:
         return raw, None
     return subj, agent
-
 
 def _parse_dispatch_spec(raw: str) -> dict:
     """`mode:concurrency` → {mode, concurrency}. Bare `mode` → {mode}.
@@ -190,7 +183,6 @@ def _parse_dispatch_spec(raw: str) -> dict:
     if len(parts) == 2 and parts[1].strip():
         out["concurrency"] = int(parts[1].strip())
     return out
-
 
 def _auto_link(items: list[dict]) -> None:
     """First item is root; subsequent items get parents=[root.id] and
@@ -207,7 +199,6 @@ def _auto_link(items: list[dict]) -> None:
     for cid in child_ids:
         if cid not in root["links"]["children"]:
             root["links"]["children"].append(cid)
-
 
 def _collect_items_from_args(args: argparse.Namespace) -> tuple[list[dict], str | None]:
     """Walk argv-order across all --<kind> flag groups so item ids match
@@ -300,7 +291,6 @@ def _collect_items_from_args(args: argparse.Namespace) -> tuple[list[dict], str 
 
     return items, None
 
-
 def _cmd_create(args: argparse.Namespace) -> int:
     items, err = _collect_items_from_args(args)
     if err:
@@ -357,7 +347,6 @@ def _cmd_create(args: argparse.Namespace) -> int:
         sys.stdout.write(body + "\n")
     return 0
 
-
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(
         prog="kaizen-blueprint",
@@ -395,7 +384,6 @@ def main(argv: list[str] | None = None) -> int:
         p.print_help()
         return 2
     return args.fn(args)
-
 
 if __name__ == "__main__":
     sys.exit(main())

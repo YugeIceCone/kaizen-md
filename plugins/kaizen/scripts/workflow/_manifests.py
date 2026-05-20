@@ -33,9 +33,7 @@ import re
 from pathlib import Path
 from typing import Iterable
 
-
 # ─── Data ────────────────────────────────────────────────────────────
-
 
 @dataclasses.dataclass
 class Dep:
@@ -43,16 +41,13 @@ class Dep:
     version: str = ""
     kind: str = ""  # "dev", "build", "optional", etc.
 
-
 @dataclasses.dataclass
 class Manifest:
     language: str
     path: str
     deps: list[Dep]
 
-
 # ─── TOML loading (stdlib) ───────────────────────────────────────────
-
 
 def _load_toml(path: Path) -> dict | None:
     """Stdlib tomllib (Python 3.11+). Returns None on parse failure
@@ -67,7 +62,6 @@ def _load_toml(path: Path) -> dict | None:
             return tomllib.load(f)
     except (OSError, tomllib.TOMLDecodeError):
         return None
-
 
 def _toml_fallback_parse(path: Path) -> dict:
     """Bare-bones fallback when tomllib is unavailable (Python <3.11).
@@ -93,9 +87,7 @@ def _toml_fallback_parse(path: Path) -> dict:
             current[k.strip()] = v.strip().strip('"').strip("'")
     return out
 
-
 # ─── Per-language adapters ───────────────────────────────────────────
-
 
 class CargoAdapter:
     LANGUAGE = "rust"
@@ -156,7 +148,6 @@ class CargoAdapter:
         ]
         return _search_files(source_files, patterns)
 
-
 class PackageJsonAdapter:
     LANGUAGE = "javascript"
     MANIFEST = "package.json"
@@ -195,7 +186,6 @@ class PackageJsonAdapter:
             re.compile(rf"""import\s+['"]{esc}(?:/|['"])"""),
         ]
         return _search_files(source_files, patterns)
-
 
 class PyprojectAdapter:
     LANGUAGE = "python"
@@ -251,7 +241,6 @@ class PyprojectAdapter:
         ]
         return _search_files(source_files, patterns)
 
-
 class GoModAdapter:
     LANGUAGE = "go"
     MANIFEST = "go.mod"
@@ -289,7 +278,6 @@ class GoModAdapter:
         patterns = [re.compile(rf'"\s*{esc}["/]')]
         return _search_files(source_files, patterns)
 
-
 ADAPTERS: list = [
     CargoAdapter(),
     PackageJsonAdapter(),
@@ -297,9 +285,7 @@ ADAPTERS: list = [
     GoModAdapter(),
 ]
 
-
 # ─── Helpers ─────────────────────────────────────────────────────────
-
 
 def _parse_pep508(spec: str) -> tuple[str, str]:
     """Parse 'name[extra]>=1.0' → ('name', '>=1.0'). Best-effort."""
@@ -317,7 +303,6 @@ def _parse_pep508(spec: str) -> tuple[str, str]:
             return name.strip(), op + ver.strip()
     return s.strip(), ""
 
-
 def _search_files(files: Iterable[Path], patterns: list[re.Pattern]) -> bool:
     for fp in files:
         try:
@@ -329,14 +314,12 @@ def _search_files(files: Iterable[Path], patterns: list[re.Pattern]) -> bool:
                 return True
     return False
 
-
 SOURCE_EXTS = {
     "rust": (".rs",),
     "python": (".py",),
     "javascript": (".js", ".jsx", ".mjs", ".cjs", ".ts", ".tsx"),
     "go": (".go",),
 }
-
 
 def _source_files_for(language: str, root: Path) -> list[Path]:
     exts = SOURCE_EXTS.get(language, ())
@@ -350,9 +333,7 @@ def _source_files_for(language: str, root: Path) -> list[Path]:
             out.append(p)
     return out
 
-
 # ─── Orchestrator ────────────────────────────────────────────────────
-
 
 def audit(root: Path) -> dict:
     """Audit every manifest under `root`. Returns
@@ -373,7 +354,6 @@ def audit(root: Path) -> dict:
         "manifests": manifests,
         "total_deps": total,
     }
-
 
 def unused(root: Path) -> dict:
     """Detect heuristically-unused deps across all manifests. Returns
@@ -404,14 +384,12 @@ def unused(root: Path) -> dict:
                     })
     return {"root": str(root), "unused": findings, "count": len(findings)}
 
-
 def languages_present(root: Path) -> list[str]:
     found = set()
     for adapter in ADAPTERS:
         if adapter.detect(root):
             found.add(adapter.LANGUAGE)
     return sorted(found)
-
 
 def format_audit(result: dict) -> str:
     lines = [f"root: {result['root']}",
@@ -423,7 +401,6 @@ def format_audit(result: dict) -> str:
     lines.append(f"total deps across {len(result['manifests'])} manifests: "
                  f"{result['total_deps']}")
     return "\n".join(lines)
-
 
 def format_unused(result: dict) -> str:
     if not result["unused"]:

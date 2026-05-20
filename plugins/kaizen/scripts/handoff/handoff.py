@@ -45,7 +45,8 @@ sys.path.insert(0, str(_SCRIPT_DIR))
 # MIGRATION BRIDGE — rules cluster moved to scripts/rules/
 sys.path.insert(0, str(_SCRIPT_DIR.parents[1] / "scripts" / "rules"))
 # MIGRATION BRIDGE — _envelope/_atomic/_dxm_emit shims still at legacy.
-sys.path.insert(0, str(_SCRIPT_DIR.parents[1] / "skills" / "workflow" / "scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import _bootstrap  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 
 import _handoff as _core  # noqa: E402
 import _envelope  # noqa: E402
@@ -73,7 +74,6 @@ _NEXT_BLOCKING_RE = re.compile(
     re.IGNORECASE,
 )
 
-
 def _cmd_save(args) -> int:
     fp = Path(args.file).expanduser()
     if not fp.is_file():
@@ -96,7 +96,6 @@ def _cmd_save(args) -> int:
               f"({args.status})\n  {fp.resolve()}")
     return 0
 
-
 def _cmd_latest(args) -> int:
     rows = _core.latest_handoffs(1)
     if args.json:
@@ -114,7 +113,6 @@ def _cmd_latest(args) -> int:
     print(f"  file: {h['file_path']}")
     return 0
 
-
 def _cmd_list(args) -> int:
     rows = _core.list_handoffs(limit=args.limit, session_id=args.session)
     if args.json:
@@ -131,7 +129,6 @@ def _cmd_list(args) -> int:
         print(f"        {h['file_path']}")
     return 0
 
-
 def _cmd_bridge(args) -> int:
     fp = Path(args.file).expanduser()
     if not fp.is_file():
@@ -142,8 +139,6 @@ def _cmd_bridge(args) -> int:
     if args.apply:
         # Onion-clean: handoff is a CLI *consumer* of brain — cross the
         # process boundary, no `_brain` import.
-        brain_py = (_core.PLUGIN_ROOT / "skills" / "workflow"
-                    / "scripts" / "brain.py")
         rows = []
         for c in candidates:
             try:
@@ -179,7 +174,6 @@ def _cmd_bridge(args) -> int:
         print("  `brain.py capture \"<text>\"`, or re-run with --apply for all.")
     return 0
 
-
 def _cmd_path(args) -> int:
     _emit({
         "db": str(_core.handoff_db_path()),
@@ -188,9 +182,7 @@ def _cmd_path(args) -> int:
     })
     return 0
 
-
 # ─── verify — lens-wired structural verification (Task 6) ────────────
-
 
 def _parse_handoff_yaml(text: str) -> dict:
     """Minimal handoff YAML parser — split frontmatter (between the two
@@ -255,7 +247,6 @@ def _parse_handoff_yaml(text: str) -> dict:
         out["_parse_error"] = parse_error
     return out
 
-
 def _compute_assessment_signals(parsed: dict) -> dict:
     """Compute the 5 signals the outcome rubric walks.
 
@@ -287,13 +278,11 @@ def _compute_assessment_signals(parsed: dict) -> dict:
         "test_delta":          int(parsed.get("test_delta", 0)),
     }
 
-
 def _git(repo_root: Path, *args: str) -> subprocess.CompletedProcess:
     return subprocess.run(
         ["git", "-C", str(repo_root), *args],
         capture_output=True, text=True, timeout=30,
     )
-
 
 def _check_files(parsed: dict, repo_root: Path) -> list[dict]:
     """file-exists + file-modified-since-handoff checks per verify-rules.yaml."""
@@ -326,7 +315,6 @@ def _check_files(parsed: dict, repo_root: Path) -> list[dict]:
         out.append(entry)
     return out
 
-
 def _is_narrative_bullet(text: str) -> bool:
     """Heuristic: handoff worked/failed bullets following the
     'identifier — explanation' convention (em-dash separator) are
@@ -334,7 +322,6 @@ def _is_narrative_bullet(text: str) -> bool:
     the codebase always yields 0 hits and produces false-positive
     stale warns. Skip them in pattern_checks."""
     return " — " in text
-
 
 def _check_patterns(parsed: dict, repo_root: Path) -> list[dict]:
     """pattern-still-present (worked) + failed-pattern-reintroduced
@@ -392,7 +379,6 @@ def _check_patterns(parsed: dict, repo_root: Path) -> list[dict]:
 
     return out
 
-
 def _commit_delta(parsed: dict, repo_root: Path) -> dict:
     """commits-since-handoff — count + oneline summary."""
     since = parsed["date"] or ""
@@ -408,7 +394,6 @@ def _commit_delta(parsed: dict, repo_root: Path) -> dict:
         sha, _, subject = line.partition(" ")
         commits.append({"sha": sha, "subject": subject})
     return {"count": len(commits), "since": since, "commits": commits}
-
 
 def _qualitative_residue(parsed: dict) -> list[dict]:
     """Sections the verify can't check mechanically — for agent attention.
@@ -427,7 +412,6 @@ def _qualitative_residue(parsed: dict) -> list[dict]:
         if items:
             out.append({"section": section, "reason": reason, "items": items})
     return out
-
 
 def _check_freshness(parsed: dict, commit_delta: dict) -> dict:
     """BK-021. Staleness signal: how old is this handoff, how many
@@ -459,7 +443,6 @@ def _check_freshness(parsed: dict, commit_delta: dict) -> dict:
         "severity": severity,
     }
 
-
 def _rollup_verdict(
     file_checks: list[dict],
     pattern_checks: list[dict],
@@ -477,7 +460,6 @@ def _rollup_verdict(
     if "warn" in severities:
         return "drift"
     return "clean"
-
 
 def _cmd_verify(args) -> int:
     fp = Path(args.file).expanduser()
@@ -561,9 +543,7 @@ def _cmd_verify(args) -> int:
             print(f"  qualitative_residue: {[q['section'] for q in qualitative]}")
     return 0
 
-
 # ─── BK-010: dxm integration helpers ─────────────────────────────────
-
 
 def _dxm_events_path(session_id: str) -> Path:
     """Mirror dxm.py's _events_path so we don't shell out for a count."""
@@ -573,7 +553,6 @@ def _dxm_events_path(session_id: str) -> Path:
     else:
         root = Path.home() / ".claude" / ".kaizen" / "dxm"
     return root / f"events-{session_id}.jsonl"
-
 
 def _query_dxm_event_count(session_id: str) -> int:
     """Return the count of events in dxm for the given session. 0 when
@@ -588,7 +567,6 @@ def _query_dxm_event_count(session_id: str) -> int:
             return sum(1 for line in f if line.strip())
     except OSError:
         return 0
-
 
 def _query_dxm_recent_churn(session_id: str, back_seconds: float = 60.0) -> dict:
     """Return {tool_name: count} of events in last back_seconds. Empty
@@ -622,7 +600,6 @@ def _query_dxm_recent_churn(session_id: str, back_seconds: float = 60.0) -> dict
         return {}
     return out
 
-
 def _dxm_link(parent: str, child: str) -> bool:
     """Call kaizen-dxm link via subprocess. Returns True on success.
     Best-effort — failures don't propagate."""
@@ -638,17 +615,13 @@ def _dxm_link(parent: str, child: str) -> bool:
     except (subprocess.SubprocessError, OSError):
         return False
 
-
 # ─── scaffold — git-driven YAML pre-fill ─────────────────────────────
 
-
 _SLUG_RE = re.compile(r"[^a-z0-9]+")
-
 
 def _derive_slug(text: str, max_len: int = 40) -> str:
     s = _SLUG_RE.sub("-", text.lower()).strip("-")
     return (s[:max_len].rstrip("-") or "session")
-
 
 def _default_test_line(repo: Path) -> str:
     """Smarter `test:` template — when the repo looks like the kaizen-md
@@ -660,7 +633,6 @@ def _default_test_line(repo: Path) -> str:
     if (repo / "plugins" / "kaizen" / "tests").is_dir():
         return "test: kaizen-tests --tests-dir plugins/kaizen/tests"
     return "test: TBD"
-
 
 def _git_log_files(repo: Path, since: str) -> tuple[list[str], int]:
     """Return (changed_files_sorted, commit_count) since the given date.
@@ -686,7 +658,6 @@ def _git_log_files(repo: Path, since: str) -> tuple[list[str], int]:
     files = {p for p in files if (repo / p).exists()}
     return sorted(files), commits
 
-
 def _git_created_files(repo: Path, since: str) -> list[str]:
     """Files first created in the since-window AND still present in the
     worktree. Filters out created-then-removed-in-same-window paths so
@@ -698,11 +669,9 @@ def _git_created_files(repo: Path, since: str) -> list[str]:
     raw = {line.strip() for line in r.stdout.splitlines() if line.strip()}
     return sorted(p for p in raw if (repo / p).exists())
 
-
 _HUNK_RE = __import__("re").compile(
     r"^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@"
 )
-
 
 def _git_head_sha(repo: Path) -> str:
     """Return short SHA at HEAD, or empty string if no commits / not a repo."""
@@ -710,7 +679,6 @@ def _git_head_sha(repo: Path) -> str:
     if r.returncode != 0:
         return ""
     return r.stdout.strip()
-
 
 def _split_by_project(files: list[str], projects: dict[str, str],
                        *, primary: str) -> dict[str, list[str]]:
@@ -736,7 +704,6 @@ def _split_by_project(files: list[str], projects: dict[str, str],
         groups.setdefault(target, []).append(f)
     return groups
 
-
 def _most_recent_prior_handoff(session_dir: Path,
                                   exclude: Path | None = None) -> Path | None:
     """Return the lexicographically-newest .yaml in session_dir, or None.
@@ -754,7 +721,6 @@ def _most_recent_prior_handoff(session_dir: Path,
         if p != exclude
     )
     return candidates[-1] if candidates else None
-
 
 def _build_session_meta(*, repos: dict[str, Path],
                           cc_jsonl: Path | None,
@@ -791,7 +757,6 @@ def _build_session_meta(*, repos: dict[str, Path],
         meta["parent_handoff"] = str(parent_handoff)
     return meta
 
-
 def _auto_tag_commits(repo: Path, files: list[str], *, since: str) -> list[str]:
     """For the given file paths, return commits since `since` that touched any of them.
 
@@ -822,7 +787,6 @@ def _auto_tag_commits(repo: Path, files: list[str], *, since: str) -> list[str]:
             seen.add(current_sha)
     return shas
 
-
 def _parse_hunk_header(line: str) -> tuple[int, int] | None:
     """Parse `@@ -A,B +C,D @@` → (start, end) line range on the new side.
 
@@ -836,7 +800,6 @@ def _parse_hunk_header(line: str) -> tuple[int, int] | None:
     if length == 0:
         return None  # deletion-only hunk; no new lines to capture
     return (start, start + length - 1)
-
 
 def _git_changed_line_ranges(repo: Path, since: str) -> dict[str, list[tuple[int, int]]]:
     """Return dict[path, [(start_line, end_line), ...]] for all changes since `since`.
@@ -867,7 +830,6 @@ def _git_changed_line_ranges(repo: Path, since: str) -> dict[str, list[tuple[int
     # exist in the worktree (consolidated/renamed/deleted within window).
     return {p: rs for p, rs in ranges.items() if rs and (repo / p).exists()}
 
-
 def _discover_active_session(cwd: Path):
     """Find the active Claude Code session JSONL for this cwd. Returns
     (jsonl_path, mined_dict) or (None, None) if unreachable. Graceful
@@ -882,7 +844,6 @@ def _discover_active_session(cwd: Path):
         return jsonl, _sj.mine_session(jsonl)
     except Exception:
         return jsonl, None
-
 
 def _cmd_scaffold(args) -> int:
     """Write a partially-filled handoff YAML; agent finishes the prose.
@@ -1202,9 +1163,7 @@ def _cmd_scaffold(args) -> int:
         print(f"  stats: commits_since={commits} files_changed={len(changed)}")
     return 0
 
-
 # ─── create — typed one-shot YAML write + index ──────────────────────
-
 
 def _quote_if_unsafe(value: str) -> str:
     """Quote a YAML scalar if it contains the `: ` colon-space sequence
@@ -1213,7 +1172,6 @@ def _quote_if_unsafe(value: str) -> str:
     if ": " not in value and not value.startswith(("&", "*", "!", "|", ">", "%")):
         return value
     return "'" + value.replace("'", "''") + "'"
-
 
 def _render_create_yaml(
     payload: dict,
@@ -1291,7 +1249,6 @@ def _render_create_yaml(
     lines.append(f"  modified: [{', '.join(files_section.get('modified') or [])}]")
     lines.append("")
     return "\n".join(lines)
-
 
 def _cmd_create(args) -> int:
     """One-shot structured-input handoff write."""
@@ -1396,7 +1353,6 @@ def _cmd_create(args) -> int:
         print(f"[kaizen-handoff create] #{db_id} → {yaml_path.resolve()}")
     return 0
 
-
 def _cmd_assess(args) -> int:
     """Deterministic rubric walk — compute signals, return recommended bucket.
 
@@ -1468,7 +1424,6 @@ def _cmd_assess(args) -> int:
         print(f"  signals:   {signals}")
     return 0
 
-
 def _maybe_auto_bridge(fp: Path, *, outcome: str, force: bool) -> dict | None:
     """Auto-bridge handoff durables to brain when appropriate.
 
@@ -1498,8 +1453,6 @@ def _maybe_auto_bridge(fp: Path, *, outcome: str, force: bool) -> dict | None:
     if not candidates:
         return {"applied": 0, "failed": 0, "total": 0,
                 "reason": "no durable candidates", "rows": []}
-    brain_py = (_core.PLUGIN_ROOT / "skills" / "workflow"
-                 / "scripts" / "brain.py")
     rows = []
     applied = 0
     failed = 0
@@ -1519,7 +1472,6 @@ def _maybe_auto_bridge(fp: Path, *, outcome: str, force: bool) -> dict | None:
         rows.append({**c, "captured": captured})
     return {"applied": applied, "failed": failed,
             "total": len(candidates), "rows": rows}
-
 
 def _cmd_auto_finalize(args) -> int:
     """Agent-assigned Step 4 of the handoff create flow — no AskUserQuestion.
@@ -1635,7 +1587,6 @@ def _cmd_auto_finalize(args) -> int:
         )
     return 0
 
-
 # ─── get — surgical section extraction ────────────────────────────────
 
 _FRONTMATTER_SECTIONS = {
@@ -1649,7 +1600,6 @@ _BODY_SECTIONS = {
     "next", "files", "code_context", "session_meta",
 }
 _ALL_SECTIONS = _FRONTMATTER_SECTIONS | _BODY_SECTIONS
-
 
 def _load_raw_handoff(text: str) -> tuple[dict, dict]:
     """Return (frontmatter, body) as raw dicts. Lightweight line-parse of
@@ -1681,7 +1631,6 @@ def _load_raw_handoff(text: str) -> tuple[dict, dict]:
         body = {}
     return fm, body
 
-
 def _render_section(value, *, as_json: bool) -> str:
     """Human-readable when --json off; canonical JSON when on."""
     if as_json:
@@ -1700,14 +1649,12 @@ def _render_section(value, *, as_json: bool) -> str:
         return json.dumps(value, indent=2, default=str)
     return str(value)
 
-
 # ─── append — mid-session list-section append (Task #40) ──────────────
 
 _LIST_BODY_SECTIONS = {
     "done_this_session", "blockers", "questions",
     "decisions", "findings", "worked", "failed", "next",
 }
-
 
 def _format_entry_yaml(section: str, entry, indent: str = "  ") -> str:
     """Render one list item under `section:` with proper indent.
@@ -1730,7 +1677,6 @@ def _format_entry_yaml(section: str, entry, indent: str = "  ") -> str:
         return "\n".join(lines) + "\n"
     # string / scalar
     return f"{indent}- {_quote_if_unsafe(str(entry))}\n"
-
 
 def _append_to_list_section(text: str, section: str, entry) -> str:
     """Insert entry at end of section's list-items. Returns mutated text.
@@ -1778,7 +1724,6 @@ def _append_to_list_section(text: str, section: str, entry) -> str:
             section_end = j
             break
     return "".join(lines[:section_end] + [entry_yaml] + lines[section_end:])
-
 
 def _cmd_append(args) -> int:
     fp = Path(args.file)
@@ -1831,7 +1776,6 @@ def _cmd_append(args) -> int:
         print(f"appended to {section} in {fp}")
     return 0
 
-
 # ─── re-mine — refresh handoff + skill-frame capture ────────────────
 
 def _compute_remine(jsonl_path: Path, existing: list) -> dict:
@@ -1860,7 +1804,6 @@ def _compute_remine(jsonl_path: Path, existing: list) -> dict:
         "skills_used":         sorted(mined.get("skills_used") or set()),
         "files_touched_count": len(mined.get("files_touched") or set()),
     }
-
 
 def _cmd_remine(args) -> int:
     fp = Path(args.file)
@@ -1916,7 +1859,6 @@ def _cmd_remine(args) -> int:
             print("  (dry run — pass --apply to write)")
     return 0
 
-
 # ─── tasks — emit TaskCreate-ready JSON per next[] item ──────────────
 
 def _extract_tasks_from_next(text: str) -> list[dict]:
@@ -1942,7 +1884,6 @@ def _extract_tasks_from_next(text: str) -> list[dict]:
             out.append(d)
     return out
 
-
 def _cmd_tasks(args) -> int:
     fp = Path(args.file)
     if not fp.is_file():
@@ -1962,7 +1903,6 @@ def _cmd_tasks(args) -> int:
                 line += f"  (blocker: {t['blocker']})"
             print(line)
     return 0
-
 
 # ─── diff — section-by-section delta between 2 handoff yamls ─────────
 
@@ -1995,7 +1935,6 @@ def _compute_diff(text_a: str, text_b: str) -> dict:
         counts[status] += 1
     return {"per_section": per_section, "counts": counts}
 
-
 def _cmd_diff(args) -> int:
     fa = Path(args.a)
     fb = Path(args.b)
@@ -2023,11 +1962,9 @@ def _cmd_diff(args) -> int:
             print(f"  {mark} {section:<22} ({st['status']})")
     return 0
 
-
 # ─── cost — token-budget estimator (Task #40 brainstorm #1) ──────────
 
 _COST_DEFAULT_BUDGET = 2000
-
 
 def _approx_tokens(s: str) -> int:
     """Chars-divided-by-4 token estimate (kaizen convention).
@@ -2040,7 +1977,6 @@ def _approx_tokens(s: str) -> int:
         return 0
     return (len(s) + 3) // 4
 
-
 def _cost_threshold() -> int:
     """Drift-resilient (re-read per call): env wins, else default."""
     try:
@@ -2048,7 +1984,6 @@ def _cost_threshold() -> int:
                                     _COST_DEFAULT_BUDGET))
     except ValueError:
         return _COST_DEFAULT_BUDGET
-
 
 def _compute_costs(text: str) -> dict:
     """Pure function: total size + per-section chars/tokens + threshold verdict.
@@ -2093,7 +2028,6 @@ def _compute_costs(text: str) -> dict:
         "recommendation": recommendation,
     }
 
-
 def _cmd_cost(args) -> int:
     fp = Path(args.file)
     if not fp.is_file():
@@ -2122,7 +2056,6 @@ def _cmd_cost(args) -> int:
         print()
         print(f"  → {result['recommendation']}")
     return 0
-
 
 # ─── tree — bidirectional commit↔task map (Task #40) ──────────────────
 
@@ -2156,7 +2089,6 @@ def _build_commit_task_map(entries: list, *, repo: Path, since: str) -> dict:
             "by_commit": by_commit,
             "skipped_no_files": skipped}
 
-
 def _smart_since(text: str) -> str | None:
     """Pick the best `--since` cutoff for tree/queries on this handoff.
 
@@ -2186,7 +2118,6 @@ def _smart_since(text: str) -> str | None:
             pass  # missing parent file → fall through
     return fm.get("date") or None
 
-
 def _normalize_since(since: str) -> str:
     """Promote bare YYYY-MM-DD to ISO 8601 with Z (UTC) for git --since.
 
@@ -2201,7 +2132,6 @@ def _normalize_since(since: str) -> str:
     if _re.fullmatch(r"\d{4}-\d{2}-\d{2}", since.strip()):
         return f"{since.strip()}T00:00:00Z"
     return since
-
 
 def _cmd_tree(args) -> int:
     fp = Path(args.file)
@@ -2220,7 +2150,6 @@ def _cmd_tree(args) -> int:
     out = {"file": str(fp), "since": since, "repo": str(repo), **result}
     print(json.dumps(out, indent=2, default=str))
     return 0
-
 
 def _cmd_get(args) -> int:
     fp = Path(args.file)
@@ -2243,7 +2172,6 @@ def _cmd_get(args) -> int:
         value = body.get(section)
     sys.stdout.write(_render_section(value, as_json=args.json) + "\n")
     return 0
-
 
 # ─── verify-hash — finishes the half-built integrity check ────────────
 
@@ -2313,7 +2241,6 @@ def _cmd_verify_hash(args) -> int:
         print(f"drift: JSONL mutated since handoff was written. "
                f"captured={captured_sha[:12]}... current={current_sha[:12]}...")
     return 1
-
 
 def main(argv: Optional[list[str]] = None) -> int:
     p = argparse.ArgumentParser(
@@ -2610,7 +2537,6 @@ def main(argv: Optional[list[str]] = None) -> int:
     if args.cmd is None:
         return _cmd_latest(argparse.Namespace(json=False))
     return args.func(args)
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

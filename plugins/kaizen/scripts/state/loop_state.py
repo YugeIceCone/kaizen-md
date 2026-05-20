@@ -75,7 +75,6 @@ import _envelope  # noqa: E402
 
 _emit = _envelope.emitter("kaizen-loop-state", tool_version="1.0.0")
 
-
 def state_path(cwd: Path | None = None) -> Path:
     """Resolve the loop state file: env override → <cwd>/.kaizen/loop.state.md."""
     env = os.environ.get("KAIZEN_LOOP_STATE")
@@ -83,7 +82,6 @@ def state_path(cwd: Path | None = None) -> Path:
         return Path(env).expanduser().resolve()
     base = cwd or Path.cwd()
     return base / ".kaizen" / "loop.state.md"
-
 
 def _split(text: str) -> tuple[str, str]:
     """Return (frontmatter_block_with_delimiters, body)."""
@@ -101,7 +99,6 @@ def _split(text: str) -> tuple[str, str]:
     body = "\n".join(lines[end_idx + 1 :])
     return fm, body
 
-
 def _iteration(fm: str) -> int:
     """Pull `iteration: N` from frontmatter; 0 if unparseable."""
     for line in fm.split("\n"):
@@ -111,7 +108,6 @@ def _iteration(fm: str) -> int:
             except (ValueError, IndexError):
                 return 0
     return 0
-
 
 def _ensure_ledger(body: str) -> dict:
     """Parse body as ledger dict; convert freeform legacy body if needed."""
@@ -134,7 +130,6 @@ def _ensure_ledger(body: str) -> dict:
         "completed": [],
     }
 
-
 def load(path: Path | None = None) -> tuple[str, dict, int]:
     """Load (frontmatter_str, ledger_dict, iteration_int) from the state file."""
     p = path or state_path()
@@ -145,13 +140,11 @@ def load(path: Path | None = None) -> tuple[str, dict, int]:
     ledger = _ensure_ledger(body)
     return fm, ledger, _iteration(fm)
 
-
 def save(path: Path | None, fm: str, ledger: dict) -> None:
     """Rewrite the state file: preserve frontmatter, re-serialize JSON body."""
     p = path or state_path()
     body_json = json.dumps(ledger, indent=2)
     p.write_text(f"{fm}\n{body_json}\n")
-
 
 def _next_id(pending: list[dict], completed: list[dict]) -> str:
     """Find the next free `i<N>` ID. Scans both lists for max existing N."""
@@ -166,7 +159,6 @@ def _next_id(pending: list[dict], completed: list[dict]) -> str:
             except ValueError:
                 pass
     return f"i{max_n + 1}"
-
 
 def add_item(
     desc: str,
@@ -187,16 +179,13 @@ def add_item(
     save(path, fm, ledger)
     return item
 
-
 def list_pending(path: Path | None = None) -> list[dict]:
     _, ledger, _ = load(path)
     return list(ledger.get("pending") or [])
 
-
 def list_completed(path: Path | None = None) -> list[dict]:
     _, ledger, _ = load(path)
     return list(ledger.get("completed") or [])
-
 
 def status(path: Path | None = None) -> dict:
     p = path or state_path()
@@ -224,7 +213,6 @@ def status(path: Path | None = None) -> dict:
         "completed_count": len(ledger["completed"]),
     }
 
-
 def _find_item(items: list[dict], id_or_desc: str) -> tuple[int, dict] | None:
     """Find a pending item by ID match (exact) or desc substring match."""
     for i, it in enumerate(items):
@@ -241,7 +229,6 @@ def _find_item(items: list[dict], id_or_desc: str) -> tuple[int, dict] | None:
         if lower in desc:
             return i, it
     return None
-
 
 def complete_item(
     id_or_desc: str,
@@ -279,7 +266,6 @@ def complete_item(
     save(path, fm, ledger)
     return entry
 
-
 def next_pending(path: Path | None = None) -> dict | None:
     """Token-saving accessor: return ONLY the next pending item.
 
@@ -296,7 +282,6 @@ def next_pending(path: Path | None = None) -> dict | None:
     if not pending:
         return None
     return pending[0]
-
 
 def progress(path: Path | None = None) -> dict:
     """Token-saving accessor: just the counters.
@@ -321,7 +306,6 @@ def progress(path: Path | None = None) -> dict:
         "pct_done": pct,
     }
 
-
 def tldr(path: Path | None = None) -> str:
     """Token-saving accessor: one-line human-readable summary.
 
@@ -344,7 +328,6 @@ def tldr(path: Path | None = None) -> str:
         desc = (nxt.get("desc") or "")[:60]
         base += f" | NEXT: {desc}"
     return base
-
 
 def emit_promise(phrase: str, path: Path | None = None) -> dict:
     """Structured completion signal — writes `phrase` to a `last_promise`
@@ -397,7 +380,6 @@ def emit_promise(phrase: str, path: Path | None = None) -> dict:
         "configured_promise": configured,
     }
 
-
 def cancel(path: Path | None = None) -> dict:
     """Remove the state file (equivalent of kaizen-loop --cancel)."""
     p = path or state_path()
@@ -416,9 +398,7 @@ def cancel(path: Path | None = None) -> dict:
         "completed_count": len(ledger.get("completed") or []),
     }
 
-
 # ─── CLI ─────────────────────────────────────────────────────────────
-
 
 def _print_items(items: list[dict], kind: str) -> None:
     if not items:
@@ -436,7 +416,6 @@ def _print_items(items: list[dict], kind: str) -> None:
                 line += ", manual"
             line += ")"
         print(line)
-
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
@@ -610,7 +589,6 @@ def main(argv: list[str] | None = None) -> int:
         sys.stderr.write(f"kaizen-loop: {e}\n")
         return 2
     return 2
-
 
 if __name__ == "__main__":
     sys.exit(main())

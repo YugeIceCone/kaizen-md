@@ -16,7 +16,6 @@ except ImportError:
     sys.stderr.write("parallel-branches: PyYAML required\n")
     raise
 
-
 def load_plan(plan_path: Path) -> dict:
     """Load + normalize a master plan.
 
@@ -47,6 +46,5 @@ def load_plan(plan_path: Path) -> dict:
         plan["merge"] = yaml.safe_load(merge_path.read_text(encoding="utf-8"))
 
     return plan
-
 
 __all__ = ["load_plan"]

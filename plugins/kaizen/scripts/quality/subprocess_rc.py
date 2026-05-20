@@ -13,7 +13,6 @@ from pathlib import Path
 
 _SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(_SCRIPT_DIR))
-# MIGRATION BRIDGE — legacy helpers still at skills/workflow/scripts/
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "io"))
 
 import _envelope  # noqa: E402
@@ -21,10 +20,8 @@ import _envelope  # noqa: E402
 _emit = _envelope.emitter("kaizen-subprocess-rc", tool_version="1.0.0")
 _TARGETS = {"run", "call", "check_output", "Popen"}
 
-
 def _plugin_root() -> Path:
     return _SCRIPT_DIR.parents[1]
-
 
 def _is_subprocess_call(call: ast.Call) -> bool:
     f = call.func
@@ -32,13 +29,11 @@ def _is_subprocess_call(call: ast.Call) -> bool:
         return f.value.id == "subprocess" and f.attr in _TARGETS
     return False
 
-
 def _has_check_true(call: ast.Call) -> bool:
     for k in call.keywords:
         if k.arg == "check" and isinstance(k.value, ast.Constant) and k.value.value is True:
             return True
     return False
-
 
 class _Visitor(ast.NodeVisitor):
     def __init__(self, path: str):
@@ -52,7 +47,6 @@ class _Visitor(ast.NodeVisitor):
                                        "call": node.value.func.attr})
         self.generic_visit(node)
 
-
 def scan_text(source: str, *, path: str) -> list[dict]:
     try:
         tree = ast.parse(source)
@@ -61,7 +55,6 @@ def scan_text(source: str, *, path: str) -> list[dict]:
     v = _Visitor(path)
     v.visit(tree)
     return v.findings
-
 
 def scan(*, scripts_dir: Path) -> dict:
     scripts = sorted(scripts_dir.glob("*.py")) if scripts_dir.is_dir() else []
@@ -76,7 +69,6 @@ def scan(*, scripts_dir: Path) -> dict:
     return {"scripts_total": len(scripts), "findings": findings,
             "violation_count": len(findings)}
 
-
 def _run(args) -> int:
     rep = scan(scripts_dir=_plugin_root() / "skills/workflow/scripts")
     n = len(rep["findings"])
@@ -88,7 +80,6 @@ def _run(args) -> int:
     _emit(rep, verdict=verdict, counts={"findings": n})
     return 0
 
-
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="kaizen-subprocess-rc",
         description="AST scan for unchecked subprocess return values.")
@@ -99,7 +90,6 @@ def main(argv: list[str] | None = None) -> int:
         s.set_defaults(func=_run)
     args = ap.parse_args(argv)
     return args.func(args)
-
 
 if __name__ == "__main__":
     sys.exit(main())

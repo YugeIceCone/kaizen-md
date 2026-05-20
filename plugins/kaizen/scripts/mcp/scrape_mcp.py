@@ -48,9 +48,7 @@ except ImportError as e:
     )
     sys.exit(1)
 
-
 mcp = FastMCP("scrape")
-
 
 @mcp.tool()
 async def scrape_search(query: str, top_k: int = 8) -> list[dict]:
@@ -60,19 +58,16 @@ async def scrape_search(query: str, top_k: int = 8) -> list[dict]:
     Pass the returned `id` to scrape_get for full content."""
     return si.do_search(query, top_k=top_k)
 
-
 @mcp.tool()
 async def scrape_stats() -> dict:
     """Index meta — {items, model, dim, last_indexed_ts, size_bytes, db}."""
     return si.do_stats()
-
 
 @mcp.tool()
 async def scrape_get(item_id: int) -> dict:
     """Fetch one scraped item's full content by SQLite id."""
     r = si.do_get(item_id)
     return r if r else {"error": f"item id={item_id} not found"}
-
 
 @mcp.tool()
 async def scrape_list_recent(limit: int = 20) -> list[dict]:
@@ -81,7 +76,6 @@ async def scrape_list_recent(limit: int = 20) -> list[dict]:
     Use for "what's been scraped lately?" queries before deciding
     which sub-query to run."""
     return si.do_list(limit=limit)
-
 
 if __name__ == "__main__":
     mcp.run()

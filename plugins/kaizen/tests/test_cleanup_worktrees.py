@@ -14,15 +14,13 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / "skills" / "workflow" / "scripts"))
-
-
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 def _git(cwd: Path, *args: str) -> subprocess.CompletedProcess:
     return subprocess.run(
         ["git", *args], cwd=str(cwd),
         capture_output=True, text=True, timeout=10, check=False,
     )
-
 
 class TestDetectDefaultBranch(unittest.TestCase):
 
@@ -52,7 +50,6 @@ class TestDetectDefaultBranch(unittest.TestCase):
                     self.assertEqual(cw.detect_default_branch(cwd=cwd), "main")
                 finally:
                     os.chdir(cwd_save)
-
 
 class TestFindRemovable(unittest.TestCase):
 
@@ -122,7 +119,6 @@ class TestFindRemovable(unittest.TestCase):
             _git(cwd, "worktree", "remove", "--force", str(wt_merged))
             _git(cwd, "worktree", "remove", "--force", str(wt_unmerged))
 
-
 class TestMainCLI(unittest.TestCase):
 
     def test_default_is_dry_run(self):
@@ -142,7 +138,6 @@ class TestMainCLI(unittest.TestCase):
                           return_value=(True, "removed /fake/wt")) as rm:
             self.assertEqual(cw.main(["--apply"]), 0)
             rm.assert_called_once_with("/fake/wt")
-
 
 if __name__ == "__main__":
     unittest.main()

@@ -51,31 +51,25 @@ import sys
 from pathlib import Path
 from typing import Optional
 
-
 try:
     import tomllib  # Python 3.11+
 except ImportError:  # pragma: no cover — only on older Python
     tomllib = None  # type: ignore[assignment]
 
-
 SCHEMA_VERSION = 2
 KIND = "kaizen.docs"
 
-
 # ─── Model (mirrors shodan's codebase::model) ────────────────────────
-
 
 @dc.dataclass
 class BinTarget:
     name: str
     path: Optional[str] = None
 
-
 @dc.dataclass
 class FeatureFlag:
     name: str
     deps: str  # right-hand side, single line
-
 
 @dc.dataclass
 class Dependency:
@@ -83,14 +77,12 @@ class Dependency:
     source: str  # "workspace" | 'version = "1.0"' | raw rhs
     features: Optional[str] = None
 
-
 @dc.dataclass
 class ItemSummary:
     """Public item declared in a source file."""
     kind: str       # struct | enum | trait | fn | async_fn | const | type_alias | macro | class | py_fn
     name: str
     signature: str  # single-line excerpt, best-effort
-
 
 @dc.dataclass
 class FileProfile:
@@ -102,12 +94,10 @@ class FileProfile:
     items: list[ItemSummary] = dc.field(default_factory=list)
     tests: int = 0
 
-
 @dc.dataclass
 class CommitRef:
     sha: str
     subject: str
-
 
 @dc.dataclass
 class CrateProfile:
@@ -140,9 +130,7 @@ class CrateProfile:
         d["kind"] = KIND
         return d
 
-
 # ─── Language detection ──────────────────────────────────────────────
-
 
 LANG_MARKERS: dict[str, str] = {
     "Cargo.toml": "rust",
@@ -162,7 +150,6 @@ SKIP_DIRS = {"target", "node_modules", ".git", "vendor", "dist", "build",
              ".venv", "venv", "__pycache__", ".kaizen", ".workflow",
              ".claude", ".idea", ".pytest_cache", ".mypy_cache"}
 
-
 def detect_packages(root: Path) -> list[tuple[Path, str]]:
     """Return [(package_dir, language)] for every detected package."""
     found: list[tuple[Path, str]] = []
@@ -178,7 +165,6 @@ def detect_packages(root: Path) -> list[tuple[Path, str]]:
     found.sort(key=lambda t: t[0].as_posix())
     return found
 
-
 def _cargo_has_package(cargo_path: Path) -> bool:
     try:
         text = cargo_path.read_text(errors="ignore")
@@ -186,9 +172,7 @@ def _cargo_has_package(cargo_path: Path) -> bool:
         return False
     return bool(re.search(r"(?m)^\s*\[package\]\s*$", text))
 
-
 # ─── Per-language file analyzer ──────────────────────────────────────
-
 
 # Rust item regex — ports analyzer.rs:item_regex().
 _RUST_ITEM = re.compile(
@@ -212,7 +196,6 @@ _PY_TYPE_ALIAS = re.compile(
 )
 _PY_TEST_DEF = re.compile(r"(?m)^(?:async\s+)?def\s+test_[A-Za-z_][A-Za-z0-9_]*\s*\(")
 
-
 def analyze_rust_file(abs_path: Path, rel: str) -> FileProfile:
     try:
         text = abs_path.read_text(errors="ignore")
@@ -233,7 +216,6 @@ def analyze_rust_file(abs_path: Path, rel: str) -> FileProfile:
         module_doc=module_doc, items=items, tests=tests,
     )
 
-
 def _extract_rust_module_doc(src: str) -> Optional[str]:
     """Port of analyzer.rs:extract_module_doc — first `//!` paragraph."""
     out: list[str] = []
@@ -253,7 +235,6 @@ def _extract_rust_module_doc(src: str) -> Optional[str]:
         elif started:
             break
     return " ".join(out) if out else None
-
 
 def _extract_rust_items(src: str) -> list[ItemSummary]:
     """Port of analyzer.rs:extract_items + macro pass."""
@@ -287,7 +268,6 @@ def _extract_rust_items(src: str) -> list[ItemSummary]:
         seen.setdefault((it.kind, it.name), it)
     return list(seen.values())
 
-
 def analyze_python_file(abs_path: Path, rel: str) -> FileProfile:
     try:
         text = abs_path.read_text(errors="ignore")
@@ -304,7 +284,6 @@ def analyze_python_file(abs_path: Path, rel: str) -> FileProfile:
         path=rel, loc=total, blank_lines=blank, comment_lines=comment,
         module_doc=module_doc, items=items, tests=tests,
     )
-
 
 def _extract_python_module_doc(src: str) -> Optional[str]:
     """Pull the module-level docstring's first paragraph. Triple-double
@@ -349,7 +328,6 @@ def _extract_python_module_doc(src: str) -> Optional[str]:
         return " ".join(para) if para else None
     return None
 
-
 def _extract_python_items(src: str) -> list[ItemSummary]:
     """Top-level `def` / `async def` / `class` only — nested methods are
     listed under their containing class via the file ref pass."""
@@ -384,7 +362,6 @@ def _extract_python_items(src: str) -> list[ItemSummary]:
         seen.setdefault((it.kind, it.name), it)
     return list(seen.values())
 
-
 def _extract_rust_reexports(file: Path) -> list[str]:
     try:
         text = file.read_text(errors="ignore")
@@ -395,9 +372,7 @@ def _extract_rust_reexports(file: Path) -> list[str]:
     ))
     return out
 
-
 # ─── Manifest parsers ────────────────────────────────────────────────
-
 
 @dc.dataclass
 class _PackageMeta:
@@ -407,11 +382,9 @@ class _PackageMeta:
     version: Optional[str] = None
     authors: Optional[str] = None
 
-
 def _capture_quoted(section: str, key: str) -> Optional[str]:
     m = re.search(rf'(?m)^\s*{re.escape(key)}\s*=\s*"([^"]+)"', section)
     return m.group(1) if m else None
-
 
 def _capture_value(section: str, key: str) -> Optional[str]:
     inh = re.search(rf"(?m)^\s*{re.escape(key)}\.workspace\s*=\s*true", section)
@@ -421,7 +394,6 @@ def _capture_value(section: str, key: str) -> Optional[str]:
     if not m:
         return None
     return m.group(1).strip('"')
-
 
 def _extract_toml_section(toml_text: str, name: str) -> Optional[str]:
     """Body of `[<name>]` until the next `[…]` header. Returns None if absent."""
@@ -437,7 +409,6 @@ def _extract_toml_section(toml_text: str, name: str) -> Optional[str]:
         if in_section:
             buf.append(line)
     return "\n".join(buf) if buf else None
-
 
 def parse_rust_manifest(pkg_dir: Path) -> tuple[_PackageMeta, list[BinTarget], list[FeatureFlag],
                                                  list[Dependency], list[Dependency], list[str]]:
@@ -463,7 +434,6 @@ def parse_rust_manifest(pkg_dir: Path) -> tuple[_PackageMeta, list[BinTarget], l
         lints.append("workspace = true")
     return meta, bins, features, deps, dev_deps, lints
 
-
 def _parse_bin_targets(toml_text: str) -> list[BinTarget]:
     out: list[BinTarget] = []
     in_bin = False
@@ -483,13 +453,11 @@ def _parse_bin_targets(toml_text: str) -> list[BinTarget]:
         _push_bin("\n".join(buf), out)
     return out
 
-
 def _push_bin(body: str, out: list[BinTarget]) -> None:
     name = _capture_quoted(body, "name") or ""
     path = _capture_quoted(body, "path")
     if name:
         out.append(BinTarget(name=name, path=path))
-
 
 def _parse_features(toml_text: str) -> list[FeatureFlag]:
     section = _extract_toml_section(toml_text, "features")
@@ -500,7 +468,6 @@ def _parse_features(toml_text: str) -> list[FeatureFlag]:
         FeatureFlag(name=m.group(1), deps=m.group(2).replace("\n", " ").strip())
         for m in pat.finditer(section)
     ]
-
 
 def _parse_dep_rhs(rhs: str) -> tuple[str, Optional[str]]:
     rhs = rhs.strip()
@@ -520,7 +487,6 @@ def _parse_dep_rhs(rhs: str) -> tuple[str, Optional[str]]:
         )
         return source, features
     return rhs, None
-
 
 def _parse_dep_table(toml_text: str, section: str) -> list[Dependency]:
     """Port of analyzer.rs:parse_dep_table — handles direct, workspace,
@@ -567,7 +533,6 @@ def _parse_dep_table(toml_text: str, section: str) -> list[Dependency]:
         deduped.append(d)
     return deduped
 
-
 def _upsert_dep(out: list[Dependency], name: str, source: str, features: Optional[str]) -> None:
     for d in out:
         if d.name == name:
@@ -575,7 +540,6 @@ def _upsert_dep(out: list[Dependency], name: str, source: str, features: Optiona
             d.features = features
             return
     out.append(Dependency(name=name, source=source, features=features))
-
 
 def parse_python_manifest(pkg_dir: Path) -> tuple[_PackageMeta, list[Dependency], list[Dependency]]:
     pp = pkg_dir / "pyproject.toml"
@@ -598,14 +562,11 @@ def parse_python_manifest(pkg_dir: Path) -> tuple[_PackageMeta, list[Dependency]
     ]
     return meta, deps, dev_deps
 
-
 def _dep_name(spec: str) -> str:
     """Strip version specifier from a PEP 508 spec ('foo>=1.0' → 'foo')."""
     return re.split(r"[\s<>=!~;,\[]", spec, maxsplit=1)[0].strip()
 
-
 # ─── Git log ─────────────────────────────────────────────────────────
-
 
 def git_log_for_path(workspace_root: Path, pkg_dir: Path, limit: int = 8) -> list[CommitRef]:
     try:
@@ -630,18 +591,14 @@ def git_log_for_path(workspace_root: Path, pkg_dir: Path, limit: int = 8) -> lis
         commits.append(CommitRef(sha=parts[0], subject=parts[1]))
     return commits
 
-
 # ─── Per-package scan ────────────────────────────────────────────────
-
 
 import sys as _sys
 _sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "io"))
 from _time import iso  # M5 dedup
 
-
 def now_iso() -> str:
     return iso(precision="seconds")
-
 
 def _crate_name_from_path(rel: Path) -> str:
     """Path-derived identifier; nested layouts use `-` as separator
@@ -651,7 +608,6 @@ def _crate_name_from_path(rel: Path) -> str:
     if len(parts) >= 2 and parts[0] in ("crates", "port"):
         return "-".join(parts[1:])
     return "-".join(parts)
-
 
 def _iter_source_files(pkg_dir: Path, language: str) -> list[Path]:
     """Source files for this package — src/ + sibling examples/benches/tests/.
@@ -684,7 +640,6 @@ def _iter_source_files(pkg_dir: Path, language: str) -> list[Path]:
         if p.suffix in exts:
             out.append(p)
     return out
-
 
 def analyze_package(pkg_dir: Path, language: str, workspace_root: Path) -> CrateProfile:
     try:
@@ -763,9 +718,7 @@ def analyze_package(pkg_dir: Path, language: str, workspace_root: Path) -> Crate
     profile.recent_commits = git_log_for_path(workspace_root, pkg_dir, limit=8)
     return profile
 
-
 # ─── Markdown renderer (mirrors shodan's generator.rs) ───────────────
-
 
 def render_md(p: CrateProfile, port: bool = False) -> str:
     parts: list[str] = []
@@ -799,7 +752,6 @@ def render_md(p: CrateProfile, port: bool = False) -> str:
     parts.append("")
     return "\n".join(parts)
 
-
 def _render_status_block(p: CrateProfile, header_root: str, port: bool) -> str:
     flag = " --port" if port else ""
     return (
@@ -815,7 +767,6 @@ def _render_status_block(p: CrateProfile, header_root: str, port: bool) -> str:
         f"Hand-edits will be overwritten."
     )
 
-
 def _render_what_it_is(p: CrateProfile) -> str:
     lines = [f"## 1. What `{p.package_name}` is", ""]
     if p.package_description:
@@ -829,7 +780,6 @@ def _render_what_it_is(p: CrateProfile) -> str:
         lines.append(f"**Crate doc-comment:** {p.crate_doc}")
     return "\n".join(lines)
 
-
 def _render_what_it_is_not(p: CrateProfile) -> str:
     return (
         f"## 9. What `{p.package_name}` is *not*\n\n"
@@ -837,11 +787,9 @@ def _render_what_it_is_not(p: CrateProfile) -> str:
         f"cross-crate boundaries.)_"
     )
 
-
 def _truncate_one_line(s: str, max_chars: int = 100) -> str:
     one = re.sub(r"\s+", " ", s).strip()
     return one if len(one) <= max_chars else one[:max_chars] + "…"
-
 
 def _render_file_tree(p: CrateProfile, header_root: str) -> str:
     lines = ["## 2. Files", "", "```", f"{header_root}/{p.relative_path}/"]
@@ -853,7 +801,6 @@ def _render_file_tree(p: CrateProfile, header_root: str) -> str:
     lines.append("")
     lines.append(f"**Total: {p.total_loc} LOC across {len(p.files)} files.**")
     return "\n".join(lines)
-
 
 _KIND_LABELS: list[tuple[str, str]] = [
     ("trait", "Traits"),
@@ -867,10 +814,8 @@ _KIND_LABELS: list[tuple[str, str]] = [
     ("type_alias", "Type aliases"),
 ]
 
-
 def _escape_pipe(s: str) -> str:
     return s.replace("|", "\\|").replace("\n", " ")
-
 
 def _render_public_api(p: CrateProfile) -> str:
     lines = [
@@ -895,7 +840,6 @@ def _render_public_api(p: CrateProfile) -> str:
     if not rendered_any:
         lines.append("_(No public items detected.)_")
     return "\n".join(lines).rstrip()
-
 
 def _render_file_reference(p: CrateProfile) -> str:
     lines = ["## 4. File-by-file reference", ""]
@@ -931,7 +875,6 @@ def _render_file_reference(p: CrateProfile) -> str:
         )
         lines.append("")
     return "\n".join(lines).rstrip()
-
 
 def _render_dependencies(p: CrateProfile) -> str:
     heading = {
@@ -984,7 +927,6 @@ def _render_dependencies(p: CrateProfile) -> str:
             lines.append(f"- `{l}`")
     return "\n".join(lines).rstrip()
 
-
 def _render_re_exports(p: CrateProfile) -> str:
     lines = ["## 6. Crate-root re-exports", ""]
     if not p.re_exports:
@@ -993,7 +935,6 @@ def _render_re_exports(p: CrateProfile) -> str:
     for r in p.re_exports:
         lines.append(f"- `pub use {r};`")
     return "\n".join(lines)
-
 
 def _render_test_inventory(p: CrateProfile) -> str:
     with_tests = [f for f in p.files if f.tests > 0]
@@ -1009,7 +950,6 @@ def _render_test_inventory(p: CrateProfile) -> str:
     lines.append(f"**Total: {p.total_tests} test attribute(s).**")
     return "\n".join(lines)
 
-
 def _render_recent_commits(p: CrateProfile) -> str:
     noun = "crate" if p.language == "rust" else "package"
     lines = [f"## 8. Recent commits touching this {noun}", ""]
@@ -1020,9 +960,7 @@ def _render_recent_commits(p: CrateProfile) -> str:
         lines.append(f"- `{c.sha}` — {c.subject}")
     return "\n".join(lines)
 
-
 # ─── CLI ─────────────────────────────────────────────────────────────
-
 
 def _pretty(p: Path, root: Path) -> str:
     """Return p relative to root if possible, absolute otherwise."""
@@ -1030,7 +968,6 @@ def _pretty(p: Path, root: Path) -> str:
         return str(p.relative_to(root))
     except ValueError:
         return str(p)
-
 
 def cmd_detect(args):
     root = Path(args.root).resolve()
@@ -1044,7 +981,6 @@ def cmd_detect(args):
     if not packages:
         print("(no packages detected)", file=sys.stderr)
         sys.exit(1)
-
 
 def cmd_scan(args):
     root = Path(args.root).resolve()
@@ -1080,7 +1016,6 @@ def cmd_scan(args):
         for w in written:
             print(f"  - {w}")
 
-
 def cmd_one(args):
     pkg_dir = Path(args.pkg).resolve()
     if not pkg_dir.is_dir():
@@ -1107,7 +1042,6 @@ def cmd_one(args):
         print(render_md(profile, port=args.port))
         print("\n---\n")
         print(json.dumps(profile.to_json(), indent=2))
-
 
 def main():
     p = argparse.ArgumentParser(
@@ -1139,7 +1073,6 @@ def main():
 
     args = p.parse_args(sys.argv[1:] or ["detect"])
     args.func(args)
-
 
 if __name__ == "__main__":
     main()

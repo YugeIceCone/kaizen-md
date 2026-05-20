@@ -46,9 +46,7 @@ import _envelope  # noqa: E402
 
 _emit_roadmap = _envelope.emitter("kaizen-roadmap", tool_version="1.0.0")
 
-
 # ─── Constants ────────────────────────────────────────────────────────
-
 
 BAR_LENGTH = 12
 BAR_FILLED = "█"
@@ -56,9 +54,7 @@ BAR_EMPTY = "░"
 DONE_MARKER = "✅"
 PENDING_MARKER = "⬜"
 
-
 # ─── Data ─────────────────────────────────────────────────────────────
-
 
 @dataclasses.dataclass
 class Item:
@@ -67,7 +63,6 @@ class Item:
     status: str          # 'done' | 'pending' | 'unknown'
     commit: str = ""
     raw_status: str = ""  # original status-cell text
-
 
 @dataclasses.dataclass
 class Phase:
@@ -89,9 +84,7 @@ class Phase:
             return 0.0
         return 100.0 * self.done / self.total
 
-
 # ─── Handoff resolution ───────────────────────────────────────────────
-
 
 def resolve_handoff_path() -> Path | None:
     """Find the handoff file: env override → newest `plans/*handoff*.md`
@@ -110,9 +103,7 @@ def resolve_handoff_path() -> Path | None:
     )
     return candidates[0].resolve() if candidates else None
 
-
 # ─── Parser ───────────────────────────────────────────────────────────
-
 
 _PHASE_HEADING = re.compile(
     r"^##\s+Phase\s+(\d+)\s*[—\-:]\s*(.+?)\s*$", re.MULTILINE
@@ -122,11 +113,9 @@ _PHASE_HEADING = re.compile(
 _TABLE_ROW = re.compile(r"^\|(.+)\|\s*$", re.MULTILINE)
 _COMMIT_RE = re.compile(r"`([0-9a-f]{7,40})`")
 
-
 def _row_cells(row: str) -> list[str]:
     """Split a markdown table row body into trimmed cells."""
     return [c.strip() for c in row.split("|")]
-
 
 def _classify_status(cell: str) -> tuple[str, str]:
     """Return (status, commit_sha). status ∈ {done, pending, unknown}."""
@@ -141,7 +130,6 @@ def _classify_status(cell: str) -> tuple[str, str]:
     if "⬜" in text or "pending" in lower or "start here" in lower or "after " in lower or "independent" in lower:
         return "pending", commit
     return "unknown", commit
-
 
 def parse_phases(text: str) -> list[Phase]:
     """Pull every `## Phase N — <title>` section + its FIRST following
@@ -164,7 +152,6 @@ def parse_phases(text: str) -> list[Phase]:
         if items:
             phases.append(Phase(number=number, title=title, items=items))
     return phases
-
 
 def _parse_table_items(section: str) -> list[Item]:
     """Pull rows from the first markdown table in `section`. Each row's
@@ -206,9 +193,7 @@ def _parse_table_items(section: str) -> list[Item]:
         ))
     return items
 
-
 # ─── Rendering ────────────────────────────────────────────────────────
-
 
 def _bar(done: int, total: int, width: int = BAR_LENGTH) -> str:
     if total == 0:
@@ -217,14 +202,12 @@ def _bar(done: int, total: int, width: int = BAR_LENGTH) -> str:
     filled = max(0, min(width, filled))
     return BAR_FILLED * filled + BAR_EMPTY * (width - filled)
 
-
 def find_next_pending(phases: list[Phase]) -> Item | None:
     for p in phases:
         for it in p.items:
             if it.status == "pending":
                 return it
     return None
-
 
 def render_dashboard(phases: list[Phase]) -> str:
     if not phases:
@@ -259,7 +242,6 @@ def render_dashboard(phases: list[Phase]) -> str:
         lines.append(f"Next up: {nxt.item_id} — {nxt.title}")
     return "\n".join(lines)
 
-
 def render_phase(phase: Phase) -> str:
     lines = [
         f"Phase {phase.number} — {phase.title}",
@@ -276,16 +258,13 @@ def render_phase(phase: Phase) -> str:
         lines.append(f"  {icon} {it.item_id:<10} {it.title}{commit}")
     return "\n".join(lines)
 
-
 # ─── CLI ─────────────────────────────────────────────────────────────
-
 
 def _load_phases() -> tuple[list[Phase], Path | None]:
     p = resolve_handoff_path()
     if p is None:
         return [], None
     return parse_phases(p.read_text()), p
-
 
 def cmd_progress(args) -> int:
     phases, path = _load_phases()
@@ -318,7 +297,6 @@ def cmd_progress(args) -> int:
         print(render_dashboard(phases))
     return 0
 
-
 def cmd_next(args) -> int:
     phases, path = _load_phases()
     if path is None:
@@ -338,7 +316,6 @@ def cmd_next(args) -> int:
         print(f"{nxt.item_id} — {nxt.title}")
     return 0
 
-
 def cmd_phases(args) -> int:
     phases, path = _load_phases()
     if path is None:
@@ -355,7 +332,6 @@ def cmd_phases(args) -> int:
             print(f"Phase {p.number} — {p.title}: {p.done}/{p.total}")
     return 0
 
-
 def cmd_phase(args) -> int:
     phases, path = _load_phases()
     if path is None:
@@ -368,7 +344,6 @@ def cmd_phase(args) -> int:
     print(render_phase(target))
     return 0
 
-
 def cmd_path(args) -> int:
     p = resolve_handoff_path()
     if p is None:
@@ -376,7 +351,6 @@ def cmd_path(args) -> int:
         return 1
     print(p)
     return 0
-
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
@@ -407,7 +381,6 @@ def main(argv: list[str] | None = None) -> int:
 
     args = parser.parse_args(argv)
     return args.func(args)
-
 
 if __name__ == "__main__":
     sys.exit(main())

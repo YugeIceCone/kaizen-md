@@ -15,11 +15,10 @@ import unittest
 from pathlib import Path
 
 # Make _plugin_root importable from the canonical scripts dir.
-SCRIPT_DIR = Path(__file__).resolve().parent.parent / "skills" / "workflow" / "scripts"
-sys.path.insert(0, str(SCRIPT_DIR))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 
 import _plugin_root as pr  # noqa: E402
-
 
 class _ScrubEnv(unittest.TestCase):
     """Base class — strips CLAUDE_PLUGIN_ROOT + KAIZEN_PLUGIN_ROOT per-test."""
@@ -34,14 +33,12 @@ class _ScrubEnv(unittest.TestCase):
             else:
                 os.environ[k] = v
 
-
 def _make_plugin_dir(tmpdir: str, name: str = "fake-plugin") -> Path:
     """Create a fake plugin dir with .claude-plugin/plugin.json. Returns its path."""
     p = Path(tmpdir) / name
     (p / ".claude-plugin").mkdir(parents=True)
     (p / ".claude-plugin" / "plugin.json").write_text('{"name":"' + name + '"}\n')
     return p
-
 
 class TestMarkerDetection(_ScrubEnv):
     def test_is_plugin_dir_true_when_marker_present(self):
@@ -52,7 +49,6 @@ class TestMarkerDetection(_ScrubEnv):
     def test_is_plugin_dir_false_when_marker_absent(self):
         with tempfile.TemporaryDirectory() as td:
             self.assertFalse(pr._is_plugin_dir(Path(td)))
-
 
 class TestEnvResolution(_ScrubEnv):
     def test_claude_plugin_root_used_when_set(self):
@@ -90,7 +86,6 @@ class TestEnvResolution(_ScrubEnv):
         resolved = pr.plugin_root()
         self.assertTrue((resolved / pr.MARKER).is_file())
 
-
 class TestScriptDerivedResolution(_ScrubEnv):
     def test_script_path_walks_up_to_find_marker(self):
         # _plugin_root.py itself lives under the plugin root, so the
@@ -105,7 +100,6 @@ class TestScriptDerivedResolution(_ScrubEnv):
             start = Path(td) / "nested" / "deep"
             start.mkdir(parents=True)
             self.assertIsNone(pr._from_script_path(start))
-
 
 class TestStrictMode(_ScrubEnv):
     def test_strict_false_returns_none_when_unresolved(self):
@@ -127,7 +121,6 @@ class TestStrictMode(_ScrubEnv):
                 pr.plugin_root(strict=True)
         finally:
             pr._from_script_path = original
-
 
 class TestContract(unittest.TestCase):
     """Lock the public surface — names + types — so callers don't drift."""
@@ -153,7 +146,6 @@ class TestContract(unittest.TestCase):
         )
         self.assertEqual(result.returncode, 0)
         self.assertTrue((Path(result.stdout.strip()) / pr.MARKER).is_file())
-
 
 if __name__ == "__main__":
     unittest.main()

@@ -34,14 +34,12 @@ import json
 import os
 import sys
 
-
 # Per-model context windows. New entries belong here. Heuristic below
 # (`-1m` / `[1m]` substring) covers future 1M models without a code change.
 _MODEL_LIMITS: dict[str, int] = {
     "claude-opus-4-7[1m]": 1_000_000,
     "claude-opus-4-7-1m":  1_000_000,
 }
-
 
 def limit_for_model(model_id: str | None) -> int:
     """Pure: map a model id to its context-window size in tokens.
@@ -57,7 +55,6 @@ def limit_for_model(model_id: str | None) -> int:
     if "[1m]" in low or "-1m" in low:
         return 1_000_000
     return 200_000
-
 
 def _model_id_from_jsonl(cwd_path=None) -> str:
     """Return the model id of the latest assistant turn, or "" on miss.
@@ -97,7 +94,6 @@ def _model_id_from_jsonl(cwd_path=None) -> str:
         return ""
     return last_model
 
-
 def get_model_id() -> str:
     """Active model id. Resolution order:
     KAIZEN_MODEL_ID env > CLAUDE_MODEL_ID env > latest assistant turn in JSONL."""
@@ -106,7 +102,6 @@ def get_model_id() -> str:
         if v:
             return v
     return _model_id_from_jsonl()
-
 
 def get_limit() -> int:
     """Active context-window size. Resolution order:
@@ -144,7 +139,6 @@ def get_limit() -> int:
 
     return derived
 
-
 def get_tokens(stdin_text: str = "") -> int | None:
     for k in ("CLAUDE_CONTEXT_TOKENS", "CLAUDE_USAGE_TOTAL_TOKENS"):
         v = os.environ.get(k, "").strip()
@@ -162,7 +156,6 @@ def get_tokens(stdin_text: str = "") -> int | None:
             pass
     return None
 
-
 def zone_of(pct: int | None) -> str:
     if pct is None:
         return "unknown"
@@ -171,7 +164,6 @@ def zone_of(pct: int | None) -> str:
     if pct < 80:
         return "yellow"
     return "red"
-
 
 def get_tokens_from_jsonl(cwd_path=None):
     """Read latest assistant turn's usage from active CC session JSONL.
@@ -224,7 +216,6 @@ def get_tokens_from_jsonl(cwd_path=None):
         + int(last_usage.get("output_tokens") or 0)
     )
 
-
 def _usage_total(usage: dict) -> int:
     return (
         int(usage.get("input_tokens") or 0)
@@ -232,7 +223,6 @@ def _usage_total(usage: dict) -> int:
         + int(usage.get("cache_read_input_tokens") or 0)
         + int(usage.get("output_tokens") or 0)
     )
-
 
 def get_usage_summary(cwd_path=None) -> dict:
     """BK-015 — peak-aware reader for the active CC session JSONL.
@@ -315,7 +305,6 @@ def get_usage_summary(cwd_path=None) -> dict:
         "compact_count":    compact_count,
     }
 
-
 def main():
     stdin_text = ""
     if not sys.stdin.isatty():
@@ -382,7 +371,6 @@ def main():
 
     else:
         sys.exit(f"unknown subcommand: {cmd}\ntry: show|json|zone|pct|should-warn")
-
 
 if __name__ == "__main__":
     main()

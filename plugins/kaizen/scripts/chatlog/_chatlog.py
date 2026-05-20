@@ -16,7 +16,6 @@ from __future__ import annotations
 import re
 from typing import Any, Iterable
 
-
 def _user_text(event: dict) -> str:
     """Return concatenated user-message text. '' for non-user events."""
     if event.get("type") != "user":
@@ -37,7 +36,6 @@ def _user_text(event: dict) -> str:
         return " ".join(parts)
     return ""
 
-
 def _assistant_tool_names(event: dict) -> list[str]:
     """Return tool_use names for assistant events. [] for non-assistant."""
     if event.get("type") != "assistant":
@@ -55,7 +53,6 @@ def _assistant_tool_names(event: dict) -> list[str]:
             if name:
                 names.append(name)
     return names
-
 
 def match_event(event: dict, rule: dict) -> bool:
     """Return True iff event matches the rule's trigger."""
@@ -87,13 +84,11 @@ def match_event(event: dict, rule: dict) -> bool:
     # Unknown trigger type — no match (caller can lint separately)
     return False
 
-
 def extract_slice(events: list, idx: int, before: int, after: int) -> list:
     """Return events[idx-before .. idx+after] (inclusive, clamped to bounds)."""
     lo = max(0, idx - max(0, before))
     hi = min(len(events), idx + max(0, after) + 1)
     return events[lo:hi]
-
 
 def slice_transcript(events: Iterable[dict], rules: list[dict]) -> dict[str, list]:
     """For each rule, return list of slices (each slice = list of events).
@@ -115,6 +110,5 @@ def slice_transcript(events: Iterable[dict], rules: list[dict]) -> dict[str, lis
                                     int(cap.get("after", 0)))
                 out[rid].append(sl)
     return out
-
 
 __all__ = ["match_event", "extract_slice", "slice_transcript"]

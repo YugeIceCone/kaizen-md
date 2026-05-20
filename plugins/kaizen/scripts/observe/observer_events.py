@@ -42,7 +42,6 @@ from collections import Counter
 from pathlib import Path
 from typing import Any
 
-
 def _observer_dir() -> Path:
     # DRY — delegates to shared _paths.env_overridable_dir helper.
     _here = Path(__file__).resolve().parent
@@ -50,10 +49,8 @@ def _observer_dir() -> Path:
     from _paths import env_overridable_dir
     return env_overridable_dir("KAIZEN_OBSERVER_DIR", "observer")
 
-
 def _sink_path() -> Path:
     return _observer_dir() / "events.jsonl"
-
 
 def load_events() -> list[dict[str, Any]]:
     """Read all events from the sink. Missing file → []."""
@@ -73,7 +70,6 @@ def load_events() -> list[dict[str, Any]]:
             out.append(evt)
     return out
 
-
 def compute_stats(events: list[dict]) -> dict[str, Any]:
     """Per-event_kind + per-tool counts + total."""
     by_kind = Counter(e.get("event_kind", "") for e in events)
@@ -87,13 +83,11 @@ def compute_stats(events: list[dict]) -> dict[str, Any]:
         "by_tool": dict(by_tool),
     }
 
-
 def _render_event_line(evt: dict) -> str:
     return (f"[{evt.get('ts', '?')}] {evt.get('event_kind', '?')} "
              f"src={evt.get('source', '?')} "
              f"tool={evt.get('tool', '?')} "
              f"sid={evt.get('sid', '?')[:8]}")
-
 
 def _cmd_recent(args) -> int:
     events = load_events()
@@ -104,7 +98,6 @@ def _cmd_recent(args) -> int:
         for e in last:
             print(_render_event_line(e))
     return 0
-
 
 def _cmd_stats(args) -> int:
     events = load_events()
@@ -120,7 +113,6 @@ def _cmd_stats(args) -> int:
         for k, v in sorted(stats["by_tool"].items()):
             print(f"  {k}: {v}")
     return 0
-
 
 def _cmd_filter(args) -> int:
     events = load_events()
@@ -139,7 +131,6 @@ def _cmd_filter(args) -> int:
         for e in out:
             print(_render_event_line(e))
     return 0
-
 
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(
@@ -171,7 +162,6 @@ def main(argv: list[str] | None = None) -> int:
         p.print_help()
         return 2
     return args.fn(args)
-
 
 if __name__ == "__main__":
     sys.exit(main())

@@ -22,9 +22,8 @@ import unittest
 from pathlib import Path
 
 PLUGIN_ROOT = Path(__file__).resolve().parent.parent
-SKILL_SCRIPTS = PLUGIN_ROOT / "skills" / "workflow" / "scripts"
-sys.path.insert(0, str(SKILL_SCRIPTS))
-
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 
 SETUP_SCRIPT = PLUGIN_ROOT / "skills" / "loop" / "scripts" / "setup-ralph-loop.sh"
 HOOK_CC = PLUGIN_ROOT / "hooks" / "claude" / "stop-ralph.sh"
@@ -34,7 +33,6 @@ WORKFLOW_COMMAND = PLUGIN_ROOT / "commands" / "workflow.md"
 RALPH_SCHEMA = PLUGIN_ROOT / "schemas" / "ralph-loop" / "schema.yaml"
 ROUTINES_YAML = PLUGIN_ROOT / "skills" / "workflow" / "domain" / "routines.yaml"
 HOOKS_JSON = PLUGIN_ROOT / "hooks" / "hooks.json"
-
 
 class TestFlagAliases(unittest.TestCase):
     """`--its` aliases `--max-iterations`; `--promise` aliases `--completion-promise`."""
@@ -86,7 +84,6 @@ class TestFlagAliases(unittest.TestCase):
             self.assertIn("max_iterations: 5", state)
             self.assertIn('completion_promise: "MIX"', state)
 
-
 class TestStatePathMigration(unittest.TestCase):
     """The state-path migration: .codex/ralph-loop.local.md → .kaizen/loop.state.md."""
 
@@ -130,7 +127,6 @@ class TestStatePathMigration(unittest.TestCase):
             self.assertGreaterEqual(len(parts), 3)
             body = parts[2].strip()
             self.assertEqual(body, "prompt body")
-
 
 class TestStopHooks(unittest.TestCase):
     """Both Stop hooks exist, parse, and respect missing state files."""
@@ -258,7 +254,6 @@ class TestStopHooks(unittest.TestCase):
                     f"{hook}: state file should be removed after promise match",
                 )
 
-
 class TestRoutineRegistration(unittest.TestCase):
     """ralph-loop is registered in routines.yaml and loadable via the workflow loader."""
 
@@ -282,7 +277,6 @@ class TestRoutineRegistration(unittest.TestCase):
         self.assertEqual(entry["kind"], "schema")
         self.assertEqual(entry["stages"], ["start", "iterate", "verify"])
 
-
 class TestCommandWiring(unittest.TestCase):
     """The kaizen-loop bin + /kaizen:workflow Folded surface wire the loop concern.
 
@@ -304,7 +298,6 @@ class TestCommandWiring(unittest.TestCase):
         self.assertIn("Folded surface", text)
         self.assertIn("kaizen-loop", text)
         self.assertIn("/kaizen:loop", text)  # documented in the "was" column
-
 
 class TestHooksJson(unittest.TestCase):
     """hooks/hooks.json wires the CC Stop hook for ralph-loop."""
@@ -335,7 +328,6 @@ class TestHooksJson(unittest.TestCase):
         self.assertGreaterEqual(ralph_idx, 0, "stop-ralph.sh not wired in hooks.json")
         self.assertGreaterEqual(reminder_idx, 0, "stop-backlog-reminder.sh missing")
         self.assertLess(ralph_idx, reminder_idx, "stop-ralph.sh should fire first")
-
 
 class TestLedgerCompletion(unittest.TestCase):
     """Empty body in .kaizen/loop.state.md ends the loop (ledger pattern)."""
@@ -418,7 +410,6 @@ class TestLedgerCompletion(unittest.TestCase):
             self.assertIn("Item 1", payload["reason"])
             self.assertTrue(remains)
 
-
 class TestLegacyCleanup(unittest.TestCase):
     """The legacy .codex path is removed from active code paths."""
 
@@ -432,13 +423,10 @@ class TestLegacyCleanup(unittest.TestCase):
         self.assertNotIn(".codex/ralph-loop.local.md", text)
         self.assertIn(".kaizen/loop.state.md", text)
 
-
 if __name__ == "__main__":
     unittest.main()
 
-
 # ─── 7. Structured ledger (JSON body + verify gate) ────────────────────
-
 
 class TestStructuredLedger(unittest.TestCase):
     """JSON-body ledger with hook-owned verify gate (cheat-proof)."""
@@ -634,7 +622,6 @@ class TestStructuredLedger(unittest.TestCase):
         )
         self.assertEqual(result.returncode, 2)
         self.assertIn("iteration must be int", result.stderr)
-
 
 class TestSetupScriptStructuredItems(unittest.TestCase):
     """The setup script supports --item and --ledger for structured init."""

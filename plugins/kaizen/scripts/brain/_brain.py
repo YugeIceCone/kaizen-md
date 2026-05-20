@@ -41,8 +41,8 @@ from typing import Any, Optional
 
 _SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(_SCRIPT_DIR))
-# MIGRATION BRIDGE — kaizen helpers still at skills/workflow/scripts/
-sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "skills" / "workflow" / "scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import _bootstrap  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 
 # Domain yaml lives at skills/brain/domain/ — resolve from plugin root.
 # Was .parent.parent.parent (skills/workflow/scripts/ depth); now .parent.parent
@@ -50,9 +50,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "skills" / "workflo
 _PLUGIN_ROOT = _SCRIPT_DIR.parent.parent  # plugins/kaizen
 _DOMAIN_DIR = _PLUGIN_ROOT / "skills" / "brain" / "domain"
 
-
 # ─── TOML / YAML loaders ──────────────────────────────────────────────
-
 
 def _load_yaml(path: Path) -> dict:
     """Load a YAML file. Prefers stdlib-only path via a tiny parser;
@@ -67,7 +65,6 @@ def _load_yaml(path: Path) -> dict:
     except ImportError:
         return _minimal_yaml_parse(text)
 
-
 def _minimal_yaml_parse(text: str) -> dict:
     """Very small YAML subset — handles the schema files we ship.
 
@@ -80,7 +77,6 @@ def _minimal_yaml_parse(text: str) -> dict:
     """
     lines = text.split("\n")
     return _parse_yaml_block(lines, 0, 0)[0]
-
 
 def _parse_yaml_block(lines: list[str], start: int, indent: int) -> tuple[dict | list, int]:
     """Parse a block starting at lines[start] with the given indent.
@@ -144,7 +140,6 @@ def _parse_yaml_block(lines: list[str], start: int, indent: int) -> tuple[dict |
         i += 1
     return result if result is not None else {}, i
 
-
 def _parse_yaml_scalar(s: str) -> Any:
     s = s.strip()
     if not s:
@@ -173,9 +168,7 @@ def _parse_yaml_scalar(s: str) -> Any:
         return [_parse_yaml_scalar(p.strip()) for p in inner.split(",")]
     return s
 
-
 # ─── Path resolution ──────────────────────────────────────────────────
-
 
 def brain_root() -> Path:
     """Resolve the brain root path. v1.38.0 single-user clean cut:
@@ -195,7 +188,6 @@ def brain_root() -> Path:
     )
     return (Path(os.path.expandvars(kaizen_dir)).expanduser() / "brain").resolve()
 
-
 def project_slug_for(cwd: Optional[Path] = None) -> str:
     """Pure: derive the CC project slug from a path. Slashes → dashes,
     leading slash drops. E.g. ``/home/x/workspace/shodan`` →
@@ -207,7 +199,6 @@ def project_slug_for(cwd: Optional[Path] = None) -> str:
     else:
         s = s.replace("/", "-")
     return s
-
 
 def project_root_for(cwd: Optional[Path] = None) -> Path:
     """Resolve the project ROOT for ``cwd``.
@@ -236,7 +227,6 @@ def project_root_for(cwd: Optional[Path] = None) -> Path:
         pass
     return base
 
-
 def project_memory_root(cwd: Optional[Path] = None) -> Path:
     """Resolve the project-memory dir for ``cwd`` — git-root aware.
 
@@ -249,9 +239,7 @@ def project_memory_root(cwd: Optional[Path] = None) -> Path:
     slug = project_slug_for(root)
     return Path.home() / ".claude" / "projects" / slug / "memory"
 
-
 # ─── Config (loaded from yaml) ────────────────────────────────────────
-
 
 @dataclass
 class TypeSpec:
@@ -262,7 +250,6 @@ class TypeSpec:
     optional_keys: list[str] = field(default_factory=list)
     triggers: list[str] = field(default_factory=list)
 
-
 @dataclass
 class TierRule:
     name: str
@@ -270,13 +257,11 @@ class TierRule:
     route_to: str
     description: str = ""
 
-
 @dataclass
 class FileRule:
     subdir: Optional[str] = None
     filename_template: Optional[str] = None
     when: dict = field(default_factory=dict)
-
 
 class Config:
     """Loaded schema + routing config."""
@@ -348,13 +333,10 @@ class Config:
             promotion=routing_data.get("promotion") or {},
         )
 
-
 # ─── Type detection ───────────────────────────────────────────────────
-
 
 _ISO_DATE_RE = re.compile(r"\b\d{4}-\d{2}-\d{2}\b")
 _KEYWORD_RE_CACHE: dict[str, re.Pattern] = {}
-
 
 def _trigger_to_regex(trigger: str) -> re.Pattern:
     """Compile a trigger string from yaml to a case-insensitive regex.
@@ -365,7 +347,6 @@ def _trigger_to_regex(trigger: str) -> re.Pattern:
         # support inline `.*` literals authored in the yaml.
         _KEYWORD_RE_CACHE[trigger] = re.compile(trigger, re.IGNORECASE)
     return _KEYWORD_RE_CACHE[trigger]
-
 
 def detect_type(text: str, cfg: Optional[Config] = None) -> str:
     """Classify a piece of captured text into one of the four types.
@@ -399,12 +380,9 @@ def detect_type(text: str, cfg: Optional[Config] = None) -> str:
                     return type_name
     return cfg.default_type
 
-
 # ─── Frontmatter parse / serialize ────────────────────────────────────
 
-
 _FRONTMATTER_RE = re.compile(r"^---\s*\n(.*?)\n---\s*\n?(.*)", re.DOTALL)
-
 
 def parse_note(text: str) -> tuple[dict, str]:
     """Split a brain Note into (frontmatter_dict, body).
@@ -420,7 +398,6 @@ def parse_note(text: str) -> tuple[dict, str]:
     raw_fm, body = m.group(1), m.group(2)
     fm = _parse_frontmatter_block(raw_fm)
     return fm, body
-
 
 def _parse_frontmatter_block(raw: str) -> dict:
     """Parse a simple key: value frontmatter block (no nested keys).
@@ -464,7 +441,6 @@ def _parse_frontmatter_block(raw: str) -> dict:
         out[pending_key] = pending_list
     return out
 
-
 def serialize_frontmatter(fm: dict) -> str:
     """Render a frontmatter dict to ``---\\n...\\n---\\n``.
 
@@ -484,7 +460,6 @@ def serialize_frontmatter(fm: dict) -> str:
         parts.append(_render_frontmatter_value(k, v))
     parts.append("---")
     return "\n".join(parts) + "\n"
-
 
 def _render_frontmatter_value(key: str, val: Any) -> str:
     if isinstance(val, list):
@@ -506,7 +481,6 @@ def _render_frontmatter_value(key: str, val: Any) -> str:
         return "\n".join(lines)
     return f"{key}: {_render_scalar(val)}"
 
-
 def _render_scalar(v: Any) -> str:
     if v is None:
         return "null"
@@ -524,7 +498,6 @@ def _render_scalar(v: Any) -> str:
         return v
     return json.dumps(v, default=str)
 
-
 def write_note(path: Path, fm: dict, body: str) -> None:
     """Atomic write of a Note. Bumps `updated` to today, sets `created`
     if absent. Creates parent dirs."""
@@ -539,12 +512,9 @@ def write_note(path: Path, fm: dict, body: str) -> None:
     import _atomic
     _atomic.atomic_write(path, content)
 
-
 # ─── Slug helpers ─────────────────────────────────────────────────────
 
-
 _SLUG_NON_ALNUM = re.compile(r"[^a-z0-9]+")
-
 
 def slugify(text: str, max_len: int = 60) -> str:
     """Convert free-text to a kebab-case slug suitable for filenames."""
@@ -554,9 +524,7 @@ def slugify(text: str, max_len: int = 60) -> str:
         s = s[:max_len].rstrip("-")
     return s or "note"
 
-
 # ─── CLI inspector ────────────────────────────────────────────────────
-
 
 if __name__ == "__main__":
     import argparse

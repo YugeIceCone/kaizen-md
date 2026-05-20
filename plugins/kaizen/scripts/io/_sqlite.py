@@ -34,7 +34,6 @@ from __future__ import annotations
 import sqlite3
 from pathlib import Path
 
-
 def open_indexer_db(
     db_path: Path,
     schema_sql: str,
@@ -63,14 +62,12 @@ def open_indexer_db(
         conn.executescript(schema_sql)
     return conn
 
-
 def set_meta(conn: sqlite3.Connection, table: str, key: str, value: str) -> None:
     """INSERT OR REPLACE into `<table>(key, value)`."""
     conn.execute(
         f"INSERT OR REPLACE INTO {table} (key, value) VALUES (?, ?)",
         (key, value),
     )
-
 
 def get_meta(
     conn: sqlite3.Connection,

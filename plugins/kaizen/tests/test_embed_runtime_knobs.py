@@ -19,10 +19,9 @@ import unittest
 from pathlib import Path
 
 PLUGIN_ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(PLUGIN_ROOT / "skills" / "workflow" / "scripts"))
-
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 import _embed as kz_embed  # noqa: E402
-
 
 class _EnvSandbox:
     """Save/restore relevant env vars between tests."""
@@ -47,9 +46,7 @@ class _EnvSandbox:
             else:
                 os.environ[k] = v
 
-
 # ─── E7 — multi-process workers + threshold ──────────────────────────
-
 
 class TestMultiProcessWorkersConfig(unittest.TestCase):
     def test_defaults_to_zero_disables_mp(self):
@@ -71,7 +68,6 @@ class TestMultiProcessWorkersConfig(unittest.TestCase):
             os.environ["KAIZEN_EMBED_MP_WORKERS"] = "not-a-number"
             self.assertEqual(kz_embed._get_mp_workers(), 0)
 
-
 class TestMultiProcessThresholdConfig(unittest.TestCase):
     def test_default_is_500(self):
         with _EnvSandbox():
@@ -86,7 +82,6 @@ class TestMultiProcessThresholdConfig(unittest.TestCase):
         with _EnvSandbox():
             os.environ["KAIZEN_EMBED_MP_THRESHOLD"] = "xyz"
             self.assertEqual(kz_embed._get_mp_threshold(), 500)
-
 
 class TestShouldUseMultiProcess(unittest.TestCase):
     def test_false_when_workers_zero(self):
@@ -111,9 +106,7 @@ class TestShouldUseMultiProcess(unittest.TestCase):
             os.environ["KAIZEN_EMBED_MP_THRESHOLD"] = "10"
             self.assertTrue(kz_embed._should_use_multi_process(10))
 
-
 # ─── E8 — normalize knob ─────────────────────────────────────────────
-
 
 class TestNormalizeFlag(unittest.TestCase):
     def test_default_is_l2_true(self):
@@ -142,7 +135,6 @@ class TestNormalizeFlag(unittest.TestCase):
         with _EnvSandbox():
             os.environ["KAIZEN_EMBED_NORMALIZE"] = "weird"
             self.assertFalse(kz_embed._get_normalize_flag())
-
 
 if __name__ == "__main__":
     unittest.main()

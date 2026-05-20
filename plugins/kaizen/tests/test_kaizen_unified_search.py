@@ -18,9 +18,9 @@ from pathlib import Path
 from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / "skills" / "workflow" / "scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 sys.path.insert(0, str(ROOT / "scripts" / "mcp"))
-
 
 class TestAutoCorpusRouting(unittest.TestCase):
     """`pick_corpus(query) → corpus_name` is the pure routing layer."""
@@ -57,7 +57,6 @@ class TestAutoCorpusRouting(unittest.TestCase):
         import discovery_mcp as dm
         self.assertEqual(dm.pick_corpus("random unmatched query"), "all")
 
-
 class TestKaizenSearchEntry(unittest.TestCase):
     """The kaizen_search MCP tool delegates by corpus."""
 
@@ -81,7 +80,6 @@ class TestKaizenSearchEntry(unittest.TestCase):
     def test_all_keyword_signals_fanout(self):
         import discovery_mcp as dm
         self.assertEqual(dm.pick_corpus("any", "all"), "all")
-
 
 if __name__ == "__main__":
     unittest.main()

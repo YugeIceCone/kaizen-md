@@ -17,14 +17,13 @@ import unittest
 from pathlib import Path
 
 PLUGIN_ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(PLUGIN_ROOT / "skills" / "workflow" / "scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 sys.path.insert(0, str(PLUGIN_ROOT / "scripts" / "indexers"))
 
 import onboard_index as oi  # noqa: E402
 
-
 # ─── extract_docstrings ──────────────────────────────────────────────
-
 
 class TestExtractPythonDocstrings(unittest.TestCase):
     def test_extracts_module_docstring(self):
@@ -55,7 +54,6 @@ class TestExtractPythonDocstrings(unittest.TestCase):
         out = oi.extract_docstrings(src, "python")
         self.assertIn("this is a doc", out)
 
-
 class TestExtractRustDocstrings(unittest.TestCase):
     def test_extracts_outer_doc_lines(self):
         src = "/// Top-level fn docs.\n/// More detail.\nfn foo() {}\n"
@@ -78,7 +76,6 @@ class TestExtractRustDocstrings(unittest.TestCase):
         out = oi.extract_docstrings(src, "rust")
         self.assertEqual(out, "")
 
-
 class TestExtractJSDoc(unittest.TestCase):
     def test_extracts_jsdoc_block(self):
         src = "/**\n * computes the sum.\n * @param a number\n */\nfunction sum(a) {}\n"
@@ -98,7 +95,6 @@ class TestExtractJSDoc(unittest.TestCase):
         out = oi.extract_docstrings(src, "typescript")
         self.assertEqual(out, "")
 
-
 class TestExtractDocstringsFallback(unittest.TestCase):
     def test_returns_empty_for_unsupported_language(self):
         out = oi.extract_docstrings("# a yaml comment\nkey: val\n", "yaml")
@@ -107,9 +103,7 @@ class TestExtractDocstringsFallback(unittest.TestCase):
     def test_returns_empty_on_empty_source(self):
         self.assertEqual(oi.extract_docstrings("", "python"), "")
 
-
 # ─── clean_for_embed integration ─────────────────────────────────────
-
 
 class TestCleanForEmbedDocstrings(unittest.TestCase):
     def test_docstrings_attached_to_cleaned_record(self):
@@ -138,9 +132,7 @@ class TestCleanForEmbedDocstrings(unittest.TestCase):
         out = oi.clean_for_embed(raw)
         self.assertEqual(out["docstrings"], "")
 
-
 # ─── chunk_record dual-emission ──────────────────────────────────────
-
 
 class TestChunkRecordDualEmission(unittest.TestCase):
     def test_emits_code_chunks_with_kind_code(self):
@@ -198,9 +190,7 @@ class TestChunkRecordDualEmission(unittest.TestCase):
         self.assertEqual(len(set(indices)), len(indices),
                          "chunk_idx values must be unique within a file")
 
-
 # ─── Schema migration ────────────────────────────────────────────────
-
 
 class TestKindColumnMigration(unittest.TestCase):
     def test_new_db_has_kind_column(self):
@@ -256,7 +246,6 @@ class TestKindColumnMigration(unittest.TestCase):
             cols = [row[1] for row in conn.execute("PRAGMA table_info(code_chunks)")]
             self.assertEqual(cols.count("kind"), 1)
             conn.close()
-
 
 if __name__ == "__main__":
     unittest.main()

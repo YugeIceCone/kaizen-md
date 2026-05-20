@@ -54,7 +54,6 @@ _DEFAULT_MAX_IDEAS = 250
 _DEFAULT_THRESHOLD = 10
 _emit = _envelope.emitter("kaizen-brainstorm", tool_version="1.0.0")
 
-
 def should_emit_jsonl(idea_count: int, *, threshold: int = _DEFAULT_THRESHOLD) -> bool:
     """True when brainstorm has > threshold ideas (default 10).
 
@@ -62,9 +61,7 @@ def should_emit_jsonl(idea_count: int, *, threshold: int = _DEFAULT_THRESHOLD) -
     not an error). Under-threshold means prose-only narration."""
     return idea_count > threshold
 
-
 # ─── Pure-fn signal computer ─────────────────────────────────────────
-
 
 def _compute_idea_signals(draft: dict) -> dict:
     """Map an idea-draft to the signals dict walked by brainstorm-rubric.yaml.
@@ -85,9 +82,7 @@ def _compute_idea_signals(draft: dict) -> dict:
         "novelty_score":   float(draft.get("novelty_score", 0.5) or 0.5),
     }
 
-
 # ─── JSONL I/O + rubric version ──────────────────────────────────────
-
 
 def _load_jsonl(path: Path) -> list[dict]:
     rows: list[dict] = []
@@ -101,16 +96,13 @@ def _load_jsonl(path: Path) -> list[dict]:
             raise ValueError(f"line {i}: invalid JSON: {exc}") from exc
     return rows
 
-
 def _rubric_version(rubric_path: Path) -> str:
     """Read top-level `version:` from the rubric YAML (string)."""
     with rubric_path.open("r", encoding="utf-8") as f:
         raw = _yaml.safe_load(f) or {}
     return str(raw.get("version", "1"))
 
-
 # ─── Rubric application ──────────────────────────────────────────────
-
 
 def score_jsonl(rows: list[dict], rubric_path: Path) -> list[dict]:
     """Enrich each row with auto_bucket / classification_confidence /
@@ -137,9 +129,7 @@ def score_jsonl(rows: list[dict], rubric_path: Path) -> list[dict]:
         out.append(enriched)
     return out
 
-
 # ─── override loop ───────────────────────────────────────────────────
-
 
 def run_override_loop(rows: list[dict],
                        *, ask_user_question=None) -> list[dict]:
@@ -173,9 +163,7 @@ def run_override_loop(rows: list[dict],
         out.append(r)
     return out
 
-
 # ─── score subcommand ────────────────────────────────────────────────
-
 
 def _cmd_score(args) -> int:
     inp = Path(args.input).expanduser()
@@ -244,9 +232,7 @@ def _cmd_score(args) -> int:
     )
     return 0
 
-
 # ─── argparse entry ──────────────────────────────────────────────────
-
 
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(
@@ -271,7 +257,6 @@ def main(argv: list[str] | None = None) -> int:
 
     args = ap.parse_args(argv)
     return args.func(args)
-
 
 if __name__ == "__main__":
     sys.exit(main())

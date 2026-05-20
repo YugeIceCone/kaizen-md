@@ -19,9 +19,9 @@ import unittest
 from pathlib import Path
 
 PLUGIN_ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(PLUGIN_ROOT / "skills" / "workflow" / "scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 sys.path.insert(0, str(PLUGIN_ROOT / "scripts" / "mcp"))
-
 
 SAMPLE_REPORT = """# kaizen audit — 2026-05-12T18:56:59Z
 
@@ -53,7 +53,6 @@ audit is comprehensive + periodic + severity-classified.
 ---
 """
 
-
 SAMPLE_NO_FINDINGS = """# kaizen audit — 2026-05-14T01:00:00Z
 
 **Scope:** (whole repo)
@@ -64,16 +63,13 @@ All clear!
 ---
 """
 
-
 def _import_mcp():
     if "audit_mcp" in sys.modules:
         del sys.modules["audit_mcp"]
     import audit_mcp
     return audit_mcp
 
-
 # ─── parse_report ─────────────────────────────────────────────────────
-
 
 class TestParseReport(unittest.TestCase):
     def test_extracts_scope(self):
@@ -117,9 +113,7 @@ class TestParseReport(unittest.TestCase):
         self.assertEqual(p["total"], 0)
         self.assertEqual(p["findings"], [])
 
-
 # ─── MCP tools (read paths) ───────────────────────────────────────────
-
 
 class _AuditsTmp:
     """Sandboxed audits dir for tests."""
@@ -145,7 +139,6 @@ class _AuditsTmp:
             os.environ["KAIZEN_AUDITS_DIR"] = self._saved
         self._tmpcm.cleanup()
 
-
 class TestAuditList(unittest.TestCase):
     def test_returns_empty_when_no_audits(self):
         with _AuditsTmp():
@@ -162,7 +155,6 @@ class TestAuditList(unittest.TestCase):
             names = [r["name"] for r in out]
             self.assertEqual(names[0], "2026-05-14T00-00-00Z-repo.md")
             self.assertEqual(names[-1], "2026-05-10T00-00-00Z-repo.md")
-
 
 class TestAuditLatest(unittest.TestCase):
     def test_returns_present_false_when_no_audits(self):
@@ -182,7 +174,6 @@ class TestAuditLatest(unittest.TestCase):
             self.assertEqual(out["total"], 7)
             self.assertEqual(out["by_severity"]["HIGH"], 2)
 
-
 class TestAuditRead(unittest.TestCase):
     def test_returns_full_body(self):
         with _AuditsTmp() as t:
@@ -198,7 +189,6 @@ class TestAuditRead(unittest.TestCase):
             m = _import_mcp()
             out = asyncio.run(m.audit_read("nonexistent.md"))
             self.assertIn("error", out)
-
 
 class TestAuditFindings(unittest.TestCase):
     def test_returns_all_when_no_filter(self):
@@ -238,7 +228,6 @@ class TestAuditFindings(unittest.TestCase):
             out_upper = asyncio.run(m.audit_findings(severity="HIGH"))
             self.assertEqual(len(out_lower), len(out_upper))
 
-
 class TestRegistration(unittest.TestCase):
     def test_mcp_json_lists_audit_server(self):
         data = json.loads((PLUGIN_ROOT / ".mcp.json").read_text())
@@ -249,7 +238,6 @@ class TestRegistration(unittest.TestCase):
         import gateway
         module_names = [m for _, m in gateway.SUBSERVERS]
         self.assertIn("audit_mcp", module_names)
-
 
 if __name__ == "__main__":
     unittest.main()

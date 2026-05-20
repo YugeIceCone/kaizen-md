@@ -22,8 +22,8 @@ from pathlib import Path
 
 _SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(_SCRIPT_DIR))
-# MIGRATION BRIDGE — kaizen modules still at skills/workflow/scripts/
-sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "skills" / "workflow" / "scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import _bootstrap  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 
 import _dxm_emit  # noqa: E402
 import _session_jsonl as _sj  # noqa: E402
@@ -34,13 +34,11 @@ _EVT_TYPE = "stop_karpathy_check.fired"
 _FILE_TOOLS = frozenset({"Edit", "Write", "NotebookEdit"})
 _EXTENSIONS = (".py", ".ts", ".tsx", ".js", ".jsx")
 
-
 def _dxm_dir() -> Path:
     env = os.environ.get("KAIZEN_DXM_DIR")
     if env:
         return Path(os.path.expandvars(env)).expanduser()
     return Path.home() / ".claude" / ".kaizen" / "dxm"
-
 
 def _already_fired(session_id: str) -> bool:
     path = _dxm_dir() / f"events-{session_id}.jsonl"
@@ -54,7 +52,6 @@ def _already_fired(session_id: str) -> bool:
     except OSError:
         pass
     return False
-
 
 def _modified_files_this_session(session_id: str) -> list[str]:
     """Walk dxm events for Edit/Write tool calls + extract file_path
@@ -95,7 +92,6 @@ def _modified_files_this_session(session_id: str) -> list[str]:
         return []
     return sorted(seen)
 
-
 def _run_checker(file_path: str) -> list[str]:
     """Returns lines containing `[WARN]` from complexity_checker output."""
     try:
@@ -107,7 +103,6 @@ def _run_checker(file_path: str) -> list[str]:
     except (OSError, subprocess.SubprocessError):
         return []
     return [ln for ln in (r.stdout or "").splitlines() if "[WARN]" in ln]
-
 
 def check(session_id: str | None = None) -> dict:
     if os.environ.get("KAIZEN_KARPATHY_STOP_DISABLE") == "1":
@@ -150,11 +145,9 @@ def check(session_id: str | None = None) -> dict:
         "Run `kaizen-karpathy-check` for the full 4-principle review.")
     return {"systemMessage": "\n".join(lines)}
 
-
 def _cmd_check(args) -> int:
     print(json.dumps(check(session_id=args.session) or {}))
     return 0
-
 
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(
@@ -167,7 +160,6 @@ def main(argv=None) -> int:
     sc.set_defaults(func=_cmd_check)
     args = p.parse_args(argv)
     return args.func(args)
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

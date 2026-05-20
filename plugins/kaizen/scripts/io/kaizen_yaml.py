@@ -31,7 +31,6 @@ import os
 import sys
 from pathlib import Path
 
-
 def _plugin_root() -> Path:
     env = os.environ.get("KAIZEN_PLUGIN_ROOT")
     if env:
@@ -40,7 +39,6 @@ def _plugin_root() -> Path:
     # plugin root is two parents up.
     here = Path(__file__).resolve().parent
     return here.parent.parent
-
 
 # Category classifier — folder/filename → human label. First match wins.
 def _classify(rel: str, name: str) -> str:
@@ -62,14 +60,12 @@ def _classify(rel: str, name: str) -> str:
         return "config"
     return "other"
 
-
 # Scan dirs — under plugin root unless absolute. Skips noise (vendored
 # dependencies, tests, archives).
 _SKIP_DIRS: set[str] = {
     ".git", "node_modules", "__pycache__", "archive", ".retired",
     "vendor", "tests",  # test fixtures aren't config
 }
-
 
 def _walk_yaml_files(root: Path) -> list[Path]:
     if not root.is_dir():
@@ -81,7 +77,6 @@ def _walk_yaml_files(root: Path) -> list[Path]:
             if name.endswith(".yaml") or name.endswith(".yml"):
                 out.append(Path(dirpath) / name)
     return sorted(out)
-
 
 def _file_record(p: Path, root: Path) -> dict:
     try:
@@ -97,7 +92,6 @@ def _file_record(p: Path, root: Path) -> dict:
         "category": _classify(rel, p.name),
     }
 
-
 def _safe_load(p: Path):
     """Best-effort PyYAML load. Returns None on parse error."""
     try:
@@ -109,7 +103,6 @@ def _safe_load(p: Path):
         return yaml.safe_load(p.read_text(encoding="utf-8"))
     except Exception:
         return None
-
 
 def cmd_list(args) -> int:
     root = _plugin_root()
@@ -131,7 +124,6 @@ def cmd_list(args) -> int:
                 print(f"    {r['size']:>8}  {r['relpath']}")
     return 0
 
-
 def cmd_show(args) -> int:
     root = _plugin_root()
     matches = [p for p in _walk_yaml_files(root) if p.name == args.name]
@@ -145,7 +137,6 @@ def cmd_show(args) -> int:
         return 1
     print(json.dumps(data, indent=2, default=str))
     return 0
-
 
 def cmd_lint(args) -> int:
     root = _plugin_root()
@@ -169,11 +160,9 @@ def cmd_lint(args) -> int:
             print(f"  ✓ {p.relative_to(root)}")
     return 0
 
-
 def cmd_path(args) -> int:
     print(_plugin_root())
     return 0
-
 
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(
@@ -200,7 +189,6 @@ def main(argv=None) -> int:
 
     args = p.parse_args(argv)
     return args.func(args)
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

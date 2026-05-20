@@ -19,10 +19,8 @@ import json
 import sys
 from pathlib import Path
 
-
 def _audits_dir(repo: Path) -> Path:
     return repo / ".kaizen" / "workflow" / "audits"
-
 
 def _parse_report(text: str) -> dict:
     """Re-export of audit_mcp.parse_report so this script doesn't
@@ -31,7 +29,6 @@ def _parse_report(text: str) -> dict:
     sys.path.insert(0, str(here.parent / "mcp"))
     from audit_mcp import parse_report
     return parse_report(text)
-
 
 def _render_jsonl(parsed: dict, report_name: str) -> str:
     """One JSON line per finding — context fields (report / scope /
@@ -46,7 +43,6 @@ def _render_jsonl(parsed: dict, report_name: str) -> str:
             "text":     f["text"],
         }, ensure_ascii=False))
     return "\n".join(rows) + ("\n" if rows else "")
-
 
 def _regen_one(md: Path, *, force: bool, dry_run: bool) -> str:
     """Return one of 'paired' / 'wrote' / 'skipped' / 'dry-run'."""
@@ -64,7 +60,6 @@ def _regen_one(md: Path, *, force: bool, dry_run: bool) -> str:
     tmp.write_text(blob, encoding="utf-8")
     tmp.replace(jsonl)
     return "wrote"
-
 
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(
@@ -106,7 +101,6 @@ def main(argv: list[str] | None = None) -> int:
             f"({len(details)} report(s))\n"
         )
     return 0
-
 
 if __name__ == "__main__":
     sys.exit(main())

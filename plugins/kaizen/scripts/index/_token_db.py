@@ -34,7 +34,6 @@ from typing import Optional
 
 __all__ = ["TokenDB", "Slot"]
 
-
 @dataclasses.dataclass
 class Slot:
     """A single addressable token within a file.
@@ -54,7 +53,6 @@ class Slot:
     byte_end: int
     body: Optional[bytes]  # inlined if < 4 KB else NULL
     content_hash: str      # per-slot blake3/sha256 (ETag)
-
 
 # V20 grammar_version + V25 IMMEDIATE-tx are honored in the runtime
 # methods below; the schema itself only needs to carry the columns.
@@ -97,7 +95,6 @@ CREATE TABLE IF NOT EXISTS slots_by_name (
     PRIMARY KEY (file_id, kind, parent_qualifier, name)
 );
 """
-
 
 class TokenDB:
     """SQLite-backed token map.
@@ -252,7 +249,6 @@ class TokenDB:
             "SELECT version FROM files WHERE file_id=?", (file_id,),
         ).fetchone()
         return row["version"] if row else 0
-
 
 if __name__ == "__main__":
     # Phase 1 probe — confirms PEP-723 venv has the 3 deps.

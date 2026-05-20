@@ -24,8 +24,8 @@ from pathlib import Path
 
 _SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(_SCRIPT_DIR))
-# MIGRATION BRIDGE — legacy helpers + relocated domains
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "skills" / "workflow" / "scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import _bootstrap  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts" / "brain"))
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts" / "indexers"))
 
@@ -38,14 +38,11 @@ import _index_kit  # noqa: E402 — shared indexer primitives (drift-gated job f
 _PROMOTE_THROTTLE_SEC = 86_400
 _GOLD_THROTTLE_SEC = 7 * 86_400
 
-
 def _disabled(env_var: str) -> bool:
     return os.environ.get(env_var) == "1"
 
-
 def _python() -> str:
     return sys.executable or "python3"
-
 
 def run_brain_audit(state: dict) -> tuple[bool, str, str]:
     """Mine recent activity → write Inbox drafts. Cheap; runs every tick."""
@@ -63,23 +60,19 @@ def run_brain_audit(state: dict) -> tuple[bool, str, str]:
         msg += f" stderr={result.stderr.strip()[:200]}"
     return ok, msg, action
 
-
 def _throttled(state: dict, key: str, threshold_sec: int) -> bool:
     """True iff job ``key`` ran within the last ``threshold_sec``."""
     last = (state.get("last_run_at") or {}).get(key, 0)
     return (_time.time() - last) < threshold_sec
 
-
 def _stamp_last_run(state: dict, key: str) -> None:
     """Mark ``key`` as just-run. Mutates state in place."""
     state.setdefault("last_run_at", {})[key] = _time.time()
-
 
 def _brain_notes_dir() -> Path:
     env = os.environ.get("KAIZEN_BRAIN_PATH")
     base = Path(env) if env else Path.home() / ".claude" / ".kaizen" / "brain"
     return base / "Notes"
-
 
 def _brain_notes_hash() -> str:
     """Cheap drift signal — hash filename + size + integer mtime per Note.
@@ -100,7 +93,6 @@ def _brain_notes_hash() -> str:
         h.update(f"{p.name}:{st.st_size}:{int(st.st_mtime)}\n".encode())
     return h.hexdigest()[:16]
 
-
 def _regen_brain_index_subprocess() -> None:
     """Shell out to ``build_index.py index``; raise on non-zero rc so the
     drift-job factory leaves the state hash un-stamped on failure.
@@ -118,7 +110,6 @@ def _regen_brain_index_subprocess() -> None:
         stderr = result.stderr.strip()[:200] if result.stderr else ""
         raise RuntimeError(f"rc={result.returncode} stderr={stderr}")
 
-
 # Composed via ``_index_kit.daemon_drift_job`` — preserves the
 # ``brain_notes_hash`` state key (not the factory default
 # ``brain_index_hash``) so existing daemon state files round-trip.
@@ -131,7 +122,6 @@ run_brain_index = _index_kit.daemon_drift_job(
     regen_fn=lambda: _regen_brain_index_subprocess(),
     state_hash_key="brain_notes_hash",
 )
-
 
 def _memory_dir_hash() -> str:
     """Cheap drift signal for the project's auto-memory dir.
@@ -156,14 +146,12 @@ def _memory_dir_hash() -> str:
         h.update(f"{p.name}:{st.st_size}:{int(st.st_mtime)}\n".encode())
     return h.hexdigest()[:16]
 
-
 def _regen_memory_sync() -> None:
     """In-process MEMORY.md regen — raises so the drift-job factory
     leaves the state hash un-stamped on failure (next tick retries)."""
     sys.path.insert(0, str(_SCRIPT_DIR))
     import better_memory as _bm
     _bm.regen_index(_bm._default_memory_dir())
-
 
 # Composed via ``_index_kit.daemon_drift_job`` — preserves the
 # ``memory_dir_hash`` state key (not the factory default
@@ -177,7 +165,6 @@ run_memory_sync = _index_kit.daemon_drift_job(
     regen_fn=lambda: _regen_memory_sync(),
     state_hash_key="memory_dir_hash",
 )
-
 
 def run_gold_mine(state: dict) -> tuple[bool, str, str]:
     """Weekly trace-mining pass — gold.py mine wraps gold_mine.run_mine.
@@ -206,7 +193,6 @@ def run_gold_mine(state: dict) -> tuple[bool, str, str]:
         msg += f" stderr={result.stderr.strip()[:200]}"
     return ok, msg, action
 
-
 def run_brain_evolve(state: dict) -> tuple[bool, str, str]:
     """Daily LLM-driven consolidation/reflection (opt-in).
 
@@ -232,7 +218,6 @@ def run_brain_evolve(state: dict) -> tuple[bool, str, str]:
     if not ok and result.stderr:
         msg += f" stderr={result.stderr.strip()[:200]}"
     return ok, msg, action
-
 
 def run_brain_promote(state: dict) -> tuple[bool, str, str]:
     """Promote aged Inbox drafts → typed Notes (24h throttle).

@@ -78,20 +78,18 @@ from typing import Iterator, Optional
 _SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(_SCRIPT_DIR))
 # MIGRATION BRIDGE — until helpers move from skills/workflow/scripts/ → scripts/
-sys.path.insert(0, str(_SCRIPT_DIR.parents[1] / "skills" / "workflow" / "scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import _bootstrap  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 sys.path.insert(0, str(_SCRIPT_DIR.parents[1] / "scripts" / "brain"))
 
 import _brain  # noqa: E402
 import _sqlite as _kz_sqlite  # noqa: E402  — shared SQLite open/meta helpers
 import flow as _flow  # noqa: E402
 
-
 # ─── Paths ────────────────────────────────────────────────────────────
-
 
 def _kaizen_user_dir() -> Path:
     return Path("~/.claude/.kaizen").expanduser().resolve()
-
 
 def db_path() -> Path:
     """Resolve the brain index db path.
@@ -102,9 +100,7 @@ def db_path() -> Path:
         return Path(os.path.expandvars(env)).expanduser().resolve()
     return _kaizen_user_dir() / "brain.db"
 
-
 # ─── Schema ──────────────────────────────────────────────────────────
-
 
 _SCHEMA_SQL = """
 CREATE TABLE IF NOT EXISTS brain_notes (
@@ -134,7 +130,6 @@ CREATE TABLE IF NOT EXISTS brain_meta (
 );
 """
 
-
 def open_db(create: bool = True) -> sqlite3.Connection:
     """Open the brain index db via the shared `_sqlite.open_indexer_db`
     helper — same path onboard_index / trace_index / knowledge_index
@@ -145,27 +140,22 @@ def open_db(create: bool = True) -> sqlite3.Connection:
         conn.commit()
     return conn
 
-
 def set_meta(conn: sqlite3.Connection, key: str, value: str) -> None:
     """Thin wrapper over the shared `_sqlite.set_meta` — pins the
     brain-specific meta table name so callers stay 1-arg."""
     _kz_sqlite.set_meta(conn, "brain_meta", key, value)
-
 
 def get_meta(conn: sqlite3.Connection, key: str, default: str = "") -> str:
     """Thin wrapper over the shared `_sqlite.get_meta` — pins the
     brain-specific meta table name."""
     return _kz_sqlite.get_meta(conn, "brain_meta", key, default)
 
-
 # ─── Brain walker ────────────────────────────────────────────────────
-
 
 # Subdirs under brain_root that we index. Inbox is excluded (it's a
 # scratch area for in-progress captures). Archive is excluded (it's a
 # deliberate forgetting bin).
 _INDEX_SUBDIRS = ("Notes", "Projects", "People", "Areas")
-
 
 def iter_brain_notes(brain_root: Optional[Path] = None) -> Iterator[dict]:
     """Walk the indexable brain subdirs, yield note records.
@@ -211,9 +201,7 @@ def iter_brain_notes(brain_root: Optional[Path] = None) -> Iterator[dict]:
                 ).isoformat(),
             }
 
-
 # ─── Embedding ───────────────────────────────────────────────────────
-
 
 def _record_text_for_embed(rec: dict) -> str:
     """Concatenate the fields we want the embedding to capture.
@@ -233,7 +221,6 @@ def _record_text_for_embed(rec: dict) -> str:
         parts.append(rec["body"][:1200])
     return "\n".join(parts)
 
-
 def _maybe_embed(text: str):
     """Try the kaizen embed pipeline. Returns (bytes, dim) or
     (None, 0) when no embedding backend is available — search still
@@ -249,9 +236,7 @@ def _maybe_embed(text: str):
     except BaseException:
         return None, 0
 
-
 # ─── Flow ────────────────────────────────────────────────────────────
-
 
 class DiscoverNode(_flow.AsyncNode):
     """Walk brain dirs; produce the candidate record list."""
@@ -266,7 +251,6 @@ class DiscoverNode(_flow.AsyncNode):
         store["records"] = records
         store["discovered_count"] = len(records)
         return "default"
-
 
 class EmbedNode(_flow.AsyncNode):
     """Embed each record's compact text. Skip when no backend
@@ -290,12 +274,10 @@ class EmbedNode(_flow.AsyncNode):
         store["embed_count"] = sum(1 for e in embeddings if e is not None)
         return "default"
 
-
 def store_skip_embed() -> bool:
     """``KAIZEN_BRAIN_INDEX_SKIP_EMBED=1`` to skip the embedding step
     (text-only search). Useful for fast smoke / CI runs."""
     return os.environ.get("KAIZEN_BRAIN_INDEX_SKIP_EMBED", "").lower() in {"1", "true", "yes"}
-
 
 class UpsertNode(_flow.AsyncNode):
     """INSERT OR REPLACE the records into brain_notes. Removes rows
@@ -375,7 +357,6 @@ class UpsertNode(_flow.AsyncNode):
         store["upsert_stats"] = exec_result
         return "default"
 
-
 class ReportNode(_flow.AsyncNode):
     """Build the final report dict for callers."""
 
@@ -397,7 +378,6 @@ class ReportNode(_flow.AsyncNode):
         }
         return "default"
 
-
 def build_index_flow() -> _flow.AsyncFlow:
     discover = DiscoverNode()
     embed = EmbedNode()
@@ -409,20 +389,16 @@ def build_index_flow() -> _flow.AsyncFlow:
     f.add_successor(upsert, "default", report)
     return f
 
-
 def do_index(brain_root: Optional[Path] = None) -> dict:
     """Run the indexing flow and return the report."""
     return asyncio.run(_index_async(brain_root))
-
 
 async def _index_async(brain_root: Optional[Path] = None) -> dict:
     store: dict = {"brain_root": brain_root}
     await build_index_flow().run_async(store)
     return store.get("report") or {}
 
-
 # ─── Search ──────────────────────────────────────────────────────────
-
 
 def do_search(
     query: str,
@@ -502,7 +478,6 @@ def do_search(
     finally:
         conn.close()
 
-
 def _row_to_dict(r: sqlite3.Row, score: Optional[float] = None) -> dict:
     d = {k: r[k] for k in r.keys() if k != "embedding"}
     try:
@@ -512,7 +487,6 @@ def _row_to_dict(r: sqlite3.Row, score: Optional[float] = None) -> dict:
     if score is not None:
         d["score"] = round(score, 4)
     return d
-
 
 def do_stats() -> dict:
     """Stats: total / per-type / per-subdir / per-freshness."""
@@ -541,7 +515,6 @@ def do_stats() -> dict:
     finally:
         conn.close()
 
-
 def do_get(item_id: int) -> Optional[dict]:
     conn = open_db(create=False)
     try:
@@ -552,7 +525,6 @@ def do_get(item_id: int) -> Optional[dict]:
     finally:
         conn.close()
 
-
 def do_clear() -> dict:
     p = db_path()
     if p.is_file():
@@ -560,12 +532,9 @@ def do_clear() -> dict:
         return {"cleared": True, "path": str(p)}
     return {"cleared": False, "path": str(p)}
 
-
 # ─── CLI (thin IndexerCLI subclass — alignment with the other 6 indexers) ───
 
-
 from _indexer_cli import IndexerCLI  # noqa: E402
-
 
 class BuildIndexCLI(IndexerCLI):
     """Build the Second Brain's SQLite + sentence-transformers index.
@@ -633,11 +602,9 @@ class BuildIndexCLI(IndexerCLI):
             sys.exit(1)
         print(json.dumps(do_clear(), indent=2))
 
-
 def main(argv: Optional[list[str]] = None) -> int:
     BuildIndexCLI().run(argv)
     return 0
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

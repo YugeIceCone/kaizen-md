@@ -32,16 +32,14 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-SCRIPT_DIR = Path(__file__).resolve().parent.parent / "skills" / "workflow" / "scripts"
-sys.path.insert(0, str(SCRIPT_DIR))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts" / "indexers"))
 
 import onboard_index as oi  # noqa: E402
 
-
 def _fake_vec(seed: int = 1) -> bytes:
     return struct.pack("384f", *([seed / 100.0] * 384))
-
 
 class TestReadRawFile(unittest.TestCase):
     """Stage 1 — lossless capture. Always returns a row; error captured in-row."""
@@ -78,7 +76,6 @@ class TestReadRawFile(unittest.TestCase):
             self.assertEqual(rec["path"], "missing.py")
             self.assertIn("error", rec)
 
-
 class TestCleanForEmbed(unittest.TestCase):
     """Stage 2a — comment-strip + whitespace-normalize a raw record."""
 
@@ -101,7 +98,6 @@ class TestCleanForEmbed(unittest.TestCase):
         out = oi.clean_for_embed(raw)
         self.assertEqual(out["error"], "decode failed")
         self.assertNotIn("cleaned", out)
-
 
 class TestChunkRecord(unittest.TestCase):
     """Stage 2b — split cleaned record into per-chunk records."""
@@ -142,7 +138,6 @@ class TestChunkRecord(unittest.TestCase):
         self.assertFalse(chunks[0]["kept"])
         self.assertEqual(chunks[0]["error"], "decode failed")
 
-
 class TestCodeFilesRawSchema(unittest.TestCase):
     """`code_files_raw` is the lossless capture table — must be created by
     open_db so do_dump can write into it on a fresh db."""
@@ -162,7 +157,6 @@ class TestCodeFilesRawSchema(unittest.TestCase):
                              "mtime", "text", "error", "captured_at"):
                 self.assertIn(required, cols, f"code_files_raw missing column: {required}")
             conn.close()
-
 
 class TestDoDump(unittest.TestCase):
     """do_dump walks the source tree and INSERT OR REPLACEs into code_files_raw.
@@ -195,7 +189,6 @@ class TestDoDump(unittest.TestCase):
             self.assertIn("def f", by_path["main.py"]["text"])
             conn.close()
 
-
 class TestDoFilter(unittest.TestCase):
     """do_filter reads from code_files_raw, populates code_files + code_chunks.
     Skips error rows. Embedding is mocked."""
@@ -221,7 +214,6 @@ class TestDoFilter(unittest.TestCase):
             self.assertEqual(n_files, 1)
             self.assertGreaterEqual(n_chunks, 1)
             conn.close()
-
 
 class TestDiagnosticHelpers(unittest.TestCase):
     """do_raw_errors + do_dropped surface stage-1 and stage-2 failures."""
@@ -255,7 +247,6 @@ class TestDiagnosticHelpers(unittest.TestCase):
             for d in dropped:
                 self.assertEqual(d["reason"], "empty_after_clean_or_no_chunks")
 
-
 class TestStagesAreIndependent(unittest.TestCase):
     """Re-running do_filter without touching the filesystem must work as long
     as code_files_raw is populated. This is the reproducibility guarantee."""
@@ -273,7 +264,6 @@ class TestStagesAreIndependent(unittest.TestCase):
             with patch.object(oi._kz_embed, "embed_batch", side_effect=fake_batch):
                 result = oi.do_filter(root)
             self.assertEqual(result["files_indexed"], 1)
-
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

@@ -18,11 +18,11 @@ import unittest
 from pathlib import Path
 
 PLUGIN_ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(PLUGIN_ROOT / "skills" / "workflow" / "scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 sys.path.insert(0, str(PLUGIN_ROOT / "scripts" / "mcp"))
 
 import _drift as d  # noqa: E402
-
 
 def _profile(items=None, deps=None, loc=0, tests=0):
     return {
@@ -33,14 +33,11 @@ def _profile(items=None, deps=None, loc=0, tests=0):
         "total_tests": tests,
     }
 
-
 def _write(profile_dir: Path, name: str, p: dict):
     profile_dir.mkdir(parents=True, exist_ok=True)
     (profile_dir / f"{name}.json").write_text(json.dumps(p))
 
-
 # ─── Collectors ────────────────────────────────────────────────────
-
 
 class TestCollectors(unittest.TestCase):
     def test_collect_items_returns_kind_name_pairs(self):
@@ -65,9 +62,7 @@ class TestCollectors(unittest.TestCase):
     def test_collect_deps_missing_returns_empty(self):
         self.assertEqual(d.collect_deps({}), set())
 
-
 # ─── compare_units ─────────────────────────────────────────────────
-
 
 class TestCompareUnits(unittest.TestCase):
     def test_no_changes(self):
@@ -113,9 +108,7 @@ class TestCompareUnits(unittest.TestCase):
         ud = d.compare_units("core", b, c)
         self.assertEqual(ud.tests_delta, 5)
 
-
 # ─── run_check end-to-end ──────────────────────────────────────────
-
 
 class TestRunCheck(unittest.TestCase):
     def test_changed_unit_appears_in_report(self):
@@ -172,9 +165,7 @@ class TestRunCheck(unittest.TestCase):
             self.assertTrue(r.is_empty)
             self.assertEqual(r.total, 0)
 
-
 # ─── record_baseline ──────────────────────────────────────────────
-
 
 class TestRecordBaseline(unittest.TestCase):
     def test_copies_all_json_files(self):
@@ -205,9 +196,7 @@ class TestRecordBaseline(unittest.TestCase):
             d.record_baseline(current, baseline)
             self.assertTrue(baseline.is_dir())
 
-
 # ─── Reporting ────────────────────────────────────────────────────
-
 
 class TestFormatReport(unittest.TestCase):
     def test_text_lists_added_units(self):
@@ -232,9 +221,7 @@ class TestFormatReport(unittest.TestCase):
             self.assertEqual(len(data["changed"]), 1)
             self.assertEqual(data["total"], 1)
 
-
 # ─── MCP ──────────────────────────────────────────────────────────
-
 
 class _CwdMixin:
     def setUp(self):
@@ -246,7 +233,6 @@ class _CwdMixin:
     def tearDown(self):
         os.chdir(self._cwd)
         self._tmpcm.cleanup()
-
 
 class TestDriftMcp(_CwdMixin, unittest.TestCase):
     def _import(self):
@@ -291,7 +277,6 @@ class TestDriftMcp(_CwdMixin, unittest.TestCase):
         out = asyncio.run(m.drift_explain("core"))
         self.assertTrue(out.get("unchanged"))
 
-
 class TestRegistration(unittest.TestCase):
     def test_drift_in_mcp_json(self):
         data = json.loads((PLUGIN_ROOT / ".mcp.json").read_text())
@@ -300,7 +285,6 @@ class TestRegistration(unittest.TestCase):
         import gateway
         module_names = [m for _, m in gateway.SUBSERVERS]
         self.assertIn("drift_mcp", module_names)
-
 
 if __name__ == "__main__":
     unittest.main()

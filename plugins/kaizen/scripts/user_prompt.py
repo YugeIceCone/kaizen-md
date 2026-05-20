@@ -21,7 +21,6 @@ sys.path.insert(0, str(_SCRIPT_DIR))
 from build_context import build_capture_context  # noqa: E402
 from session_start import brain_root, load_config  # noqa: E402
 
-
 def main() -> int:
     if os.environ.get("REMEMBER_PROCESSING") == "1":
         return 0
@@ -73,7 +72,6 @@ def main() -> int:
     }
     print(json.dumps(output, separators=(",", ":")))
     return 0
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

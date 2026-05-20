@@ -21,13 +21,11 @@ import unittest
 from pathlib import Path
 
 PLUGIN_ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(PLUGIN_ROOT / "skills" / "workflow" / "scripts"))
-
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 import _crawl as kz_crawl  # noqa: E402
 
-
 # ─── Stub HTTP layer ──────────────────────────────────────────────────
-
 
 class StubFetcher:
     """Maps URL → (status, content_type, body). Default for unknown URLs
@@ -46,14 +44,11 @@ class StubFetcher:
             body = body.encode("utf-8")
         return status, ctype, body
 
-
 def _no_sleep(_seconds):
     """Test sleep stub — never actually sleep."""
     return None
 
-
 # ─── URL helpers ──────────────────────────────────────────────────────
-
 
 class TestCanonicalUrl(unittest.TestCase):
     def test_strips_fragment(self):
@@ -86,7 +81,6 @@ class TestCanonicalUrl(unittest.TestCase):
         with self.assertRaises(ValueError):
             kz_crawl.canonical_url("javascript:void(0)")
 
-
 class TestSameOrigin(unittest.TestCase):
     def test_exact_match(self):
         self.assertTrue(kz_crawl.same_origin("https://e.com/a", "https://e.com/b"))
@@ -105,9 +99,7 @@ class TestSameOrigin(unittest.TestCase):
             include_subdomains=True,
         ))
 
-
 # ─── HTML link extraction ─────────────────────────────────────────────
-
 
 class TestLinkExtractor(unittest.TestCase):
     def test_extracts_anchors(self):
@@ -124,9 +116,7 @@ class TestLinkExtractor(unittest.TestCase):
         self.assertIn("/ok", out)
         self.assertIn("/also-ok", out)
 
-
 # ─── scrape_urls table (S3) ───────────────────────────────────────────
-
 
 class TestScrapeUrlsTable(unittest.TestCase):
     def setUp(self):
@@ -179,9 +169,7 @@ class TestScrapeUrlsTable(unittest.TestCase):
         kz_crawl.ensure_scrape_urls_table(self.conn)
         kz_crawl.ensure_scrape_urls_table(self.conn)
 
-
 # ─── load_sitemap_urls (S2) ───────────────────────────────────────────
-
 
 class TestLoadSitemapUrls(unittest.TestCase):
     SITEMAP_XML = b'''<?xml version="1.0" encoding="UTF-8"?>
@@ -213,9 +201,7 @@ class TestLoadSitemapUrls(unittest.TestCase):
         out = kz_crawl.load_sitemap_urls("https://e.com/", fetch_fn=stub)
         self.assertEqual(out, [])
 
-
 # ─── End-to-end crawl ────────────────────────────────────────────────
-
 
 class TestCrawlEndToEnd(unittest.TestCase):
     SITE = {
@@ -352,7 +338,6 @@ class TestCrawlEndToEnd(unittest.TestCase):
         seen_urls = [u for u, _ in seen]
         self.assertIn("https://e.com/", seen_urls)
 
-
 class TestCrawlSitemapSeed(unittest.TestCase):
     def test_sitemap_urls_get_seeded(self):
         sitemap = b'''<?xml version="1.0"?>
@@ -377,7 +362,6 @@ class TestCrawlSitemapSeed(unittest.TestCase):
         urls = [u for u, _ in result.crawled]
         self.assertIn("https://e.com/deep/page", urls,
                       "sitemap-seeded URL should be crawled")
-
 
 if __name__ == "__main__":
     unittest.main()

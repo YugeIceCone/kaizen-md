@@ -85,7 +85,8 @@ HOME = Path(os.path.expanduser("~"))
 _SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(_SCRIPT_DIR))
 # MIGRATION BRIDGE — until helpers move from skills/workflow/scripts/ → scripts/
-sys.path.insert(0, str(_SCRIPT_DIR.parents[1] / "skills" / "workflow" / "scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import _bootstrap  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 sys.path.insert(0, str(_SCRIPT_DIR.parents[1] / "scripts" / "brain"))
 import _paths as _p  # noqa: E402
 import config as _cfg  # noqa: E402
@@ -100,7 +101,6 @@ DEFAULT_DIM = _cfg.EMBED_DIM
 # Lazy imports — only load model when needed
 _model = None
 _np = None
-
 
 def _load_model():
     """Import sentence-transformers + numpy on demand. Heavy (~500MB w/ torch);
@@ -121,9 +121,7 @@ def _load_model():
         _model = SentenceTransformer(DEFAULT_MODEL)
     return _model, _np
 
-
 # ─── SQLite helpers (M1 — shared base in _sqlite.py) ─────────────────
-
 
 import _sqlite as _kz_sqlite  # noqa: E402
 
@@ -150,21 +148,16 @@ _SCHEMA_SQL = """
     );
 """
 
-
 def open_db(create: bool = True) -> sqlite3.Connection:
     return _kz_sqlite.open_indexer_db(DB_PATH, _SCHEMA_SQL, create=create)
-
 
 def set_meta(conn: sqlite3.Connection, key: str, value: str) -> None:
     _kz_sqlite.set_meta(conn, "trace_meta", key, value)
 
-
 def get_meta(conn: sqlite3.Connection, key: str, default: str = "") -> str:
     return _kz_sqlite.get_meta(conn, "trace_meta", key, default)
 
-
 # ─── Embedding ───────────────────────────────────────────────────────
-
 
 def event_to_text(ev: dict, embed_data: bool = False) -> str:
     """Build the embeddable text from an event. Privacy-safe by default:
@@ -199,18 +192,14 @@ def event_to_text(ev: dict, embed_data: bool = False) -> str:
 
     return " | ".join(bits)
 
-
 def content_hash(ev: dict) -> str:
     """Stable identity hash for de-dup. Based on ts + src + evt + sid + tool."""
     s = f"{ev.get('ts','')}|{ev.get('src','')}|{ev.get('evt','')}|{ev.get('sid','')}|{ev.get('tool','')}|{ev.get('ms','')}"
     return hashlib.sha256(s.encode()).hexdigest()[:16]
 
-
 # ─── Index command ───────────────────────────────────────────────────
 
-
 from _jsonl import iter_jsonl  # noqa: E402 — shared helper (M4 dedup)
-
 
 def iter_all_events():
     files = []
@@ -221,10 +210,8 @@ def iter_all_events():
     for f in files:
         yield from iter_jsonl(f)
 
-
 import _embed as _kz_embed  # v1.25.0+: HTTP-first embedding backend
 from _progress import Progress as _Progress  # v1.30.0+: live stderr progress
-
 
 def cmd_index(max_n: Optional[int] = None, embed_data: bool = False) -> dict:
     """Incremental index: skip events whose content_hash is already in db."""
@@ -295,7 +282,6 @@ def cmd_index(max_n: Optional[int] = None, embed_data: bool = False) -> dict:
 
     return {"indexed": len(new_events), "total": total, "model": DEFAULT_MODEL}
 
-
 def cmd_reindex(embed_data: bool = False) -> dict:
     """Drop the table + rebuild from scratch."""
     if DB_PATH.exists():
@@ -306,9 +292,7 @@ def cmd_reindex(embed_data: bool = False) -> dict:
         conn.close()
     return cmd_index(embed_data=embed_data)
 
-
 # ─── Search command ──────────────────────────────────────────────────
-
 
 def parse_since(s: str) -> Optional[dt.datetime]:
     m = re.fullmatch(r"(\d+)([smhd])", s)
@@ -320,7 +304,6 @@ def parse_since(s: str) -> Optional[dt.datetime]:
         return dt.datetime.fromisoformat(s.replace("Z", "+00:00"))
     except ValueError:
         return None
-
 
 def cmd_search(query: str, top_k: int = 10, src: str = "", sid: str = "",
                 evt: str = "", since: Optional[str] = None) -> list[dict]:
@@ -379,16 +362,12 @@ def cmd_search(query: str, top_k: int = 10, src: str = "", sid: str = "",
     conn.close()
     return out
 
-
 # ─── Misc ────────────────────────────────────────────────────────────
-
 
 from _time import iso  # M5 dedup
 
-
 def _now_iso() -> str:
     return iso()
-
 
 def cmd_stats() -> dict:
     if not DB_PATH.exists():
@@ -412,7 +391,6 @@ def cmd_stats() -> dict:
     conn.close()
     return out
 
-
 def cmd_get(event_id: int) -> Optional[dict]:
     if not DB_PATH.exists():
         return None
@@ -435,22 +413,18 @@ def cmd_get(event_id: int) -> Optional[dict]:
         "data": json.loads(row["data_json"]) if row["data_json"] else {},
     }
 
-
 def cmd_clear() -> str:
     if DB_PATH.exists():
         DB_PATH.unlink()
         return f"removed {DB_PATH}"
     return "(no index to clear)"
 
-
 # ─── CLI (M7: thin IndexerCLI subclass) ──────────────────────────────
-
 
 from _indexer_cli import IndexerCLI  # noqa: E402
 import _envelope  # noqa: E402
 
 _emit = _envelope.emitter("kaizen-trace-search", tool_version="1.0.0")
-
 
 class TraceCLI(IndexerCLI):
     PROG = "trace_index.py"
@@ -524,7 +498,6 @@ class TraceCLI(IndexerCLI):
     def print_clear(self, result, args):
         print(result.get("message", ""))
 
-
 def main():
     cli = TraceCLI()
     parser = cli.build_parser()
@@ -534,7 +507,6 @@ def main():
     if args.cmd is None:
         args = parser.parse_args(["index"])
     args.func(args)
-
 
 if __name__ == "__main__":
     main()

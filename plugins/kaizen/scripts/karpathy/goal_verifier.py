@@ -55,7 +55,6 @@ VAGUE_VERIFY = re.compile(
 STEP_PATTERN = re.compile(r"^(?:\d+[\.\)]\s+|[-*]\s+\[.\]\s+|[-*]\s+(?:Step\s+\d+))", re.M)
 VERIFY_LABEL = re.compile(r"(?:verify|check|success\s+criteria|done\s+when|acceptance)\s*:", re.I)
 
-
 def extract_steps(text):
     """Extract plan steps from markdown."""
     lines = text.splitlines()
@@ -77,7 +76,6 @@ def extract_steps(text):
 
     return steps
 
-
 def score_step(step):
     """Score a step's verification quality (0-3)."""
     full_text = step["title"] + "\n" + step["body"]
@@ -91,7 +89,6 @@ def score_step(step):
     if VAGUE_VERIFY.search(full_text):
         return 1, "vague"
     return 0, "none"
-
 
 def analyze_plan(text, source):
     """Analyze a plan for verification quality."""
@@ -151,7 +148,6 @@ def analyze_plan(text, source):
         "recommendations": _recommendations(step_results, has_final),
     }
 
-
 def _recommendations(step_results, has_final):
     recs = []
     none_steps = [s for s in step_results if s["level"] == "none"]
@@ -166,7 +162,6 @@ def _recommendations(step_results, has_final):
     if not recs:
         recs.append("Plan has strong verification coverage. Good to go.")
     return recs
-
 
 def main():
     p = argparse.ArgumentParser(
@@ -208,7 +203,6 @@ def main():
     print()
     for rec in result["recommendations"]:
         print(f"  -> {rec}")
-
 
 if __name__ == "__main__":
     main()

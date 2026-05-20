@@ -92,23 +92,20 @@ from typing import Any
 _SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(_SCRIPT_DIR))
 # MIGRATION BRIDGE — until helpers move from skills/workflow/scripts/ → scripts/
-sys.path.insert(0, str(_SCRIPT_DIR.parents[1] / "skills" / "workflow" / "scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import _bootstrap  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 sys.path.insert(0, str(_SCRIPT_DIR.parents[1] / "scripts" / "brain"))
 import _paths as _p  # noqa: E402
 import config as _cfg  # noqa: E402
-
 
 DB_PATH = _p.SCRAPE_DB
 DEFAULT_MODEL = _cfg.EMBED_MODEL
 DEFAULT_DIM = _cfg.EMBED_DIM
 SNIPPET_MAX = _cfg.SCRAPE_SNIPPET_MAX
 
-
 # ─── Lazy ML + scrapegraph imports ───────────────────────────────────
 
-
 import _embed  # noqa: E402 — v1.25.0+: HTTP-first embedding backend
-
 
 def _load_scraper_cls():
     try:
@@ -129,9 +126,7 @@ def _load_scraper_cls():
         )
         sys.exit(1)
 
-
 # ─── SQLite (M1 — shared base in _sqlite.py) ─────────────────────────
-
 
 import _sqlite as _kz_sqlite  # noqa: E402
 import _crawl as _kz_crawl  # noqa: E402  — S1+S2+S3 crawler
@@ -159,25 +154,19 @@ _SCHEMA_SQL = """
     );
 """ + _kz_crawl.SCRAPE_URLS_DDL  # S3: scrape_urls(canonical_url PK, last_scraped, ...)
 
-
 def open_db(create: bool = True) -> sqlite3.Connection:
     return _kz_sqlite.open_indexer_db(DB_PATH, _SCHEMA_SQL, create=create)
-
 
 def set_meta(conn: sqlite3.Connection, key: str, value: str) -> None:
     _kz_sqlite.set_meta(conn, "scrape_meta", key, value)
 
-
 def get_meta(conn: sqlite3.Connection, key: str, default: str = "") -> str:
     return _kz_sqlite.get_meta(conn, "scrape_meta", key, default)
 
-
 # ─── Helpers ─────────────────────────────────────────────────────────
-
 
 def item_sha(url: str, prompt: str) -> str:
     return hashlib.sha256(f"{url}|{prompt}".encode()).hexdigest()[:16]
-
 
 def denormalize(extraction: Any) -> str:
     """Flatten a scrapegraph extraction (dict/list/scalar) to plain text for
@@ -201,7 +190,6 @@ def denormalize(extraction: Any) -> str:
 
     return "\n".join(walk(extraction)).strip()
 
-
 def extract_title(extraction: Any) -> str:
     if isinstance(extraction, dict):
         for k in ("title", "name", "headline", "page_title"):
@@ -209,9 +197,7 @@ def extract_title(extraction: Any) -> str:
                 return extraction[k][:200]
     return ""
 
-
 _LLM_CACHE_PATH = _p.SCRAPE_DIR / "llm_endpoint.json"
-
 
 # ─── Ollama-hosted chat-model recommendations for ScrapeGraphAI ──────
 #
@@ -271,7 +257,6 @@ OLLAMA_SCRAPE_RECOMMENDATIONS = [
 ]
 RECOMMENDED_NAMES = [r["name"] for r in OLLAMA_SCRAPE_RECOMMENDATIONS]
 
-
 def _model_name_matches(installed: str, recommended: str) -> bool:
     """Loose match: Ollama lists models with optional `:tag` suffix.
     `qwen2.5:7b` should match an installed `qwen2.5:7b-instruct-q4_0`.
@@ -287,7 +272,6 @@ def _model_name_matches(installed: str, recommended: str) -> bool:
         return True
     return False
 
-
 def pick_best_chat_model(installed: list[str]) -> str | None:
     """Given a list of locally-installed Ollama model names, return the
     highest-ranked recommendation if one is installed, else the first
@@ -302,7 +286,6 @@ def pick_best_chat_model(installed: list[str]) -> str | None:
         if not _embed.is_embedding_model_name(inst):
             return inst
     return None
-
 
 def _probe_ollama_all_models(base_url: str, timeout: float) -> list[str]:
     """List ALL installed Ollama models. Returns names, oldest-installed
@@ -327,7 +310,6 @@ def _probe_ollama_all_models(base_url: str, timeout: float) -> list[str]:
     if not isinstance(items, list):
         return []
     return [str(it.get("name") or it.get("model") or "") for it in items if isinstance(it, dict)]
-
 
 def _probe_endpoint(base_url: str, list_path: str, model_field: str, timeout: float) -> str | None:
     """Hit <base_url><list_path>; return the first model name or None.
@@ -356,7 +338,6 @@ def _probe_endpoint(base_url: str, list_path: str, model_field: str, timeout: fl
             if isinstance(item, dict) and item.get(model_field):
                 return str(item[model_field])
     return None
-
 
 def detect_llm(refresh: bool = False, verbose: bool = False) -> dict | None:
     """Zero-config probe of common local-LLM endpoints. Returns {provider,
@@ -420,7 +401,6 @@ def detect_llm(refresh: bool = False, verbose: bool = False) -> dict | None:
             pass
         return result
     return None
-
 
 def llm_config() -> dict:
     """Resolve the LLM config for scrapegraph-ai. Priority order:
@@ -508,7 +488,6 @@ def llm_config() -> dict:
     cfg["verbose"] = False
     return cfg
 
-
 def _register_recommendation_tokens() -> None:
     """Inject OLLAMA_SCRAPE_RECOMMENDATIONS into ScrapeGraphAI's hardcoded
     models_tokens dict (v1.29.4+).
@@ -538,9 +517,7 @@ def _register_recommendation_tokens() -> None:
     for provider in ("openai", "ollama"):
         models_tokens.setdefault(provider, {}).update(entries)
 
-
 # ─── PocketFlow async pipeline (vendored AsyncNode/AsyncFlow) ────────
-
 
 class AsyncNode:
     async def prep_async(self, store: dict) -> Any: return None
@@ -551,7 +528,6 @@ class AsyncNode:
         prep = await self.prep_async(store)
         res = await self.exec_async(prep)
         return await self.post_async(store, prep, res)
-
 
 class AsyncParallelBatchNode(AsyncNode):
     """Parallel batch over per-item exec_one_async. Mirrors the
@@ -570,7 +546,6 @@ class AsyncParallelBatchNode(AsyncNode):
             return []
         return await asyncio.gather(*[self.exec_one_async(it) for it in items])
 
-
 class AsyncFlow:
     def __init__(self, start: AsyncNode) -> None:
         self.start = start
@@ -585,7 +560,6 @@ class AsyncFlow:
             action = await cur.run_async(store) or "default"
             cur = self.successors.get((cur, action))
 
-
 class FetchURLs(AsyncNode):
     """Trivial pass-through — validates urls + prompt are in the store."""
 
@@ -596,7 +570,6 @@ class FetchURLs(AsyncNode):
             return None  # halt
         store["prompt"] = store.get("prompt") or _cfg.SCRAPE_DEFAULT_PROMPT
         return "default"
-
 
 class ScrapeFanOut(AsyncParallelBatchNode):
     """Fan-out: SmartScraperGraph per URL via asyncio.to_thread.
@@ -640,7 +613,6 @@ class ScrapeFanOut(AsyncParallelBatchNode):
         store["scrape_results"] = results
         return "default"
 
-
 class Synthesize(AsyncNode):
     """Flatten + sanitize each extraction to {url, title, text, content_json}."""
 
@@ -659,7 +631,6 @@ class Synthesize(AsyncNode):
             })
         store["synth"] = synth
         return "default"
-
 
 class EmbedAndPersist(AsyncNode):
     """Compute embeddings + write rows to SQLite."""
@@ -705,7 +676,6 @@ class EmbedAndPersist(AsyncNode):
         store["persisted"] = written
         return None  # terminal
 
-
 def build_flow() -> AsyncFlow:
     fetch = FetchURLs()
     scrape = ScrapeFanOut()
@@ -717,9 +687,7 @@ def build_flow() -> AsyncFlow:
     flow.add_successor(synth, "default", persist)
     return flow
 
-
 # ─── do_* helpers (mirror knowledge/onboard pattern) ─────────────────
-
 
 async def do_scrape(urls: list[str], prompt: str, no_embed: bool = False) -> dict:
     store: dict = {"urls": urls, "prompt": prompt, "no_embed": no_embed}
@@ -734,7 +702,6 @@ async def do_scrape(urls: list[str], prompt: str, no_embed: bool = False) -> dic
         "results": store.get("synth", []),
         "db": str(DB_PATH),
     }
-
 
 def do_search(query: str, top_k: int = 10) -> list[dict]:
     """Cosine-similarity search over scraped pages.
@@ -759,7 +726,6 @@ def do_search(query: str, top_k: int = 10) -> list[dict]:
     conn.close()
     return out
 
-
 def do_stats() -> dict:
     if not DB_PATH.is_file():
         return {"indexed": False, "db_path": str(DB_PATH)}
@@ -776,7 +742,6 @@ def do_stats() -> dict:
     conn.close()
     return out
 
-
 def do_get(item_id: int) -> dict | None:
     if not DB_PATH.is_file():
         return None
@@ -792,7 +757,6 @@ def do_get(item_id: int) -> dict | None:
         pass
     return out
 
-
 def do_list(limit: int = 20) -> list[dict]:
     if not DB_PATH.is_file():
         return []
@@ -804,9 +768,7 @@ def do_list(limit: int = 20) -> list[dict]:
     conn.close()
     return [{k: r[k] for k in r.keys()} for r in rows]
 
-
 # ─── CLI ─────────────────────────────────────────────────────────────
-
 
 def cmd_scrape(args):
     urls = [args.url] if args.url else []
@@ -829,7 +791,6 @@ def cmd_scrape(args):
             else:
                 print(f"  ✓ {r['url']}  ({r.get('title','(no title)')[:60]})", file=sys.stderr)
 
-
 def cmd_batch(args):
     p = Path(args.file)
     if not p.is_file():
@@ -842,7 +803,6 @@ def cmd_batch(args):
     else:
         print(f"kaizen-scrape: batch — {result['persisted']}/{result['urls']} persisted")
 
-
 def cmd_search(args):
     results = do_search(args.query, top_k=args.top_k)
     if args.json:
@@ -853,7 +813,6 @@ def cmd_search(args):
         print(f"           → {r['url']}")
         if r["snippet"]:
             print(f"           {r['snippet'][:120]}")
-
 
 def cmd_stats(args):
     s = do_stats()
@@ -866,13 +825,11 @@ def cmd_stats(args):
     print(f"last:      {s['last_scrape_ts'] or '?'}")
     print(f"total:     {s['total']}")
 
-
 def cmd_get(args):
     r = do_get(args.id)
     if r is None:
         sys.exit(f"id {args.id} not found")
     print(json.dumps(r, indent=2, default=str))
-
 
 def cmd_list(args):
     rows = do_list(limit=args.limit)
@@ -884,10 +841,8 @@ def cmd_list(args):
         if r["title"]:
             print(f"           {r['title'][:80]}")
 
-
 def cmd_path(args):
     print(DB_PATH)
-
 
 def cmd_clear(args):
     if DB_PATH.is_file():
@@ -895,7 +850,6 @@ def cmd_clear(args):
         print(f"kaizen-scrape: cleared {DB_PATH}", file=sys.stderr)
     else:
         print("kaizen-scrape: no index to clear", file=sys.stderr)
-
 
 def cmd_crawl(args):
     """S1 — BFS crawl from a start URL.
@@ -955,7 +909,6 @@ def cmd_crawl(args):
         if len(result.crawled) > 20:
             print(f"  ... and {len(result.crawled) - 20} more")
 
-
 def cmd_recommend(args):
     """List the Ollama-hosted chat-model picks for ScrapeGraphAI's
     JSON-extraction workload. Read-only — does not pull anything. To
@@ -987,7 +940,6 @@ def cmd_recommend(args):
     for rec in OLLAMA_SCRAPE_RECOMMENDATIONS:
         print(f"  • {rec['name']:<18} — {rec['why']}")
 
-
 def cmd_detect_llm(args):
     """Zero-config probe of common local-LLM endpoints."""
     det = detect_llm(refresh=args.refresh, verbose=True)
@@ -1007,12 +959,9 @@ def cmd_detect_llm(args):
         print(f"base_url:  {det['base_url']}")
         print(f"cached at: {_LLM_CACHE_PATH}")
 
-
 # ─── CLI (M7: thin IndexerCLI subclass) ─────────────────────────────
 
-
 from _indexer_cli import IndexerCLI  # noqa: E402
-
 
 class ScrapeCLI(IndexerCLI):
     PROG = "kaizen-scrape"
@@ -1107,15 +1056,12 @@ class ScrapeCLI(IndexerCLI):
         pre.add_argument("--json", action="store_true")
         pre.set_defaults(func=cmd_recommend)
 
-
 def build_parser() -> argparse.ArgumentParser:
     """Back-compat shim."""
     return ScrapeCLI().build_parser()
 
-
 def main():
     ScrapeCLI().run()
-
 
 if __name__ == "__main__":
     main()

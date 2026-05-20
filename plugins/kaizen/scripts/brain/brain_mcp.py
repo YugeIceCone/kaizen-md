@@ -65,9 +65,9 @@ from typing import Optional
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR))
-# MIGRATION BRIDGE — build_index at scripts/indexers/; kaizen helpers still at skills/workflow/scripts/
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts" / "indexers"))
-sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "skills" / "workflow" / "scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import _bootstrap  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 
 try:
     from fastmcp import FastMCP
@@ -84,12 +84,9 @@ except ImportError as e:
     )
     sys.exit(1)
 
-
 mcp = FastMCP("kaizen-brain")
 
-
 # ─── Capture / detect / status / path ────────────────────────────────
-
 
 @mcp.tool()
 async def brain_capture(
@@ -109,7 +106,6 @@ async def brain_capture(
         subject=subject,
     )
 
-
 @mcp.tool()
 async def brain_detect(text: str) -> dict:
     """Detect the epistemic type of a string without writing.
@@ -117,12 +113,10 @@ async def brain_detect(text: str) -> dict:
     """
     return {"type": _brain.detect_type(text)}
 
-
 @mcp.tool()
 async def brain_status() -> dict:
     """Brain file counts per subdir + persona presence."""
     return _brain_cli.status()
-
 
 @mcp.tool()
 async def brain_path() -> dict:
@@ -134,9 +128,7 @@ async def brain_path() -> dict:
         "index_db": str(bi.db_path()),
     }
 
-
 # ─── Index / search / get ────────────────────────────────────────────
-
 
 @mcp.tool()
 async def brain_search(
@@ -157,19 +149,16 @@ async def brain_search(
         min_confidence=min_confidence,
     )
 
-
 @mcp.tool()
 async def brain_index_build() -> dict:
     """(Re)build the brain index. Walks Notes/ + Projects/ + People/
     + Areas/; embeds + upserts; cleans stale rows."""
     return await asyncio.to_thread(bi.do_index)
 
-
 @mcp.tool()
 async def brain_index_stats() -> dict:
     """Per-type / per-subdir / per-freshness row counts."""
     return await asyncio.to_thread(bi.do_stats)
-
 
 @mcp.tool()
 async def brain_get(item_id: int) -> dict:
@@ -177,9 +166,7 @@ async def brain_get(item_id: int) -> dict:
     out = await asyncio.to_thread(bi.do_get, item_id)
     return out or {"error": f"id {item_id} not found"}
 
-
 # ─── Promote / audit / evolve ────────────────────────────────────────
-
 
 @mcp.tool()
 async def brain_promote_preview(
@@ -198,7 +185,6 @@ async def brain_promote_preview(
         apply=False,
     )
 
-
 @mcp.tool()
 async def brain_promote_apply(
     source: Optional[str] = None,
@@ -212,7 +198,6 @@ async def brain_promote_apply(
         filter_glob=filter,
         apply=True,
     )
-
 
 @mcp.tool()
 async def brain_audit(
@@ -230,13 +215,11 @@ async def brain_audit(
         limit_inbox=limit_inbox,
     )
 
-
 @mcp.tool()
 async def brain_evolve(stale_days: int = 30) -> dict:
     """Consolidation + freshness report (read-only).
     Reports duplicates, freshness drift, and Persona.md vs Notes drift."""
     return await asyncio.to_thread(be.evolve, stale_days=stale_days)
-
 
 if __name__ == "__main__":
     mcp.run()

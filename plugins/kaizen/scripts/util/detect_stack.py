@@ -40,9 +40,7 @@ from collections import Counter
 from pathlib import Path
 from typing import Optional
 
-
 # ─── Detection tables ────────────────────────────────────────────────
-
 
 # extension → (language, weight-multiplier)
 # Weight lets us discount build-output files vs source.
@@ -115,7 +113,6 @@ _CONV_FILES: list[str] = [
     ".editorconfig", ".pre-commit-config.yaml",
 ]
 
-
 # Tool-version pin files. Each entry: (filename, language-tag-or-None).
 # When language-tag is set, the file's first non-comment line becomes
 # the pinned version for that language.
@@ -129,7 +126,6 @@ _VERSION_PIN_FILES: list[tuple[str, Optional[str]]] = [
     ("mise.toml",               None),   # mise — multi-language
 ]
 
-
 # Container / IaC presence markers.
 _CONTAINER_MARKERS: dict[str, list[str]] = {
     "dockerfile":  ["Dockerfile", "dockerfile"],
@@ -138,9 +134,7 @@ _CONTAINER_MARKERS: dict[str, list[str]] = {
     "terraform":   ["main.tf", "terraform/"],
 }
 
-
 # ─── Project root + output paths ─────────────────────────────────────
-
 
 def _project_root(start: Optional[Path] = None) -> Path:
     """Walk up looking for any manifest or `.git`. Falls back to cwd."""
@@ -153,25 +147,20 @@ def _project_root(start: Optional[Path] = None) -> Path:
             return d
     return cwd
 
-
 def _output_path_json(root: Optional[Path] = None) -> Path:
     """Primary output — schema-validated JSON. System of record."""
     return (root or _project_root()) / ".agents" / "stack-context.json"
-
 
 def _output_path_md(root: Optional[Path] = None) -> Path:
     """Derived view — markdown rendered from the JSON. Human-readable
     + back-compat with the original .md-only artifact path."""
     return (root or _project_root()) / ".agents" / "stack-context.md"
 
-
 # Back-compat shim: tests + callers that used _output_path get the JSON.
 def _output_path(root: Optional[Path] = None) -> Path:
     return _output_path_json(root)
 
-
 # ─── Walkers + counters ──────────────────────────────────────────────
-
 
 def _count_languages(root: Path, max_files: int = 5000) -> Counter:
     """Walk source files, count by language. Bounded to keep <100ms."""
@@ -188,7 +177,6 @@ def _count_languages(root: Path, max_files: int = 5000) -> Counter:
                     return counts
     return counts
 
-
 def _find_manifests(root: Path) -> list[tuple[str, str, Path]]:
     """Return (manifest_name, language_label, path) for each shipped."""
     out = []
@@ -197,7 +185,6 @@ def _find_manifests(root: Path) -> list[tuple[str, str, Path]]:
         if p.is_file():
             out.append((name, lang, p))
     return out
-
 
 def _detect_ci(root: Path) -> list[str]:
     """Return list of detected CI systems."""
@@ -208,10 +195,8 @@ def _detect_ci(root: Path) -> list[str]:
             out.append(label)
     return out
 
-
 def _convention_files_present(root: Path) -> list[str]:
     return [n for n in _CONV_FILES if (root / n).is_file()]
-
 
 def _detect_version_pins(root: Path) -> dict:
     """Scan for toolchain-version pin files. Returns the populated
@@ -244,14 +229,12 @@ def _detect_version_pins(root: Path) -> dict:
             pass
     return out
 
-
 def _detect_containerization(root: Path) -> dict:
     """Boolean signals for Docker / Compose / K8s / Terraform."""
     out: dict = {}
     for key, markers in _CONTAINER_MARKERS.items():
         out[key] = any((root / m).exists() for m in markers)
     return out
-
 
 def _detect_workspace(root: Path, manifests: list) -> dict:
     """Detect monorepo / workspace setup. Returns the schema's
@@ -300,7 +283,6 @@ def _detect_workspace(root: Path, manifests: list) -> dict:
 
     return out
 
-
 def _detect_pre_commit(root: Path) -> dict:
     """Parse .pre-commit-config.yaml for hook count."""
     p = root / ".pre-commit-config.yaml"
@@ -312,16 +294,13 @@ def _detect_pre_commit(root: Path) -> dict:
     hook_count = len(re.findall(r'^\s+-\s+id:\s+\S+', text, re.MULTILINE))
     return {"config_present": True, "hook_count": hook_count}
 
-
 # ─── Framework + build/test/lint sniffing ────────────────────────────
-
 
 def _read_safe(p: Path, max_kb: int = 64) -> str:
     try:
         return p.read_text(encoding="utf-8", errors="ignore")[:max_kb * 1024]
     except OSError:
         return ""
-
 
 def _sniff_rust(cargo_toml: str) -> dict:
     """Heuristic-grep Cargo.toml for framework + version info."""
@@ -342,7 +321,6 @@ def _sniff_rust(cargo_toml: str) -> dict:
     # rust-toolchain / clippy.toml hints
     return out
 
-
 def _sniff_pyproject(text: str) -> dict:
     out: dict = {"build": "uv|poetry|hatch (parse pyproject)", "test": "pytest"}
     if re.search(r'\bpytest\b', text):
@@ -357,7 +335,6 @@ def _sniff_pyproject(text: str) -> dict:
     if fw:
         out["frameworks"] = fw[:5]
     return out
-
 
 def _sniff_pkg_json(text: str) -> dict:
     out: dict = {"build": "npm/yarn/pnpm", "test": "npm test"}
@@ -378,7 +355,6 @@ def _sniff_pkg_json(text: str) -> dict:
         out["test"] = data["scripts"]["test"]
     return out
 
-
 def _sniff_go_mod(text: str) -> dict:
     out: dict = {"build": "go build", "test": "go test ./..."}
     m = re.search(r'^go\s+(\S+)', text, re.MULTILINE)
@@ -392,7 +368,6 @@ def _sniff_go_mod(text: str) -> dict:
         out["frameworks"] = fw[:5]
     return out
 
-
 _SNIFFERS = {
     "Cargo.toml":     _sniff_rust,
     "pyproject.toml": _sniff_pyproject,
@@ -400,9 +375,7 @@ _SNIFFERS = {
     "go.mod":         _sniff_go_mod,
 }
 
-
 # ─── Render ──────────────────────────────────────────────────────────
-
 
 def _self_validate(record: dict) -> Optional[str]:
     """Best-effort schema validation in-script. Returns None on pass,
@@ -422,7 +395,6 @@ def _self_validate(record: dict) -> Optional[str]:
         return None
     except Exception as e:
         return str(e)
-
 
 def _build_record(root: Path, lang_counts: Counter, manifests: list,
                     ci: list[str], conventions: list[str],
@@ -482,7 +454,6 @@ def _build_record(root: Path, lang_counts: Counter, manifests: list,
         rec["pre_commit"] = pre_commit
     return rec
 
-
 def _render_md(rec: dict) -> str:
     """Render the JSON record as markdown — same shape the original
     .md artifact had, for human reading + back-compat with consumers
@@ -536,9 +507,7 @@ def _render_md(rec: dict) -> str:
                   "`kaizen:detect-stack` skill and let the agent enrich this file."))
     return "\n".join(lines) + "\n"
 
-
 # ─── Stale check ─────────────────────────────────────────────────────
-
 
 def _is_stale(p: Path, max_days: int = 30) -> bool:
     if not p.is_file():
@@ -546,9 +515,7 @@ def _is_stale(p: Path, max_days: int = 30) -> bool:
     age_days = (_dt.datetime.now().timestamp() - p.stat().st_mtime) / 86400
     return age_days > max_days
 
-
 # ─── Commands ────────────────────────────────────────────────────────
-
 
 def cmd_scan(args) -> int:
     root = _project_root()
@@ -611,7 +578,6 @@ def cmd_scan(args) -> int:
               f"+ {md_path} ({len(md_body)}b md)")
     return 0
 
-
 def cmd_show(args) -> int:
     """Print the JSON artifact by default; --md prints the markdown view."""
     p = _output_path_md() if args.md else _output_path_json()
@@ -621,16 +587,13 @@ def cmd_show(args) -> int:
     print(p.read_text(encoding="utf-8"), end="")
     return 0
 
-
 def cmd_path(args) -> int:
     print(_output_path())
     return 0
 
-
 def cmd_stale(args) -> int:
     p = _output_path()
     return 1 if _is_stale(p, max_days=args.max_days) else 0
-
 
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(prog="kaizen-detect-stack",
@@ -661,7 +624,6 @@ def main(argv=None) -> int:
 
     args = p.parse_args(argv)
     return args.func(args)
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

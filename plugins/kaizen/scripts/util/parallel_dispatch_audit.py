@@ -24,9 +24,7 @@ import json
 import sys
 from pathlib import Path
 
-
 # ─── Audit checks (each returns 0..N findings) ──────────────────────
-
 
 def _check_plan_file_exists(plan_path: Path) -> list[dict]:
     if not plan_path.is_file():
@@ -35,7 +33,6 @@ def _check_plan_file_exists(plan_path: Path) -> list[dict]:
             "message": f"plan file not found: {plan_path}",
         }]
     return []
-
 
 def _parse_yaml_or_error(plan_path: Path) -> tuple[dict | None, list[dict]]:
     try:
@@ -59,7 +56,6 @@ def _parse_yaml_or_error(plan_path: Path) -> tuple[dict | None, list[dict]]:
         }]
     return raw, []
 
-
 def _check_required_keys(plan: dict) -> list[dict]:
     out = []
     for key in ("chunks",):
@@ -69,7 +65,6 @@ def _check_required_keys(plan: dict) -> list[dict]:
                 "message": f"required key missing: {key!r}",
             })
     return out
-
 
 def _resolve_chunks(plan: dict, plan_path: Path) -> tuple[list[dict], list[dict]]:
     """Resolve chunks (inline list OR ``./chunks/*.yaml`` glob). Returns
@@ -112,7 +107,6 @@ def _resolve_chunks(plan: dict, plan_path: Path) -> tuple[list[dict], list[dict]
             }]
     return out, []
 
-
 def _check_chunk_id_uniqueness(chunks: list[dict]) -> list[dict]:
     seen: dict[str, int] = {}
     out = []
@@ -132,7 +126,6 @@ def _check_chunk_id_uniqueness(chunks: list[dict]) -> list[dict]:
             })
         seen[cid] = seen.get(cid, 0) + 1
     return out
-
 
 def _check_chunk_perms_collide(chunks: list[dict]) -> list[dict]:
     """Two chunks claiming exclusive write on the same path is a
@@ -159,9 +152,7 @@ def _check_chunk_perms_collide(chunks: list[dict]) -> list[dict]:
                 owners[path] = cid
     return out
 
-
 # ─── Composition ─────────────────────────────────────────────────────
-
 
 def audit(plan_path: Path) -> list[dict]:
     """Run all checks; return aggregated findings (empty = ready)."""
@@ -183,9 +174,7 @@ def audit(plan_path: Path) -> list[dict]:
     findings.extend(_check_chunk_perms_collide(chunks))
     return findings
 
-
 # ─── CLI ────────────────────────────────────────────────────────────
-
 
 def _render_findings(findings: list[dict]) -> str:
     if not findings:
@@ -197,7 +186,6 @@ def _render_findings(findings: list[dict]) -> str:
         msg = f.get("message", "")
         lines.append(f"  [{sev}] {rid}: {msg}")
     return "\n".join(lines)
-
 
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(
@@ -219,7 +207,6 @@ def main(argv: list[str] | None = None) -> int:
     else:
         print(_render_findings(findings))
     return 1 if any(f.get("severity") == "error" for f in findings) else 0
-
 
 if __name__ == "__main__":
     sys.exit(main())

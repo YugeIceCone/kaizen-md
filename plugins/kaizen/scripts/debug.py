@@ -44,7 +44,6 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Iterator
 
-
 @dataclass
 class DebugError:
     file: str
@@ -58,7 +57,6 @@ class DebugError:
     raw: str
     hint: str = ""
     snippet: list[str] = field(default_factory=list)
-
 
 # ─── Pattern catalog ────────────────────────────────────────────────
 
@@ -92,7 +90,6 @@ _PYTHON_TYPED_ERR_RE = re.compile(
     r"(?P<err>TypeError|ValueError|KeyError|AttributeError|NameError|RuntimeError):\s*(?P<msg>.+)"
 )
 
-
 def parse_error(line: str) -> DebugError | None:
     """Classify one stderr line into a structured DebugError."""
     for matcher in (_match_unbound_var, _match_bash_not_found,
@@ -105,7 +102,6 @@ def parse_error(line: str) -> DebugError | None:
             return result
     return None
 
-
 def _match_unbound_var(line: str) -> DebugError | None:
     m = _UNBOUND_VAR_RE.search(line)
     if not m:
@@ -115,7 +111,6 @@ def _match_unbound_var(line: str) -> DebugError | None:
         kind="unbound-var", source="bash", raw=line.strip(),
         hint=_hint_unbound_var(m.group("var"), m.group("file"), int(m.group("line"))),
     )
-
 
 def _match_bash_not_found(line: str) -> DebugError | None:
     m = _BASH_NOT_FOUND_RE.search(line)
@@ -127,7 +122,6 @@ def _match_bash_not_found(line: str) -> DebugError | None:
         hint=_hint_cmd_missing(m.group("cmd")),
     )
 
-
 def _match_python_no_module(line: str) -> DebugError | None:
     m = _PYTHON_NO_MODULE_RE.search(line)
     if not m:
@@ -137,7 +131,6 @@ def _match_python_no_module(line: str) -> DebugError | None:
         kind="module-not-found", source="python", raw=line.strip(),
         hint=_hint_module_missing(m.group("mod")),
     )
-
 
 def _match_python_import(line: str) -> DebugError | None:
     m = _PYTHON_IMPORT_ERR_RE.search(line)
@@ -149,7 +142,6 @@ def _match_python_import(line: str) -> DebugError | None:
         hint=f"ImportError: {m.group('msg')}. Check sys.path + circular imports.",
     )
 
-
 def _match_python_syntax(line: str) -> DebugError | None:
     m = _PYTHON_SYNTAX_RE.search(line)
     if not m:
@@ -159,7 +151,6 @@ def _match_python_syntax(line: str) -> DebugError | None:
         source="python", raw=line.strip(),
         hint=f"{m.group('err')}: {m.group('msg')}. Run `python3 -c \"import ast; ast.parse(open('<file>').read())\"` to confirm.",
     )
-
 
 def _match_file_not_found(line: str) -> DebugError | None:
     m = _FILE_NOT_FOUND_RE.search(line)
@@ -171,7 +162,6 @@ def _match_file_not_found(line: str) -> DebugError | None:
         hint=_hint_file_missing(m.group("path")),
     )
 
-
 def _match_pytest_fail(line: str) -> DebugError | None:
     m = _PYTEST_FAIL_RE.search(line)
     if not m:
@@ -181,7 +171,6 @@ def _match_pytest_fail(line: str) -> DebugError | None:
         kind="test-failure", source="test", raw=line.strip(),
         hint=f"pytest fail in {m.group('test')} at {m.group('file')}:{m.group('line')}. Run `python3 -m pytest {m.group('file')}::{m.group('test')} -v`.",
     )
-
 
 def _match_pytest_assert(line: str) -> DebugError | None:
     m = _PYTEST_ASSERT_RE.search(line)
@@ -193,7 +182,6 @@ def _match_pytest_assert(line: str) -> DebugError | None:
         hint=f"assertion failed: {m.group('msg')[:120]}",
     )
 
-
 def _match_assertion(line: str) -> DebugError | None:
     m = _ASSERTION_RE.search(line)
     if not m:
@@ -203,7 +191,6 @@ def _match_assertion(line: str) -> DebugError | None:
         source="python", raw=line.strip(),
         hint=f"AssertionError: {m.group('msg')[:120]}",
     )
-
 
 def _match_python_typed(line: str) -> DebugError | None:
     m = _PYTHON_TYPED_ERR_RE.search(line)
@@ -221,7 +208,6 @@ def _match_python_typed(line: str) -> DebugError | None:
         hint=_hint_typed_err(m.group("err"), m.group("msg")),
     )
 
-
 def _match_bash_line(line: str) -> DebugError | None:
     m = _BASH_LINE_RE.search(line)
     if not m:
@@ -232,9 +218,7 @@ def _match_bash_line(line: str) -> DebugError | None:
         hint=f"bash error at {m.group('file')}:{m.group('line')} — {m.group('msg')}",
     )
 
-
 # ─── Hints ──────────────────────────────────────────────────────────
-
 
 def _hint_unbound_var(var: str, file: str, lineno: int) -> str:
     common = {
@@ -253,7 +237,6 @@ def _hint_unbound_var(var: str, file: str, lineno: int) -> str:
         "or (c) re-check the env contract."
     )
 
-
 def _hint_cmd_missing(cmd: str) -> str:
     common = {
         "uv": "Install uv: https://github.com/astral-sh/uv",
@@ -262,7 +245,6 @@ def _hint_cmd_missing(cmd: str) -> str:
         "jq": "Install jq: apt install jq / brew install jq",
     }
     return common.get(cmd, f"`{cmd}` not in PATH. Check install / PATH / typo.")
-
 
 def _hint_module_missing(mod: str) -> str:
     if mod.startswith("_"):
@@ -282,7 +264,6 @@ def _hint_module_missing(mod: str) -> str:
         "(a) add the right dir to sys.path, (b) pip install / uv run --script."
     )
 
-
 def _guess_subdir(mod: str) -> str:
     rules = (
         ("indexers", ("_index_kit",)),
@@ -296,7 +277,6 @@ def _guess_subdir(mod: str) -> str:
         if any(p in mod for p in prefixes):
             return subdir
     return ""
-
 
 def _hint_file_missing(path: str) -> str:
     parts = Path(path).parts
@@ -332,7 +312,6 @@ def _hint_file_missing(path: str) -> str:
         "(b) parents[N] off by one?, (c) env var not set?"
     )
 
-
 def _hint_typed_err(err: str, msg: str) -> str:
     hints = {
         "AttributeError": "Check: (a) typo, (b) wrong object type, (c) module doesn't expose this name.",
@@ -343,9 +322,7 @@ def _hint_typed_err(err: str, msg: str) -> str:
     }
     return f"{err}: {msg[:120]}. {hints.get(err, '')}"
 
-
 # ─── Snippet enrichment ─────────────────────────────────────────────
-
 
 def _enrich_with_snippet(e: DebugError) -> DebugError:
     if not e.file or not e.line:
@@ -362,9 +339,7 @@ def _enrich_with_snippet(e: DebugError) -> DebugError:
         pass
     return e
 
-
 # ─── Source readers ─────────────────────────────────────────────────
-
 
 def _read_recent_errors(since: _dt.timedelta, source: str) -> Iterator[str]:
     if source in ("hooks", "trace", "all"):
@@ -399,7 +374,6 @@ def _read_recent_errors(since: _dt.timedelta, source: str) -> Iterator[str]:
             except OSError:
                 continue
 
-
 def _to_kaizen_since(td: _dt.timedelta) -> str:
     secs = int(td.total_seconds())
     if secs >= 86_400:
@@ -410,7 +384,6 @@ def _to_kaizen_since(td: _dt.timedelta) -> str:
         return f"{secs // 60}m"
     return f"{secs}s"
 
-
 def _parse_duration(s: str) -> _dt.timedelta:
     m = re.fullmatch(r"(\d+)([smhd])", s)
     if not m:
@@ -419,9 +392,7 @@ def _parse_duration(s: str) -> _dt.timedelta:
     mult = {"s": 1, "m": 60, "h": 3_600, "d": 86_400}[unit]
     return _dt.timedelta(seconds=n * mult)
 
-
 # ─── Subcommands ────────────────────────────────────────────────────
-
 
 def cmd_scan(args) -> int:
     since = _parse_duration(args.since)
@@ -430,7 +401,6 @@ def cmd_scan(args) -> int:
         print(f"debug scan: no errors in last {args.since} (source={args.source})")
         return 0
     return _emit_errors(errors, args.json)
-
 
 def cmd_parse(args) -> int:
     if args.stdin == "-":
@@ -442,7 +412,6 @@ def cmd_parse(args) -> int:
         return 2
     errors = _collect(text.splitlines())
     return _emit_errors(errors, args.json)
-
 
 def cmd_replay(args) -> int:
     if not args.argv:
@@ -475,7 +444,6 @@ def cmd_replay(args) -> int:
             print(f"    {e.hint}")
     return proc.returncode
 
-
 def _collect(lines: Iterator[str]) -> list[DebugError]:
     errors: list[DebugError] = []
     seen: set[tuple[str, int | None, str, str]] = set()
@@ -490,14 +458,12 @@ def _collect(lines: Iterator[str]) -> list[DebugError]:
         errors.append(_enrich_with_snippet(e))
     return errors
 
-
 def _to_dict(e: DebugError) -> dict:
     return {
         "file": e.file, "line": e.line, "kind": e.kind,
         "source": e.source, "raw": e.raw, "hint": e.hint,
         "snippet": e.snippet,
     }
-
 
 def _emit_errors(errors: list[DebugError], as_json: bool) -> int:
     if as_json:
@@ -516,9 +482,7 @@ def _emit_errors(errors: list[DebugError], as_json: bool) -> int:
             print(f"  {marker}{snip}")
     return 1
 
-
 # ─── Lint ────────────────────────────────────────────────────────────
-
 
 _HEREDOC_VAR_RE = re.compile(r"\$(\w+)")
 _KNOWN_SHELL_VARS = frozenset({
@@ -530,14 +494,12 @@ _KNOWN_SHELL_VARS = frozenset({
     "ARCH_LOG", "VERIFY",
 })
 
-
 @dataclass
 class LintFinding:
     file: str
     line: int
     kind: str
     detail: str
-
 
 def lint_one(path: Path) -> list[LintFinding]:
     try:
@@ -549,7 +511,6 @@ def lint_one(path: Path) -> list[LintFinding]:
     if path.suffix == ".py":
         return _lint_python(path, text)
     return []
-
 
 def _lint_shell(path: Path, text: str) -> list[LintFinding]:
     findings = []
@@ -577,7 +538,6 @@ def _lint_shell(path: Path, text: str) -> list[LintFinding]:
                     ))
     return findings
 
-
 def _lint_python(path: Path, text: str) -> list[LintFinding]:
     findings = []
     for i, line in enumerate(text.splitlines(), 1):
@@ -592,7 +552,6 @@ def _lint_python(path: Path, text: str) -> list[LintFinding]:
                            f"sys.path bridge to scripts/{subdir}/ in this file",
                 ))
     return findings
-
 
 def cmd_lint(args) -> int:
     plugin_root = Path(__file__).resolve().parents[1]
@@ -623,9 +582,7 @@ def cmd_lint(args) -> int:
             print(f"{f.file}:{f.line}  [{f.kind}]  {f.detail}")
     return 0 if not all_findings else 1
 
-
 # ─── Tail ───────────────────────────────────────────────────────────
-
 
 def cmd_tail(args) -> int:
     cache_dir = Path(os.environ.get("KAIZEN_DEBUG_LOG_DIR",
@@ -660,9 +617,7 @@ def cmd_tail(args) -> int:
             p.terminate()
         return 0
 
-
 # ─── smoke: exercise every kaizen-* bin with --help ─────────────────
-
 
 # Bins that need user input / run long / mutate state / interactive.
 # Excluded from --help smoke (they'd hang or do work).
@@ -674,12 +629,10 @@ _SMOKE_BIN_DENY: frozenset = frozenset({
     "kaizen-fg",
 })
 
-
 def _plugin_bin_dir() -> Path:
     """Resolve plugin/bin from this script's location (scripts/debug.py
     → plugin_root → bin/)."""
     return Path(__file__).resolve().parent.parent / "bin"
-
 
 def cmd_smoke(args) -> int:
     """Walk bin/kaizen-* and invoke each with --help. Failures surface
@@ -746,9 +699,7 @@ def cmd_smoke(args) -> int:
                 print(f"      {err[0]}")
     return 0 if failed == 0 else 2
 
-
 # ─── Check — parse-validity per axis (BK-018) ───────────────────────
-
 
 @dataclass
 class CheckFinding:
@@ -757,7 +708,6 @@ class CheckFinding:
     line: int | None
     kind: str          # syntax-error | parse-error | invalid-schema
     detail: str
-
 
 def _walk(root: Path, suffixes: tuple[str, ...]) -> Iterator[Path]:
     """Walk files under `root` matching any of `suffixes`, skipping
@@ -770,7 +720,6 @@ def _walk(root: Path, suffixes: tuple[str, ...]) -> Iterator[Path]:
         name = p.name
         if any(name.endswith(s) for s in suffixes):
             yield p
-
 
 def check_python(root: Path) -> list[CheckFinding]:
     import ast
@@ -789,7 +738,6 @@ def check_python(root: Path) -> list[CheckFinding]:
                 kind="read-error", detail=str(e),
             ))
     return out
-
 
 def check_yaml(root: Path) -> list[CheckFinding]:
     try:
@@ -819,7 +767,6 @@ def check_yaml(root: Path) -> list[CheckFinding]:
             ))
     return out
 
-
 def check_jsonl(root: Path) -> list[CheckFinding]:
     out: list[CheckFinding] = []
     for p in _walk(root, (".jsonl",)):
@@ -843,7 +790,6 @@ def check_jsonl(root: Path) -> list[CheckFinding]:
                 ))
                 break  # one finding per file is enough — repair restores
     return out
-
 
 def check_schema(root: Path) -> list[CheckFinding]:
     try:
@@ -877,14 +823,12 @@ def check_schema(root: Path) -> list[CheckFinding]:
             ))
     return out
 
-
 _AXIS_FUNCS = {
     "python": check_python,
     "yaml":   check_yaml,
     "jsonl":  check_jsonl,
     "schema": check_schema,
 }
-
 
 def cmd_check(args) -> int:
     """Parse-validity check across 4 axes. Per-axis breakage is independent;
@@ -931,7 +875,6 @@ def cmd_check(args) -> int:
         print(f"      {f.detail}")
     return 0 if failed == 0 else 2
 
-
 _AXIS_SUFFIXES = {
     "python": (".py",),
     "yaml":   (".yaml", ".yml"),
@@ -939,9 +882,7 @@ _AXIS_SUFFIXES = {
     "schema": (".schema.json",),
 }
 
-
 # ─── CLI ─────────────────────────────────────────────────────────────
-
 
 def main(argv: list[str] | None = None) -> int:
     if os.environ.get("KAIZEN_DEBUG_DISABLE") == "1":
@@ -1006,7 +947,6 @@ def main(argv: list[str] | None = None) -> int:
 
     args = p.parse_args(argv)
     return args.func(args)
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

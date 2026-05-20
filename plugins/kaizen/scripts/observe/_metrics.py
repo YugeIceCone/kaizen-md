@@ -33,7 +33,8 @@ import re
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Iterator, Optional
-
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import _bootstrap  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 
 __all__ = [
     "trace_log_path",
@@ -56,9 +57,7 @@ __all__ = [
     "smoke_mcp",
 ]
 
-
 # ─── Paths ────────────────────────────────────────────────────────────
-
 
 def trace_log_path() -> Path:
     """Resolve the trace log path via the _paths SSOT (v1.39.0+:
@@ -74,16 +73,13 @@ def trace_log_path() -> Path:
     import _paths
     return _paths.TRACE_FILE.expanduser().resolve()
 
-
 def plugin_root() -> Path:
     """Walk up from this script to find the plugin root."""
     here = Path(__file__).resolve().parent  # scripts/observe
     # plugins/kaizen
     return here.parent.parent
 
-
 # ─── Event reader ────────────────────────────────────────────────────
-
 
 def iter_events(
     since: Optional[dt.datetime] = None,
@@ -117,9 +113,7 @@ def iter_events(
                     continue
             yield rec
 
-
 _TS_RE = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}")
-
 
 def _parse_ts(s: str) -> Optional[dt.datetime]:
     """Parse the trace's ISO timestamp. Tolerates the trailing 'Z'."""
@@ -132,12 +126,9 @@ def _parse_ts(s: str) -> Optional[dt.datetime]:
     except ValueError:
         return None
 
-
 # ─── Duration parser ─────────────────────────────────────────────────
 
-
 _DURATION_RE = re.compile(r"^(\d+)([smhdw])$")
-
 
 def parse_duration(s: str) -> Optional[dt.datetime]:
     """Convert a duration string ('7d', '30m', '1h', '2w') to a cutoff
@@ -153,9 +144,7 @@ def parse_duration(s: str) -> Optional[dt.datetime]:
         return now - dt.timedelta(seconds=n * seconds)
     return _parse_ts(s)
 
-
 # ─── Rollup logic ────────────────────────────────────────────────────
-
 
 @dataclass
 class Rollup:
@@ -214,7 +203,6 @@ class Rollup:
             "by_mcp": dict(self.by_mcp.most_common(50)),
         }
 
-
 def rollup_events(
     since: Optional[dt.datetime] = None,
     sid: Optional[str] = None,
@@ -223,7 +211,6 @@ def rollup_events(
     for rec in iter_events(since=since, sid=sid):
         r.add(rec)
     return r
-
 
 def latest_session_id() -> Optional[str]:
     """Return the SessionStart with the most recent ts, or the most
@@ -246,9 +233,7 @@ def latest_session_id() -> Optional[str]:
             last_any_sid = sid
     return last_start_sid or last_any_sid
 
-
 # ─── Available-artifact discovery (for never-used) ───────────────────
-
 
 # Vendored skills don't count as kaizen-original — exclude from the
 # never-used report. Same list as the plugin-development validator.
@@ -265,7 +250,6 @@ VENDORED_SKILLS = {
     "status",
 }
 
-
 def available_skills() -> list[str]:
     """List plugin-original skill names (matches Skill tool input)."""
     skills_dir = plugin_root() / "skills"
@@ -281,14 +265,12 @@ def available_skills() -> list[str]:
             out.append(p.name)
     return out
 
-
 def available_mcp_servers() -> list[str]:
     """List plugin-original MCP server scripts.
 
     Returns the bare server name (``workflow_mcp.py`` → ``workflow``).
     The trace's mcp__plugin_kaizen_<name>__ prefix is normalized to
     this bare form in ``never_used``."""
-    scripts = plugin_root() / "skills" / "workflow" / "scripts"
     if not scripts.is_dir():
         return []
     out = []
@@ -300,7 +282,6 @@ def available_mcp_servers() -> list[str]:
         out.append(name)
     return out
 
-
 def available_bins() -> list[str]:
     """List kaizen-* bin wrappers."""
     bin_dir = plugin_root() / "bin"
@@ -308,9 +289,7 @@ def available_bins() -> list[str]:
         return []
     return sorted(p.name for p in bin_dir.iterdir() if p.is_file())
 
-
 # ─── Never-used computation ──────────────────────────────────────────
-
 
 def never_used(kind: str = "skill") -> dict:
     """Return artifacts of `kind` that have zero invocations in the
@@ -388,9 +367,7 @@ def never_used(kind: str = "skill") -> dict:
         }
     raise ValueError(f"unknown kind: {kind!r}")
 
-
 # ─── Skip detection ──────────────────────────────────────────────────
-
 
 # Rules: skill-name → glob patterns whose presence in the session's
 # file-edit activity implies the skill SHOULD have been loaded.
@@ -432,7 +409,6 @@ SKIP_RULES = [
         "rationale": "Touching workflow scripts without loading workflow skill",
     },
 ]
-
 
 def detect_skips(sid: Optional[str] = None) -> list[dict]:
     """For the given session (or the latest), return skill-skip
@@ -490,9 +466,7 @@ def detect_skips(sid: Optional[str] = None) -> list[dict]:
             })
     return out
 
-
 # ─── Top-N helpers ───────────────────────────────────────────────────
-
 
 def top_n(kind: str, n: int = 10) -> list[tuple[str, int]]:
     full = rollup_events()
@@ -506,9 +480,7 @@ def top_n(kind: str, n: int = 10) -> list[tuple[str, int]]:
         return full.by_evt.most_common(n)
     raise ValueError(f"unknown kind: {kind!r}")
 
-
 # ─── Graveyard (cold-artifact candidates) ────────────────────────────
-
 
 # Event prefixes that prove the trace has been capturing a given
 # artifact kind. graveyard uses these to compute "how long has the
@@ -521,7 +493,6 @@ _KIND_EVENT_PREFIX = {
     "bin": "PreToolUse-bash",   # bins invoke through Bash
     "tool": "PreToolUse-",
 }
-
 
 def trace_age_days(kind: str) -> Optional[float]:
     """How many days has the trace been capturing events of this
@@ -547,7 +518,6 @@ def trace_age_days(kind: str) -> Optional[float]:
         return None
     now = dt.datetime.now(dt.timezone.utc)
     return (now - earliest).total_seconds() / 86400.0
-
 
 def graveyard(kind: str = "skill", stale_days: int = 14) -> dict:
     """Cold-artifact candidates: never-used AND the trace has been
@@ -598,9 +568,7 @@ def graveyard(kind: str = "skill", stale_days: int = 14) -> dict:
                   "(not just rare / indirectly-triggered) before archiving.",
     }
 
-
 # ─── MCP smoke test ──────────────────────────────────────────────────
-
 
 def smoke_mcp() -> dict:
     """Import each ``*_mcp.py`` module + verify it has a FastMCP
@@ -620,7 +588,6 @@ def smoke_mcp() -> dict:
         }
     import importlib
     import sys as _sys
-    scripts = plugin_root() / "skills" / "workflow" / "scripts"
     if str(scripts) not in _sys.path:
         _sys.path.insert(0, str(scripts))
     # Post-DOMAIN-4: MCPs live at scripts/mcp/

@@ -25,9 +25,7 @@ import sys
 from collections import defaultdict
 from pathlib import Path
 
-
 _DEFAULT_MIN_PREFIX = 4
-
 
 def find_collisions(names: list[str], min_prefix_len: int = _DEFAULT_MIN_PREFIX
                      ) -> list[dict]:
@@ -52,7 +50,6 @@ def find_collisions(names: list[str], min_prefix_len: int = _DEFAULT_MIN_PREFIX
             out.append({"prefix": prefix, "members": sorted(members)})
     return out
 
-
 def scan_commands_dir(commands_dir: Path,
                        min_prefix_len: int = _DEFAULT_MIN_PREFIX
                        ) -> list[dict]:
@@ -62,14 +59,12 @@ def scan_commands_dir(commands_dir: Path,
     names = sorted(p.stem for p in commands_dir.iterdir() if p.suffix == ".md")
     return find_collisions(names, min_prefix_len=min_prefix_len)
 
-
 def _plugin_commands_dir() -> Path:
     """Default scan target: the kaizen plugin's commands/ dir.
 
     Post-DOMAIN-5 (scripts/quality/X.py depth): parents[2] = plugin root.
     """
     return Path(__file__).resolve().parents[2] / "commands"
-
 
 def _cmd_check(args) -> int:
     target = Path(args.dir) if args.dir else _plugin_commands_dir()
@@ -92,7 +87,6 @@ def _cmd_check(args) -> int:
                 print(f"  ⚠ '{c['prefix']}*' — {', '.join(c['members'])}")
     return 1 if collisions else 0
 
-
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(
         prog="kaizen-slash-collision",
@@ -109,7 +103,6 @@ def main(argv: list[str] | None = None) -> int:
 
     args = p.parse_args(argv)
     return args.func(args)
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

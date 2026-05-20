@@ -21,7 +21,6 @@ import os
 import sys
 from pathlib import Path
 
-
 def main() -> int:
     if os.environ.get("KAIZEN_TRACE_DISABLE") == "1":
         return 0
@@ -32,8 +31,8 @@ def main() -> int:
         return 0
 
     sys.path.insert(0, str(Path(__file__).resolve().parent))
-    # MIGRATION BRIDGE — kaizen modules (trace, inbox) still at skills/workflow/scripts/
-    sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "skills" / "workflow" / "scripts"))
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    import _bootstrap  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
     try:
         import trace as _trace
     except ImportError:
@@ -74,7 +73,6 @@ def main() -> int:
         _trace.append_event(rec_detail)
 
     return 0
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

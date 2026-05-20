@@ -60,29 +60,23 @@ except ImportError:
     BACKUP_BASE = HOME / ".claude" / ".kaizen" / "backups"
     INBOX_DIR = Path(os.environ.get("KAIZEN_INBOX_DIR", HOME / ".claude" / ".kaizen" / "inbox"))
 
-
 def _env_int(name: str, default: int) -> int:
     v = os.environ.get(name, "")
     return int(v) if v.isdigit() else default
 
-
 KEEP_VERSIONS = lambda: _env_int("KAIZEN_KEEP_VERSIONS", 2)
 KEEP_BACKUPS = lambda: _env_int("KAIZEN_KEEP_BACKUPS", 10)
 INBOX_TTL_DAYS = lambda: _env_int("KAIZEN_INBOX_TTL_DAYS", 7)
-
 
 from _time import utc_now  # M5 dedup
 import _envelope  # noqa: E402
 
 _emit = _envelope.emitter("kaizen-hygiene", tool_version="1.0.0")
 
-
 def now() -> dt.datetime:
     return utc_now()
 
-
 # ─── Individual checks ───────────────────────────────────────────────
-
 
 def check_cache() -> dict:
     if not CACHE_BASE.exists():
@@ -101,7 +95,6 @@ def check_cache() -> dict:
         "bytes_freeable": sum(_dir_size(CACHE_BASE / v) for v in candidates),
     }
 
-
 def fix_cache(finding: dict) -> dict:
     if finding.get("ok"):
         return {"name": "cache", "applied": False, "reason": "already ok"}
@@ -112,7 +105,6 @@ def fix_cache(finding: dict) -> dict:
             _rmtree(target)
             removed.append(v)
     return {"name": "cache", "applied": True, "removed": removed, "count": len(removed)}
-
 
 def check_backups() -> dict:
     if not BACKUP_BASE.exists():
@@ -135,7 +127,6 @@ def check_backups() -> dict:
         })
     return {"name": "backups", "ok": len(findings) == 0, "repos": findings}
 
-
 def fix_backups(finding: dict) -> dict:
     if finding.get("ok"):
         return {"name": "backups", "applied": False, "reason": "already ok"}
@@ -147,7 +138,6 @@ def fix_backups(finding: dict) -> dict:
                 tarball.unlink()
                 removed.append(f"{repo['repo']}/{name}")
     return {"name": "backups", "applied": True, "removed": removed, "count": len(removed)}
-
 
 def check_inbox() -> dict:
     if not INBOX_DIR.exists():
@@ -171,7 +161,6 @@ def check_inbox() -> dict:
         "stale": stale,
     }
 
-
 def fix_inbox(finding: dict) -> dict:
     if finding.get("ok"):
         return {"name": "inbox", "applied": False, "reason": "already ok"}
@@ -182,7 +171,6 @@ def fix_inbox(finding: dict) -> dict:
             f.unlink()
             removed.append(name)
     return {"name": "inbox", "applied": True, "removed": removed, "count": len(removed)}
-
 
 def check_rules() -> dict:
     rules_py = _scripts_dir() / "rules.py"
@@ -198,11 +186,9 @@ def check_rules() -> dict:
     except Exception as e:
         return {"name": "rules", "ok": False, "error": str(e)}
 
-
 def fix_rules(finding: dict) -> dict:
     # Rules schema errors require human attention — no auto-fix.
     return {"name": "rules", "applied": False, "reason": "manual edit required (see check output)"}
-
 
 def check_backlog() -> dict:
     """Walk known kaizen-installed repos and check backlog drift via backlog.py verify."""
@@ -227,7 +213,6 @@ def check_backlog() -> dict:
             issues.append({"repo": str(repo), "error": str(e)})
     return {"name": "backlog", "ok": len(issues) == 0, "issues": issues, "checked": len(candidates)}
 
-
 def fix_backlog(finding: dict) -> dict:
     backlog_py = _scripts_dir() / "backlog.py"
     if finding.get("ok"):
@@ -244,13 +229,10 @@ def fix_backlog(finding: dict) -> dict:
             pass
     return {"name": "backlog", "applied": True, "rendered": rendered, "count": len(rendered)}
 
-
 # ─── Helpers ─────────────────────────────────────────────────────────
-
 
 def _scripts_dir() -> Path:
     return Path(__file__).resolve().parent
-
 
 def _dir_size(p: Path) -> int:
     total = 0
@@ -264,11 +246,9 @@ def _dir_size(p: Path) -> int:
                 pass
     return total
 
-
 def _rmtree(p: Path) -> None:
     import shutil
     shutil.rmtree(p, ignore_errors=True)
-
 
 def _discover_kaizen_repos() -> list[Path]:
     """Find repos with .kaizen.toml. Reads ~/.kaizen-installs.txt if present
@@ -287,9 +267,7 @@ def _discover_kaizen_repos() -> list[Path]:
         return [cwd]
     return []
 
-
 # ─── Orchestration ───────────────────────────────────────────────────
-
 
 CHECKS = {
     "cache": (check_cache, fix_cache),
@@ -299,10 +277,8 @@ CHECKS = {
     "backlog": (check_backlog, fix_backlog),
 }
 
-
 def run_all_checks() -> dict:
     return {name: c() for name, (c, _) in CHECKS.items()}
-
 
 def run_all_fixes() -> dict:
     out = {}
@@ -310,7 +286,6 @@ def run_all_fixes() -> dict:
         finding = check()
         out[name] = {"finding": finding, "fix": fix(finding)}
     return out
-
 
 def summary(results: dict, mode: str = "check") -> str:
     lines = [f"kaizen hygiene ({mode}) — {now().isoformat(timespec='seconds')}"]
@@ -343,9 +318,7 @@ def summary(results: dict, mode: str = "check") -> str:
                 lines.append(f"  {symbol} {name:8} {f.get('reason', '')}")
     return "\n".join(lines)
 
-
 # ─── CLI ─────────────────────────────────────────────────────────────
-
 
 def main() -> None:
     p = argparse.ArgumentParser(prog="hygiene.py", description=__doc__,
@@ -415,7 +388,6 @@ def main() -> None:
         sys.exit(0)
 
     sys.exit(f"unknown: {cmd}\ntry: check | fix | check-<name> | fix-<name> | json")
-
 
 if __name__ == "__main__":
     main()

@@ -18,7 +18,6 @@ import os
 import sys
 from pathlib import Path
 
-
 def main() -> int:
     if os.environ.get("KAIZEN_INBOX_DISABLE") == "1":
         return 0
@@ -40,8 +39,8 @@ def main() -> int:
     session_id = event.get("session_id", "") or ""
 
     sys.path.insert(0, str(Path(__file__).resolve().parent))
-    # MIGRATION BRIDGE — kaizen modules (trace, inbox) still at skills/workflow/scripts/
-    sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "skills" / "workflow" / "scripts"))
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    import _bootstrap  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
     try:
         import inbox as _inbox
     except ImportError:
@@ -62,7 +61,6 @@ def main() -> int:
         pass
 
     return 0
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

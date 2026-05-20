@@ -24,12 +24,12 @@ from pathlib import Path
 from unittest import mock
 
 PLUGIN_ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(PLUGIN_ROOT / "skills" / "workflow" / "scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 sys.path.insert(0, str(PLUGIN_ROOT / "scripts" / "lint"))
 sys.path.insert(0, str(PLUGIN_ROOT / "scripts" / "mcp"))
 
 import lint_fix_dispatch as lfd  # noqa: E402
-
 
 # ─── Fixtures ──────────────────────────────────────────────────────────
 
@@ -56,7 +56,6 @@ def _sample_ruff_findings() -> list[dict]:
         },
     ]
 
-
 def _sample_ty_findings() -> list[dict]:
     return [
         {
@@ -65,7 +64,6 @@ def _sample_ty_findings() -> list[dict]:
             "message": "Invalid override of method `prep_async`",
         },
     ]
-
 
 # ─── T1 Unit — strategy validation + grouping ─────────────────────────
 
@@ -123,7 +121,6 @@ class StrategyValidation(unittest.TestCase):
         ]
         self.assertIn("F401", all_codes)
 
-
 class FindingGrouping(unittest.TestCase):
 
     def test_findings_grouped_by_file(self):
@@ -142,7 +139,6 @@ class FindingGrouping(unittest.TestCase):
         foo_task = next(t for t in out["tasks"] if t["file"] == "src/foo.py")
         codes = {f["code"] for f in foo_task["findings"]}
         self.assertTrue({"F401", "E501", "invalid-method-override"} <= codes)
-
 
 # ─── T1 Unit — subagent task spec rendering ───────────────────────────
 
@@ -173,7 +169,6 @@ class SubagentTaskSpec(unittest.TestCase):
         for task in out["tasks"]:
             self.assertLessEqual(len(task["description"]), 80)
 
-
 # ─── T1.5 Contract-verified mocks ─────────────────────────────────────
 
 class ContractMocks(unittest.TestCase):
@@ -191,7 +186,6 @@ class ContractMocks(unittest.TestCase):
         clever-lama convention). Catches refactor regressions."""
         self.assertIn("LLM_BASE_URL", lfd.DEFAULT_ENV_VARS)
         self.assertIn("LLM_MODEL", lfd.DEFAULT_ENV_VARS)
-
 
 # ─── T2 Integration — local_llm path (HTTP boundary mocked) ─────────
 
@@ -247,7 +241,6 @@ class LocalLlmDispatch(unittest.TestCase):
                                 skip_ruff_fixable=False, apply=False)
             self.assertTrue(out["tasks"][0].get("patch_extraction_failed"))
 
-
 # ─── T2 Integration — patch extraction ────────────────────────────────
 
 class PatchExtraction(unittest.TestCase):
@@ -271,7 +264,6 @@ class PatchExtraction(unittest.TestCase):
     def test_extract_diff_returns_empty_string_on_garbage(self):
         self.assertEqual(lfd._extract_diff("not a diff at all"), "")
 
-
 # ─── T3 Regression — lint_mcp surface untouched ───────────────────────
 
 class LintMcpUntouched(unittest.TestCase):
@@ -282,7 +274,6 @@ class LintMcpUntouched(unittest.TestCase):
         import importlib
         import lint_mcp  # noqa: F401
         importlib.reload(lint_mcp)
-
 
 if __name__ == "__main__":
     unittest.main()

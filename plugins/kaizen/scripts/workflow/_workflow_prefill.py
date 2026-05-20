@@ -19,7 +19,6 @@ import json
 import sys
 from pathlib import Path
 
-
 def build_prefill(cfg: dict) -> str:
     """Build the annotation text from a parsed workflow.json dict."""
     if not cfg:
@@ -61,7 +60,6 @@ def build_prefill(cfg: dict) -> str:
 
     return "\n".join(lines)
 
-
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     p.add_argument("--from", dest="src", required=True, type=Path,
@@ -79,7 +77,6 @@ def main(argv: list[str] | None = None) -> int:
     if out:
         print(out)
     return 0
-
 
 if __name__ == "__main__":
     sys.exit(main())

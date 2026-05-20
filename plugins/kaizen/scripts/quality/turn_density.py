@@ -14,13 +14,11 @@ from pathlib import Path
 
 _SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(_SCRIPT_DIR))
-# MIGRATION BRIDGE — legacy helpers still at skills/workflow/scripts/
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "io"))
 
 import _envelope  # noqa: E402
 
 _emit = _envelope.emitter("kaizen-turn-density", tool_version="1.0.0")
-
 
 def _default_log() -> Path:
     """Canonical trace log via _paths SSOT; legacy fallback."""
@@ -30,9 +28,7 @@ def _default_log() -> Path:
     except (ImportError, AttributeError):
         return Path.home() / ".claude/.kaizen/indexes/trace/events.jsonl"
 
-
 _DEFAULT_LOG = _default_log()
-
 
 def scan(*, trace_log: Path) -> dict:
     if not trace_log.is_file():
@@ -59,7 +55,6 @@ def scan(*, trace_log: Path) -> dict:
     return {"turns": turns, "events_seen": total,
             "turn_count": len(turns)}
 
-
 def _run(args) -> int:
     log = Path(args.trace_log).expanduser() if args.trace_log else _DEFAULT_LOG
     rep = scan(trace_log=log)
@@ -74,7 +69,6 @@ def _run(args) -> int:
           counts={"turns": len(rep["turns"]), "events": rep["events_seen"]})
     return 0
 
-
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="kaizen-turn-density",
         description="Per-turn event-density rollup over trace JSONL.")
@@ -86,7 +80,6 @@ def main(argv: list[str] | None = None) -> int:
         s.set_defaults(func=_run)
     args = ap.parse_args(argv)
     return args.func(args)
-
 
 if __name__ == "__main__":
     sys.exit(main())

@@ -56,20 +56,17 @@ from pathlib import Path
 _ROOT = Path("/tmp/kaizen-scratch")
 _SLUG_RE = re.compile(r"[^a-z0-9]+")
 
-
 def _slug(text: str | None, max_len: int = 24) -> str:
     if not text:
         return "debug"
     s = _SLUG_RE.sub("-", text.lower()).strip("-")
     return (s[:max_len].rstrip("-") or "debug")
 
-
 def _new_sandbox(name: str | None) -> Path:
     _ROOT.mkdir(parents=True, exist_ok=True)
     path = _ROOT / f"{os.getpid()}-{int(time.time() * 1000) % 1000000:06d}-{_slug(name)}"
     path.mkdir(parents=True, exist_ok=False)
     return path
-
 
 def _cmd_run(args) -> int:
     sandbox = _new_sandbox(args.name or "run")
@@ -100,12 +97,10 @@ def _cmd_run(args) -> int:
         if not args.keep:
             shutil.rmtree(sandbox, ignore_errors=True)
 
-
 def _cmd_path(args) -> int:
     sandbox = _new_sandbox(args.name)
     print(str(sandbox))
     return 0
-
 
 def _cmd_clean(args) -> int:
     if not _ROOT.is_dir():
@@ -132,7 +127,6 @@ def _cmd_clean(args) -> int:
     print(f"[kaizen-scratch clean] removed {removed} orphan sandbox(es)")
     return 0
 
-
 def _cmd_list(args) -> int:
     if not _ROOT.is_dir():
         print("[kaizen-scratch list] no scratch root")
@@ -144,7 +138,6 @@ def _cmd_list(args) -> int:
     for e in entries:
         print(str(e))
     return 0
-
 
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(
@@ -181,7 +174,6 @@ def main(argv=None) -> int:
 
     args = p.parse_args(argv)
     return args.func(args)
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

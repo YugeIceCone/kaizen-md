@@ -29,9 +29,7 @@ if str(_HERE) not in sys.path:
 
 import detect_stack as _ds  # noqa: E402
 
-
 mcp = FastMCP("detect_stack")
-
 
 def detect_stack_show() -> dict | None:
     """Read the existing stack-context.json artifact.
@@ -49,7 +47,6 @@ def detect_stack_show() -> dict | None:
     except (OSError, json.JSONDecodeError):
         return None
 
-
 def detect_stack_path() -> dict:
     """Return the resolved artifact paths (json + md).
 
@@ -63,10 +60,8 @@ def detect_stack_path() -> dict:
         "md_path":   str(_ds._output_path_md()),
     }
 
-
 mcp.tool()(detect_stack_show)
 mcp.tool()(detect_stack_path)
-
 
 if __name__ == "__main__":
     mcp.run()

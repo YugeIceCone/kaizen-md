@@ -36,7 +36,6 @@ from pathlib import Path
 
 _SCRIPT_DIR = Path(__file__).resolve().parent
 
-
 # verb → (interpreter_argv_prefix, script path). The prefix is a
 # tuple so `uv run --script <path>` can be expressed as multiple argv
 # elements (the dispatcher concats: prefix + [str(script)] + rest).
@@ -49,7 +48,6 @@ _DISPATCH: dict[str, tuple[tuple[str, ...], Path]] = {
     "index":  (("uv", "run", "--script"),   _INDEX_DIR / "index_flow.py"),
     "search": (("uv", "run", "--script"),   _INDEX_DIR / "search_flow.py"),
 }
-
 
 _USAGE = """\
 usage: kaizen-flow <verb> [args...]
@@ -67,7 +65,6 @@ Verbs:
 Each verb passes through unmodified to the underlying script's CLI.
 For per-verb help, use:  kaizen-flow <verb> --help
 """
-
 
 def main(argv: list[str] | None = None) -> int:
     argv = sys.argv[1:] if argv is None else list(argv)
@@ -99,7 +96,6 @@ def main(argv: list[str] | None = None) -> int:
     os.execvp(interpreter, [*prefix, str(script), *rest])
     # Unreachable; execvp either succeeds (no return) or raises.
     return 0  # pragma: no cover
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

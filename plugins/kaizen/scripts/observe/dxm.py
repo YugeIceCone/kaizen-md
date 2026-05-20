@@ -61,28 +61,22 @@ import _envelope  # noqa: E402
 
 _emit = _envelope.emitter("kaizen-dxm", tool_version="1.0.0")
 
-
 def _dxm_dir() -> Path:
     env = os.environ.get("KAIZEN_DXM_DIR")
     if env:
         return Path(os.path.expandvars(env)).expanduser()
     return Path.home() / ".claude" / ".kaizen" / "dxm"
 
-
 def _disabled() -> bool:
     return os.environ.get("KAIZEN_DXM_DISABLE") == "1"
-
 
 def _events_path(session_id: str) -> Path:
     return _dxm_dir() / f"events-{session_id}.jsonl"
 
-
 def _sessions_path() -> Path:
     return _dxm_dir() / "sessions.jsonl"
 
-
 # ─── capture ─────────────────────────────────────────────────────────
-
 
 def _cmd_capture(args) -> int:
     if _disabled():
@@ -127,9 +121,7 @@ def _cmd_capture(args) -> int:
                 "events_path": str(target)}, verdict="green")
     return 0
 
-
 # ─── now (snapshot) ──────────────────────────────────────────────────
-
 
 def _read_events(session_id: str) -> list[dict]:
     """Read all events for a session. Returns [] when file missing."""
@@ -148,7 +140,6 @@ def _read_events(session_id: str) -> list[dict]:
                 continue
     return out
 
-
 def _read_parent(session_id: str) -> Optional[str]:
     """Return the parent_session_id linked to `session_id`, if any."""
     path = _sessions_path()
@@ -165,7 +156,6 @@ def _read_parent(session_id: str) -> Optional[str]:
             if rec.get("child_session_id") == session_id:
                 parent = rec.get("parent_session_id")
     return parent
-
 
 def _cmd_now(args) -> int:
     if _disabled():
@@ -205,9 +195,7 @@ def _cmd_now(args) -> int:
             print(f"  parent:        {data['parent_session_id']}")
     return 0
 
-
 # ─── tail ────────────────────────────────────────────────────────────
-
 
 def _cmd_tail(args) -> int:
     if _disabled():
@@ -275,9 +263,7 @@ def _cmd_tail(args) -> int:
             print(f"  {ts:.3f}  {e.get('evt_type')}  tool={e.get('tool_name','-')}")
     return 0
 
-
 # ─── append-to (zero-roundtrip dxm → file dump) ──────────────────────
-
 
 def _format_event_md(e: dict) -> str:
     """One-line markdown summary of a dxm event. Used by `append-to`.
@@ -294,7 +280,6 @@ def _format_event_md(e: dict) -> str:
         extra.append(f"{e['duration_ms']}ms")
     extra_s = "  " + " ".join(extra) if extra else ""
     return f"- {ts:.0f}  {evt}  tool={tool}{extra_s}"
-
 
 def _cmd_append_to(args) -> int:
     """Stream dxm events directly into a target file — single tool-call,
@@ -390,12 +375,9 @@ def _cmd_append_to(args) -> int:
         print(f"[kaizen-dxm append-to] appended {len(lines)} event(s) → {target}")
     return 0
 
-
 # ─── link ────────────────────────────────────────────────────────────
 
-
 # ─── replay (install-day blindspot fix) ──────────────────────────────
-
 
 def _attachment_to_event(att: dict, session_id: str) -> Optional[dict]:
     """Turn a CC attachment record (with hookEvent) into a dxm event
@@ -426,7 +408,6 @@ def _attachment_to_event(att: dict, session_id: str) -> Optional[dict]:
             rec[dst] = att[src]
     return rec
 
-
 def _iso_to_unix(iso: str) -> Optional[float]:
     """Best-effort ISO 8601 → unix float conversion."""
     if not isinstance(iso, str) or not iso:
@@ -439,7 +420,6 @@ def _iso_to_unix(iso: str) -> Optional[float]:
         return _dt.datetime.fromisoformat(iso).timestamp()
     except (ValueError, TypeError):
         return None
-
 
 def _cmd_replay(args) -> int:
     """Walk a Claude Code session JSONL and synthesize dxm events.
@@ -511,9 +491,7 @@ def _cmd_replay(args) -> int:
         print(f"  target: {target.resolve()}")
     return 0
 
-
 # ─── session-id discovery ────────────────────────────────────────────
-
 
 def _cwd_to_slug(cwd: Path) -> str:
     """Translate cwd → Claude Code project-slug shape. Delegates to
@@ -521,7 +499,6 @@ def _cwd_to_slug(cwd: Path) -> str:
     sys.path.insert(0, str(_SCRIPT_DIR.parent / "handoff"))
     import _session_jsonl as _sj
     return _sj.cwd_to_slug(cwd)
-
 
 def _cmd_session_id(args) -> int:
     """Autodiscover the active session_id from cwd → slug → latest JSONL."""
@@ -550,9 +527,7 @@ def _cmd_session_id(args) -> int:
                   file=sys.stderr)
     return 0
 
-
 # ─── chain walk ──────────────────────────────────────────────────────
-
 
 def _read_all_links() -> list[dict]:
     """Return all parent→child link records, newest last."""
@@ -567,7 +542,6 @@ def _read_all_links() -> list[dict]:
             except json.JSONDecodeError:
                 continue
     return out
-
 
 def _cmd_chain(args) -> int:
     """Walk parent_session_id from --session back to root. Cycle-safe."""
@@ -617,12 +591,9 @@ def _cmd_chain(args) -> int:
             print(f"  {s}")
     return 0
 
-
 # ─── clean (retention/rotation; BK-009) ──────────────────────────────
 
-
 _AGE_RE = re.compile(r"^(\d+(?:\.\d+)?)\s*([smhd])$") if False else None
-
 
 def _parse_age(s: str) -> float:
     """Parse '7d' / '2h' / '30m' / '15s' → seconds. Raise ValueError
@@ -634,7 +605,6 @@ def _parse_age(s: str) -> float:
     n = float(m.group(1))
     unit_seconds = {"s": 1, "m": 60, "h": 3600, "d": 86400}
     return n * unit_seconds[m.group(2)]
-
 
 def _cmd_dxm_clean(args) -> int:
     """Remove stale per-session events files. --older-than Nd|Nh|Nm|Ns
@@ -705,7 +675,6 @@ def _cmd_dxm_clean(args) -> int:
         print(f"[kaizen-dxm clean] removed {removed} file(s) from {dxm_root}")
     return 0
 
-
 def _cmd_link(args) -> int:
     if _disabled():
         return 0
@@ -724,9 +693,7 @@ def _cmd_link(args) -> int:
         print(f"[kaizen-dxm link] {args.parent} → {args.child}")
     return 0
 
-
 # ─── argparse ────────────────────────────────────────────────────────
-
 
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(
@@ -842,7 +809,6 @@ def main(argv=None) -> int:
 
     args = p.parse_args(argv)
     return args.func(args)
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

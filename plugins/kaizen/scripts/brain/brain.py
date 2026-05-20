@@ -53,8 +53,8 @@ from typing import Any, Optional
 
 _SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(_SCRIPT_DIR))
-# MIGRATION BRIDGE — kaizen helpers still at skills/workflow/scripts/
-sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "skills" / "workflow" / "scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import _bootstrap  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 # Sibling cluster — build_index.py (the `index` verb's backing module)
 # lives at scripts/indexers/, not scripts/brain/. Add to path so the
 # consolidated-CLI dispatch can resolve `import build_index`.
@@ -63,9 +63,7 @@ sys.path.insert(0, str(_SCRIPT_DIR.parent / "indexers"))
 import _brain  # noqa: E402
 import flow as _flow  # noqa: E402
 
-
 # ─── Capture flow nodes ──────────────────────────────────────────────
-
 
 class ParsePromptNode(_flow.AsyncNode):
     """Stage 1 — normalize the input, surface explicit hints.
@@ -100,7 +98,6 @@ class ParsePromptNode(_flow.AsyncNode):
             return "abort"
         return "default"
 
-
 class DetectTypeNode(_flow.AsyncNode):
     """Stage 2 — classify into one of four epistemic types.
 
@@ -122,7 +119,6 @@ class DetectTypeNode(_flow.AsyncNode):
     async def post_async(self, store: dict, prep: dict, type_name: str) -> str:
         store["type"] = type_name
         return "default"
-
 
 class JournalNode(_flow.AsyncNode):
     """Stage 3 — journal-first capture per the Remember discipline.
@@ -168,7 +164,6 @@ class JournalNode(_flow.AsyncNode):
         store["journal_path"] = exec_result["path"]
         store["journal_appended"] = exec_result["appended"]
         return "default"
-
 
 class RouteNode(_flow.AsyncNode):
     """Stage 4 — pick tier + target file from routing.yaml.
@@ -220,7 +215,6 @@ class RouteNode(_flow.AsyncNode):
         store["target_path"] = exec_result["target"]
         return "default"
 
-
 def _select_tier(cfg: "_brain.Config", type_name: str, confidence: Any, text: str) -> str:
     """Walk cfg.tier_rules; first match wins."""
     text_l = (text or "").lower()
@@ -244,7 +238,6 @@ def _select_tier(cfg: "_brain.Config", type_name: str, confidence: Any, text: st
         return rule.route_to
     return "project-memory"
 
-
 def _pattern_match(pattern: str, text_l: str) -> bool:
     """Substring + simple regex-glob match. Triggers in yaml use
     `.*` literals so we treat them as substring with that wildcard."""
@@ -255,7 +248,6 @@ def _pattern_match(pattern: str, text_l: str) -> bool:
         except re.error:
             return pattern.lower() in text_l
     return pattern.lower() in text_l
-
 
 def _apply_file_rules(rules: list, parsed: dict, type_name: str) -> tuple[str, str]:
     """Return (subdir, filename) for the first matching file rule.
@@ -285,7 +277,6 @@ def _apply_file_rules(rules: list, parsed: dict, type_name: str) -> tuple[str, s
     slug = _brain.slugify(parsed.get("subject") or parsed["text"][:80])
     return "Notes", f"{slug}.md"
 
-
 def _file_rule_matches(when: dict, parsed: dict) -> bool:
     """Tiny matcher for file-rule predicates (project/area/person flags).
     For now: only check `subject_is_person` / `subject_is_project` if
@@ -297,7 +288,6 @@ def _file_rule_matches(when: dict, parsed: dict) -> bool:
     if when.get("subject_is_project"):
         return subject.lower().startswith("project:")
     return True
-
 
 def _substitute(template: str, parsed: dict) -> str:
     """Replace {slug} / {entity} / {iso_date} / <project> / <area> /
@@ -318,7 +308,6 @@ def _substitute(template: str, parsed: dict) -> str:
     s = re.sub(r"<[^>]+>", "", s)
     s = s.replace("//", "/").strip("/")
     return s
-
 
 class DedupNode(_flow.AsyncNode):
     """Stage 5 — check the target path for an existing note with a
@@ -345,7 +334,6 @@ class DedupNode(_flow.AsyncNode):
     async def post_async(self, store: dict, prep: dict, exec_result: dict) -> str:
         store["existing"] = exec_result["existing"]
         return "default"
-
 
 class WriteNode(_flow.AsyncNode):
     """Stage 6 — write the L2 file. Either CREATE or MERGE.
@@ -411,7 +399,6 @@ class WriteNode(_flow.AsyncNode):
         store["sources_count"] = exec_result["sources_count"]
         return "default"
 
-
 class ReportNode(_flow.AsyncNode):
     """Final stage — emit a JSON-able summary into the store for the
     CLI / MCP / hook callers."""
@@ -433,7 +420,6 @@ class ReportNode(_flow.AsyncNode):
         }
         return "default"
 
-
 def build_capture_flow() -> _flow.AsyncFlow:
     """Assemble the capture flow. Linear pipeline: Parse → Detect →
     Journal → Route → Dedup → Write → Report. `abort` action from
@@ -453,7 +439,6 @@ def build_capture_flow() -> _flow.AsyncFlow:
     flow.add_successor(dedup, "default", write)
     flow.add_successor(write, "default", report)
     return flow
-
 
 async def capture_async(
     text: str,
@@ -485,14 +470,11 @@ async def capture_async(
         return {"error": store["error"]}
     return store.get("report") or {}
 
-
 def capture(text: str, **kwargs) -> dict:
     """Sync wrapper around capture_async."""
     return asyncio.run(capture_async(text, **kwargs))
 
-
 # ─── Status ──────────────────────────────────────────────────────────
-
 
 def status() -> dict:
     """Brain stats — count files per directory."""
@@ -511,9 +493,7 @@ def status() -> dict:
     out["persona_present"] = persona.is_file()
     return out
 
-
 # ─── CLI ─────────────────────────────────────────────────────────────
-
 
 def _cmd_capture(args) -> int:
     confidence = float(args.confidence) if args.confidence is not None else None
@@ -527,13 +507,11 @@ def _cmd_capture(args) -> int:
     print(json.dumps(result, indent=2, default=str))
     return 0 if "error" not in result else 1
 
-
 def _cmd_detect(args) -> int:
     cfg = _brain.Config.load()
     t = _brain.detect_type(args.text, cfg)
     print(json.dumps({"type": t}, indent=2))
     return 0
-
 
 def _cmd_path(args) -> int:
     out = {
@@ -544,14 +522,11 @@ def _cmd_path(args) -> int:
     print(json.dumps(out, indent=2))
     return 0
 
-
 def _cmd_status(args) -> int:
     print(json.dumps(status(), indent=2))
     return 0
 
-
 # ─── block-level addressing — zero-roundtrip memory edits ────────────
-
 
 def _resolve_memory_file(arg: str) -> "Path":
     """Resolve a --file arg to a real Markdown file.
@@ -587,7 +562,6 @@ def _resolve_memory_file(arg: str) -> "Path":
         pass
     return p
 
-
 def _file_not_found_msg(arg: str, verb: str) -> str:
     """Diagnostic listing the resolution attempts."""
     from pathlib import Path as _P
@@ -605,7 +579,6 @@ def _file_not_found_msg(arg: str, verb: str) -> str:
     return (f"brain {verb}: file not found: {arg}\n"
             f"  searched (brain root + auto-memory):\n"
             + "\n".join(f"    - {a}" for a in attempts) + "\n")
-
 
 def _cmd_blocks(args) -> int:
     """List addressable blocks in a Markdown file."""
@@ -625,7 +598,6 @@ def _cmd_blocks(args) -> int:
             print(f"  {b['start']:>4}+{n_lines:<3}  {indent}{b['path']}")
     return 0
 
-
 def _cmd_show(args) -> int:
     """Extract one block (no whole-file Read)."""
     import _brain_blocks as _bb
@@ -644,7 +616,6 @@ def _cmd_show(args) -> int:
     else:
         print(body)
     return 0
-
 
 def _cmd_edit(args) -> int:
     """Atomic in-place edit of a single block. Replace or append."""
@@ -677,21 +648,17 @@ def _cmd_edit(args) -> int:
         print(f"brain edit: {op} block {args.block!r} in {fp}")
     return 0
 
-
 # ─── Persona semantic verbs (Phase A — Gap 3) ────────────────────────
-
 
 def _persona_path() -> "Path":
     """Resolve Persona.md via the short-name resolver."""
     return _resolve_memory_file("Persona.md")
-
 
 def _block_contains_line(text: str, block_path: str, needle: str) -> bool:
     """True iff ``needle`` appears verbatim inside the block body."""
     import _brain_blocks as _bb
     body = _bb.extract_block(text, block_path)
     return body is not None and needle in body
-
 
 def _ensure_block(text: str, heading: str, level: int = 2) -> str:
     """Return text with ``## {heading}`` appended if missing. Idempotent."""
@@ -701,13 +668,11 @@ def _ensure_block(text: str, heading: str, level: int = 2) -> str:
     sep = "" if text.endswith("\n") else "\n"
     return f"{text}{sep}\n{'#' * level} {heading}\n\n"
 
-
 def _atomic_write_persona(persona_path: "Path", new_text: str) -> None:
     """Tempfile-then-rename. Same shape as _cmd_edit's writer."""
     tmp = persona_path.with_suffix(persona_path.suffix + ".tmp")
     tmp.write_text(new_text, encoding="utf-8")
     tmp.replace(persona_path)
-
 
 def _cmd_log_evidence(args) -> int:
     """Append a quote / observation to Persona's Evidence Log block.
@@ -745,7 +710,6 @@ def _cmd_log_evidence(args) -> int:
     print(f"brain log-evidence: appended → {persona}")
     return 0
 
-
 def _cmd_new_directive(args) -> int:
     """Append a new directive to Persona's Directives block.
 
@@ -777,7 +741,6 @@ def _cmd_new_directive(args) -> int:
     _atomic_write_persona(persona, new_text)
     print(f"brain new-directive: appended → {persona}")
     return 0
-
 
 def _cmd_promote_belief(args) -> int:
     """Append a new entry to Persona's Top Beliefs block.
@@ -832,9 +795,7 @@ def _cmd_promote_belief(args) -> int:
     print(f"brain promote-belief: rank {next_rank} → {note}")
     return 0
 
-
 # ─── auto-load pin management ────────────────────────────────────────
-
 
 def _cmd_pin(args) -> int:
     """Pin a Note into the daemon-built auto-load.md."""
@@ -844,7 +805,6 @@ def _cmd_pin(args) -> int:
           f"{len(_al.load_pins())})")
     return 0
 
-
 def _cmd_unpin(args) -> int:
     """Remove a Note from the pin list (idempotent)."""
     import auto_load as _al
@@ -852,7 +812,6 @@ def _cmd_unpin(args) -> int:
     print(f"brain unpin: unpinned {args.note} (pins now: "
           f"{len(_al.load_pins())})")
     return 0
-
 
 def _cmd_list_pins(args) -> int:
     """Print the current pin list."""
@@ -869,9 +828,7 @@ def _cmd_list_pins(args) -> int:
                 print(f"  - {p}")
     return 0
 
-
 # ─── Starter seeding (onboarding) ────────────────────────────────────
-
 
 # PARA subdirs every starter is expected to populate (created as empty
 # dirs even when the starter doesn't ship files for them — gives the
@@ -881,7 +838,6 @@ _PARA_SUBDIRS = (
     "Resources", "Tasks", "Templates", "Archive",
 )
 
-
 def _starters_dir():
     """Path to the bundled `assets/starters/` directory."""
     from pathlib import Path as _P
@@ -890,14 +846,12 @@ def _starters_dir():
     plugin_root = here.parents[2]
     return plugin_root / "assets" / "starters"
 
-
 def list_starters() -> list[str]:
     """Names of every shipped starter (alphabetical)."""
     d = _starters_dir()
     if not d.is_dir():
         return []
     return sorted(p.name for p in d.iterdir() if p.is_dir())
-
 
 def _seed_starter(name: str, dst: Path, *, force: bool = False) -> int:
     """Copy `assets/starters/<name>/` into `dst`. Returns exit code."""
@@ -937,7 +891,6 @@ def _seed_starter(name: str, dst: Path, *, force: bool = False) -> int:
     print(f"[kaizen-brain seed] ✓ seeded '{name}' → {dst}", file=sys.stderr)
     return 0
 
-
 def cmd_seed(args) -> int:
     """Seed the brain at KAIZEN_BRAIN_DIR from a bundled starter."""
     # Special: `seed list` is implemented as a sentinel `starter=list`.
@@ -947,7 +900,6 @@ def cmd_seed(args) -> int:
         return 0
     import _paths as _p
     return _seed_starter(args.starter, _p.BRAIN_DIR, force=args.force)
-
 
 def main(argv: Optional[list[str]] = None) -> int:
     # Early-exit dispatch for verbs whose argument surface is owned by a
@@ -1119,7 +1071,6 @@ def main(argv: Optional[list[str]] = None) -> int:
         mod = importlib.import_module(args._consol_module)
         return mod.main(args.rest)
     return args.func(args)
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

@@ -24,13 +24,11 @@ import _envelope  # noqa: E402
 
 _emit = _envelope.emitter("kaizen-manifests", tool_version="1.0.0")
 
-
 def _root(args) -> Path:
     return (
         Path(args.root).expanduser().resolve()
         if getattr(args, "root", None) else Path.cwd()
     )
-
 
 def _audit_json(result: dict) -> dict:
     out = dict(result)
@@ -41,7 +39,6 @@ def _audit_json(result: dict) -> dict:
     ]
     return out
 
-
 def cmd_audit(args) -> int:
     result = kz_m.audit(_root(args))
     if args.json:
@@ -50,7 +47,6 @@ def cmd_audit(args) -> int:
     else:
         print(kz_m.format_audit(result))
     return 0
-
 
 def cmd_unused(args) -> int:
     result = kz_m.unused(_root(args))
@@ -62,12 +58,10 @@ def cmd_unused(args) -> int:
         print(kz_m.format_unused(result))
     return 1 if result["count"] > 0 and args.fail_on_unused else 0
 
-
 def cmd_langs(args) -> int:
     for lang in kz_m.languages_present(_root(args)):
         print(lang)
     return 0
-
 
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(
@@ -95,7 +89,6 @@ def main(argv=None) -> int:
 
     args = p.parse_args(argv)
     return args.func(args)
-
 
 if __name__ == "__main__":
     sys.exit(main())

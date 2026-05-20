@@ -28,9 +28,7 @@ if str(_HERE) not in sys.path:
 
 import config as _cfg  # noqa: E402
 
-
 mcp = FastMCP("config")
-
 
 def config_get(key: str, default: str = "") -> dict:
     """Resolve a config key per the documented precedence
@@ -46,7 +44,6 @@ def config_get(key: str, default: str = "") -> dict:
     value = _cfg.get(key, default=default)
     return {"key": key, "value": value}
 
-
 def config_defaults() -> dict:
     """Print the plugin-wide PLUGIN_DEFAULTS section as a flat dict.
 
@@ -55,7 +52,6 @@ def config_defaults() -> dict:
       USER_DIR_NAME, etc.). Mirrors `kaizen-config --defaults`.
     """
     return _cfg.plugin_defaults_dict()
-
 
 def config_validate() -> dict:
     """Validate the current `.kaizen.toml` (when present).
@@ -69,11 +65,9 @@ def config_validate() -> dict:
         return {"errors": [], "warnings": [], "path": None}
     return result
 
-
 mcp.tool()(config_get)
 mcp.tool()(config_defaults)
 mcp.tool()(config_validate)
-
 
 if __name__ == "__main__":
     mcp.run()

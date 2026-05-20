@@ -41,19 +41,16 @@ import os
 import sys
 from pathlib import Path
 
-
 _SCRIPT_DIR = Path(__file__).resolve().parent
 # scripts/gold/ → scripts/io for _atomic, scripts/observe for trace + _dxm_emit.
 sys.path.insert(0, str(_SCRIPT_DIR.parent / "io"))
 sys.path.insert(0, str(_SCRIPT_DIR.parent / "observe"))
-
 
 def _kaizen_dir() -> Path:
     env = os.environ.get("KAIZEN_DIR")
     if env:
         return Path(os.path.expandvars(env)).expanduser()
     return Path.home() / ".claude" / ".kaizen"
-
 
 def _project_root() -> Path:
     cwd = Path.cwd()
@@ -62,10 +59,8 @@ def _project_root() -> Path:
             return parent
     return cwd
 
-
 def _project_slug() -> str:
     return str(_project_root().resolve()).replace("/", "-")
-
 
 def _patterns_path() -> Path:
     env = os.environ.get("KAIZEN_GOLD_FILE")
@@ -73,10 +68,8 @@ def _patterns_path() -> Path:
         return Path(os.path.expandvars(env)).expanduser()
     return _kaizen_dir() / "gold" / _project_slug() / "patterns.jsonl"
 
-
 def _iso_now() -> str:
     return _dt.datetime.now(_dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-
 
 def _next_id(path: Path) -> int:
     if not path.is_file():
@@ -98,7 +91,6 @@ def _next_id(path: Path) -> int:
         return 1
     return max_id + 1
 
-
 def _read_all(path: Path) -> list[dict]:
     if not path.is_file():
         return []
@@ -117,7 +109,6 @@ def _read_all(path: Path) -> list[dict]:
         return []
     return out
 
-
 def _atomic_append(path: Path, line: str) -> None:
     """Append via _atomic when available; stdlib fallback."""
     try:
@@ -128,7 +119,6 @@ def _atomic_append(path: Path, line: str) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
         with path.open("a", encoding="utf-8") as f:
             f.write(line + ("" if line.endswith("\n") else "\n"))
-
 
 def _emit_event(evt: str, data: dict) -> None:
     """Fire trace + dxm events for `evt` with `data`. Best-effort.
@@ -157,7 +147,6 @@ def _emit_event(evt: str, data: dict) -> None:
     except Exception:
         pass
 
-
 def _cmd_capture(args) -> int:
     p = _patterns_path()
     rec = {
@@ -181,7 +170,6 @@ def _cmd_capture(args) -> int:
     else:
         print(f"[kaizen-gold] captured #{rec['id']} (tag={rec['tag'] or '-'})")
     return 0
-
 
 def _cmd_list(args) -> int:
     p = _patterns_path()
@@ -208,7 +196,6 @@ def _cmd_list(args) -> int:
                 print(f"        src: {r['source']}")
     return 0
 
-
 def _cmd_show(args) -> int:
     p = _patterns_path()
     for r in _read_all(p):
@@ -218,7 +205,6 @@ def _cmd_show(args) -> int:
             return 0
     sys.stderr.write(f"[kaizen-gold] no entry with id {args.id}\n")
     return 1
-
 
 def _brain_note_body(rec: dict) -> str:
     """Build a brain-Note file body (frontmatter + h1 + provenance).
@@ -254,7 +240,6 @@ def _brain_note_body(rec: dict) -> str:
     lines.append(f"_Promoted from gold #{rec['id']} ({rec['ts']})._")
     lines.append("")
     return "\n".join(lines)
-
 
 def _cmd_promote(args) -> int:
     """Atomic-append the gold pattern to <target> and mark promoted.
@@ -324,11 +309,9 @@ def _cmd_promote(args) -> int:
         print(f"[kaizen-gold] promoted #{args.id} → {dest}")
     return 0
 
-
 def _cmd_path(args) -> int:
     print(_patterns_path())
     return 0
-
 
 def _cmd_mine(args) -> int:
     """Run the auto-miner pipeline: scan event streams + propose / auto-
@@ -347,7 +330,6 @@ def _cmd_mine(args) -> int:
         print(f"[kaizen-gold mine] {summary}")
     return 0
 
-
 def _proposals_path() -> Path:
     """Resolve proposals.jsonl via gold_mine (same project-slug layout)."""
     sys.path.insert(0, str(_SCRIPT_DIR))
@@ -356,7 +338,6 @@ def _proposals_path() -> Path:
         return gold_mine.proposals_path()
     except ImportError:
         return _patterns_path().parent / "proposals.jsonl"
-
 
 def _read_proposals(p: Path) -> list[dict]:
     if not p.is_file():
@@ -376,7 +357,6 @@ def _read_proposals(p: Path) -> list[dict]:
         return []
     return out
 
-
 def _write_proposals(p: Path, recs: list[dict]) -> None:
     p.parent.mkdir(parents=True, exist_ok=True)
     try:
@@ -387,7 +367,6 @@ def _write_proposals(p: Path, recs: list[dict]) -> None:
     except (OSError, ImportError):
         p.write_text("\n".join(json.dumps(r) for r in recs)
                      + ("\n" if recs else ""), encoding="utf-8")
-
 
 def _cmd_review(args) -> int:
     """List / accept / reject / clear pending proposals."""
@@ -447,7 +426,6 @@ def _cmd_review(args) -> int:
         if r.get("source_evt"):
             print(f"        evt:    {r['source_evt']}")
     return 0
-
 
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(
@@ -515,7 +493,6 @@ def main(argv=None) -> int:
 
     args = p.parse_args(argv)
     return args.func(args)
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

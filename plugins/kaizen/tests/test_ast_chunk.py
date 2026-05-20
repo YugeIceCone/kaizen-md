@@ -11,14 +11,12 @@ import unittest
 from pathlib import Path
 
 PLUGIN_ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(PLUGIN_ROOT / "skills" / "workflow" / "scripts"))
-
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 import _ast_chunk as ac  # noqa: E402
-
 
 def _src(body: str) -> str:
     return textwrap.dedent(body).lstrip("\n")
-
 
 class TestChunkPythonBySymbol(unittest.TestCase):
     def test_returns_empty_on_syntax_error(self):
@@ -125,7 +123,6 @@ class TestChunkPythonBySymbol(unittest.TestCase):
         indices = [c.chunk_idx for c in chunks]
         self.assertEqual(indices, list(range(len(chunks))))
 
-
 class TestExtractImports(unittest.TestCase):
     def test_plain_import(self):
         out = ac.extract_python_imports("import os\nimport sys\n")
@@ -153,7 +150,6 @@ class TestExtractImports(unittest.TestCase):
 
     def test_syntax_error_returns_empty(self):
         self.assertEqual(ac.extract_python_imports("def broken("), [])
-
 
 if __name__ == "__main__":
     unittest.main()

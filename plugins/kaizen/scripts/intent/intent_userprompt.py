@@ -21,9 +21,7 @@ import os
 import sys
 from pathlib import Path
 
-
 _EMPTY = "{}"
-
 
 def main() -> int:
     if os.environ.get("KAIZEN_INTENT_DISABLE") == "1":
@@ -86,7 +84,6 @@ def main() -> int:
     )
     print(json.dumps({"systemMessage": msg}))
     return 0
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

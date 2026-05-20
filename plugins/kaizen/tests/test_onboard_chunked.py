@@ -23,19 +23,17 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-SCRIPT_DIR = Path(__file__).resolve().parent.parent / "skills" / "workflow" / "scripts"
-sys.path.insert(0, str(SCRIPT_DIR))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts" / "indexers"))
 
 import onboard_index as oi  # noqa: E402
-
 
 def _fake_vec(seed: int = 1) -> bytes:
     """Return a 384-float32 vector (1536 bytes) of repeating value 'seed/100.0'.
     Deterministic per seed; cosine of identical vectors is 1.0."""
     import struct
     return struct.pack("384f", *([seed / 100.0] * 384))
-
 
 class TestOnboardSchema(unittest.TestCase):
     def test_open_db_creates_chunks_and_fts(self) -> None:
@@ -56,7 +54,6 @@ class TestOnboardSchema(unittest.TestCase):
             ).fetchone()
             self.assertIsNotNone(fts_row)
             conn.close()
-
 
 class TestOnboardIndexChunked(unittest.TestCase):
     """Run do_index against a tiny synthetic project, embedding mocked.
@@ -91,7 +88,6 @@ class TestOnboardIndexChunked(unittest.TestCase):
             self.assertGreater(chunk_count, 0)
             conn.close()
 
-
 class TestOnboardSearchFallback(unittest.TestCase):
     """When the db has no code_chunks table (pre-v1.28), search must
     fall back to the legacy whole-file cosine path instead of raising."""
@@ -117,7 +113,6 @@ class TestOnboardSearchFallback(unittest.TestCase):
                 result = oi.do_search(root, "foo", top_k=5)
             self.assertEqual(result, sentinel)
             legacy_mock.assert_called_once()
-
 
 if __name__ == "__main__":
     unittest.main()

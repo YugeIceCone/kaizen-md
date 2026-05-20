@@ -23,11 +23,10 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-SCRIPT_DIR = Path(__file__).resolve().parent.parent / "skills" / "workflow" / "scripts"
-sys.path.insert(0, str(SCRIPT_DIR))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 
 import _search  # noqa: E402
-
 
 def _build_test_db() -> sqlite3.Connection:
     """In-memory SQLite with a base table + 3 test rows."""
@@ -45,7 +44,6 @@ def _build_test_db() -> sqlite3.Connection:
             (3, 'a fox in the henhouse causes chaos', NULL);
     """)
     return conn
-
 
 class TestFtsMirror(unittest.TestCase):
     def test_creates_fts_and_triggers(self) -> None:
@@ -82,7 +80,6 @@ class TestFtsMirror(unittest.TestCase):
         ids = [i for i, _ in hits]
         self.assertIn(4, ids)
 
-
 class TestBm25Search(unittest.TestCase):
     def test_keyword_finds_relevant(self) -> None:
         conn = _build_test_db()
@@ -112,7 +109,6 @@ class TestBm25Search(unittest.TestCase):
         # 'fox' or 'lazy' should match rows 1, 2, 3
         self.assertGreater(len(ids), 0)
 
-
 class TestMinmaxNormalize(unittest.TestCase):
     def test_basic(self) -> None:
         out = _search._minmax_normalize([(1, 0.0), (2, 5.0), (3, 10.0)])
@@ -127,7 +123,6 @@ class TestMinmaxNormalize(unittest.TestCase):
 
     def test_empty(self) -> None:
         self.assertEqual(_search._minmax_normalize([]), {})
-
 
 class TestRrf(unittest.TestCase):
     def test_two_lists_default_weights(self) -> None:
@@ -151,7 +146,6 @@ class TestRrf(unittest.TestCase):
 
     def test_empty(self) -> None:
         self.assertEqual(_search.reciprocal_rank_fusion([]), [])
-
 
 class TestHybridSearch(unittest.TestCase):
     """Hybrid combines BM25 + dense. Mock the dense path so we don't
@@ -188,7 +182,6 @@ class TestHybridSearch(unittest.TestCase):
         ids = [i for i, _ in out]
         # Row 1 is top of both → must be in result
         self.assertIn(1, ids)
-
 
 if __name__ == "__main__":
     unittest.main()

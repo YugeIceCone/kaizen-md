@@ -15,7 +15,6 @@ import re
 import sys
 from pathlib import Path
 
-
 # ─── Classic ASCII shape openers/closers ──────────────────────────────
 
 _SHAPE_MAP: dict[tuple[str, str], str] = {
@@ -62,7 +61,6 @@ _BARE_RE = re.compile(r"^([A-Za-z0-9_-]+)(?::::([A-Za-z0-9_,]+))?$")
 # New shape syntax (v11+): A@{ shape: name, label: text }
 _AT_BRACE_RE = re.compile(r'^([A-Za-z0-9_-]+)@\{\s*(.*?)\s*\}$')
 
-
 # ─── Statement regexes ───────────────────────────────────────────────
 
 _RE_FLOWCHART = re.compile(r"^(?:flowchart|graph)(?:\s+([A-Z]{2}))?$")
@@ -79,7 +77,6 @@ _RE_CLICK = re.compile(
 )
 _RE_INIT = re.compile(r"^%%\{.*\}%%$")  # %%{init: ...}%%
 
-
 # ─── Edge detection (v2 — heads + length + bidirectional) ────────────
 
 _RE_DOTTED_LABEL_ARROW = re.compile(r'(<)?-\.\s+(.+?)\s+\.-(>|x|o)?')
@@ -91,7 +88,6 @@ _RE_THICK_BARE = re.compile(r'(<)?(={2,})(>?)')
 _RE_SOLID_BARE = re.compile(r'(<|x|o)?(-{2,})(>|x|o)?')
 
 _RE_PIPE_LABEL = re.compile(r'^\|([^|]*)\|')
-
 
 def _interpret_heads(lh: str, rh: str) -> tuple[str | None, str]:
     """(left_head_char, right_head_char) → (head_glyph, direction)."""
@@ -112,9 +108,7 @@ def _interpret_heads(lh: str, rh: str) -> tuple[str | None, str]:
     head = rhk or lhk
     return head, direction
 
-
 # ─── Main parser ──────────────────────────────────────────────────────
-
 
 def parse_flowchart(text: str) -> dict:
     """Parse Mermaid flowchart/graph source into a structured dict."""
@@ -417,15 +411,12 @@ def parse_flowchart(text: str) -> dict:
         "link_styles": link_styles,
     }
 
-
 # ─── CLI ──────────────────────────────────────────────────────────────
-
 
 def _load_text(path: str | None) -> str:
     if path:
         return Path(path).read_text(encoding="utf-8")
     return sys.stdin.read()
-
 
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(
@@ -475,7 +466,6 @@ def main(argv: list[str] | None = None) -> int:
             print(n["id"])
         return 0
     return 2
-
 
 if __name__ == "__main__":
     sys.exit(main())

@@ -36,18 +36,15 @@ try:
 except ImportError:
     _HAS_JSONSCHEMA = False
 
-
 def load_yaml(path: Path) -> dict:
     """Parse a YAML file into a dict. Returns {} for empty file."""
     with path.open("r", encoding="utf-8") as f:
         return yaml.safe_load(f) or {}
 
-
 def load_json(path: Path) -> dict:
     """Parse a JSON file (typically a JSON Schema)."""
     with path.open("r", encoding="utf-8") as f:
         return json.load(f)
-
 
 def validate(data: dict, schema_path: Path, source: str) -> None:
     """Validate `data` against the JSON Schema at `schema_path`.

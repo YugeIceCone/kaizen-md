@@ -22,9 +22,9 @@ from pathlib import Path
 from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / "skills" / "workflow" / "scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 sys.path.insert(0, str(ROOT / "scripts" / "brain"))
-
 
 class TestProjectMemoryRootResolution(unittest.TestCase):
     """`_brain.project_memory_root()` must compose the same git-root
@@ -90,7 +90,6 @@ class TestProjectMemoryRootResolution(unittest.TestCase):
         # Should have probed git from /some/where
         self.assertIn("some-where", str(d))
 
-
 class TestBetterMemoryAlignment(unittest.TestCase):
     """Brain capture (--tier project) and kaizen-better-memory regen
     must resolve to the same dir for the same repo."""
@@ -116,7 +115,6 @@ class TestBetterMemoryAlignment(unittest.TestCase):
 
         self.assertEqual(str(brain_dir), str(mem_dir),
             "brain and better_memory must agree on the project memory dir")
-
 
 if __name__ == "__main__":
     unittest.main()

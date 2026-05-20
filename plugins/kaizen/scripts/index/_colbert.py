@@ -53,7 +53,6 @@ _colbert_torch = None
 _colbert_np = None
 _load_attempted = False
 
-
 def is_colbert_enabled() -> bool:
     """``KAIZEN_COLBERT_ENABLE`` in ``{1, true, yes, on}``.
 
@@ -63,11 +62,9 @@ def is_colbert_enabled() -> bool:
     raw = os.environ.get("KAIZEN_COLBERT_ENABLE", "").lower().strip()
     return raw in {"1", "true", "yes", "on"}
 
-
 def colbert_model_name() -> str:
     """``KAIZEN_COLBERT_MODEL`` or the colbertv2.0 default."""
     return os.environ.get("KAIZEN_COLBERT_MODEL", DEFAULT_COLBERT_MODEL)
-
 
 def _max_seq_length() -> int:
     """``KAIZEN_COLBERT_MAX_SEQ`` — token cap per chunk. Default 32
@@ -79,7 +76,6 @@ def _max_seq_length() -> int:
         return max(8, int(raw))
     except ValueError:
         return 32
-
 
 def _load_colbert_model():
     """Lazy load ColBERT encoder + tokenizer.
@@ -120,7 +116,6 @@ def _load_colbert_model():
     _colbert_np = np
     return _colbert_model, _colbert_tokenizer, _colbert_torch, _colbert_np
 
-
 def reset_cache() -> None:
     """Drop cached load result. Used by tests that mutate env knobs."""
     global _colbert_model, _colbert_tokenizer, _colbert_torch, _colbert_np, _load_attempted
@@ -129,7 +124,6 @@ def reset_cache() -> None:
     _colbert_torch = None
     _colbert_np = None
     _load_attempted = False
-
 
 def encode_colbert(text: str, *, max_length: Optional[int] = None):
     """Encode text → ``(seq_len, dim)`` float32 matrix, or ``None``
@@ -155,7 +149,6 @@ def encode_colbert(text: str, *, max_length: Optional[int] = None):
         hidden = torch.nn.functional.normalize(hidden, p=2, dim=-1)
         mat = hidden.squeeze(0).cpu().numpy().astype(np.float32)  # (seq, dim)
     return mat
-
 
 def encode_colbert_batch(
     texts: list[str],
@@ -198,7 +191,6 @@ def encode_colbert_batch(
             out.append(mat)
     return out
 
-
 def serialize(matrix) -> bytes:
     """Pack a ``(seq_len, dim)`` float32 matrix to bytes for SQLite.
 
@@ -216,7 +208,6 @@ def serialize(matrix) -> bytes:
         )
     seq_len, dim = int(arr.shape[0]), int(arr.shape[1])
     return struct.pack("<II", seq_len, dim) + arr.tobytes()
-
 
 def deserialize(blob: bytes):
     """Unpack a stored ColBERT blob back to ``(seq_len, dim)``
@@ -238,7 +229,6 @@ def deserialize(blob: bytes):
         return np.zeros((0, dim), dtype=np.float32)
     arr = np.frombuffer(body, dtype=np.float32).reshape(seq_len, dim)
     return arr
-
 
 def max_sim_score(query_mat, doc_mat) -> float:
     """MaxSim — Khattab+ 2020 late-interaction scoring.
@@ -266,7 +256,6 @@ def max_sim_score(query_mat, doc_mat) -> float:
     # MaxSim: for each query row, max over doc tokens, then sum
     return float(sim.max(axis=1).sum())
 
-
 def is_available() -> bool:
     """Returns ``True`` iff transformers + torch + numpy are installed
     AND the model loads cleanly.
@@ -276,9 +265,7 @@ def is_available() -> bool:
     model, _, _, _ = _load_colbert_model()
     return model is not None
 
-
 # ─── CLI inspector ────────────────────────────────────────────────────
-
 
 if __name__ == "__main__":
     import argparse

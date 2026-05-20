@@ -18,7 +18,6 @@ import re
 import sys
 from pathlib import Path
 
-
 _SCRIPT_DIR = Path(__file__).resolve().parent
 _PLUGIN_ROOT = _SCRIPT_DIR.parent
 _DEFAULTS_FILE = _PLUGIN_ROOT / "config.defaults.json"
@@ -27,7 +26,6 @@ _DEFAULTS_FILE = _PLUGIN_ROOT / "config.defaults.json"
 # the log from growing unbounded and blowing the SessionStart context
 # budget. Mirrors the upstream MAX_EVIDENCE_LINES constant.
 MAX_EVIDENCE_LINES = 10
-
 
 PASSIVE_NUDGE_INSTRUCTION = """\
 CAPTURE NUDGE (apply silently throughout this session):
@@ -61,7 +59,6 @@ Rules:
 - Be brief. The nudge is two lines max (the question + the quoted content).
   Don't disrupt the flow of the answer itself."""
 
-
 def brain_root() -> Path:
     """v1.38.0+ single env knob: KAIZEN_BRAIN_DIR > <KAIZEN_DIR>/brain
     (default ~/.claude/.kaizen/brain). Mirrors upstream config.getBrainRoot."""
@@ -70,7 +67,6 @@ def brain_root() -> Path:
         "brain",
     )
     return Path(raw).expanduser().resolve()
-
 
 def load_config() -> dict:
     """Load config.defaults.json. Falls back to hardcoded defaults if
@@ -90,10 +86,8 @@ def load_config() -> dict:
             },
         }
 
-
 _EVIDENCE_HEADER_RE = re.compile(r"^###?\s*Evidence\s*Log", re.IGNORECASE | re.MULTILINE)
 _NEXT_SECTION_RE = re.compile(r"^##\s", re.MULTILINE)
-
 
 def truncate_evidence_log(persona: str, max_lines: int = MAX_EVIDENCE_LINES) -> str:
     """Truncate the Evidence Log section to the last ``max_lines`` entries.
@@ -126,7 +120,6 @@ def truncate_evidence_log(persona: str, max_lines: int = MAX_EVIDENCE_LINES) -> 
         + after_block
     )
 
-
 def render_session_start(brain_dir: Path, persona: str, *,
                          passive_nudge_enabled: bool) -> str:
     """Build the stdout payload — banner + Persona + optional nudge."""
@@ -140,7 +133,6 @@ def render_session_start(brain_dir: Path, persona: str, *,
         + "Commands: /remember:process, /remember:status, "
           "'remember this: ...'\n"
     )
-
 
 def main() -> int:
     if os.environ.get("REMEMBER_PROCESSING") == "1":
@@ -162,7 +154,6 @@ def main() -> int:
         brain, persona, passive_nudge_enabled=passive_nudge,
     ))
     return 0
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

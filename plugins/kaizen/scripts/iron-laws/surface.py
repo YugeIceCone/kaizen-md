@@ -47,7 +47,6 @@ _PLUGIN_ROOT = _SCRIPT_DIR.parent.parent  # scripts/iron-laws → plugins/kaizen
 
 # ─── Surface inventory primitives ───────────────────────────────────────
 
-
 @dataclass
 class HookEntry:
     event: str
@@ -55,7 +54,6 @@ class HookEntry:
     command: str          # full command string
     script: str           # extracted script path (relative to PLUGIN_ROOT)
     timeout: int | None = None
-
 
 @dataclass
 class McpServer:
@@ -65,7 +63,6 @@ class McpServer:
     tool_count: int       # # of @mcp.tool() decorators
     in_curated_core: list[str] = field(default_factory=list)  # tools from this server in CURATED_CORE
 
-
 @dataclass
 class Finding:
     severity: str         # error | warn | info
@@ -74,16 +71,13 @@ class Finding:
     message: str
     path: str = ""
 
-
 # ─── Hook surface ───────────────────────────────────────────────────────
-
 
 def _hooks_json() -> dict:
     p = _PLUGIN_ROOT / "hooks" / "hooks.json"
     if not p.exists():
         return {}
     return json.loads(p.read_text()).get("hooks", {})
-
 
 def list_hook_entries() -> list[HookEntry]:
     """All hooks registered in hooks.json, in declaration order."""
@@ -104,7 +98,6 @@ def list_hook_entries() -> list[HookEntry]:
                 ))
     return out
 
-
 def list_hook_files() -> list[str]:
     """All shell + python scripts under hooks/claude/, excluding _*-prefixed."""
     d = _PLUGIN_ROOT / "hooks" / "claude"
@@ -117,9 +110,7 @@ def list_hook_files() -> list[str]:
         and f.suffix in (".sh", ".py")
     )
 
-
 # ─── MCP surface ────────────────────────────────────────────────────────
-
 
 def _gateway_subservers() -> list[tuple[str, str]]:
     """Parse SUBSERVERS list from gateway.py via lightweight regex.
@@ -137,7 +128,6 @@ def _gateway_subservers() -> list[tuple[str, str]]:
         return []
     return re.findall(r'\(\s*"([^"]+)"\s*,\s*"([^"]+)"\s*\)', m.group(1))
 
-
 def _curated_core() -> list[str]:
     """Parse CURATED_CORE list from gateway.py (canonical at scripts/mcp/)."""
     gw = _PLUGIN_ROOT / "scripts" / "mcp" / "gateway.py"
@@ -152,14 +142,12 @@ def _curated_core() -> list[str]:
         return []
     return re.findall(r'"([^"]+)"', m.group(1))
 
-
 def _tool_count(script_path: Path) -> int:
     """Count @<name>.tool() decorators in an MCP module."""
     if not script_path.is_file():
         return 0
     text = script_path.read_text(errors="ignore")
     return len(re.findall(r"@\w+\.tool\(", text))
-
 
 def list_mcp_servers() -> list[McpServer]:
     core = _curated_core()
@@ -185,9 +173,7 @@ def list_mcp_servers() -> list[McpServer]:
         ))
     return out
 
-
 # ─── Validation ─────────────────────────────────────────────────────────
-
 
 def _registered_hook_scripts() -> set[str]:
     """Set of script basenames (e.g. 'pretooluse-bash-gate.sh') that
@@ -196,7 +182,6 @@ def _registered_hook_scripts() -> set[str]:
     for h in list_hook_entries():
         out.add(Path(h.script).name)
     return out
-
 
 def validate() -> list[Finding]:
     findings: list[Finding] = []
@@ -295,9 +280,7 @@ def validate() -> list[Finding]:
 
     return findings
 
-
 # ─── Renderers ──────────────────────────────────────────────────────────
-
 
 def render_list_text(servers: list[McpServer], hooks: list[HookEntry], kind: str = "both") -> str:
     out = []
@@ -317,7 +300,6 @@ def render_list_text(servers: list[McpServer], hooks: list[HookEntry], kind: str
         out.append(f"  TOTAL: {len(hooks)} hook registrations")
     return "\n".join(out)
 
-
 def render_validate_text(findings: list[Finding]) -> str:
     if not findings:
         return "kaizen surface: clean (no findings)"
@@ -331,9 +313,7 @@ def render_validate_text(findings: list[Finding]) -> str:
                    f"    {f.message}\n")
     return "".join(out)
 
-
 # ─── CLI ────────────────────────────────────────────────────────────────
-
 
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(prog="kaizen-surface")
@@ -399,7 +379,6 @@ def main(argv: list[str]) -> int:
 
     parser.print_help()
     return 2
-
 
 if __name__ == "__main__":
     sys.exit(main(sys.argv[1:]))

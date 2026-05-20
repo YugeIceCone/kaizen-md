@@ -47,14 +47,11 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
-
 def utc_stamp() -> str:
     """Sortable filename-safe UTC timestamp."""
     return datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
 
-
 # ─── rsync + verify ──────────────────────────────────────────────────
-
 
 def rsync_dir(src: Path, dst: Path, *, label: str = "kaizen-migrator",
                timeout_sec: float = 300.0) -> bool:
@@ -73,7 +70,6 @@ def rsync_dir(src: Path, dst: Path, *, label: str = "kaizen-migrator",
         return False
     return True
 
-
 def move_file(src: Path, dst: Path, *, label: str = "kaizen-migrator") -> bool:
     """Single-file move via shutil.copy2 + size-match verify + unlink."""
     try:
@@ -86,7 +82,6 @@ def move_file(src: Path, dst: Path, *, label: str = "kaizen-migrator") -> bool:
         return False
     src.unlink()
     return True
-
 
 def verify_dir(src: Path, dst: Path, *,
                 size_tolerance_pct: float = 1.0) -> dict:
@@ -130,9 +125,7 @@ def verify_dir(src: Path, dst: Path, *,
                     "dst_files": dst_count, "dst_size": dst_size}
     return {"ok": True, "dst_files": dst_count, "dst_size": dst_size}
 
-
 # ─── sha256 sidecars (CRYPTO-1, CRYPTO-2) ────────────────────────────
-
 
 def write_sha256_sidecar(target: Path, *,
                           label: str = "kaizen-migrator") -> bool:
@@ -145,7 +138,6 @@ def write_sha256_sidecar(target: Path, *,
     except OSError as e:
         print(f"[{label}] sidecar write failed: {e}", file=sys.stderr)
         return False
-
 
 def verify_sha256_sidecar(target: Path, *,
                            label: str = "kaizen-migrator") -> bool:
@@ -171,9 +163,7 @@ def verify_sha256_sidecar(target: Path, *,
         return False
     return True
 
-
 # ─── Backup tarball helper ───────────────────────────────────────────
-
 
 def make_backup_tarball(backup_dir: Path, prefix: str, source: Path,
                          *, label: str = "kaizen-migrator",

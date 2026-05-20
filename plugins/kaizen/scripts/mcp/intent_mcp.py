@@ -36,7 +36,6 @@ from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 
-
 def _load_intent():
     spec = importlib.util.spec_from_file_location(
         "kaizen_intent_mcp_inner", SCRIPT_DIR.parent / "intent" / "intent.py"
@@ -48,17 +47,14 @@ def _load_intent():
     spec.loader.exec_module(mod)
     return mod
 
-
 try:
     from fastmcp import FastMCP
 except ImportError:
     sys.stderr.write("kaizen-intent-mcp: fastmcp>=3.0 required\n")
     sys.exit(2)
 
-
 mcp = FastMCP("kaizen-intent")
 _intent = None
-
 
 def _intent_mod():
     global _intent
@@ -66,9 +62,7 @@ def _intent_mod():
         _intent = _load_intent()
     return _intent
 
-
 # ─── list ────────────────────────────────────────────────────────────
-
 
 @mcp.tool()
 async def intent_list() -> dict:
@@ -97,9 +91,7 @@ async def intent_list() -> dict:
         return {"intents": summary, "count": len(summary)}
     return await asyncio.to_thread(_run)
 
-
 # ─── match ───────────────────────────────────────────────────────────
-
 
 @mcp.tool()
 async def intent_match(text: str | None = None,
@@ -135,9 +127,7 @@ async def intent_match(text: str | None = None,
         return {"matched": matched, "count": len(matched)}
     return await asyncio.to_thread(_run)
 
-
 # ─── suggest ─────────────────────────────────────────────────────────
-
 
 @mcp.tool()
 async def intent_suggest(text: str | None = None,
@@ -174,9 +164,7 @@ async def intent_suggest(text: str | None = None,
         }}
     return await asyncio.to_thread(_run)
 
-
 # ─── scan ────────────────────────────────────────────────────────────
-
 
 @mcp.tool()
 async def intent_scan(session_id: str, back_seconds: float = 60.0) -> dict:
@@ -242,7 +230,6 @@ async def intent_scan(session_id: str, back_seconds: float = 60.0) -> dict:
             "count":       len(matched),
         }
     return await asyncio.to_thread(_run)
-
 
 if __name__ == "__main__":
     mcp.run()

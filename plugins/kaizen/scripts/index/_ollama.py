@@ -36,11 +36,9 @@ import sys
 import urllib.request
 from typing import Optional
 
-
 OLLAMA_URL = "http://localhost:11434/api/chat"
 DEFAULT_MODEL = "granite4.1:8b"
 DEFAULT_TIMEOUT_S = 30.0
-
 
 # Two few-shot examples — one positive (gold-worthy recurrent pattern),
 # one negative (transient one-off). Burned into the system prompt to
@@ -67,10 +65,8 @@ NEGATIVE — not gold-worthy:
            "reason": "one-off, no recurring signal, nothing to learn"}
 """
 
-
 def _enabled() -> bool:
     return os.environ.get("KAIZEN_GOLD_MINE_ENABLE", "") == "1"
-
 
 def score_hint(
     hint: str,
@@ -127,6 +123,5 @@ def score_hint(
         return None
 
     return parsed
-
 
 __all__ = ["score_hint", "OLLAMA_URL", "DEFAULT_MODEL"]

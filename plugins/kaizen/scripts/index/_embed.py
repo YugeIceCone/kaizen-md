@@ -50,10 +50,10 @@ from typing import Optional
 _SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(_SCRIPT_DIR))
 # MIGRATION BRIDGE — cross-cluster sibs still at legacy or shimmed there.
-sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "skills" / "workflow" / "scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import _bootstrap  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 import _paths as _p  # noqa: E402
 import config as _cfg  # noqa: E402
-
 
 # ─── Embedding-model name patterns ───────────────────────────────────
 
@@ -70,7 +70,6 @@ EMBEDDING_NAME_PATTERNS = [
     re.compile(r"text-embedding", re.I),  # OpenAI naming
 ]
 
-
 def is_embedding_model_name(name: str) -> bool:
     """Heuristic: does this model name look like an embedding model?
 
@@ -79,12 +78,10 @@ def is_embedding_model_name(name: str) -> bool:
     candidates on a multi-model llama-server)."""
     return any(p.search(name or "") for p in EMBEDDING_NAME_PATTERNS)
 
-
 # ─── Cache + resolver ────────────────────────────────────────────────
 
 _EMBED_CACHE_PATH = _p.KAIZEN_USER_DIR / "embed_endpoint.json"
 _cached_cfg: Optional[dict] = None
-
 
 def _read_cache() -> Optional[dict]:
     if not _EMBED_CACHE_PATH.is_file():
@@ -97,14 +94,12 @@ def _read_cache() -> Optional[dict]:
         pass
     return None
 
-
 def _write_cache(cfg: dict) -> None:
     try:
         _EMBED_CACHE_PATH.parent.mkdir(parents=True, exist_ok=True)
         _EMBED_CACHE_PATH.write_text(json.dumps(cfg, indent=2))
     except OSError:
         pass
-
 
 def require_numpy():
     """Import numpy or exit(1) with an actionable install hint.
@@ -127,7 +122,6 @@ def require_numpy():
         )
         sys.exit(1)
 
-
 def _invalidate_cache() -> None:
     """Drop the cached endpoint so the next resolve_backend() re-probes.
 
@@ -142,7 +136,6 @@ def _invalidate_cache() -> None:
         _EMBED_CACHE_PATH.unlink(missing_ok=True)
     except OSError:
         pass
-
 
 def _probe_for_embed_model(base_url: str, list_path: str, timeout: float) -> Optional[str]:
     """Hit a /v1/models endpoint; return the first embedding-shaped model name."""
@@ -166,7 +159,6 @@ def _probe_for_embed_model(base_url: str, list_path: str, timeout: float) -> Opt
         if name and is_embedding_model_name(str(name)):
             return str(name)
     return None
-
 
 def resolve_backend(refresh: bool = False, bypass_env_http: bool = False) -> dict:
     """Return the active embedding backend config.
@@ -240,7 +232,6 @@ def resolve_backend(refresh: bool = False, bypass_env_http: bool = False) -> dic
     _cached_cfg = cfg
     return cfg
 
-
 # ─── E7 / E8 — embedding-runtime knobs ───────────────────────────────
 #
 # E7: multi-process encoding. For large batches (>= MP_THRESHOLD), call
@@ -252,7 +243,6 @@ def resolve_backend(refresh: bool = False, bypass_env_http: bool = False) -> dic
 #     is informational here — actual pooling is baked into the model on
 #     load; documented for future use.
 
-
 def _get_mp_workers() -> int:
     """KAIZEN_EMBED_MP_WORKERS — process count for encode_multi_process.
     0 (default) disables multi-process encoding entirely."""
@@ -261,7 +251,6 @@ def _get_mp_workers() -> int:
         return max(0, int(raw))
     except ValueError:
         return 0
-
 
 def _get_mp_threshold() -> int:
     """KAIZEN_EMBED_MP_THRESHOLD — minimum batch size to use multi-process
@@ -272,17 +261,14 @@ def _get_mp_threshold() -> int:
     except ValueError:
         return 500
 
-
 def _get_normalize_flag() -> bool:
     """KAIZEN_EMBED_NORMALIZE in {l2, none}. Default l2 (cosine-search
     optimal). `none` disables the extra normalize pass."""
     raw = os.environ.get("KAIZEN_EMBED_NORMALIZE", "l2").lower().strip()
     return raw == "l2"
 
-
 def _should_use_multi_process(batch_size: int) -> bool:
     return _get_mp_workers() > 0 and batch_size >= _get_mp_threshold()
-
 
 # ─── E5 — matryoshka embeddings (truncatable dim) ─────────────────────
 #
@@ -299,7 +285,6 @@ MATRYOSHKA_FAMILIES = (
     "e5-mistral",
 )
 
-
 def _get_matryoshka_dim() -> int:
     """KAIZEN_EMBED_MATRYOSHKA_DIM — when set to a positive integer,
     truncate every embedding to this dim before storing. No-op when the
@@ -311,14 +296,12 @@ def _get_matryoshka_dim() -> int:
     except ValueError:
         return 0
 
-
 def is_matryoshka_model(model_name: str) -> bool:
     """Substring-match against known matryoshka-trained families."""
     if not model_name:
         return False
     lower = model_name.lower()
     return any(fam in lower for fam in MATRYOSHKA_FAMILIES)
-
 
 def maybe_truncate_matryoshka(vec, model_name: str = ""):
     """If KAIZEN_EMBED_MATRYOSHKA_DIM is set AND the model is matryoshka,
@@ -335,12 +318,10 @@ def maybe_truncate_matryoshka(vec, model_name: str = ""):
     except TypeError:
         return vec
 
-
 # ─── Embedding API ───────────────────────────────────────────────────
 
 _local_model = None
 _local_np = None
-
 
 def _load_local_model():
     global _local_model, _local_np
@@ -360,7 +341,6 @@ def _load_local_model():
         _local_np = np
         _local_model = SentenceTransformer(_cfg.EMBED_MODEL)
     return _local_model, _local_np
-
 
 def _embed_http(text: str, base_url: str, model: str) -> tuple[bytes, int]:
     """POST to /v1/embeddings. Returns (float32_bytes, dim)."""
@@ -386,7 +366,6 @@ def _embed_http(text: str, base_url: str, model: str) -> tuple[bytes, int]:
     arr = np.array(vec, dtype=np.float32)
     return arr.tobytes(), int(arr.shape[0])
 
-
 def _embed_local(text: str) -> tuple[bytes, int]:
     model, np = _load_local_model()
     vec = model.encode(text, convert_to_numpy=True, show_progress_bar=False).astype(
@@ -396,7 +375,6 @@ def _embed_local(text: str) -> tuple[bytes, int]:
     # active model is matryoshka-trained. No-op otherwise.
     vec = maybe_truncate_matryoshka(vec, _cfg.EMBED_MODEL)
     return vec.tobytes(), int(vec.shape[0])
-
 
 def embed_one(text: str) -> tuple[bytes, int]:
     """Embed a single string. Returns (float32 bytes, dim).
@@ -431,7 +409,6 @@ def embed_one(text: str) -> tuple[bytes, int]:
                 )
         return _embed_local(text)
 
-
 def _embed_http_batch(texts: list[str], base_url: str, model: str) -> tuple[list[bytes], int]:
     """POST a batch of strings to /v1/embeddings. Returns ([bytes,...], dim)."""
     import numpy as np  # type: ignore
@@ -458,7 +435,6 @@ def _embed_http_batch(texts: list[str], base_url: str, model: str) -> tuple[list
         out_blobs.append(arr.tobytes())
         dim = int(arr.shape[0])
     return out_blobs, dim
-
 
 def _embed_local_batch(texts: list[str]) -> tuple[list[bytes], int]:
     """Local sentence-transformers batch.
@@ -506,7 +482,6 @@ def _embed_local_batch(texts: list[str]) -> tuple[list[bytes], int]:
     out = [vecs[i].tobytes() for i in range(vecs.shape[0])]
     return out, int(vecs.shape[1]) if vecs.ndim > 1 else int(vecs.shape[0])
 
-
 def embed_batch(texts: list[str]) -> tuple[list[bytes], int]:
     """Batch-embed a list of strings. Returns ([float32 bytes, ...], dim).
 
@@ -539,7 +514,6 @@ def embed_batch(texts: list[str]) -> tuple[list[bytes], int]:
                 )
         return _embed_local_batch(texts)
 
-
 def get_dim() -> int:
     """Return the dim of the active embedding backend. Caches the
     discovered dim in resolve_backend()'s cache for next call."""
@@ -553,9 +527,7 @@ def get_dim() -> int:
     _write_cache(cfg)
     return dim
 
-
 # ─── Inspector / CLI helper ──────────────────────────────────────────
-
 
 def describe() -> dict:
     """Return the resolved backend as a dict for `kaizen-scrape detect-llm`
@@ -565,7 +537,6 @@ def describe() -> dict:
     out["cache_path"] = str(_EMBED_CACHE_PATH)
     out["env_backend"] = os.environ.get("KAIZEN_EMBED_BACKEND", "auto")
     return out
-
 
 if __name__ == "__main__":
     # Tiny CLI: kaizen-embed-resolve (for debugging)

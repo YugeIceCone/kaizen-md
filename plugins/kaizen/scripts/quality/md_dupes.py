@@ -10,7 +10,6 @@ from pathlib import Path
 
 _SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(_SCRIPT_DIR))
-# MIGRATION BRIDGE — legacy helpers still at skills/workflow/scripts/
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "io"))
 
 import _envelope  # noqa: E402
@@ -18,17 +17,14 @@ import _envelope  # noqa: E402
 _emit = _envelope.emitter("kaizen-md-dupes", tool_version="1.0.0")
 _H_RE = re.compile(r"^#+\s+(.+?)\s*$", re.MULTILINE)
 
-
 def _plugin_root() -> Path:
     return _SCRIPT_DIR.parents[1]
-
 
 def scan_text(text: str, *, path: str) -> list[dict]:
     headings = [m.group(1).strip() for m in _H_RE.finditer(text)]
     counts = Counter(headings)
     return [{"path": path, "heading": h, "count": c}
             for h, c in counts.items() if c > 1]
-
 
 def scan(*, root: Path) -> dict:
     if not root.is_dir():
@@ -45,7 +41,6 @@ def scan(*, root: Path) -> dict:
     return {"md_total": len(mds), "findings": findings,
             "violation_count": len(findings)}
 
-
 def _run(args) -> int:
     root = Path(args.root).expanduser() if args.root else _plugin_root().parent
     rep = scan(root=root)
@@ -58,7 +53,6 @@ def _run(args) -> int:
     _emit(rep, verdict=verdict, counts={"findings": n})
     return 0
 
-
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="kaizen-md-dupes",
         description="Duplicate headings in *.md.")
@@ -70,7 +64,6 @@ def main(argv: list[str] | None = None) -> int:
         s.set_defaults(func=_run)
     args = ap.parse_args(argv)
     return args.func(args)
-
 
 if __name__ == "__main__":
     sys.exit(main())

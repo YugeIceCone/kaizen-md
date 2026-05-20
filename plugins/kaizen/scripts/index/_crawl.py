@@ -47,13 +47,10 @@ from dataclasses import dataclass, field
 from html.parser import HTMLParser
 from typing import Callable
 
-
 DEFAULT_USER_AGENT = "kaizen-scrape/1.0 (+https://github.com/kaizen)"
 DEFAULT_TIMEOUT = 10.0
 
-
 # ─── URL helpers (S6 partial — canonicalization) ──────────────────────
-
 
 def canonical_url(url: str, base: str | None = None) -> str:
     """Normalize: absolutize against base, strip fragment, lowercase host,
@@ -69,7 +66,6 @@ def canonical_url(url: str, base: str | None = None) -> str:
         parsed._replace(netloc=netloc, path=path, fragment="")
     )
 
-
 def same_origin(url1: str, url2: str, include_subdomains: bool = False) -> bool:
     h1 = urllib.parse.urlparse(url1).netloc.lower()
     h2 = urllib.parse.urlparse(url2).netloc.lower()
@@ -80,9 +76,7 @@ def same_origin(url1: str, url2: str, include_subdomains: bool = False) -> bool:
     # Subdomain match: one host is a suffix of the other (after the leading dot).
     return h1.endswith("." + h2) or h2.endswith("." + h1)
 
-
 # ─── HTML link extraction ──────────────────────────────────────────────
-
 
 class LinkExtractor(HTMLParser):
     """Pull `href` from <a> tags. Other attrs are ignored. Robust against
@@ -99,7 +93,6 @@ class LinkExtractor(HTMLParser):
             if name.lower() == "href" and value:
                 self.links.append(value)
 
-
 def extract_links(html: str) -> list[str]:
     """Parse `html` and return the list of href values (raw, not canonicalized)."""
     ex = LinkExtractor()
@@ -110,13 +103,10 @@ def extract_links(html: str) -> list[str]:
         pass
     return ex.links
 
-
 # ─── Fetching (with injectable stub for tests) ────────────────────────
-
 
 FetchResult = tuple[int, str, bytes]  # (status, content_type, body)
 FetchFn = Callable[..., FetchResult]
-
 
 def fetch_url(
     url: str,
@@ -129,9 +119,7 @@ def fetch_url(
     with urllib.request.urlopen(req, timeout=timeout) as resp:
         return resp.status, resp.headers.get("Content-Type", ""), resp.read()
 
-
 # ─── robots.txt + sitemap ─────────────────────────────────────────────
-
 
 def load_robots(
     base_url: str,
@@ -148,7 +136,6 @@ def load_robots(
     except (OSError, urllib.error.URLError):
         pass
     return rp
-
 
 def load_sitemap_urls(
     base_url: str,
@@ -178,9 +165,7 @@ def load_sitemap_urls(
             continue
     return []
 
-
 # ─── scrape_urls table (S3) ───────────────────────────────────────────
-
 
 SCRAPE_URLS_DDL = """
 CREATE TABLE IF NOT EXISTS scrape_urls (
@@ -192,11 +177,9 @@ CREATE TABLE IF NOT EXISTS scrape_urls (
 CREATE INDEX IF NOT EXISTS idx_scrape_urls_ts ON scrape_urls(last_scraped);
 """
 
-
 def ensure_scrape_urls_table(conn: sqlite3.Connection) -> None:
     """Idempotent — creates table + index if absent."""
     conn.executescript(SCRAPE_URLS_DDL)
-
 
 def is_recently_scraped(
     conn: sqlite3.Connection, url: str, max_age_days: int
@@ -210,7 +193,6 @@ def is_recently_scraped(
         (url, cutoff),
     ).fetchone()
     return row is not None
-
 
 def record_url(
     conn: sqlite3.Connection,
@@ -231,9 +213,7 @@ def record_url(
         (url, now, depth, discovered_from),
     )
 
-
 # ─── Crawl driver ─────────────────────────────────────────────────────
-
 
 @dataclass
 class CrawlConfig:
@@ -248,7 +228,6 @@ class CrawlConfig:
     respect_robots: bool = True
     user_agent: str = DEFAULT_USER_AGENT
 
-
 @dataclass
 class CrawlResult:
     crawled: list[tuple[str, int]] = field(default_factory=list)  # (url, depth)
@@ -257,7 +236,6 @@ class CrawlResult:
     skipped_pattern: int = 0
     skipped_recent: int = 0
     fetch_errors: int = 0
-
 
 def crawl(
     config: CrawlConfig,

@@ -39,7 +39,6 @@ _HEADER = (
     "|------|------|------|---------|\n"
 )
 
-
 def _validate(payload: dict) -> str | None:
     """Return error message string on invalid payload, else None."""
     if not isinstance(payload, dict):
@@ -62,11 +61,9 @@ def _validate(payload: dict) -> str | None:
                 f"YAML / table parsers. Use ` — ` or `;` instead.")
     return None
 
-
 def _render_row(payload: dict) -> str:
     return (f"| {payload['date']} | {payload['kind']} | "
              f"{payload['loc']} | {payload['summary']} |")
-
 
 def _atomic_append(path: Path, row: str) -> None:
     """Append `row` (one line) to `path`. Creates the file with the
@@ -85,7 +82,6 @@ def _atomic_append(path: Path, row: str) -> None:
         path.write_text(_HEADER, encoding="utf-8")
     atomic_append_line(path, row)
 
-
 # Row parser — the .md and .jsonl form must round-trip cleanly.
 # `| YYYY-MM-DD | <kind> | <loc> | <summary> |` → {"date","scope","delta","summary"}.
 # Field names diverge between the two surfaces (kind/loc in .md, scope/delta in
@@ -93,7 +89,6 @@ def _atomic_append(path: Path, row: str) -> None:
 _ROW_RE = re.compile(
     r"^\|\s*(\d{4}-\d{2}-\d{2})\s*\|\s*([^|]+?)\s*\|\s*([^|]+?)\s*\|\s*(.+?)\s*\|\s*$"
 )
-
 
 def _parse_md_rows(text: str) -> list[dict]:
     rows: list[dict] = []
@@ -109,10 +104,8 @@ def _parse_md_rows(text: str) -> list[dict]:
         })
     return rows
 
-
 def _render_jsonl(rows: list[dict]) -> str:
     return "".join(json.dumps(r, ensure_ascii=False) + "\n" for r in rows)
-
 
 def _cmd_regen(args: argparse.Namespace) -> int:
     md_path = Path(args.file)
@@ -142,7 +135,6 @@ def _cmd_regen(args: argparse.Namespace) -> int:
         f"progress_log: regen → {jsonl_path.name} ({len(rows)} rows)\n")
     return 0
 
-
 def _cmd_append(args: argparse.Namespace) -> int:
     if args.stdin:
         try:
@@ -168,7 +160,6 @@ def _cmd_append(args: argparse.Namespace) -> int:
         sys.stderr.write(f"progress_log: write failed: {e}\n")
         return 1
     return 0
-
 
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(
@@ -201,7 +192,6 @@ def main(argv: list[str] | None = None) -> int:
         p.print_help()
         return 2
     return args.fn(args)
-
 
 if __name__ == "__main__":
     sys.exit(main())

@@ -51,7 +51,6 @@ _sparse_tokenizer = None
 _sparse_torch = None
 _load_attempted = False  # avoid re-attempting load on every call when missing
 
-
 def is_sparse_enabled() -> bool:
     """``KAIZEN_SPARSE_ENABLE`` in ``{1, true, yes, on}`` (case-insensitive).
 
@@ -61,11 +60,9 @@ def is_sparse_enabled() -> bool:
     raw = os.environ.get("KAIZEN_SPARSE_ENABLE", "").lower().strip()
     return raw in {"1", "true", "yes", "on"}
 
-
 def sparse_model_name() -> str:
     """``KAIZEN_SPARSE_MODEL`` or the SPLADE-cocondenser default."""
     return os.environ.get("KAIZEN_SPARSE_MODEL", DEFAULT_SPARSE_MODEL)
-
 
 def _max_length() -> int:
     """``KAIZEN_SPARSE_MAX_LENGTH`` — token cap per chunk. Default 256
@@ -75,7 +72,6 @@ def _max_length() -> int:
         return max(32, int(raw))
     except ValueError:
         return 256
-
 
 def _load_sparse_model():
     """Lazy load SPLADE encoder + tokenizer.
@@ -111,7 +107,6 @@ def _load_sparse_model():
     _sparse_torch = torch
     return _sparse_model, _sparse_tokenizer, _sparse_torch
 
-
 def reset_cache() -> None:
     """Drop the cached load result so the next call re-attempts. Used by
     tests that mutate ``KAIZEN_SPARSE_MODEL`` between cases."""
@@ -120,7 +115,6 @@ def reset_cache() -> None:
     _sparse_tokenizer = None
     _sparse_torch = None
     _load_attempted = False
-
 
 def encode_sparse(text: str, *, max_length: Optional[int] = None) -> Optional[dict[int, float]]:
     """Encode text → ``{token_id: weight}`` sparse dict, or ``None``
@@ -157,7 +151,6 @@ def encode_sparse(text: str, *, max_length: Optional[int] = None) -> Optional[di
         return {}
     vals = sparse[nz]
     return {int(i): float(v) for i, v in zip(nz.tolist(), vals.tolist())}
-
 
 def encode_sparse_batch(
     texts: list[str],
@@ -206,7 +199,6 @@ def encode_sparse_batch(
             )
     return out
 
-
 def serialize(sparse: dict[int, float]) -> bytes:
     """JSON-encode a sparse dict for SQLite blob storage.
 
@@ -217,7 +209,6 @@ def serialize(sparse: dict[int, float]) -> bytes:
         {str(int(k)): float(v) for k, v in sparse.items()},
         separators=(",", ":"),
     ).encode()
-
 
 def deserialize(blob: bytes) -> dict[int, float]:
     """Decode a JSON sparse blob back to ``{int: float}``.
@@ -241,7 +232,6 @@ def deserialize(blob: bytes) -> dict[int, float]:
             continue
     return out
 
-
 def dot_product(q: dict[int, float], d: dict[int, float]) -> float:
     """Sparse dot product: ``sum_{k in q ∩ d} q[k] * d[k]``.
 
@@ -258,7 +248,6 @@ def dot_product(q: dict[int, float], d: dict[int, float]) -> float:
             total += v * w
     return total
 
-
 def dot_product_batch(
     q: dict[int, float],
     docs: list[dict[int, float]],
@@ -273,7 +262,6 @@ def dot_product_batch(
         return [0.0] * len(docs)
     return [dot_product(q, d) for d in docs]
 
-
 def is_available() -> bool:
     """Returns ``True`` iff transformers + torch are installed AND the
     model loads cleanly.
@@ -284,9 +272,7 @@ def is_available() -> bool:
     model, _, _ = _load_sparse_model()
     return model is not None
 
-
 # ─── CLI inspector ────────────────────────────────────────────────────
-
 
 if __name__ == "__main__":
     import argparse

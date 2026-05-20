@@ -23,8 +23,8 @@ from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR))
-# MIGRATION BRIDGE — relocated modules + legacy helpers
-sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "skills" / "workflow" / "scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import _bootstrap  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts" / "brain"))
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts" / "indexers"))
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts" / "handlers"))
@@ -36,16 +36,13 @@ except ImportError as e:
     sys.stderr.write(f"kaizen-drift-mcp: missing dep: {e}\n")
     sys.exit(1)
 
-
 mcp = FastMCP("kaizen-drift")
-
 
 def _root() -> Path:
     env = os.environ.get("KAIZEN_DRIFT_ROOT")
     if env:
         return Path(env).expanduser().resolve()
     return Path.cwd()
-
 
 @mcp.tool()
 async def drift_status() -> dict:
@@ -63,7 +60,6 @@ async def drift_status() -> dict:
         "current_count": len(kz_drift.load_profiles(current)),
     }
 
-
 @mcp.tool()
 async def drift_record_baseline() -> dict:
     """Copy every <root>/docs/crates/*.json into <root>/.kaizen/workflow/
@@ -77,7 +73,6 @@ async def drift_record_baseline() -> dict:
         )
     except FileNotFoundError as e:
         return {"error": str(e)}
-
 
 @mcp.tool()
 async def drift_check(fail_on_drift: bool = False) -> dict:
@@ -103,7 +98,6 @@ async def drift_check(fail_on_drift: bool = False) -> dict:
         out["gate_failed"] = True
     return out
 
-
 @mcp.tool()
 async def drift_explain(unit: str) -> dict:
     """Detail one unit's drift. Returns the UnitDrift dict or
@@ -124,7 +118,6 @@ async def drift_explain(unit: str) -> dict:
         return {"unit": unit, "unchanged": True}
     import dataclasses
     return {"status": "changed", **dataclasses.asdict(match)}
-
 
 if __name__ == "__main__":
     mcp.run()

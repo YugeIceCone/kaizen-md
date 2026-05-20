@@ -43,7 +43,6 @@ PAIRS: dict[str, set[str]] = {
     "Read": {"Edit", "Write"},
 }
 
-
 def _parse_ts(ts: str) -> datetime | None:
     """Parse ISO-8601 timestamp; tolerate trailing Z. Returns None on garbage."""
     if not isinstance(ts, str) or not ts:
@@ -55,10 +54,8 @@ def _parse_ts(ts: str) -> datetime | None:
     except (ValueError, TypeError):
         return None
 
-
 def _delta_seconds(later: datetime, earlier: datetime) -> float:
     return (later - earlier).total_seconds()
-
 
 def _file_path(event: dict) -> str | None:
     """Extract file_path from event. None when not applicable."""
@@ -72,7 +69,6 @@ def _file_path(event: dict) -> str | None:
         return path
     return None
 
-
 def _prune(state: dict, now: datetime, window_seconds: int) -> dict:
     """Drop entries older than `window_seconds` — keeps state bounded."""
     out: dict[str, dict] = {}
@@ -83,7 +79,6 @@ def _prune(state: dict, now: datetime, window_seconds: int) -> dict:
         if _delta_seconds(now, ts) < window_seconds:
             out[path] = entry
     return out
-
 
 def _render_nudge(*, trigger_tool: str, follower_tool: str,
                     path: str, gap_seconds: float) -> str:
@@ -98,7 +93,6 @@ def _render_nudge(*, trigger_tool: str, follower_tool: str,
         f"    --pattern \"<reusable rule>\" --savings-estimate \"<e.g. 2 calls -> 1>\" \\\n"
         f"    --reference \"{path}\""
     )
-
 
 def process_event(event: dict, state: dict, *,
                     window_seconds: int = 30) -> tuple[dict, str | None]:
@@ -138,7 +132,6 @@ def process_event(event: dict, state: dict, *,
     new_state[path] = {"tool": tool, "ts": event.get("ts")}
     return new_state, nudge
 
-
 def _atomic_write_json(path: Path, data: dict) -> None:
     """tempfile + os.replace — partial writes can't corrupt state."""
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -154,7 +147,6 @@ def _atomic_write_json(path: Path, data: dict) -> None:
             pass
         raise
 
-
 def _load_state(path: Path) -> dict:
     if not path.is_file():
         return {}
@@ -162,7 +154,6 @@ def _load_state(path: Path) -> dict:
         return json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
         return {}
-
 
 def run_hook(stdin_text: str, *, state_path: Path,
               window_seconds: int = 30, now: str | None = None
@@ -202,6 +193,5 @@ def run_hook(stdin_text: str, *, state_path: Path,
             }
         }, new_state
     return {}, new_state
-
 
 __all__ = ["process_event", "run_hook", "PAIRS"]

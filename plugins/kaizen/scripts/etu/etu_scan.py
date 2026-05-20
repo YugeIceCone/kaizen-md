@@ -34,7 +34,6 @@ from typing import Iterable
 
 _APP_DIR = Path(__file__).resolve().parent
 
-
 def _load_anti_patterns() -> dict:
     """Explicit file-path loading to avoid module-name collisions with
     other skills that also have `application/_loader.py` (e.g. iron-laws).
@@ -50,7 +49,6 @@ def _load_anti_patterns() -> dict:
     spec.loader.exec_module(module)
     return module.load_anti_patterns()
 
-
 @dataclass
 class Finding:
     pattern_id: str
@@ -61,7 +59,6 @@ class Finding:
     matched: str
     why_bad: str
     replacement: str
-
 
 def _staged_shell_files(repo_root: Path) -> list[Path]:
     """List staged files that look like shell scripts."""
@@ -87,14 +84,12 @@ def _staged_shell_files(repo_root: Path) -> list[Path]:
                 pass
     return [p for p in paths if p.exists()]
 
-
 def _all_shell_files(root: Path) -> list[Path]:
     return sorted(
         p
         for p in root.rglob("*.sh")
         if ".git" not in p.parts and "node_modules" not in p.parts
     )
-
 
 def scan_files(
     files: Iterable[Path],
@@ -178,7 +173,6 @@ def scan_files(
                     )
     return findings
 
-
 def scan_text(text: str, source: str = "<command>") -> list[Finding]:
     """Apply the catalog's `detect` regexes to a plain text string.
 
@@ -227,7 +221,6 @@ def scan_text(text: str, source: str = "<command>") -> list[Finding]:
                 )
     return findings
 
-
 def _render_text(findings: list[Finding]) -> str:
     if not findings:
         return "etu_scan: no findings"
@@ -245,10 +238,8 @@ def _render_text(findings: list[Finding]) -> str:
         )
     return "".join(out)
 
-
 def _render_json(findings: list[Finding]) -> str:
     return json.dumps([asdict(f) for f in findings], indent=2)
-
 
 def main(argv: list[str]) -> int:
     if not argv:
@@ -279,7 +270,6 @@ def main(argv: list[str]) -> int:
     else:
         print(_render_text(findings))
     return 1 if findings else 0
-
 
 if __name__ == "__main__":
     sys.exit(main(sys.argv[1:]))

@@ -40,7 +40,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "scripts" / "indexe
 
 mcp = FastMCP("symbol-search")
 
-
 def _resolve_root() -> Path:
     env = os.environ.get("KAIZEN_ONBOARD_ROOT")
     if env:
@@ -56,7 +55,6 @@ def _resolve_root() -> Path:
         pass
     return Path.cwd()
 
-
 def _open_conn(root: Path) -> sqlite3.Connection | None:
     """Open the onboard db read-only. None when the db doesn't exist."""
     import onboard_index as oi
@@ -69,7 +67,6 @@ def _open_conn(root: Path) -> sqlite3.Connection | None:
         return conn
     except sqlite3.OperationalError:
         return None
-
 
 def _maybe_embed(query: str) -> bytes | None:
     """Embed the query if a backend is available; else None → fallback.
@@ -86,7 +83,6 @@ def _maybe_embed(query: str) -> bytes | None:
     except BaseException:  # noqa: BLE001
         return None
 
-
 def _snippet(text: str, max_len: int = 200) -> str:
     """First non-trivial line + a few more, capped."""
     if not text:
@@ -95,7 +91,6 @@ def _snippet(text: str, max_len: int = 200) -> str:
     if len(text) > max_len:
         snippet += "…"
     return snippet
-
 
 def symbol_search(query: str, top_k: int = 10,
                    kind: str = "", language: str = "",
@@ -185,7 +180,6 @@ def symbol_search(query: str, top_k: int = 10,
         })
     return out
 
-
 def symbol_at_line(file: str, line: int) -> list[dict]:
     """Innermost enclosing symbol(s) at file:line. ``file`` matched by suffix.
 
@@ -214,7 +208,6 @@ def symbol_at_line(file: str, line: int) -> list[dict]:
         "kind":        _infer_kind(r["symbol_name"]),
     } for r in rows]
 
-
 def _infer_kind(symbol_name: str) -> str:
     """Heuristic: '.' in name → method, '<module>' → module, else function."""
     if not symbol_name:
@@ -224,7 +217,6 @@ def _infer_kind(symbol_name: str) -> str:
     if "." in symbol_name:
         return "method"
     return "function-or-class"
-
 
 def _cosine(a: bytes, b: bytes) -> float:
     """Cosine similarity for two float32-packed embeddings."""
@@ -241,10 +233,8 @@ def _cosine(a: bytes, b: bytes) -> float:
         return 0.0
     return dot / (na * nb)
 
-
 mcp.tool()(symbol_search)
 mcp.tool()(symbol_at_line)
-
 
 if __name__ == "__main__":
     mcp.run()

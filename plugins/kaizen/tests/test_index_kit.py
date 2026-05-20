@@ -17,9 +17,9 @@ from pathlib import Path
 from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / "skills" / "workflow" / "scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 sys.path.insert(0, str(ROOT / "scripts" / "daemon"))
-
 
 class TestComputeCorpusDrift(unittest.TestCase):
 
@@ -62,7 +62,6 @@ class TestComputeCorpusDrift(unittest.TestCase):
             h_without = ik.compute_corpus_drift(Path(td), "*.md",
                                                   exclude_files=["INDEX.md"])
         self.assertNotEqual(h_with, h_without)
-
 
 class TestDaemonDriftJob(unittest.TestCase):
 
@@ -133,7 +132,6 @@ class TestDaemonDriftJob(unittest.TestCase):
         # State NOT stamped → next tick retries
         self.assertEqual(state["test_job_hash"], "OLD")
 
-
 class TestAtomicOpenWithMigrations(unittest.TestCase):
 
     def test_creates_db_with_schema_and_runs_migrations(self):
@@ -154,7 +152,6 @@ class TestAtomicOpenWithMigrations(unittest.TestCase):
         # Schema applied
         cols = {row[1] for row in conn.execute("PRAGMA table_info(t)")}
         self.assertEqual(cols, {"id", "name"})
-
 
 if __name__ == "__main__":
     unittest.main()

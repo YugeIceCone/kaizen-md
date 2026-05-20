@@ -35,7 +35,6 @@ import re
 import sys
 from pathlib import Path
 
-
 # Frontmatter regex — handles ---/--- delimited YAML at top of file
 _FRONTMATTER_RE = re.compile(r"^---\n(.*?)\n---", re.DOTALL)
 
@@ -55,7 +54,6 @@ _DESC_RE = re.compile(
 # double quotes; ignores escaped quotes (rare in skill descriptions).
 _QUOTED_RE = re.compile(r'"([^"]{3,80})"')
 
-
 def _skills_root() -> Path:
     env = os.environ.get("KAIZEN_SKILL_SUGGEST_ROOT")
     if env:
@@ -63,7 +61,6 @@ def _skills_root() -> Path:
     here = Path(__file__).resolve().parent
     # scripts/util/ → plugin_root/skills/
     return here.parent.parent / "skills"
-
 
 def _iter_skill_dirs(root: Path):
     """Yield each skills/<name>/ dir. One level — sub-skills under
@@ -76,7 +73,6 @@ def _iter_skill_dirs(root: Path):
             continue
         if (d / "SKILL.md").is_file():
             yield d
-
 
 def parse_skill(skill_dir: Path) -> dict | None:
     """Return {name, description, triggers[]} or None on parse failure."""
@@ -98,7 +94,6 @@ def parse_skill(skill_dir: Path) -> dict | None:
     return {"name": name, "description": desc, "triggers": triggers,
              "dir": str(skill_dir)}
 
-
 def index_all() -> list[dict]:
     """Walk skills/ and return parsed catalog. Skills with no quoted
     triggers are still in the list (so `list` can show them) but the
@@ -109,7 +104,6 @@ def index_all() -> list[dict]:
         if s is not None:
             out.append(s)
     return out
-
 
 def match_prompt(prompt: str, *, max_results: int = 3) -> list[dict]:
     """Return skills whose triggers match the prompt, ranked by
@@ -134,7 +128,6 @@ def match_prompt(prompt: str, *, max_results: int = 3) -> list[dict]:
     hits.sort(key=lambda x: (-x[0], -x[1]["trigger_count"]))
     return [h[1] for h in hits[:max_results]]
 
-
 def _cmd_match(args) -> int:
     prompt = args.prompt or sys.stdin.read().strip()
     if not prompt:
@@ -150,13 +143,11 @@ def _cmd_match(args) -> int:
             print(f"    triggers: {', '.join(m['matched'])}")
     return 0
 
-
 def _dxm_dir() -> Path:
     env = os.environ.get("KAIZEN_DXM_DIR")
     if env:
         return Path(os.path.expandvars(env)).expanduser()
     return Path.home() / ".claude" / ".kaizen" / "dxm"
-
 
 def _iter_dxm_events(session_id: str):
     """Yield dxm events for the given session (best-effort, no raise)."""
@@ -175,7 +166,6 @@ def _iter_dxm_events(session_id: str):
                     continue
     except OSError:
         return
-
 
 def _read_inbox_prompts(session_id: str) -> list[tuple[float, str]]:
     """Return [(ts_unix, prompt_text), ...] for the session's inbox
@@ -217,7 +207,6 @@ def _read_inbox_prompts(session_id: str) -> list[tuple[float, str]]:
         if prompt:
             out.append((ts, prompt))
     return out
-
 
 def audit_misses(session_id: str, back_seconds: float | None = None) -> list[dict]:
     """Cross-reference inbox prompts with dxm Skill loads. Returns a
@@ -270,7 +259,6 @@ def audit_misses(session_id: str, back_seconds: float | None = None) -> list[dic
             })
     return out
 
-
 def _cmd_from_dxm(args) -> int:
     """Post-hoc miss-detector — reads dxm + inbox, reports prompts
     that matched skills the agent likely should have loaded.
@@ -316,7 +304,6 @@ def _cmd_from_dxm(args) -> int:
                 print(f"      prompt: {m['prompt']}")
     return 0
 
-
 def _cmd_list(args) -> int:
     catalog = index_all()
     if args.json:
@@ -329,7 +316,6 @@ def _cmd_list(args) -> int:
             n_trig = len(s["triggers"])
             print(f"  {s['name']:<30}  ({n_trig} triggers)")
     return 0
-
 
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(prog="kaizen-skill-suggest",
@@ -362,7 +348,6 @@ def main(argv=None) -> int:
 
     args = p.parse_args(argv)
     return args.func(args)
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

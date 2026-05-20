@@ -32,16 +32,13 @@ _SCHEMA_PATH = (_SCRIPT_DIR.parent.parent / "skills" / "brain" / "domain" /
 
 _SCHEMA_CACHE: dict | None = None
 
-
 def _load_schema() -> dict:
     global _SCHEMA_CACHE
     if _SCHEMA_CACHE is None:
         _SCHEMA_CACHE = json.loads(_SCHEMA_PATH.read_text(encoding="utf-8"))
     return _SCHEMA_CACHE
 
-
 # ─── Minimal JSON Schema validator ───────────────────────────────────
-
 
 _TYPE_MAP = {
     "string": str,
@@ -52,7 +49,6 @@ _TYPE_MAP = {
     "object": dict,
     "null": type(None),
 }
-
 
 def _check_type(value: Any, expected: str) -> bool:
     py = _TYPE_MAP.get(expected)
@@ -71,7 +67,6 @@ def _check_type(value: Any, expected: str) -> bool:
         if isinstance(value, (_dt.date, _dt.datetime)):
             return True
     return isinstance(value, py)
-
 
 def _validate_one(name: str, value: Any, prop_schema: dict) -> list[str]:
     errors: list[str] = []
@@ -107,7 +102,6 @@ def _validate_one(name: str, value: Any, prop_schema: dict) -> list[str]:
                                   f"got {type(item).__name__}")
     return errors
 
-
 def validate(fm: dict) -> list[str]:
     """Validate a parsed frontmatter dict against the memory-entry schema.
 
@@ -125,12 +119,9 @@ def validate(fm: dict) -> list[str]:
             errors.extend(_validate_one(name, fm[name], prop_schema))
     return errors
 
-
 # ─── Frontmatter extraction + parse ──────────────────────────────────
 
-
 _FM_RE = re.compile(r"\A---\n(.*?)\n---\n", re.S)
-
 
 def _parse_yaml_frontmatter(text: str) -> tuple[dict, list[str]]:
     """Extract + YAML-parse the frontmatter block. Returns (dict, errors).
@@ -154,7 +145,6 @@ def _parse_yaml_frontmatter(text: str) -> tuple[dict, list[str]]:
     if not isinstance(data, dict):
         return {}, [f"frontmatter must be a mapping, got {type(data).__name__}"]
     return data, []
-
 
 def _fallback_parse(body: str) -> tuple[dict, list[str]]:
     """No-PyYAML fallback: parse 'key: value' lines only. Lossy but
@@ -186,7 +176,6 @@ def _fallback_parse(body: str) -> tuple[dict, list[str]]:
                 except ValueError:
                     out[key] = raw
     return out, []
-
 
 def validate_text(text: str) -> list[str]:
     """Parse + validate frontmatter from a full .md file body."""

@@ -25,13 +25,13 @@ from pathlib import Path
 _SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(_SCRIPT_DIR))
 # MIGRATION BRIDGE — _envelope + other helpers still at skills/workflow/scripts/
-sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "skills" / "workflow" / "scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import _bootstrap  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 
 import _envelope  # noqa: E402
 import schema_cli  # noqa: E402
 
 _emit = _envelope.emitter("kaizen-rubric", tool_version="1.0.0")
-
 
 def _cmd_eval(args) -> int:
     rp = Path(args.rubric).expanduser()
@@ -80,7 +80,6 @@ def _cmd_eval(args) -> int:
         print(f"  signals:   {signals}")
     return 0
 
-
 def _cmd_lint(args) -> int:
     rp = Path(args.rubric).expanduser()
     if not rp.is_file():
@@ -113,7 +112,6 @@ def _cmd_lint(args) -> int:
         print(f"  fallback: {walker.fallback}")
     return 0
 
-
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(
         prog="kaizen-rubric",
@@ -140,7 +138,6 @@ def main(argv=None) -> int:
 
     args = p.parse_args(argv)
     return args.func(args)
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

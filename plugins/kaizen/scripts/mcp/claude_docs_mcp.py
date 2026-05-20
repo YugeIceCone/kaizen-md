@@ -66,9 +66,7 @@ except ImportError as e:
     )
     sys.exit(1)
 
-
 mcp = FastMCP("claude-docs")
-
 
 @mcp.tool()
 async def claude_docs_search(query: str, top_k: int = 8) -> list[dict]:
@@ -85,14 +83,12 @@ async def claude_docs_search(query: str, top_k: int = 8) -> list[dict]:
     the full chunk text."""
     return cdi.do_search(query, top_k=top_k)
 
-
 @mcp.tool()
 async def claude_docs_stats() -> dict:
     """Index meta — {exists, files, chunks, model, dim, backend_kind,
     last_indexed_ts, size_bytes, src, db}. Call this first to verify
     the index is built before searching."""
     return cdi.do_stats()
-
 
 @mcp.tool()
 async def claude_docs_get(chunk_id: int) -> dict:
@@ -103,7 +99,6 @@ async def claude_docs_get(chunk_id: int) -> dict:
     r = cdi.do_get(chunk_id)
     return r if r else {"error": f"chunk id={chunk_id} not found"}
 
-
 @mcp.tool()
 async def claude_docs_list_files(limit: int = 200) -> list[dict]:
     """File-level listing of the index (no embeddings).
@@ -112,7 +107,6 @@ async def claude_docs_list_files(limit: int = 200) -> list[dict]:
     bytes, updated_at}. Use for `what topics are indexed?` queries
     before deciding which sub-query to run."""
     return cdi.do_list_files(limit=limit)
-
 
 @mcp.tool()
 async def claude_docs_index_run() -> dict:
@@ -124,7 +118,6 @@ async def claude_docs_index_run() -> dict:
     class _A:
         src = None
     return cdi.cmd_index(_A())
-
 
 if __name__ == "__main__":
     mcp.run()

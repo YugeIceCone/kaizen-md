@@ -54,12 +54,12 @@ from typing import Optional
 
 _SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(_SCRIPT_DIR))
-sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "skills" / "workflow" / "scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import _bootstrap  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 
 import _brain  # noqa: E402
 
 # ─── Schema constants (mirror upstream schema.js) ────────────────────
-
 
 TYPES = {
     "WORLD_FACT": "world-fact",
@@ -91,7 +91,6 @@ PERSONA_SECTION_PLACEHOLDERS = {
 }
 
 # ─── Schema inference (path-based) ───────────────────────────────────
-
 
 def infer_expected_schema(filepath: Path, brain_root: Optional[Path] = None) -> dict:
     """Determine which schema applies to ``filepath`` based on its
@@ -186,12 +185,9 @@ def infer_expected_schema(filepath: Path, brain_root: Optional[Path] = None) -> 
 
     return {"kind": "passthrough"}
 
-
 # ─── Frontmatter manipulation (text-level, preserves byte layout) ────
 
-
 _FM_OPEN_RE = re.compile(r"^---\r?\n", re.M)
-
 
 def _split_frontmatter(text: str) -> tuple[str, str, bool]:
     """Return ``(frontmatter_body, document_body, had_frontmatter)``.
@@ -205,7 +201,6 @@ def _split_frontmatter(text: str) -> tuple[str, str, bool]:
         return "", text, False
     return m.group(1), text[m.end():], True
 
-
 def _parse_fm_keys(fm_text: str) -> set[str]:
     """Extract top-level keys from the frontmatter block. Mirrors
     upstream schema.js::parseFmKeys (regex-based; ignores nested keys)."""
@@ -215,7 +210,6 @@ def _parse_fm_keys(fm_text: str) -> set[str]:
         if m:
             keys.add(m.group(1))
     return keys
-
 
 def _format_yaml_value(v) -> str:
     """Quote scalars that contain YAML-special chars; pass through ints/floats/bools."""
@@ -232,7 +226,6 @@ def _format_yaml_value(v) -> str:
     if isinstance(v, bool):
         return "true" if v else "false"
     return str(v)
-
 
 def apply_missing_frontmatter_fields(
     text: str, defaults: dict, today: str
@@ -266,7 +259,6 @@ def apply_missing_frontmatter_fields(
     new_fm = f"---\n{chr(10).join(additions)}\n---\n\n"
     return {"text": new_fm + body, "added_fields": added_fields}
 
-
 def _find_existing_sections(text: str) -> set[str]:
     """Extract h2 section names from a markdown document."""
     present = set()
@@ -275,7 +267,6 @@ def _find_existing_sections(text: str) -> set[str]:
         if m:
             present.add(m.group(1).strip())
     return present
-
 
 def append_missing_persona_sections(
     text: str, required_sections: tuple[str, ...]
@@ -297,9 +288,7 @@ def append_missing_persona_sections(
     new_text = f"{trimmed}\n\n" + "\n".join(blocks)
     return {"text": new_text, "added_sections": missing}
 
-
 # ─── Cross-link health (extracted from self_improving/brain_validator) ─
-
 
 def check_links(brain_root: Path) -> dict:
     """Find every ``[[ref]]`` in Persona.md + Notes/, verify each resolves
@@ -343,9 +332,7 @@ def check_links(brain_root: Path) -> dict:
             broken.append((src.name, ref))
     return {"refs_count": len(refs), "broken": broken}
 
-
 # ─── Public entry point ──────────────────────────────────────────────
-
 
 def validate_and_upgrade(
     filepath: Path,
@@ -418,9 +405,7 @@ def validate_and_upgrade(
 
     return result
 
-
 # ─── CLI ─────────────────────────────────────────────────────────────
-
 
 def _emit_json(result: dict) -> None:
     sys.stdout.write(json.dumps({
@@ -432,7 +417,6 @@ def _emit_json(result: dict) -> None:
             "schema_version": 1,
         },
     }, default=str, indent=2) + "\n")
-
 
 def main(argv: Optional[list[str]] = None) -> int:
     ap = argparse.ArgumentParser(
@@ -488,7 +472,6 @@ def main(argv: Optional[list[str]] = None) -> int:
 
     sys.stdout.write(json.dumps(result, indent=2, default=str) + "\n")
     return 0
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

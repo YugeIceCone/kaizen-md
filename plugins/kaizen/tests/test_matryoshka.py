@@ -16,10 +16,9 @@ import unittest
 from pathlib import Path
 
 PLUGIN_ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(PLUGIN_ROOT / "skills" / "workflow" / "scripts"))
-
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 import _embed as kz_embed  # noqa: E402
-
 
 class _EnvSandbox:
     KEY = "KAIZEN_EMBED_MATRYOSHKA_DIM"
@@ -31,7 +30,6 @@ class _EnvSandbox:
     def __exit__(self, *_):
         if self._saved is not None:
             os.environ[self.KEY] = self._saved
-
 
 class TestIsMatryoshkaModel(unittest.TestCase):
     def test_matches_known_families(self):
@@ -57,7 +55,6 @@ class TestIsMatryoshkaModel(unittest.TestCase):
 
     def test_case_insensitive(self):
         self.assertTrue(kz_embed.is_matryoshka_model("MXBAI-Embed-Large"))
-
 
 class TestMaybeTruncate(unittest.TestCase):
     def test_noop_when_env_unset(self):
@@ -136,7 +133,6 @@ class TestMaybeTruncate(unittest.TestCase):
                 wv,
             )
 
-
 class TestEmbedPathWiring(unittest.TestCase):
     """Source-level check that the matryoshka helpers are actually
     called in the embed pipeline. Source grep — catches a regression
@@ -156,7 +152,6 @@ class TestEmbedPathWiring(unittest.TestCase):
         self.assertIn("_get_matryoshka_dim()", text)
         self.assertIn("is_matryoshka_model", text)
 
-
 class TestGetMatryoshkaDim(unittest.TestCase):
     def test_default_zero(self):
         with _EnvSandbox():
@@ -166,7 +161,6 @@ class TestGetMatryoshkaDim(unittest.TestCase):
         with _EnvSandbox():
             os.environ["KAIZEN_EMBED_MATRYOSHKA_DIM"] = "256"
             self.assertEqual(kz_embed._get_matryoshka_dim(), 256)
-
 
 if __name__ == "__main__":
     unittest.main()

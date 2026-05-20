@@ -24,11 +24,11 @@ from pathlib import Path
 from unittest import mock
 
 PLUGIN_ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(PLUGIN_ROOT / "skills" / "workflow" / "scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 sys.path.insert(0, str(PLUGIN_ROOT / "scripts" / "lint"))
 
 import lint_fix_setup as setup  # noqa: E402
-
 
 class DetectServers(unittest.TestCase):
 
@@ -71,7 +71,6 @@ class DetectServers(unittest.TestCase):
                 self.assertEqual(len(out), 1)
                 self.assertEqual(out[0]["url"], "http://127.0.0.1:9999")
 
-
 class InstallScript(unittest.TestCase):
 
     def test_generate_install_script_returns_bash_for_ollama(self):
@@ -94,7 +93,6 @@ class InstallScript(unittest.TestCase):
         script = setup.generate_install_script("ollama")
         # Either `set -e` or `set -euo pipefail` — both acceptable
         self.assertTrue("set -e" in script or "set -euo" in script)
-
 
 class InstallScriptOutput(unittest.TestCase):
     """Pin the post-install output guarantees so we don't regress to the
@@ -142,7 +140,6 @@ class InstallScriptOutput(unittest.TestCase):
         s = setup.generate_install_script("ollama")
         self.assertIn("auto_fix_lint", s)
 
-
 class StartIdle(unittest.TestCase):
 
     def test_start_ollama_skips_when_already_running(self):
@@ -179,7 +176,6 @@ class StartIdle(unittest.TestCase):
                 self.assertIn("install_script", out)
                 self.assertTrue(out["install_script"].startswith("#!/usr/bin/env bash"))
 
-
 class SetupSummary(unittest.TestCase):
 
     def test_setup_summary_reachable_path(self):
@@ -205,7 +201,6 @@ class SetupSummary(unittest.TestCase):
         the canonical path is scripts/install/setup-local-llm.sh."""
         script = (PLUGIN_ROOT / "scripts" / "install" / "setup-local-llm.sh")
         self.assertTrue(script.exists(), f"missing: {script}")
-
 
 if __name__ == "__main__":
     unittest.main()

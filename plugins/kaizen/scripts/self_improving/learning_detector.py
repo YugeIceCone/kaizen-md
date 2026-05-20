@@ -58,9 +58,7 @@ sys.path.insert(0, str(_SCRIPT_DIR.parent / "io"))
 
 import _paths  # noqa: E402
 
-
 # ─── Signal scanners ─────────────────────────────────────────────────
-
 
 def _scan_inbox(brain_root: Path, since: _dt.datetime) -> list[dict]:
     """brain Inbox/ — drafts written by brain_audit awaiting promotion."""
@@ -79,7 +77,6 @@ def _scan_inbox(brain_root: Path, since: _dt.datetime) -> list[dict]:
             continue
         out.append({"signal": "inbox", "path": str(f), "mtime": mtime.isoformat()})
     return out
-
 
 def _scan_gold(since: _dt.datetime) -> list[dict]:
     """kaizen-gold incidental discoveries."""
@@ -100,7 +97,6 @@ def _scan_gold(since: _dt.datetime) -> list[dict]:
             continue
         out.append({"signal": "gold", "path": str(f), "mtime": mtime.isoformat()})
     return out
-
 
 def _scan_project_memory(since: _dt.datetime) -> list[dict]:
     """Project-memory entries touched recently — brain-promotion candidates."""
@@ -131,9 +127,7 @@ def _scan_project_memory(since: _dt.datetime) -> list[dict]:
             })
     return out
 
-
 # ─── Public API ──────────────────────────────────────────────────────
-
 
 def find_learning_candidates(
     brain_root: Optional[Path] = None, since_days: int = 7
@@ -148,14 +142,12 @@ def find_learning_candidates(
     out.sort(key=lambda r: r["mtime"], reverse=True)
     return out
 
-
 def should_trigger_review(candidates: list[dict], min_count: int = 3) -> bool:
     """Decide if the review nudge should fire.
 
     Default: any ≥ ``min_count`` total candidates across signals.
     Future: weight signals (gold > inbox > project_memory)."""
     return len(candidates) >= int(min_count)
-
 
 def summarize(candidates: list[dict]) -> dict:
     """Per-signal count rollup for telemetry / human output."""
@@ -167,9 +159,7 @@ def summarize(candidates: list[dict]) -> dict:
         "by_signal": dict(sorted(out.items())),
     }
 
-
 # ─── CLI ─────────────────────────────────────────────────────────────
-
 
 def _emit_json(payload: dict) -> None:
     sys.stdout.write(json.dumps({
@@ -181,7 +171,6 @@ def _emit_json(payload: dict) -> None:
             "schema_version": 1,
         },
     }, default=str, indent=2) + "\n")
-
 
 def main(argv: Optional[list[str]] = None) -> int:
     ap = argparse.ArgumentParser(
@@ -239,7 +228,6 @@ def main(argv: Optional[list[str]] = None) -> int:
         sys.stdout.write(f"  {sig}: {n}\n")
     sys.stdout.write(f"trigger: {'YES' if trigger else 'no'}\n")
     return 0
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

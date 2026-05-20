@@ -30,10 +30,10 @@ import subprocess
 from pathlib import Path
 
 from fastmcp import FastMCP
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import _bootstrap  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 
 SCRIPT_DIR = Path(os.path.realpath(__file__)).parent
-BACKLOG_PY = SCRIPT_DIR.parents[1] / "skills" / "workflow" / "scripts" / "backlog.py"
-
 
 def _run(*args: str) -> str:
     """Invoke backlog.py with args; return stdout (or stderr on failure)."""
@@ -46,9 +46,7 @@ def _run(*args: str) -> str:
     )
     return result.stdout or result.stderr or ""
 
-
 mcp = FastMCP("backlog")
-
 
 @mcp.tool()
 def list_items(section: str = "all") -> str:
@@ -59,7 +57,6 @@ def list_items(section: str = "all") -> str:
     """
     return _run("list", section)
 
-
 @mcp.tool()
 def show(item_id: str) -> str:
     """Show one backlog item as JSON.
@@ -68,7 +65,6 @@ def show(item_id: str) -> str:
         item_id: e.g. `BK-001`
     """
     return _run("show", item_id)
-
 
 @mcp.tool()
 def add(
@@ -96,7 +92,6 @@ def add(
         args += ["--tags", tags]
     return _run(*args)
 
-
 @mcp.tool()
 def start(item_id: str) -> str:
     """Move a backlog item from `next_up` to `in_flight` (timestamps started_at).
@@ -105,7 +100,6 @@ def start(item_id: str) -> str:
         item_id: e.g. `BK-001`
     """
     return _run("start", item_id)
-
 
 @mcp.tool()
 def tick(item_id: str, committed: str | None = None) -> str:
@@ -120,7 +114,6 @@ def tick(item_id: str, committed: str | None = None) -> str:
         args += ["--committed", committed]
     return _run(*args)
 
-
 @mcp.tool()
 def park(item_id: str, reason: str) -> str:
     """Move a backlog item to `parked` with a reason.
@@ -131,7 +124,6 @@ def park(item_id: str, reason: str) -> str:
     """
     return _run("park", item_id, "--reason", reason)
 
-
 @mcp.tool()
 def unpark(item_id: str, section: str = "next_up") -> str:
     """Move a backlog item out of `parked` into `next_up` (or specified section).
@@ -141,7 +133,6 @@ def unpark(item_id: str, section: str = "next_up") -> str:
         section: target section, default `next_up`
     """
     return _run("unpark", item_id, "--section", section)
-
 
 @mcp.tool()
 def decision(text: str, why: str | None = None) -> str:
@@ -156,18 +147,15 @@ def decision(text: str, why: str | None = None) -> str:
         args += ["--why", why]
     return _run(*args)
 
-
 @mcp.tool()
 def render() -> str:
     """Regenerate the backlog.md view from backlog.json. Idempotent."""
     return _run("render")
 
-
 @mcp.tool()
 def verify() -> str:
     """Verify backlog.md matches backlog.json (CI drift check). Exits non-zero on drift."""
     return _run("verify")
-
 
 if __name__ == "__main__":
     mcp.run()

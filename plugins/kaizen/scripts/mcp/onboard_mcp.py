@@ -77,7 +77,6 @@ except ImportError as e:
     )
     sys.exit(1)
 
-
 def _root() -> Path:
     env = os.environ.get("KAIZEN_ONBOARD_ROOT")
     if env:
@@ -92,9 +91,7 @@ def _root() -> Path:
     except (subprocess.CalledProcessError, FileNotFoundError):
         return Path.cwd()
 
-
 mcp = FastMCP("onboard-search")
-
 
 @mcp.tool()
 async def onboard_search(
@@ -112,13 +109,11 @@ async def onboard_search(
     updated_at}. Score is cosine similarity [0, 1]; higher = closer."""
     return oi.do_search(_root(), query, top_k=top_k, language=language or None)
 
-
 @mcp.tool()
 async def onboard_index_status() -> dict:
     """Index health: total files, sloc, bytes, model, dim, counts by
     language. Run first to confirm the index is built + fresh."""
     return oi.do_stats(_root())
-
 
 @mcp.tool()
 async def onboard_index_run(no_git: bool = False) -> dict:
@@ -130,13 +125,11 @@ async def onboard_index_run(no_git: bool = False) -> dict:
     built-in ignore list. Use when not in a git repo."""
     return oi.do_index(_root(), use_git=not no_git)
 
-
 @mcp.tool()
 async def onboard_get(file_id: int) -> dict:
     """Fetch one indexed file record by SQLite id (snippet included)."""
     r = oi.do_get(_root(), file_id)
     return r if r else {"error": f"id={file_id} not found"}
-
 
 @mcp.tool()
 async def onboard_raw_errors() -> list[dict]:
@@ -149,7 +142,6 @@ async def onboard_raw_errors() -> list[dict]:
     file searchable?" — if it's here, it never made it past stage 1."""
     return oi.do_raw_errors(_root())
 
-
 @mcp.tool()
 async def onboard_dropped() -> list[dict]:
     """List files captured cleanly but dropped at chunk stage (no kept
@@ -160,7 +152,6 @@ async def onboard_dropped() -> list[dict]:
     file is 100% comments. Use this to decide whether a missing file
     is genuinely empty-after-clean or a chunker bug worth fixing."""
     return oi.do_dropped(_root())
-
 
 @mcp.tool()
 async def onboard_recent(limit: int = 20, language: str = "") -> list[dict]:
@@ -182,9 +173,7 @@ async def onboard_recent(limit: int = 20, language: str = "") -> list[dict]:
     conn.close()
     return [{k: r[k] for k in r.keys()} for r in rows]
 
-
 # ─── M7 (v1.33+) — symbol-aware + xref tools ──────────────────────────
-
 
 @mcp.tool()
 async def onboard_symbol_search(
@@ -238,7 +227,6 @@ async def onboard_symbol_search(
     conn.close()
     return [{k: r[k] for k in r.keys()} for r in rows]
 
-
 @mcp.tool()
 async def onboard_xref(symbol: str, kind: str = "") -> list[dict]:
     """Find chunks that reference `symbol` via the xref table (O6).
@@ -275,7 +263,6 @@ async def onboard_xref(symbol: str, kind: str = "") -> list[dict]:
     rows = conn.execute(sql, params).fetchall()
     conn.close()
     return [{k: r[k] for k in r.keys()} for r in rows]
-
 
 if __name__ == "__main__":
     mcp.run()

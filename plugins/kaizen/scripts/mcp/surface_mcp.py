@@ -32,7 +32,6 @@ except ImportError as e:
 
 mcp = FastMCP("kaizen-surface")
 
-
 def _run(verb: str, *extra: str) -> dict:
     cmd = ["python3", str(_TARGET), verb, *extra, "--json"]
     r = subprocess.run(cmd, capture_output=True, text=True, timeout=20)
@@ -42,7 +41,6 @@ def _run(verb: str, *extra: str) -> dict:
         return json.loads(r.stdout)
     except json.JSONDecodeError:
         return {"output": r.stdout.strip()}
-
 
 @mcp.tool()
 async def surface_list() -> dict:
@@ -54,7 +52,6 @@ async def surface_list() -> dict:
     Use to let an agent self-orient before reaching for a tool."""
     return await asyncio.to_thread(_run, "list")
 
-
 @mcp.tool()
 async def surface_validate() -> dict:
     """Consistency check across the registries. Findings:
@@ -65,7 +62,6 @@ async def surface_validate() -> dict:
 
     Returns {findings: [{severity, kind, target, message}, ...]}."""
     return await asyncio.to_thread(_run, "validate")
-
 
 if __name__ == "__main__":
     mcp.run()

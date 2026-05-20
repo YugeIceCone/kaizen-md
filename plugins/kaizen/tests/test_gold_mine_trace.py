@@ -18,10 +18,9 @@ from pathlib import Path
 from unittest.mock import patch
 
 _KZ = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(_KZ / "skills" / "workflow" / "scripts"))
-
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 import gold_mine  # noqa: E402
-
 
 class TraceBase(unittest.TestCase):
     def setUp(self):
@@ -67,7 +66,6 @@ class TraceBase(unittest.TestCase):
                 f.write(json.dumps(e) + "\n")
         return p
 
-
 class TestTracePath(unittest.TestCase):
     def test_env_override(self):
         with patch.dict(os.environ, {"KAIZEN_TRACE_DIR": "/tmp/xyz"}, clear=False):
@@ -81,7 +79,6 @@ class TestTracePath(unittest.TestCase):
             self.assertEqual(
                 p, Path.home() / ".claude" / ".kaizen" / "indexes" / "trace" / "events.jsonl",
             )
-
 
 class TestNormalizer(unittest.TestCase):
     def test_translates_trace_to_dxm_shape(self):
@@ -107,7 +104,6 @@ class TestNormalizer(unittest.TestCase):
         n = gold_mine._normalize_trace_event({})
         self.assertEqual(n["evt_type"], "")
         self.assertEqual(n["payload"], {})
-
 
 class TestTraceScan(TraceBase):
     def test_run_mine_reads_trace_events(self):
@@ -160,7 +156,6 @@ class TestTraceScan(TraceBase):
         summary = gold_mine.run_mine()
         self.assertEqual(summary["scanned"], 2,
                           f"expected dxm+trace=2; got {summary['scanned']}")
-
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

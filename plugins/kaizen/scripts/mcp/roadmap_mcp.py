@@ -36,8 +36,8 @@ from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR))
-# MIGRATION BRIDGE — relocated modules + legacy helpers
-sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "skills" / "workflow" / "scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import _bootstrap  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts" / "brain"))
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts" / "indexers"))
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts" / "handlers"))
@@ -52,13 +52,10 @@ except ImportError as e:
     )
     sys.exit(1)
 
-
 mcp = FastMCP("kaizen-roadmap")
-
 
 def _load() -> tuple[list[rs.Phase], Path | None]:
     return rs._load_phases()
-
 
 @mcp.tool()
 async def roadmap_progress() -> dict:
@@ -90,7 +87,6 @@ async def roadmap_progress() -> dict:
         "dashboard_text": rs.render_dashboard(phases),
     }
 
-
 @mcp.tool()
 async def roadmap_next() -> dict:
     """Just the next pending item. Returns the Item dict, or
@@ -102,7 +98,6 @@ async def roadmap_next() -> dict:
     if nxt is None:
         return {"empty": True}
     return dataclasses.asdict(nxt)
-
 
 @mcp.tool()
 async def roadmap_phases() -> list[dict]:
@@ -116,7 +111,6 @@ async def roadmap_phases() -> list[dict]:
          "done": p.done, "total": p.total, "pct": round(p.pct, 1)}
         for p in phases
     ]
-
 
 @mcp.tool()
 async def roadmap_phase(number: int) -> dict:
@@ -137,14 +131,12 @@ async def roadmap_phase(number: int) -> dict:
         "items": [dataclasses.asdict(it) for it in target.items],
     }
 
-
 @mcp.tool()
 async def roadmap_path() -> dict:
     """Resolved handoff file path. {present, path} — useful for the
     agent to know which file to edit when marking items done."""
     p = rs.resolve_handoff_path()
     return {"present": p is not None, "path": str(p) if p else None}
-
 
 if __name__ == "__main__":
     mcp.run()

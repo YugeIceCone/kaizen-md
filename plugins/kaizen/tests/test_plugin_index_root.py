@@ -8,10 +8,9 @@ import tempfile
 import unittest
 from pathlib import Path
 
-SCRIPTS = Path(__file__).resolve().parent.parent / "skills" / "workflow" / "scripts"
-sys.path.insert(0, str(SCRIPTS))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 import _paths  # noqa: E402
-
 
 class TestPluginIndexRootPy(unittest.TestCase):
     def setUp(self):
@@ -41,7 +40,6 @@ class TestPluginIndexRootPy(unittest.TestCase):
             # symlink must be resolved to the real path
             self.assertEqual(_paths.plugin_index_root(), real.resolve())
 
-
 class TestPluginIndexRootSh(unittest.TestCase):
     def test_sh_mirrors_py(self):
         with tempfile.TemporaryDirectory() as td:
@@ -52,7 +50,6 @@ class TestPluginIndexRootSh(unittest.TestCase):
                 env=env, capture_output=True, text=True, timeout=10)
             self.assertEqual(out.returncode, 0, out.stderr)
             self.assertEqual(out.stdout.strip(), str(Path(td).resolve()))
-
 
 if __name__ == "__main__":
     unittest.main()

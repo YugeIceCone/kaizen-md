@@ -56,8 +56,8 @@ from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR))
-# MIGRATION BRIDGE — relocated modules + legacy helpers
-sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "skills" / "workflow" / "scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import _bootstrap  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts" / "brain"))
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts" / "indexers"))
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts" / "handlers"))
@@ -72,9 +72,7 @@ except ImportError as e:
     )
     sys.exit(1)
 
-
 mcp = FastMCP("kaizen-loop")
-
 
 @mcp.tool()
 async def loop_add_item(desc: str, verify: str = "") -> dict:
@@ -99,7 +97,6 @@ async def loop_add_item(desc: str, verify: str = "") -> dict:
     except ValueError as e:
         return {"error": str(e)}
 
-
 @mcp.tool()
 async def loop_list_pending() -> list[dict]:
     """List current pending items in the loop ledger.
@@ -110,7 +107,6 @@ async def loop_list_pending() -> list[dict]:
         return ls.list_pending()
     except FileNotFoundError:
         return []
-
 
 @mcp.tool()
 async def loop_list_completed() -> list[dict]:
@@ -123,7 +119,6 @@ async def loop_list_completed() -> list[dict]:
     except FileNotFoundError:
         return []
 
-
 @mcp.tool()
 async def loop_status() -> dict:
     """Loop state summary.
@@ -132,7 +127,6 @@ async def loop_status() -> dict:
     completed_count, completion_promise, started_at, state_path}.
     `active: false` means no loop is currently running."""
     return ls.status()
-
 
 @mcp.tool()
 async def loop_complete_item(id_or_desc: str, note: str = "") -> dict:
@@ -152,7 +146,6 @@ async def loop_complete_item(id_or_desc: str, note: str = "") -> dict:
     except (FileNotFoundError, KeyError, ValueError) as e:
         return {"error": str(e)}
 
-
 @mcp.tool()
 async def loop_next() -> dict:
     """Token-saving accessor: just the next pending item.
@@ -167,7 +160,6 @@ async def loop_next() -> dict:
         return {"empty": True}
     return item
 
-
 @mcp.tool()
 async def loop_progress() -> dict:
     """Token-saving accessor: just the counters.
@@ -177,7 +169,6 @@ async def loop_progress() -> dict:
     queries during an iteration."""
     return ls.progress()
 
-
 @mcp.tool()
 async def loop_tldr() -> str:
     """Token-saving accessor: one-line compact summary string.
@@ -186,7 +177,6 @@ async def loop_tldr() -> str:
     string when no loop is active. Most-compact loop view — useful
     as a one-shot status header without parsing dicts."""
     return ls.tldr()
-
 
 @mcp.tool()
 async def loop_promise(phrase: str) -> dict:
@@ -207,7 +197,6 @@ async def loop_promise(phrase: str) -> dict:
     except (FileNotFoundError, ValueError) as e:
         return {"error": str(e)}
 
-
 @mcp.tool()
 async def loop_cancel() -> dict:
     """Cancel the active loop (remove .kaizen/loop.state.md).
@@ -215,7 +204,6 @@ async def loop_cancel() -> dict:
     Returns {cancelled: bool, iteration?, pending_count?, completed_count?}.
     A no-op if no loop is active."""
     return ls.cancel()
-
 
 if __name__ == "__main__":
     mcp.run()

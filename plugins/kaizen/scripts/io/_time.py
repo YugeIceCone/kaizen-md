@@ -25,11 +25,9 @@ from typing import Literal
 
 Precision = Literal["seconds", "milliseconds", "microseconds"]
 
-
 def utc_now() -> dt.datetime:
     """Return a tz-aware UTC `datetime`. Identical to `dt.datetime.now(dt.timezone.utc)`."""
     return dt.datetime.now(dt.timezone.utc)
-
 
 def iso(at: dt.datetime | None = None, *, precision: Precision = "milliseconds") -> str:
     """Format a `datetime` (default: now) as a Z-terminated ISO-8601 string."""

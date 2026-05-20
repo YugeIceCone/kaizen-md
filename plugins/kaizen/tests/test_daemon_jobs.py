@@ -10,9 +10,9 @@ from pathlib import Path
 from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / "skills" / "workflow" / "scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 sys.path.insert(0, str(ROOT / "scripts" / "daemon"))
-
 
 def _fake_proc(rc: int = 0, stdout: str = "{}", stderr: str = ""):
     class R:
@@ -20,7 +20,6 @@ def _fake_proc(rc: int = 0, stdout: str = "{}", stderr: str = ""):
     R.stdout = stdout
     R.stderr = stderr
     return R
-
 
 class TestRunBrainAudit(unittest.TestCase):
 
@@ -65,7 +64,6 @@ class TestRunBrainAudit(unittest.TestCase):
 
         self.assertFalse(ok)
         self.assertIn("rc=2", msg)
-
 
 class TestRunBrainIndex(unittest.TestCase):
 
@@ -134,7 +132,6 @@ class TestRunBrainIndex(unittest.TestCase):
         self.assertFalse(ok)
         # On failure, hash must NOT advance — next tick retries.
         self.assertEqual(state["brain_notes_hash"], "OLD")
-
 
 class TestRunBrainPromote(unittest.TestCase):
 
@@ -219,7 +216,6 @@ class TestRunBrainPromote(unittest.TestCase):
         self.assertNotIn("brain-promote",
                          (state.get("last_run_at") or {}))
 
-
 class TestRunBrainEvolve(unittest.TestCase):
 
     def test_default_off_returns_opt_in_skip(self):
@@ -283,7 +279,6 @@ class TestRunBrainEvolve(unittest.TestCase):
         self.assertFalse(ok)
         self.assertEqual(state["last_evolve_date"], "2020-01-01")
 
-
 class TestRunGoldMine(unittest.TestCase):
     """Weekly throttled trace-mining + pattern proposal pass.
 
@@ -336,7 +331,6 @@ class TestRunGoldMine(unittest.TestCase):
         self.assertIn("mine", called)
         self.assertGreater(state["last_run_at"]["gold-mine"],
                            time.time() - 5)
-
 
 class TestRunMemorySync(unittest.TestCase):
     """Phase B: drift-gated MEMORY.md auto-sync. Same shape as
@@ -402,7 +396,6 @@ class TestRunMemorySync(unittest.TestCase):
             text = (mem / "MEMORY.md").read_text()
             self.assertIn("project_a.md", text)
             self.assertIn("project_b.md", text)
-
 
 if __name__ == "__main__":
     unittest.main()

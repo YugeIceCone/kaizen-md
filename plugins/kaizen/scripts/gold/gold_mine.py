@@ -39,7 +39,6 @@ from collections import Counter
 from pathlib import Path
 from typing import Iterable, Optional
 
-
 _TAIL_BYTES = 4096
 
 # Public contract thresholds — see test_gold_mine_contract.TestThresholdGate.
@@ -49,13 +48,11 @@ _TAIL_BYTES = 4096
 PROPOSAL_THRESHOLD = 0.75
 AUTO_CAPTURE_THRESHOLD = 0.85
 
-
 def _kaizen_dir() -> Path:
     env = os.environ.get("KAIZEN_DIR")
     if env:
         return Path(os.path.expandvars(env)).expanduser()
     return Path.home() / ".claude" / ".kaizen"
-
 
 def _project_root() -> Path:
     cwd = Path.cwd()
@@ -63,7 +60,6 @@ def _project_root() -> Path:
         if (parent / ".kaizen").is_dir() or (parent / ".git").is_dir():
             return parent
     return cwd
-
 
 def _project_slug() -> str:
     """Project slug used to scope cursor + proposals under
@@ -86,11 +82,9 @@ def _project_slug() -> str:
             return subs[0].name
     return str(_project_root().resolve()).replace("/", "-")
 
-
 def cursor_path() -> Path:
     """Project-scoped cursor location under $KAIZEN_DIR/gold/<slug>/."""
     return _kaizen_dir() / "gold" / _project_slug() / "mine-cursor.json"
-
 
 def load_cursor() -> dict:
     """Return the cursor dict; {} when missing or unreadable."""
@@ -102,7 +96,6 @@ def load_cursor() -> dict:
     except (OSError, json.JSONDecodeError):
         return {}
 
-
 def save_cursor(cursor: dict) -> None:
     """Persist the cursor atomically (write tmp → rename)."""
     p = cursor_path()
@@ -110,7 +103,6 @@ def save_cursor(cursor: dict) -> None:
     tmp = p.with_suffix(p.suffix + ".tmp")
     tmp.write_text(json.dumps(cursor, sort_keys=True), encoding="utf-8")
     os.replace(tmp, p)
-
 
 def _tail_sha256(path: Path, size: int) -> str:
     """SHA256 of the last `_TAIL_BYTES` bytes (or whole file if smaller).
@@ -126,13 +118,11 @@ def _tail_sha256(path: Path, size: int) -> str:
         chunk = f.read(n)
     return hashlib.sha256(chunk).hexdigest()
 
-
 def _stat_or_none(path: Path):
     try:
         return path.stat()
     except OSError:
         return None
-
 
 def read_new_lines(
     target: Path,
@@ -198,7 +188,6 @@ def read_new_lines(
     }
     return lines, new_cursor
 
-
 # ---------------------------------------------------------------- Phase 2
 # Mechanical filter + normalize + dedup + anti-recursion.
 
@@ -226,7 +215,6 @@ _RE_UUID = re.compile(
 _RE_TMP_PATH = re.compile(r"/tmp/[^/\s]+/")
 _RE_LINE_NO = re.compile(r":\d+")
 
-
 def _filter_events(events: Iterable[dict]) -> list[dict]:
     """Return only signal-bearing events; drop anti-recursion sources.
 
@@ -250,7 +238,6 @@ def _filter_events(events: Iterable[dict]) -> list[dict]:
             out.append(e)
     return out
 
-
 def _normalize(s: str) -> str:
     """Strip volatile substrings → stable template for dedup.
 
@@ -263,7 +250,6 @@ def _normalize(s: str) -> str:
     s = _RE_TMP_PATH.sub("/tmp/<X>/", s)
     s = _RE_LINE_NO.sub(":<N>", s)
     return s
-
 
 def event_to_template(evt: dict) -> str:
     """Build a normalized template string from a single event.
@@ -283,7 +269,6 @@ def event_to_template(evt: dict) -> str:
                 sig = str(v)
                 break
     return _normalize(f"{et}|{sig}")
-
 
 def _dedup_templates(
     batch: list[str],
@@ -305,7 +290,6 @@ def _dedup_templates(
         else:
             out.append((tpl, n))
     return out
-
 
 def load_history(limit: int = 100) -> set[str]:
     """Load the last `limit` proposed/captured templates as a history set.
@@ -336,12 +320,10 @@ def load_history(limit: int = 100) -> set[str]:
         return set()
     return set(out[-limit:])
 
-
 # ---------------------------------------------------------------- Phase 4
 # Orchestration pipeline: scan dxm → filter → dedup → score → gate.
 
 import datetime as _dt
-
 
 # JSON schema for the Ollama structured-output response.
 _SCORE_SCHEMA = {
@@ -356,22 +338,18 @@ _SCORE_SCHEMA = {
     "required": ["gold_worthy", "confidence", "pattern", "tag", "reason"],
 }
 
-
 def proposals_path() -> Path:
     """Proposals JSONL — sibling of cursor under gold/<slug>/."""
     return cursor_path().parent / "proposals.jsonl"
 
-
 def _iso_now() -> str:
     return _dt.datetime.now(_dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-
 
 def _dxm_dir() -> Path:
     env = os.environ.get("KAIZEN_DXM_DIR")
     if env:
         return Path(os.path.expandvars(env)).expanduser()
     return Path.home() / ".claude" / ".kaizen" / "dxm"
-
 
 def _trace_path() -> Path:
     """Single-file trace store at ~/.claude/.kaizen/indexes/trace/events.jsonl.
@@ -380,7 +358,6 @@ def _trace_path() -> Path:
     if env:
         return Path(os.path.expandvars(env)).expanduser() / "events.jsonl"
     return Path.home() / ".claude" / ".kaizen" / "indexes" / "trace" / "events.jsonl"
-
 
 def _normalize_trace_event(e: dict) -> dict:
     """Trace events use {evt, data, tool, src, sid, ts} shape; dxm uses
@@ -395,7 +372,6 @@ def _normalize_trace_event(e: dict) -> dict:
         "ts_unix":    e.get("ts_unix") or 0,
         "_src":       "trace",
     }
-
 
 def _next_proposal_id() -> int:
     p = proposals_path()
@@ -418,7 +394,6 @@ def _next_proposal_id() -> int:
         return 1
     return max_id + 1
 
-
 def _build_hint(evt: dict, template: str, recurrence: int,
                  recent_types: list[str]) -> str:
     """Build the user-message hint string passed to the LLM."""
@@ -434,13 +409,11 @@ def _build_hint(evt: dict, template: str, recurrence: int,
         "for future reference?"
     )
 
-
 def _append_proposal(rec: dict) -> None:
     p = proposals_path()
     p.parent.mkdir(parents=True, exist_ok=True)
     with p.open("a", encoding="utf-8") as f:
         f.write(json.dumps(rec) + "\n")
-
 
 def _gate_and_write(
     template: str,
@@ -477,7 +450,6 @@ def _gate_and_write(
 
     _append_proposal(rec)
     return "proposed"
-
 
 def _auto_capture(rec: dict) -> None:
     """Fire the existing gold capture path + emit `gold.auto_captured`.
@@ -519,7 +491,6 @@ def _auto_capture(rec: dict) -> None:
             pass
     except Exception as e:
         sys.stderr.write(f"gold-mine: auto-capture failed ({e})\n")
-
 
 def run_mine() -> dict:
     """Full pipeline: scan dxm files → filter → dedup → score → gate.
@@ -620,7 +591,6 @@ def run_mine() -> dict:
         summary[status] = summary.get(status, 0) + 1
 
     return summary
-
 
 __all__ = [
     "cursor_path",

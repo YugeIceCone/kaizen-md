@@ -22,7 +22,6 @@ import re
 import sys
 from pathlib import Path
 
-
 _FM_RE = re.compile(r"^---\n(.*?)\n---\n(.*)$", re.DOTALL)
 _ALLOWED_TOOLS_RE = re.compile(r"^allowed-tools:\s*(.+?)\s*$", re.MULTILINE)
 # Each `question:` line inside a ```code block``` counts as one question.
@@ -30,14 +29,12 @@ _QUESTION_RE = re.compile(r"^\s*question\s*:\s*", re.MULTILINE)
 # Each `- label:` line inside a ```code block``` counts as one option.
 _OPTION_RE = re.compile(r"^\s*-\s+label\s*:\s*", re.MULTILINE)
 
-
 def _split_fm(text: str) -> tuple[str, str]:
     """Return (frontmatter, body). Empty frontmatter when missing."""
     m = _FM_RE.match(text)
     if not m:
         return "", text
     return m.group(1), m.group(2)
-
 
 def _is_menu(fm: str, body: str) -> bool:
     """Heuristic: a slash is a 'menu' if it has any of these signals —
@@ -54,7 +51,6 @@ def _is_menu(fm: str, body: str) -> bool:
     # `- label:` lines is the canonical AskUserQuestion payload shape.
     return bool(_QUESTION_RE.search(body) and _OPTION_RE.search(body))
 
-
 def _has_askuserquestion_perm(fm: str) -> bool:
     """`allowed-tools` must list AskUserQuestion as a top-level entry."""
     m = _ALLOWED_TOOLS_RE.search(fm)
@@ -64,7 +60,6 @@ def _has_askuserquestion_perm(fm: str) -> bool:
     # enough; the surrounding `[...]` syntax + quoting is checked by CC
     # itself when it loads the slash.
     return "AskUserQuestion" in m.group(1)
-
 
 def _count_questions_and_options(body: str) -> tuple[int, list[int]]:
     """Count `question:` and per-question `- label:` lines inside the
@@ -91,7 +86,6 @@ def _count_questions_and_options(body: str) -> tuple[int, list[int]]:
             chunk = fence[boundaries[i]:boundaries[i + 1]]
             options_per_q.append(len(_OPTION_RE.findall(chunk)))
     return max_per_call, options_per_q
-
 
 def lint_menu(text: str, path: str) -> list[dict]:
     """Pure-function lint of a single slash-command file's source text.
@@ -134,14 +128,12 @@ def lint_menu(text: str, path: str) -> list[dict]:
 
     return findings
 
-
 def _commands_dir(arg: str | None) -> Path:
     if arg:
         return Path(arg)
     # __file__ lives at <plugin>/scripts/quality/menu_lint.py
     # so parents[3] is the plugin root.
     return Path(__file__).resolve().parents[3] / "commands"
-
 
 def _cmd_check(args: argparse.Namespace) -> int:
     cdir = _commands_dir(args.commands_dir)
@@ -172,11 +164,9 @@ def _cmd_check(args: argparse.Namespace) -> int:
     has_error = any(f["severity"] == "error" for f in all_findings)
     return 1 if has_error else 0
 
-
 def _cmd_path(args: argparse.Namespace) -> int:
     print(_commands_dir(args.commands_dir))
     return 0
-
 
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(
@@ -198,7 +188,6 @@ def main(argv: list[str] | None = None) -> int:
 
     args = p.parse_args(argv)
     return args.func(args)
-
 
 if __name__ == "__main__":
     sys.exit(main())

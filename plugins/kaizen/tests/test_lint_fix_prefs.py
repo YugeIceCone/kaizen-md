@@ -16,11 +16,11 @@ import unittest
 from pathlib import Path
 
 PLUGIN_ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(PLUGIN_ROOT / "skills" / "workflow" / "scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 sys.path.insert(0, str(PLUGIN_ROOT / "scripts" / "lint"))
 
 import lint_fix_prefs as prefs  # noqa: E402
-
 
 class PrefsRoundtrip(unittest.TestCase):
 
@@ -48,7 +48,6 @@ class PrefsRoundtrip(unittest.TestCase):
             prefs.save_prefs(td, {"strategy": "subagent"})
             leftovers = list((Path(td) / ".kaizen").glob("*.tmp"))
             self.assertEqual(leftovers, [])
-
 
 class StrategyHelpers(unittest.TestCase):
 
@@ -79,7 +78,6 @@ class StrategyHelpers(unittest.TestCase):
             self.assertEqual(out["model"], "alpha")
             self.assertEqual(out["extra"], "keep")
 
-
 class SchemaVersion(unittest.TestCase):
 
     def test_save_writes_schema_version_field(self):
@@ -87,7 +85,6 @@ class SchemaVersion(unittest.TestCase):
             prefs.save_prefs(td, {"strategy": "subagent"})
             out = prefs.load_prefs(td)
             self.assertIn("schema_version", out)
-
 
 if __name__ == "__main__":
     unittest.main()

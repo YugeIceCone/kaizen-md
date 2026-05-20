@@ -48,7 +48,6 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR))
 import _tests_run as _tr  # noqa: E402
 
-
 def _discover(tests_dir: Path, pattern: str = "test_*") -> list[Path]:
     """Find test files matching pattern. Includes .py + .sh."""
     if not tests_dir.is_dir():
@@ -67,7 +66,6 @@ def _discover(tests_dir: Path, pattern: str = "test_*") -> list[Path]:
                 out.append(p)
     return out
 
-
 def _resolve_concurrency(arg: int | None) -> int:
     """CLI > env > nproc, floor=1."""
     if arg and arg > 0:
@@ -81,7 +79,6 @@ def _resolve_concurrency(arg: int | None) -> int:
         except ValueError:
             pass
     return max(1, os.cpu_count() or 1)
-
 
 async def _run_one(path: Path, sem: asyncio.Semaphore, cwd: Path
                      ) -> tuple[str, float, int, str]:
@@ -117,12 +114,10 @@ async def _run_one(path: Path, sem: asyncio.Semaphore, cwd: Path
         rc = 0
     return display, elapsed, rc, combined
 
-
 async def _run_all(paths: list[Path], cwd: Path, concurrency: int
                      ) -> list[tuple[str, float, int, str]]:
     sem = asyncio.Semaphore(concurrency)
     return await asyncio.gather(*(_run_one(p, sem, cwd) for p in paths))
-
 
 def cmd_run(args) -> int:
     root = Path(args.root).resolve()
@@ -175,7 +170,6 @@ def cmd_run(args) -> int:
                     print(tail + "\n---", file=sys.stderr)
     return 1 if failed else 0
 
-
 def cmd_bench(args) -> int:
     root = Path(args.root).resolve()
     tests_dir = root / args.tests_dir
@@ -196,7 +190,6 @@ def cmd_bench(args) -> int:
     else:
         print(_tr.bench_report(triples, top_n=args.top_n))
     return 0
-
 
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(
@@ -226,7 +219,6 @@ def main(argv: list[str] | None = None) -> int:
     args = p.parse_args(argv)
     fn = getattr(args, "fn", cmd_run)
     return fn(args)
-
 
 if __name__ == "__main__":
     sys.exit(main())

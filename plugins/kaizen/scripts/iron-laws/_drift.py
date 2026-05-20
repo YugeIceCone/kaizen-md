@@ -45,22 +45,17 @@ import json
 import shutil
 from pathlib import Path
 
-
 # ─── Path resolution ──────────────────────────────────────────────────
-
 
 def default_baseline_dir(root: Path | None = None) -> Path:
     root = root or Path.cwd()
     return root / ".kaizen" / "workflow" / "drift-baseline"
 
-
 def default_current_dir(root: Path | None = None) -> Path:
     root = root or Path.cwd()
     return root / "docs" / "crates"
 
-
 # ─── Models ──────────────────────────────────────────────────────────
-
 
 @dataclasses.dataclass
 class UnitDrift:
@@ -83,7 +78,6 @@ class UnitDrift:
             and self.tests_delta == 0
         )
 
-
 @dataclasses.dataclass
 class DriftReport:
     """Whole-repo drift report. Has per-unit details + summary counts."""
@@ -101,9 +95,7 @@ class DriftReport:
     def is_empty(self) -> bool:
         return self.total == 0
 
-
 # ─── Loaders ──────────────────────────────────────────────────────────
-
 
 def load_profiles(profile_dir: Path) -> dict[str, dict]:
     """Read every `*.json` in `profile_dir`. Returns dict keyed by file
@@ -117,7 +109,6 @@ def load_profiles(profile_dir: Path) -> dict[str, dict]:
         except (OSError, json.JSONDecodeError):
             continue
     return out
-
 
 def collect_items(profile: dict) -> set[str]:
     """Pull every `{kind, name}` item pair from all files in the profile.
@@ -137,7 +128,6 @@ def collect_items(profile: dict) -> set[str]:
                 out.add(f"{kind} {name}" if kind else name)
     return out
 
-
 def collect_deps(profile: dict) -> set[str]:
     """Pull dep names. Accepts list-of-strings OR list-of-dicts (with `name`)."""
     raw = profile.get("deps") or []
@@ -149,7 +139,6 @@ def collect_deps(profile: dict) -> set[str]:
             out.add(d["name"])
     return out
 
-
 def _j_int(profile: dict, key: str) -> int:
     v = profile.get(key)
     try:
@@ -157,9 +146,7 @@ def _j_int(profile: dict, key: str) -> int:
     except (TypeError, ValueError):
         return 0
 
-
 # ─── Comparison ──────────────────────────────────────────────────────
-
 
 def compare_units(unit: str, baseline: dict, current: dict) -> UnitDrift:
     """Diff two profiles for the same unit."""
@@ -176,7 +163,6 @@ def compare_units(unit: str, baseline: dict, current: dict) -> UnitDrift:
         loc_delta=_j_int(current, "total_loc") - _j_int(baseline, "total_loc"),
         tests_delta=_j_int(current, "total_tests") - _j_int(baseline, "total_tests"),
     )
-
 
 def run_check(
     baseline_dir: Path,
@@ -207,9 +193,7 @@ def run_check(
             report.removed_units.append(key)
     return report
 
-
 # ─── Record (seed baseline) ──────────────────────────────────────────
-
 
 def record_baseline(
     current_dir: Path,
@@ -232,9 +216,7 @@ def record_baseline(
         "source_dir": str(current_dir),
     }
 
-
 # ─── Rendering ────────────────────────────────────────────────────────
-
 
 def format_report(report: DriftReport, *, json_mode: bool = False) -> str:
     if json_mode:

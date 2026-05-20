@@ -51,7 +51,6 @@ import urllib.request
 from pathlib import Path
 from typing import Optional
 
-
 SCRIPTS_DIR = Path(__file__).resolve().parent
 TRACE_PY = SCRIPTS_DIR / "trace.py"
 
@@ -65,7 +64,6 @@ SECRET_HEADER_RE = re.compile(
     r"^(authorization|x-api-key|anthropic-auth|cookie|set-cookie)$",
     re.IGNORECASE,
 )
-
 
 def trace_event(evt: str, ms: Optional[int] = None, **data) -> None:
     """Fire a kaizen-trace event with src=llm. Non-blocking, never raises."""
@@ -84,9 +82,7 @@ def trace_event(evt: str, ms: Optional[int] = None, **data) -> None:
     except (subprocess.SubprocessError, OSError):
         pass
 
-
 # ─── Request / response parsing ──────────────────────────────────────
-
 
 def parse_request_meta(body: bytes, path: str) -> dict:
     meta = {"path": path}
@@ -105,7 +101,6 @@ def parse_request_meta(body: bytes, path: str) -> dict:
         meta["max_tokens"] = j.get("max_tokens")
         meta["stream"] = j.get("stream")
     return meta
-
 
 def parse_response_meta(buf: bytearray, content_type: str) -> dict:
     """Extract token usage from response body. Best-effort."""
@@ -158,9 +153,7 @@ def parse_response_meta(buf: bytearray, content_type: str) -> dict:
         "output_tokens": u.get("output_tokens"),
     }
 
-
 # ─── Proxy handler ───────────────────────────────────────────────────
-
 
 class ProxyHandler(http.server.BaseHTTPRequestHandler):
     server_version = "kaizen-llm-proxy/1.0"
@@ -282,14 +275,11 @@ class ProxyHandler(http.server.BaseHTTPRequestHandler):
     do_HEAD = _forward
     do_OPTIONS = _forward
 
-
 class ThreadedHTTPServer(socketserver.ThreadingMixIn, http.server.HTTPServer):
     daemon_threads = True
     allow_reuse_address = True
 
-
 # ─── Entry ───────────────────────────────────────────────────────────
-
 
 def serve(port: int, upstream: str, host: str = "127.0.0.1") -> int:
     ProxyHandler.upstream_base = upstream
@@ -326,7 +316,6 @@ def serve(port: int, upstream: str, host: str = "127.0.0.1") -> int:
         shutdown()
     return 0
 
-
 def main():
     import argparse
     p = argparse.ArgumentParser(prog="llm_proxy.py", description=__doc__,
@@ -338,7 +327,6 @@ def main():
     p.add_argument("--host", default="127.0.0.1")
     args = p.parse_args()
     sys.exit(serve(args.port, args.upstream, args.host))
-
 
 if __name__ == "__main__":
     main()

@@ -16,10 +16,9 @@ import unittest
 from pathlib import Path
 
 PLUGIN_ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(PLUGIN_ROOT / "skills" / "workflow" / "scripts"))
-
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 import _chunk as kz_chunk  # noqa: E402
-
 
 class TestBuildMetadataPrefix(unittest.TestCase):
     def test_full_metadata(self):
@@ -61,7 +60,6 @@ class TestBuildMetadataPrefix(unittest.TestCase):
         # Conservative: under 200 chars. Typical tokenizer: 30-50 tokens.
         self.assertLess(len(out), 200)
 
-
 class TestApplyPassagePrefixWithMetadata(unittest.TestCase):
     def test_prepends_marker_then_metadata_then_text(self):
         out = kz_chunk.apply_passage_prefix_with_metadata(
@@ -96,7 +94,6 @@ class TestApplyPassagePrefixWithMetadata(unittest.TestCase):
         )
         self.assertIn("raw chunk body\nwith newlines", out)
 
-
 class TestApplyPassagePrefixBatchWithMetadata(unittest.TestCase):
     def test_processes_chunks_in_order(self):
         items = [
@@ -125,7 +122,6 @@ class TestApplyPassagePrefixBatchWithMetadata(unittest.TestCase):
             kz_chunk.apply_passage_prefix_batch_with_metadata([]), []
         )
 
-
 class TestBackwardCompatPlainBatch(unittest.TestCase):
     """The old apply_passage_prefix_batch must keep working — onboard's
     pre-O3 callers and the embed-rerank MCP both use it."""
@@ -135,7 +131,6 @@ class TestBackwardCompatPlainBatch(unittest.TestCase):
         self.assertEqual(len(out), 3)
         for s in out:
             self.assertTrue(s.startswith(kz_chunk.PASSAGE_PREFIX))
-
 
 if __name__ == "__main__":
     unittest.main()

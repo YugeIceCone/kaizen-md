@@ -29,13 +29,13 @@ from pathlib import Path
 _SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(_SCRIPT_DIR))
 # MIGRATION BRIDGE — _dxm_emit, context, session_mode still at legacy.
-sys.path.insert(0, str(_SCRIPT_DIR.parents[1] / "skills" / "workflow" / "scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import _bootstrap  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 
 import _dxm_emit  # noqa: E402
 import _session_jsonl as _sj  # noqa: E402
 import context as _ctx  # noqa: E402
 import session_mode as _sm  # noqa: E402
-
 
 # script at scripts/handoff/ → plugin_root is 2 levels up
 _PLUGIN_ROOT = _SCRIPT_DIR.parent.parent
@@ -55,20 +55,17 @@ _BUILTIN_DEFAULT = {
     },
 }
 
-
 def _config_path() -> Path:
     env = os.environ.get("KAIZEN_AUTO_HANDOFF_CONFIG")
     if env:
         return Path(os.path.expandvars(env)).expanduser()
     return _DEFAULT_CONFIG_PATH
 
-
 def _rubric_path() -> Path:
     env = os.environ.get("KAIZEN_AUTO_HANDOFF_RUBRIC")
     if env:
         return Path(os.path.expandvars(env)).expanduser()
     return _DEFAULT_RUBRIC_PATH
-
 
 def _compute_signals(*, pct: int, threshold: int,
                        compact_count: int = 0,
@@ -83,7 +80,6 @@ def _compute_signals(*, pct: int, threshold: int,
         "peak_pct":        int(peak_pct if peak_pct is not None else pct),
         "threshold_delta": int(pct) - int(threshold),
     }
-
 
 def _walk_rubric(signals: dict) -> str | None:
     """Load rubric.yaml + walk against signals. Returns the bucket
@@ -104,7 +100,6 @@ def _walk_rubric(signals: dict) -> str | None:
     if not result.bucket or result.bucket == "noop":
         return None
     return result.bucket
-
 
 def load_config() -> dict:
     """Load + minimally validate config.yaml. Falls back to builtin
@@ -134,13 +129,11 @@ def load_config() -> dict:
         return dict(_BUILTIN_DEFAULT)
     return parsed
 
-
 def _dxm_dir() -> Path:
     env = os.environ.get("KAIZEN_DXM_DIR")
     if env:
         return Path(os.path.expandvars(env)).expanduser()
     return Path.home() / ".claude" / ".kaizen" / "dxm"
-
 
 def _already_fired(session_id: str, evt_type: str) -> bool:
     path = _dxm_dir() / f"events-{session_id}.jsonl"
@@ -155,7 +148,6 @@ def _already_fired(session_id: str, evt_type: str) -> bool:
         pass
     return False
 
-
 def _session_threshold() -> int | None:
     state = _sm.read_state()
     if state is None:
@@ -165,7 +157,6 @@ def _session_threshold() -> int | None:
         return t
     return None
 
-
 def _format_reason(template: str, **vars) -> str:
     """Safe template substitution — only the documented vars expand;
     stray braces in the template don't blow up KeyError."""
@@ -173,7 +164,6 @@ def _format_reason(template: str, **vars) -> str:
     for k, v in vars.items():
         out = out.replace("{" + k + "}", str(v))
     return out
-
 
 def check(session_id: str | None = None) -> dict:
     """Return decision dict — {} no-op, OR {"decision":"block","reason":…},
@@ -252,12 +242,10 @@ def check(session_id: str | None = None) -> dict:
         return {"decision": "block", "reason": reason}
     return {"systemMessage": reason}
 
-
 def _cmd_check(args) -> int:
     decision = check(session_id=args.session)
     print(json.dumps(decision or {}))
     return 0
-
 
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(
@@ -272,7 +260,6 @@ def main(argv=None) -> int:
     sc.set_defaults(func=_cmd_check)
     args = p.parse_args(argv)
     return args.func(args)
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

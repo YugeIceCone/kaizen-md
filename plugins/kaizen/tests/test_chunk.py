@@ -20,11 +20,10 @@ import sys
 import unittest
 from pathlib import Path
 
-SCRIPT_DIR = Path(__file__).resolve().parent.parent / "skills" / "workflow" / "scripts"
-sys.path.insert(0, str(SCRIPT_DIR))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 
 import _chunk  # noqa: E402
-
 
 class TestChunkText(unittest.TestCase):
     def test_empty(self) -> None:
@@ -86,7 +85,6 @@ class TestChunkText(unittest.TestCase):
         self.assertEqual(len(out), 1)
         self.assertEqual(set(out[0].keys()), {"text", "char_start", "char_end", "chunk_idx"})
 
-
 class TestPrefixes(unittest.TestCase):
     def test_query_prefix_idempotent(self) -> None:
         q = "find me a function"
@@ -107,7 +105,6 @@ class TestPrefixes(unittest.TestCase):
         self.assertEqual(len(out), 3)
         for s in out:
             self.assertTrue(s.startswith("search_document:"))
-
 
 if __name__ == "__main__":
     unittest.main()

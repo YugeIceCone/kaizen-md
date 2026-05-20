@@ -46,18 +46,17 @@ import argparse
 import json
 import sys
 from pathlib import Path
-
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import _bootstrap  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 
 def _default_root() -> Path:
     """Auto-discover plugins/kaizen root from this script's location."""
     return Path(__file__).resolve().parents[2]  # was parents[3] (skills/workflow/scripts/ depth)
 
-
 def _list_source_scripts(root: Path) -> list[str]:
     """Public script stems under skills/workflow/scripts/ AND scripts/
     (post-DOMAIN migration — files split across both locations during
     incremental BIG-REFACTOR). Recursive walk for nested domain subdirs."""
-    legacy = root / "skills" / "workflow" / "scripts"
     new_scripts = root / "scripts"
     candidates: list[Path] = []
     if legacy.is_dir():
@@ -75,7 +74,6 @@ def _list_source_scripts(root: Path) -> list[str]:
         out.append(stem)
     return out
 
-
 def _test_stems(root: Path) -> set[str]:
     """test_<x>.py → 'x' for every test file."""
     tests = root / "tests"
@@ -85,7 +83,6 @@ def _test_stems(root: Path) -> set[str]:
     for p in tests.glob("test_*.py"):
         out.add(p.stem[len("test_"):])
     return out
-
 
 def _is_covered(script_stem: str, test_stems: set[str]) -> bool:
     """A script is covered when any test name matches by stem, op-suffix
@@ -106,7 +103,6 @@ def _is_covered(script_stem: str, test_stems: set[str]) -> bool:
         if t == head or t.startswith(head + "_"):
             return True
     return False
-
 
 def _compute(root: Path) -> dict:
     """Build the coverage dict — used by all subcommands."""
@@ -132,7 +128,6 @@ def _compute(root: Path) -> dict:
         "scripts":    rows,
     }
 
-
 def _print_summary(data: dict, as_json: bool) -> None:
     if as_json:
         # Trim scripts[] from summary — that belongs in report.
@@ -142,14 +137,12 @@ def _print_summary(data: dict, as_json: bool) -> None:
         print(f"kaizen-coverage: {data['covered']}/{data['total']} scripts "
               f"({data['ratio_pct']}%); {len(data['uncovered'])} uncovered")
 
-
 def _print_gaps(data: dict, as_json: bool) -> None:
     if as_json:
         print(json.dumps({"uncovered": data["uncovered"]}))
     else:
         for s in data["uncovered"]:
             print(s)
-
 
 def _print_report(data: dict, as_json: bool) -> None:
     if as_json:
@@ -170,7 +163,6 @@ def _print_report(data: dict, as_json: bool) -> None:
         for row in data["scripts"]:
             mark = "✓" if row["covered"] else "✗"
             print(f"  {mark} {row['script']}")
-
 
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(prog="kaizen-coverage",
@@ -206,7 +198,6 @@ def main(argv: list[str] | None = None) -> int:
         _print_report(data, args.json)
         return 0
     return 2
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

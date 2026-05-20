@@ -34,8 +34,8 @@ from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR))
-# MIGRATION BRIDGE — relocated modules + legacy helpers
-sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "skills" / "workflow" / "scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import _bootstrap  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts" / "brain"))
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts" / "indexers"))
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts" / "handlers"))
@@ -52,12 +52,9 @@ except ImportError as e:
 
 mcp = FastMCP("state")
 
-
 from _subproc import git_repo_root as _repo_root  # noqa: E402, F401 — M2 dedup
 
-
 # ─── status / health (wrap bash scripts) ─────────────────────────────
-
 
 @mcp.tool()
 async def state_status() -> str:
@@ -66,20 +63,17 @@ async def state_status() -> str:
 
     Cheaper than the slash command (which also embeds 50+ lines of
     .md prose around the bash output). Returns text; parse if needed."""
-    sh = SCRIPT_DIR.parents[1] / "skills" / "workflow" / "scripts" / "status.sh"
     r = subprocess.run(
         ["bash", str(sh)],
         cwd=_repo_root(), capture_output=True, text=True,
     )
     return r.stdout or r.stderr or "(no status output)"
 
-
 @mcp.tool()
 async def state_health() -> dict:
     """Diagnostic health-check (wraps `health.sh`). Returns
     {ok: bool, exit_code: int, output: str} — `ok` is True iff
     exit_code == 0 (no RED findings)."""
-    sh = SCRIPT_DIR.parents[1] / "skills" / "workflow" / "scripts" / "health.sh"
     r = subprocess.run(
         ["bash", str(sh)],
         cwd=_repo_root(), capture_output=True, text=True,
@@ -89,7 +83,6 @@ async def state_health() -> dict:
         "exit_code": r.returncode,
         "output": r.stdout,
     }
-
 
 @mcp.tool()
 async def state_health_summary() -> dict:
@@ -107,9 +100,7 @@ async def state_health_summary() -> dict:
         "result_line": next((ln for ln in lines if ln.startswith("Result:")), ""),
     }
 
-
 # ─── context ────────────────────────────────────────────────────────
-
 
 @mcp.tool()
 async def state_context() -> dict:
@@ -140,9 +131,7 @@ async def state_context() -> dict:
         "recommendation": rec,
     }
 
-
 # ─── cache ──────────────────────────────────────────────────────────
-
 
 @mcp.tool()
 async def state_cache_stats() -> dict:
@@ -154,9 +143,7 @@ async def state_cache_stats() -> dict:
     import cache as ch  # type: ignore
     return ch.stats()
 
-
 # ─── inbox ──────────────────────────────────────────────────────────
-
 
 @mcp.tool()
 async def state_inbox_peek(n: int = 5) -> list[dict]:
@@ -170,7 +157,6 @@ async def state_inbox_peek(n: int = 5) -> list[dict]:
     msgs = ix.list_messages(pending_only=True)
     return msgs[:n]
 
-
 @mcp.tool()
 async def state_inbox_list(pending_only: bool = True) -> list[dict]:
     """All inbox messages (defaults to pending-only).
@@ -180,9 +166,7 @@ async def state_inbox_list(pending_only: bool = True) -> list[dict]:
     import inbox as ix  # type: ignore
     return ix.list_messages(pending_only=pending_only)
 
-
 # ─── observe ────────────────────────────────────────────────────────
-
 
 @mcp.tool()
 async def state_observe_layers() -> dict:
@@ -195,7 +179,6 @@ async def state_observe_layers() -> dict:
     import observe as ob  # type: ignore
     return ob.cmd_layers()
 
-
 @mcp.tool()
 async def state_observe_drill(sid: str) -> str:
     """Cross-layer drill for one session id — returns the markdown
@@ -205,9 +188,7 @@ async def state_observe_drill(sid: str) -> str:
     import observe as ob  # type: ignore
     return ob.cmd_drill(sid)
 
-
 # ─── trace (raw event tail) ─────────────────────────────────────────
-
 
 @mcp.tool()
 async def state_trace_tail(n: int = 20, src: str = "", evt: str = "") -> list[dict]:
@@ -221,7 +202,6 @@ async def state_trace_tail(n: int = 20, src: str = "", evt: str = "") -> list[di
     `kaizen-trace-search` MCP server tools instead."""
     import trace as tr  # type: ignore
     return tr.do_tail(n=n, src=src, evt=evt)
-
 
 @mcp.tool()
 async def state_trace_stats() -> dict:
@@ -238,7 +218,6 @@ async def state_trace_stats() -> dict:
         "by_src": dict(by_src.most_common(10)),
         "by_evt": dict(by_evt.most_common(10)),
     }
-
 
 if __name__ == "__main__":
     mcp.run()

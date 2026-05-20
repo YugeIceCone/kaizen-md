@@ -41,13 +41,11 @@ GIT_DISCIPLINE_YAML = DOMAIN_DIR / "git-discipline.yaml"
 ROUTINE_SCHEMA = DOMAIN_DIR / "schemas" / "routine.schema.json"
 GIT_RULES_SCHEMA = DOMAIN_DIR / "schemas" / "git-rules.schema.json"
 
-
 def load_routines() -> dict[str, dict]:
     """Return routines indexed by name. Validates against routine.schema.json."""
     data = _load_yaml(ROUTINES_YAML)
     _check(data, ROUTINE_SCHEMA, "routines.yaml")
     return {r["name"]: r for r in data.get("routines", [])}
-
 
 def load_stage_skill_map() -> dict[str, str]:
     """Return the `stage_skill_map` block as a flat {stage: skill} dict.
@@ -58,12 +56,10 @@ def load_stage_skill_map() -> dict[str, str]:
     _check(data, ROUTINE_SCHEMA, "routines.yaml")
     return dict(data.get("stage_skill_map") or {})
 
-
 def get_skill_for_stage(stage: str) -> str | None:
     """Look up the kaizen skill that implements a stage. Returns None
     when the stage isn't in the map (e.g. `simplify`, schema internals)."""
     return load_stage_skill_map().get(stage)
-
 
 def load_defaults() -> dict:
     """Return the `defaults` block (routing backstops). Validates lazily.
@@ -79,17 +75,14 @@ def load_defaults() -> dict:
         "stages": d.get("stages", ["explore", "analyze", "create-plan", "create-tasks"]),
     }
 
-
 def load_git_discipline() -> dict:
     """Return git-discipline yaml as a plain dict. Validates against git-rules.schema.json."""
     data = _load_yaml(GIT_DISCIPLINE_YAML)
     _check(data, GIT_RULES_SCHEMA, "git-discipline.yaml")
     return data
 
-
 def get_routine(name: str) -> dict | None:
     return load_routines().get(name)
-
 
 def get_stages(name: str) -> list[str]:
     """Return the stage chain for a routine.
@@ -103,7 +96,6 @@ def get_stages(name: str) -> list[str]:
     if r is None:
         return load_defaults()["stages"]
     return r.get("stages") or []
-
 
 def detect_routine(prompt: str) -> str:
     """Mirror workflow.sh::detect_routine — pick a routine by verb match.
@@ -121,7 +113,6 @@ def detect_routine(prompt: str) -> str:
                 return name
     return load_defaults()["routine"]
 
-
 def verb_matched_explicitly(prompt: str) -> bool:
     """True iff some hardcoded routine's trigger_words substring-match the prompt."""
     p = (prompt or "").lower()
@@ -132,7 +123,6 @@ def verb_matched_explicitly(prompt: str) -> bool:
             if word.lower() in p:
                 return True
     return False
-
 
 # ─── CLI ─────────────────────────────────────────────────────────────────
 
@@ -243,7 +233,6 @@ def _cli() -> int:
 
     sys.stderr.write(f"[loader] unknown command: {cmd}\n")
     return 2
-
 
 if __name__ == "__main__":
     sys.exit(_cli())

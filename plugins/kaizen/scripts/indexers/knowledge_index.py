@@ -98,7 +98,8 @@ HOME = Path(os.path.expanduser("~"))
 _SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(_SCRIPT_DIR))
 # MIGRATION BRIDGE — until helpers move from skills/workflow/scripts/ → scripts/
-sys.path.insert(0, str(_SCRIPT_DIR.parents[1] / "skills" / "workflow" / "scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import _bootstrap  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 sys.path.insert(0, str(_SCRIPT_DIR.parents[1] / "scripts" / "brain"))
 import _paths as _p  # noqa: E402
 import config as _cfg  # noqa: E402
@@ -122,13 +123,10 @@ PRIVACY_SKIP_PATTERNS = (
     re.compile(r"token", re.I),
 )
 
-
 # ─── Lazy ML imports ─────────────────────────────────────────────────
-
 
 _model = None
 _np = None
-
 
 def _load_model():
     global _model, _np
@@ -147,9 +145,7 @@ def _load_model():
         _model = SentenceTransformer(DEFAULT_MODEL)
     return _model, _np
 
-
 # ─── SQLite helpers (M1 — shared base in _sqlite.py) ─────────────────
-
 
 import _sqlite as _kz_sqlite  # noqa: E402
 
@@ -174,32 +170,24 @@ _SCHEMA_SQL = """
     );
 """
 
-
 def open_db(create: bool = True) -> sqlite3.Connection:
     return _kz_sqlite.open_indexer_db(DB_PATH, _SCHEMA_SQL, create=create)
-
 
 def set_meta(conn: sqlite3.Connection, key: str, value: str) -> None:
     _kz_sqlite.set_meta(conn, "knowledge_meta", key, value)
 
-
 def get_meta(conn: sqlite3.Connection, key: str, default: str = "") -> str:
     return _kz_sqlite.get_meta(conn, "knowledge_meta", key, default)
 
-
 # ─── Privacy filter ──────────────────────────────────────────────────
-
 
 def _should_skip(path: Path) -> bool:
     s = str(path)
     return any(p.search(s) for p in PRIVACY_SKIP_PATTERNS)
 
-
 # ─── Frontmatter parsing (reusable across sources) ───────────────────
 
-
 _FRONTMATTER_RE = re.compile(r"^---\s*\n(.*?)\n---\s*\n", re.DOTALL)
-
 
 def parse_frontmatter(text: str) -> tuple[dict, str]:
     """Return (frontmatter_dict, body). Flat-scalar yaml only (matches kaizen rules.py)."""
@@ -227,21 +215,17 @@ def parse_frontmatter(text: str) -> tuple[dict, str]:
     body = text[m.end():]
     return fm, body
 
-
 def first_h1(body: str) -> str:
     for line in body.split("\n"):
         if line.startswith("# "):
             return line[2:].strip()
     return ""
 
-
 def snippet_of(body: str, n: int = 400) -> str:
     stripped = re.sub(r"\s+", " ", body).strip()
     return stripped[:n]
 
-
 # ─── Source iterators ────────────────────────────────────────────────
-
 
 def iter_brain_notes():
     notes_dir = BRAIN_PATH / "Notes"
@@ -271,7 +255,6 @@ def iter_brain_notes():
             ).isoformat(),
         }
 
-
 def iter_plans():
     plans_dir = Path.cwd() / "plans"
     if not plans_dir.is_dir():
@@ -296,7 +279,6 @@ def iter_plans():
                 f.stat().st_mtime, dt.timezone.utc
             ).isoformat(),
         }
-
 
 def iter_backlog_items():
     bf = _p.project_workflow_dir() / "backlog.json"
@@ -331,7 +313,6 @@ def iter_backlog_items():
             "updated_at": item.get("updated_at") or item.get("created_at") or "",
         }
 
-
 def iter_schemas():
     for base in (_project_schemas_dir(), USER_SCHEMAS_DIR, PLUGIN_BUILTIN_SCHEMAS):
         if not base.is_dir():
@@ -364,7 +345,6 @@ def iter_schemas():
                     schema_path.stat().st_mtime, dt.timezone.utc
                 ).isoformat(),
             }
-
 
 def iter_persona_beliefs():
     pf = BRAIN_PATH / "Persona.md"
@@ -401,7 +381,6 @@ def iter_persona_beliefs():
                 pf.stat().st_mtime, dt.timezone.utc
             ).isoformat(),
         }
-
 
 def iter_arch_log():
     """Yield one item per row from `<repo>/.kaizen/workflow/progress.md` and
@@ -452,7 +431,6 @@ def iter_arch_log():
                 "updated_at": mtime_iso,
             }
 
-
 def iter_all_sources():
     yield from iter_brain_notes()
     yield from iter_plans()
@@ -461,15 +439,12 @@ def iter_all_sources():
     yield from iter_persona_beliefs()
     yield from iter_arch_log()
 
-
 # ─── Item identity + embedding ───────────────────────────────────────
-
 
 def item_sha(item: dict) -> str:
     """Stable identity hash. Source + path + title + updated_at."""
     s = f"{item['source']}|{item['source_path']}|{item['title']}|{item['updated_at']}"
     return hashlib.sha256(s.encode()).hexdigest()[:16]
-
 
 def item_to_text(item: dict, embed_body: bool) -> str:
     """Build the embeddable signature. Privacy-safe by default."""
@@ -484,19 +459,15 @@ def item_to_text(item: dict, embed_body: bool) -> str:
         bits.append(f"body: {item['snippet']}")
     return " | ".join(bits)
 
-
 import _embed as _kz_embed  # v1.25.0+: HTTP-first embedding backend
 from _progress import Progress as _Progress  # v1.30.0+: live stderr progress
-
 
 def embed_one(text: str):
     # v1.25.0+: routes via _embed (llama-server HTTP first, sentence-transformers fallback).
     blob, _dim = _kz_embed.embed_one(text)
     return blob
 
-
 # ─── Data-returning helpers (also used by knowledge_mcp.py) ──────────
-
 
 def do_index(embed_body: bool = False) -> dict:
     """Run the incremental index pass. Returns {new, skipped, stale}."""
@@ -561,7 +532,6 @@ def do_index(embed_body: bool = False) -> dict:
         "model": DEFAULT_MODEL,
     }
 
-
 def do_search(
     query: str,
     top_k: int = 10,
@@ -600,7 +570,6 @@ def do_search(
     conn.close()
     return out
 
-
 def do_stats() -> dict:
     """Return index stats as a dict. Caller decides how to render."""
     if not DB_PATH.is_file():
@@ -623,7 +592,6 @@ def do_stats() -> dict:
     conn.close()
     return out
 
-
 def do_get(item_id: int) -> dict | None:
     """Return one item record by id (no embedding bytes), or None if missing."""
     if not DB_PATH.is_file():
@@ -639,15 +607,12 @@ def do_get(item_id: int) -> dict | None:
     out["tags"] = json.loads(out.get("tags") or "[]")
     return out
 
-
 # ─── CLI (M7: thin IndexerCLI subclass) ──────────────────────────────
-
 
 from _indexer_cli import IndexerCLI  # noqa: E402
 import _envelope  # noqa: E402
 
 _emit = _envelope.emitter("kaizen-knowledge", tool_version="1.0.0")
-
 
 class KnowledgeCLI(IndexerCLI):
     PROG = "kaizen-knowledge-index"
@@ -747,15 +712,12 @@ class KnowledgeCLI(IndexerCLI):
         # Already printed in do_clear (preserves original stderr behavior).
         return
 
-
 def build_parser() -> argparse.ArgumentParser:
     """Back-compat shim — some callers may import this name."""
     return KnowledgeCLI().build_parser()
 
-
 def main():
     KnowledgeCLI().run()
-
 
 if __name__ == "__main__":
     main()

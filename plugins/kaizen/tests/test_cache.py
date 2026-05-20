@@ -25,9 +25,8 @@ import unittest
 from pathlib import Path
 from types import ModuleType
 
-SCRIPT_DIR = Path(__file__).resolve().parent.parent / "skills" / "workflow" / "scripts"
-sys.path.insert(0, str(SCRIPT_DIR))
-
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 
 def _fresh_cache(tmp: Path) -> ModuleType:
     """Import cache.py with KAIZEN_CACHE_DIR pointing at a fresh tmp dir."""
@@ -36,7 +35,6 @@ def _fresh_cache(tmp: Path) -> ModuleType:
         del sys.modules["cache"]
     import cache  # noqa: E402
     return cache
-
 
 class TestKey(unittest.TestCase):
     def test_determinism(self):
@@ -59,7 +57,6 @@ class TestKey(unittest.TestCase):
         self.assertEqual(len(k), 16)
         # Hex only
         self.assertTrue(all(ch in "0123456789abcdef" for ch in k))
-
 
 class TestRoundTrip(unittest.TestCase):
     def setUp(self):
@@ -84,7 +81,6 @@ class TestRoundTrip(unittest.TestCase):
     def test_delete_miss(self):
         self.assertFalse(self.c.delete("ghost"))
 
-
 class TestClear(unittest.TestCase):
     def test_clear_removes_all(self):
         tmp = Path(tempfile.mkdtemp())
@@ -94,7 +90,6 @@ class TestClear(unittest.TestCase):
         n = c.clear()
         self.assertEqual(n, 5)
         self.assertEqual(c.stats()["count"], 0)
-
 
 class TestStats(unittest.TestCase):
     def test_stats_count(self):
@@ -112,7 +107,6 @@ class TestStats(unittest.TestCase):
         self.assertEqual(s["count"], 0)
         self.assertEqual(s["bytes"], 0)
 
-
 class TestEnvOverride(unittest.TestCase):
     def test_kaizen_cache_dir_env(self):
         tmp = Path(tempfile.mkdtemp()) / "alt-cache"
@@ -120,7 +114,6 @@ class TestEnvOverride(unittest.TestCase):
         self.assertEqual(c.cache_dir(), tmp)
         c.put(c.key_of("x"), {"v": 1})
         self.assertTrue((tmp / f"{c.key_of('x')}.json").exists())
-
 
 class TestCorruption(unittest.TestCase):
     def test_corrupt_json_returns_none(self):
@@ -132,7 +125,6 @@ class TestCorruption(unittest.TestCase):
         (tmp / f"{k}.json").write_text("not valid json {{{")
         # get should swallow the error and return None
         self.assertIsNone(c.get(k))
-
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

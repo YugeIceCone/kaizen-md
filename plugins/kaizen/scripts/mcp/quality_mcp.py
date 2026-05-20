@@ -32,7 +32,6 @@ _HERE = Path(os.path.realpath(__file__)).parent
 if str(_HERE) not in sys.path:
     sys.path.insert(0, str(_HERE))
 # MIGRATION BRIDGE — quality helpers (frontmatter, coverage, etc.) still at skills/workflow/scripts/
-_LEGACY = _HERE.parents[1] / "skills" / "workflow" / "scripts"
 _QUALITY = _HERE.parent / "quality"
 if str(_LEGACY) not in sys.path:
     sys.path.insert(0, str(_LEGACY))
@@ -44,10 +43,10 @@ import coverage as _cov             # noqa: E402
 import name_quality as _nq          # noqa: E402
 import schema_coverage as _sc       # noqa: E402
 import slash_collision as _sl       # noqa: E402
-
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import _bootstrap  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 
 mcp = FastMCP("quality")
-
 
 def frontmatter_gaps() -> dict:
     """SKILL.md frontmatter conformance: name matches dir + ≥3 trigger phrases.
@@ -59,7 +58,6 @@ def frontmatter_gaps() -> dict:
     """
     reports = [r for r in _fm.all_audits() if r.get("gaps")]
     return {"count": len(reports), "findings": reports}
-
 
 def coverage_gaps() -> dict:
     """Code-to-test 1:1 coverage: every workflow/scripts/<x>.py has a
@@ -77,7 +75,6 @@ def coverage_gaps() -> dict:
         "findings": [{"script": s} for s in uncovered],
     }
 
-
 def name_quality_gaps() -> dict:
     """Filename ↔ docstring-intent match across workflow/scripts/.
 
@@ -88,7 +85,6 @@ def name_quality_gaps() -> dict:
     reports = _nq.scan_scripts()
     flagged = [r for r in reports if r.get("verdict") in ("bad", "weak")]
     return {"count": len(flagged), "findings": flagged}
-
 
 def schema_coverage_gaps() -> dict:
     """Feature-shape conformance — does each domain/-having feature
@@ -102,7 +98,6 @@ def schema_coverage_gaps() -> dict:
     reports = _sc.all_reports()
     flagged = [r for r in reports if not r.get("conformant", True)]
     return {"count": len(flagged), "findings": flagged}
-
 
 def slash_collisions(min_prefix_len: int = 4) -> dict:
     """Tab-completion-ambiguous slash pairs (shared prefix ≥ min_prefix_len).
@@ -119,14 +114,12 @@ def slash_collisions(min_prefix_len: int = 4) -> dict:
     coll = _sl.scan_commands_dir(target, min_prefix_len=min_prefix_len)
     return {"count": len(coll), "findings": coll}
 
-
 # Register all 5 axes.
 mcp.tool()(frontmatter_gaps)
 mcp.tool()(coverage_gaps)
 mcp.tool()(name_quality_gaps)
 mcp.tool()(schema_coverage_gaps)
 mcp.tool()(slash_collisions)
-
 
 if __name__ == "__main__":
     mcp.run()

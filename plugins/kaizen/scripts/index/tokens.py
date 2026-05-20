@@ -44,7 +44,8 @@ from pathlib import Path
 # Sibling imports — _token_db.py + _token_extractor.py live alongside.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 # MIGRATION BRIDGE — cross-cluster sibs still at legacy or shimmed there.
-sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "skills" / "workflow" / "scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import _bootstrap  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 from _token_db import TokenDB  # noqa: E402
 from _token_extractor import (  # noqa: E402
     detect_language,
@@ -60,9 +61,7 @@ _MAX_FILE_BYTES = 1_000_000
 # Phase 1 — sha256[:32] stands in for blake3; matches _token_extractor.
 _GRAMMAR_VERSION = "0.23.0"
 
-
 # ─── V3 — project-root + DB-path discovery ──────────────────────────
-
 
 def _project_root() -> Path:
     """Resolve the repo root.
@@ -81,23 +80,18 @@ def _project_root() -> Path:
         cur = cur.parent
     return Path.cwd()
 
-
 def _db_path() -> Path:
     return _project_root() / ".kaizen" / "token-map.db"
-
 
 def _open_db() -> TokenDB:
     db = TokenDB(_db_path())
     db.init_schema()
     return db
 
-
 def _hash_hex(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()[:32]
 
-
 # ─── index ──────────────────────────────────────────────────────────
-
 
 def cmd_index(args: argparse.Namespace) -> int:
     """Walk the project root and slot every extractable file."""
@@ -136,9 +130,7 @@ def cmd_index(args: argparse.Namespace) -> int:
     print(f"kaizen-tokens: indexed {count} file(s)")
     return 0
 
-
 # ─── ls ─────────────────────────────────────────────────────────────
-
 
 def cmd_ls(args: argparse.Namespace) -> int:
     """List files (default) or slots inside a specific file."""
@@ -178,9 +170,7 @@ def cmd_ls(args: argparse.Namespace) -> int:
                 )
     return 0
 
-
 # ─── show ───────────────────────────────────────────────────────────
-
 
 def cmd_show(args: argparse.Namespace) -> int:
     """Stream a slot's body to stdout. V8 — inline if cached, else offsets."""
@@ -210,9 +200,7 @@ def cmd_show(args: argparse.Namespace) -> int:
         sys.stdout.buffer.write(b"\n")
     return 0
 
-
 # ─── get ────────────────────────────────────────────────────────────
-
 
 def cmd_get(args: argparse.Namespace) -> int:
     """Print the full envelope for a slot (CLI peer of MCP read_token)."""
@@ -261,9 +249,7 @@ def cmd_get(args: argparse.Namespace) -> int:
         print(envelope["body"])
     return 0
 
-
 # ─── argparse wiring ────────────────────────────────────────────────
-
 
 def _build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
@@ -294,12 +280,10 @@ def _build_parser() -> argparse.ArgumentParser:
 
     return p
 
-
 def main(argv: list[str] | None = None) -> int:
     parser = _build_parser()
     args = parser.parse_args(argv)
     return args.func(args)
-
 
 if __name__ == "__main__":
     sys.exit(main())

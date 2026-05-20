@@ -40,18 +40,16 @@ _HERE = Path(os.path.realpath(__file__)).parent
 if str(_HERE) not in sys.path:
     sys.path.insert(0, str(_HERE))
 # MIGRATION BRIDGE — _token_db still at skills/workflow/scripts/
-_LEGACY = _HERE.parents[1] / "skills" / "workflow" / "scripts"
 if str(_LEGACY) not in sys.path:
     sys.path.insert(0, str(_LEGACY))
 
 from _token_db import TokenDB  # noqa: E402
-
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import _bootstrap  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 
 mcp = FastMCP("kaizen-tokens")
 
-
 # ─── Discovery helpers (V3 — KAIZEN_PROJECT_ROOT_OVERRIDE + .git walk) ──
-
 
 def _project_root() -> Path:
     override = os.environ.get("KAIZEN_PROJECT_ROOT_OVERRIDE")
@@ -64,17 +62,14 @@ def _project_root() -> Path:
         cur = cur.parent
     return Path.cwd()
 
-
 def _db() -> TokenDB:
     db = TokenDB(_project_root() / ".kaizen" / "token-map.db")
     db.init_schema()
     return db
 
-
 def _repo_slug() -> str:
     """V35 — repo slug embedded in resource URIs for multi-repo agents."""
     return _project_root().name
-
 
 def _envelope(file_id: int, slot: int) -> dict:
     """Common envelope builder — shared by every read_* tool + resource.
@@ -114,9 +109,7 @@ def _envelope(file_id: int, slot: int) -> dict:
         "body":         body.decode("utf-8", errors="replace"),
     }
 
-
 # ─── Tool wrappers (V9 — compact-args agent surface) ────────────────────
-
 
 @mcp.tool()
 def read_token(file_id: int, slot: int = 0) -> dict:
@@ -126,7 +119,6 @@ def read_token(file_id: int, slot: int = 0) -> dict:
     slots 2..N are AST top-level items (functions / structs / classes).
     """
     return _envelope(file_id, slot)
-
 
 @mcp.tool()
 def read_token_by_name(file_id: int, kind: str, name: str,
@@ -147,12 +139,10 @@ def read_token_by_name(file_id: int, kind: str, name: str,
         }
     return _envelope(file_id, slot)
 
-
 @mcp.tool()
 def batch_read(tokens: list[list[int]]) -> list[dict]:
     """Read multiple (file_id, slot) pairs in one round-trip (V9 batch)."""
     return [_envelope(int(fid), int(slot)) for fid, slot in tokens]
-
 
 @mcp.tool()
 def list_files() -> list[dict]:
@@ -164,9 +154,7 @@ def list_files() -> list[dict]:
     ).fetchall()
     return [dict(r) for r in rows]
 
-
 # ─── Resources (file directory) ─────────────────────────────────────────
-
 
 @mcp.resource("mcp://kaizen-tokens/{repo}/tokens")
 def resource_tokens_directory(repo: str) -> dict:
@@ -178,9 +166,7 @@ def resource_tokens_directory(repo: str) -> dict:
     """
     return {"files": list_files()}
 
-
 # ─── --self-test (for unit tests; bypasses stdio MCP loop) ──────────────
-
 
 def _self_test() -> int:
     """Probe the FastMCP instance and emit a JSON summary on stdout.
@@ -210,7 +196,6 @@ def _self_test() -> int:
 
     print(json.dumps(report))
     return 0
-
 
 if __name__ == "__main__":
     if "--self-test" in sys.argv:

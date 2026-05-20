@@ -28,13 +28,11 @@ import json
 import sys
 from pathlib import Path
 
-
 _SCRIPT_DIR = Path(__file__).resolve().parent
 # Domain yaml stays with the skill (skills/plugin-development/domain/);
 # only the .py adapter migrated to scripts/plugin_development/.
 _PLUGIN_ROOT = _SCRIPT_DIR.parent.parent
 _CHECKLIST = _PLUGIN_ROOT / "skills" / "plugin-development" / "domain" / "intake-checklist.yaml"
-
 
 def _load_yaml(path: Path) -> dict:
     try:
@@ -43,7 +41,6 @@ def _load_yaml(path: Path) -> dict:
         sys.stderr.write("[intake] PyYAML required\n")
         sys.exit(2)
     return yaml.safe_load(path.read_text(encoding="utf-8"))
-
 
 def _find_work_type(target: str, work_types: list[dict]) -> dict | None:
     """First-match-wins: id exact → id substring → trigger substring."""
@@ -66,7 +63,6 @@ def _find_work_type(target: str, work_types: list[dict]) -> dict | None:
             return wt
     return None
 
-
 def _print_table(data: dict) -> None:
     always = data.get("always", [])
     types = data.get("work_types", [])
@@ -82,14 +78,12 @@ def _print_table(data: dict) -> None:
         print(f"  • {wt['id']:<22}  triggers: {trig_str}")
     print("\nRun: kaizen-plugin-development intake <work-type-or-trigger>")
 
-
 def _print_bundle(wt: dict, always: list[str]) -> None:
     print(f"\n[{wt['id']}] skills to load:")
     for s in always:
         print(f"  ● {s}    (always — every plugin-dev task)")
     for s in wt.get("skills", []):
         print(f"  ○ {s}")
-
 
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(
@@ -128,7 +122,6 @@ def main(argv: list[str] | None = None) -> int:
     else:
         _print_bundle(wt, always)
     return 0
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

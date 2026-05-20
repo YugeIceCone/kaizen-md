@@ -48,7 +48,8 @@ import _envelope  # noqa: E402
 _emit = _envelope.emitter("kaizen-validate", tool_version="1.0.0")
 from pathlib import Path
 from typing import Any, Optional
-
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import _bootstrap  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 
 # Layout (post-migration: scripts/plugin_development/validate.py):
 #   SCRIPT_DIR  → plugins/kaizen/scripts/plugin_development/
@@ -64,9 +65,7 @@ REPO_ROOT = PLUGIN_ROOT.parent.parent   # kaizen-md repo root
 # iron-laws.yaml lives with its own skill (skills/iron-laws/).
 IRON_LAWS_YAML = PLUGIN_ROOT / "skills" / "iron-laws" / "domain" / "iron-laws.yaml"
 
-
 # ─── Minimal YAML loader (stdlib-only) ───────────────────────────────
-
 
 def _load_yaml(path: Path) -> dict:
     """Try PyYAML first; fall back to a minimal stdlib parser."""
@@ -76,7 +75,6 @@ def _load_yaml(path: Path) -> dict:
         return yaml.safe_load(text) or {}
     except ImportError:
         return _minimal_parse(text)
-
 
 def _minimal_parse(text: str) -> dict:
     """Tiny yaml subset — mappings + lists + scalars only."""
@@ -131,7 +129,6 @@ def _minimal_parse(text: str) -> dict:
                     parent[key] = _scalar(val)
     return _coerce_list_nodes(root)
 
-
 def _coerce_list_nodes(obj: Any) -> Any:
     """Walk parsed dict; convert dict values to lists when all keys
     are list-item placeholders. The minimal parser starts every
@@ -147,7 +144,6 @@ def _coerce_list_nodes(obj: Any) -> Any:
     if isinstance(obj, list):
         return [_coerce_list_nodes(x) for x in obj]
     return obj
-
 
 def _scalar(s: str) -> Any:
     s = s.strip()
@@ -171,9 +167,7 @@ def _scalar(s: str) -> Any:
         pass
     return s
 
-
 # ─── Result types ────────────────────────────────────────────────────
-
 
 @dataclass
 class Finding:
@@ -182,7 +176,6 @@ class Finding:
     feature: str
     message: str
     detail: str = ""
-
 
 @dataclass
 class ValidationReport:
@@ -197,9 +190,7 @@ class ValidationReport:
     def soft_count(self) -> int:
         return sum(1 for f in self.findings if f.severity == "soft")
 
-
 # ─── Feature discovery ───────────────────────────────────────────────
-
 
 # Vendored skills — never plugin-original, never validated against
 # the canonical shape. The list mirrors iron-laws.yaml::no-modify-vendored.
@@ -216,7 +207,6 @@ VENDORED_SKILLS = {
     "status",
 }
 
-
 def discover_plugin_features() -> list[str]:
     """List skills that are plugin-original (not vendored)."""
     skills_dir = PLUGIN_ROOT / "skills"
@@ -230,7 +220,6 @@ def discover_plugin_features() -> list[str]:
             continue
         out.append(p.name)
     return out
-
 
 def staged_features() -> list[str]:
     """Features touched by the current staged diff. Returns [] when
@@ -287,16 +276,13 @@ def staged_features() -> list[str]:
     discovered = set(discover_plugin_features())
     return sorted(f for f in features if f in discovered)
 
-
 # ─── Per-feature shape validation ────────────────────────────────────
-
 
 @dataclass
 class FeatureManifest:
     name: str
     predicates: dict[str, bool] = field(default_factory=dict)
     ops: list[str] = field(default_factory=list)
-
 
 def load_or_infer_manifest(feature: str) -> FeatureManifest:
     """Read skills/<feature>/domain/manifest.yaml if present; else
@@ -311,7 +297,6 @@ def load_or_infer_manifest(feature: str) -> FeatureManifest:
         )
 
     # Infer from filesystem
-    scripts = PLUGIN_ROOT / "skills" / "workflow" / "scripts"
     skill_dir = PLUGIN_ROOT / "skills" / feature
     # Backing code: any python script in workflow/scripts/ matching the
     # feature name (with or without underscore prefix, with or without
@@ -351,14 +336,12 @@ def load_or_infer_manifest(feature: str) -> FeatureManifest:
     predicates["feature_has_multiple_ops"] = len(ops) > 0
     return FeatureManifest(name=feature, predicates=predicates, ops=ops)
 
-
 def check_feature_shape(feature: str, manifest: FeatureManifest) -> list[Finding]:
     findings: list[Finding] = []
     shape = _load_yaml(DOMAIN_DIR / "feature-shape.yaml")
     slots = shape.get("slots", [])
 
     skill_dir = PLUGIN_ROOT / "skills" / feature
-    scripts = PLUGIN_ROOT / "skills" / "workflow" / "scripts"
 
     for slot in slots:
         if not isinstance(slot, dict):
@@ -382,7 +365,6 @@ def check_feature_shape(feature: str, manifest: FeatureManifest) -> list[Finding
             ))
     return findings
 
-
 def _slot_exists(pattern: str, feature: str, manifest: FeatureManifest) -> bool:
     """Check whether at least one file matches the slot pattern.
 
@@ -404,7 +386,6 @@ def _slot_exists(pattern: str, feature: str, manifest: FeatureManifest) -> bool:
 
     return _exists_with_glob(resolved)
 
-
 def _exists_with_glob(resolved: str) -> bool:
     """Existence check that handles literal globs in the resolved path."""
     if "*" in resolved:
@@ -413,9 +394,7 @@ def _exists_with_glob(resolved: str) -> bool:
         return bool(glob(str(full), recursive=True))
     return (PLUGIN_ROOT / resolved).is_file()
 
-
 # ─── Iron-law checks (lightweight static analysis) ──────────────────
-
 
 def check_iron_laws(feature: Optional[str] = None) -> list[Finding]:
     """Delegate to the iron-laws skill's checker — skills/iron-laws/ owns
@@ -445,9 +424,7 @@ def check_iron_laws(feature: Optional[str] = None) -> list[Finding]:
         for f in raw
     ]
 
-
 # ─── CLI ─────────────────────────────────────────────────────────────
-
 
 def _print_human(reports: list[ValidationReport]) -> None:
     if not reports:
@@ -469,7 +446,6 @@ def _print_human(reports: list[ValidationReport]) -> None:
     print(f"\nplugin-development validate: "
           f"{total_hard} hard, {total_soft} soft "
           f"across {len(reports)} feature(s)")
-
 
 def main(argv: Optional[list[str]] = None) -> int:
     p = argparse.ArgumentParser(
@@ -533,7 +509,6 @@ def main(argv: Optional[list[str]] = None) -> int:
     if any(r.soft_count for r in reports):
         return 1
     return 0
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

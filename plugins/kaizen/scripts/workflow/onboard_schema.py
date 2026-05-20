@@ -122,7 +122,6 @@ SCHEMA_SQL = """
     );
 """
 
-
 def _migrate_kind_column(conn: sqlite3.Connection) -> None:
     """O1 migration — add `kind` column + index on code_chunks.
 
@@ -143,7 +142,6 @@ def _migrate_kind_column(conn: sqlite3.Connection) -> None:
         "CREATE INDEX IF NOT EXISTS idx_chunk_kind ON code_chunks(kind)"
     )
 
-
 def _migrate_symbol_name_column(conn: sqlite3.Connection) -> None:
     """O2 migration — add `symbol_name` column + index on code_chunks.
 
@@ -160,7 +158,6 @@ def _migrate_symbol_name_column(conn: sqlite3.Connection) -> None:
         "CREATE INDEX IF NOT EXISTS idx_chunk_symbol ON code_chunks(symbol_name)"
     )
 
-
 def _migrate_embedding_sparse_column(conn: sqlite3.Connection) -> None:
     """E9 migration — add `embedding_sparse` BLOB column on code_chunks.
 
@@ -175,7 +172,6 @@ def _migrate_embedding_sparse_column(conn: sqlite3.Connection) -> None:
         conn.execute(
             "ALTER TABLE code_chunks ADD COLUMN embedding_sparse BLOB"
         )
-
 
 def _migrate_line_columns(conn: sqlite3.Connection) -> None:
     """Phase 2 (symbol-search arc) — add line_start + line_end to
@@ -205,7 +201,6 @@ def _migrate_line_columns(conn: sqlite3.Connection) -> None:
         "CREATE INDEX IF NOT EXISTS idx_chunk_line ON code_chunks(file_id, line_start)"
     )
 
-
 def _migrate_colbert_sidecar(conn: sqlite3.Connection) -> None:
     """E10 migration — ensure the `code_chunks_colbert` sidecar table
     exists. Idempotent — CREATE TABLE IF NOT EXISTS in the schema SQL
@@ -221,7 +216,6 @@ def _migrate_colbert_sidecar(conn: sqlite3.Connection) -> None:
         )
         """
     )
-
 
 def apply_migrations(conn: sqlite3.Connection) -> None:
     """Run the idempotent migrations in order — brings older dbs up to

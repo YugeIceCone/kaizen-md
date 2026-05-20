@@ -15,10 +15,9 @@ from pathlib import Path
 from unittest.mock import patch
 
 _KZ = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(_KZ / "skills" / "workflow" / "scripts"))
-
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 import gold_mine  # noqa: E402
-
 
 class PipelineBase(unittest.TestCase):
     def setUp(self):
@@ -62,7 +61,6 @@ class PipelineBase(unittest.TestCase):
             for e in events:
                 f.write(json.dumps(e) + "\n")
         return p
-
 
 class TestPipelineThreshold(PipelineBase):
     def test_score_below_proposal_threshold_dropped(self):
@@ -146,7 +144,6 @@ class TestPipelineThreshold(PipelineBase):
         finally:
             os.environ.pop("KAIZEN_GOLD_DISABLE", None)
 
-
 class TestPipelineFiltering(PipelineBase):
     def test_anti_recursion_kaizen_gold_events_skipped(self):
         self._seed_events([
@@ -169,7 +166,6 @@ class TestPipelineFiltering(PipelineBase):
         self.assertIn("dxm", cur)
         # Per-file cursor under dxm.
         self.assertTrue(any("events-" in k for k in cur["dxm"]))
-
 
 if __name__ == "__main__":
     unittest.main()

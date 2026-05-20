@@ -47,8 +47,8 @@ from typing import Optional
 
 _SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(_SCRIPT_DIR))
-# MIGRATION BRIDGE — kaizen helpers still at skills/workflow/scripts/
-sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "skills" / "workflow" / "scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import _bootstrap  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 
 import _brain  # noqa: E402
 import flow as _flow  # noqa: E402
@@ -56,9 +56,7 @@ import _envelope  # noqa: E402
 
 _emit = _envelope.emitter("kaizen-brain-evolve", tool_version="1.0.0")
 
-
 # ─── Flow nodes ──────────────────────────────────────────────────────
-
 
 class LoadNotesNode(_flow.AsyncNode):
     """Read every Note in brain/Notes/ into memory once."""
@@ -103,7 +101,6 @@ class LoadNotesNode(_flow.AsyncNode):
         store["notes"] = notes
         return "default"
 
-
 class FindDuplicatesNode(_flow.AsyncNode):
     """Heuristic duplicate detection — same slug-stem after stripping
     common prefixes (pref-/obs-/etc.) or word-overlap >= 60%."""
@@ -133,7 +130,6 @@ class FindDuplicatesNode(_flow.AsyncNode):
     async def post_async(self, store: dict, _prep, dupes: list) -> str:
         store["duplicates"] = dupes
         return "default"
-
 
 class CheckFreshnessNode(_flow.AsyncNode):
     """Flag notes whose freshness label disagrees with their mtime.
@@ -178,7 +174,6 @@ class CheckFreshnessNode(_flow.AsyncNode):
     async def post_async(self, store: dict, _prep, items: list) -> str:
         store["freshness_drift"] = items
         return "default"
-
 
 class ScanPersonaRefsNode(_flow.AsyncNode):
     """Read brain/Persona.md ## Top Beliefs, return the list of Note
@@ -242,7 +237,6 @@ class ScanPersonaRefsNode(_flow.AsyncNode):
         store["persona_drift"] = drift
         return "default"
 
-
 class ReportNode(_flow.AsyncNode):
     async def prep_async(self, store: dict) -> None:
         return None
@@ -259,7 +253,6 @@ class ReportNode(_flow.AsyncNode):
             "persona_drift": store.get("persona_drift") or [],
         }
         return "default"
-
 
 class RerankPersonaNode(_flow.AsyncNode):
     """v1.40+ — score-rank beliefs and (when not dry-run + auto_promote)
@@ -287,7 +280,6 @@ class RerankPersonaNode(_flow.AsyncNode):
         store["rerank"] = result
         return "default"
 
-
 def build_evolve_flow() -> _flow.AsyncFlow:
     load = LoadNotesNode()
     dupe = FindDuplicatesNode()
@@ -303,7 +295,6 @@ def build_evolve_flow() -> _flow.AsyncFlow:
     f.add_successor(rerank, "default", report)
     return f
 
-
 def evolve(
     *,
     brain_root: Optional[Path] = None,
@@ -313,7 +304,6 @@ def evolve(
     return asyncio.run(_evolve_async(
         brain_root=brain_root, stale_days=stale_days, dry_run=dry_run,
     ))
-
 
 async def _evolve_async(**kwargs) -> dict:
     store: dict = {
@@ -327,9 +317,7 @@ async def _evolve_async(**kwargs) -> dict:
     report["rerank"] = store.get("rerank") or {}
     return report
 
-
 # ─── CLI ─────────────────────────────────────────────────────────────
-
 
 def _cmd_run(args) -> int:
     report = evolve(stale_days=args.stale_days, dry_run=args.dry_run)
@@ -368,7 +356,6 @@ def _cmd_run(args) -> int:
         print("  no drift detected — brain is consolidated.")
     return 0
 
-
 def main(argv: Optional[list[str]] = None) -> int:
     p = argparse.ArgumentParser(
         prog="kaizen-brain-evolve",
@@ -382,7 +369,6 @@ def main(argv: Optional[list[str]] = None) -> int:
     p.set_defaults(func=_cmd_run)
     args = p.parse_args(argv)
     return args.func(args)
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

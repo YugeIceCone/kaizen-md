@@ -57,9 +57,7 @@ import _envelope  # noqa: E402
 
 _emit = _envelope.emitter("kaizen-self-audit", tool_version="1.0.0")
 
-
 # ─── Mechanical runners ──────────────────────────────────────────────
-
 
 def run_validator(stage: dict) -> list[Finding]:
     """Invoke plugin-development/scripts/validate.py --all --json and
@@ -115,7 +113,6 @@ def run_validator(stage: dict) -> list[Finding]:
                 ),
             ))
     return findings
-
 
 def run_metrics_coverage(stage: dict) -> list[Finding]:
     """Run kaizen-metrics never-used --kind {skill,mcp,bin,tool} and
@@ -193,7 +190,6 @@ def run_metrics_coverage(stage: dict) -> list[Finding]:
         ))
     return findings
 
-
 def run_metrics_skips(stage: dict) -> list[Finding]:
     metrics_py = _core.SCRIPT_DIR / "metrics.py"
     if not metrics_py.is_file():
@@ -228,7 +224,6 @@ def run_metrics_skips(stage: dict) -> list[Finding]:
         ))
     return out
 
-
 def run_hook_trace_check(stage: dict) -> list[Finding]:
     out: list[Finding] = []
     for h in _core.list_hook_scripts():
@@ -245,7 +240,6 @@ def run_hook_trace_check(stage: dict) -> list[Finding]:
                             f"early in {h.name}.",
             ))
     return out
-
 
 def run_bin_permission_check(stage: dict) -> list[Finding]:
     out: list[Finding] = []
@@ -275,7 +269,6 @@ def run_bin_permission_check(stage: dict) -> list[Finding]:
         ))
     return out
 
-
 def run_vendored_check(stage: dict) -> list[Finding]:
     """Detect any uncommitted modifications to vendored skill bodies."""
     try:
@@ -301,7 +294,6 @@ def run_vendored_check(stage: dict) -> list[Finding]:
             ))
     return out
 
-
 def run_claude_md_check(stage: dict) -> list[Finding]:
     out: list[Finding] = []
     for rel in (stage.get("paths") or []):
@@ -322,7 +314,6 @@ def run_claude_md_check(stage: dict) -> list[Finding]:
             ))
     return out
 
-
 # Map stage runner names → callables. Schema-driven dispatch.
 RUNNERS = {
     "run_validator": run_validator,
@@ -334,9 +325,7 @@ RUNNERS = {
     "run_claude_md_check": run_claude_md_check,
 }
 
-
 # ─── Skill checkpoint emitter ────────────────────────────────────────
-
 
 def emit_skill_checkpoint(stage: dict) -> Finding:
     return Finding(
@@ -354,9 +343,7 @@ def emit_skill_checkpoint(stage: dict) -> Finding:
         ),
     )
 
-
 # ─── Flow nodes ──────────────────────────────────────────────────────
-
 
 class LoadPipelineNode(_flow.AsyncNode):
     async def prep_async(self, store: dict) -> None:
@@ -368,7 +355,6 @@ class LoadPipelineNode(_flow.AsyncNode):
     async def post_async(self, store: dict, _prep, pipeline: dict) -> str:
         store["pipeline"] = pipeline
         return "default"
-
 
 class RunMechanicalStagesNode(_flow.AsyncParallelBatchNode):
     """Run each mechanical stage's runner. Emits Findings per stage."""
@@ -397,7 +383,6 @@ class RunMechanicalStagesNode(_flow.AsyncParallelBatchNode):
             store["findings"].extend(sublist)
         return "default"
 
-
 class EmitSkillCheckpointsNode(_flow.AsyncNode):
     async def prep_async(self, store: dict) -> list:
         stages = store["pipeline"].get("stages", [])
@@ -409,7 +394,6 @@ class EmitSkillCheckpointsNode(_flow.AsyncNode):
     async def post_async(self, store: dict, _prep, checkpoints: list) -> str:
         store.setdefault("findings", []).extend(checkpoints)
         return "default"
-
 
 class AggregateFindingsNode(_flow.AsyncNode):
     async def prep_async(self, store: dict) -> list:
@@ -434,7 +418,6 @@ class AggregateFindingsNode(_flow.AsyncNode):
         store["findings"] = findings
         return "default"
 
-
 class BuildRemediationPlanNode(_flow.AsyncNode):
     async def prep_async(self, store: dict) -> list:
         return store.get("findings", [])
@@ -458,7 +441,6 @@ class BuildRemediationPlanNode(_flow.AsyncNode):
     async def post_async(self, store: dict, _prep, plan: list) -> str:
         store["remediation_plan"] = plan
         return "default"
-
 
 class ProposeNewFunctionalityNode(_flow.AsyncNode):
     """Heuristic: surface emerging-pattern proposals from the findings.
@@ -519,7 +501,6 @@ class ProposeNewFunctionalityNode(_flow.AsyncNode):
     async def post_async(self, store: dict, _prep, proposals: list) -> str:
         store["new_functionality"] = proposals
         return "default"
-
 
 class WriteReportNode(_flow.AsyncNode):
     async def prep_async(self, store: dict) -> dict:
@@ -622,7 +603,6 @@ class WriteReportNode(_flow.AsyncNode):
         store["report"] = exec_result
         return "default"
 
-
 def build_flow() -> _flow.AsyncFlow:
     load = LoadPipelineNode()
     mech = RunMechanicalStagesNode()
@@ -634,10 +614,8 @@ def build_flow() -> _flow.AsyncFlow:
     load >> mech >> cp >> agg >> plan >> new >> rep
     return _flow.AsyncFlow(load)
 
-
 def run_audit(*, no_write: bool = False) -> dict:
     return asyncio.run(_run_audit_async(no_write=no_write))
-
 
 async def _run_audit_async(*, no_write: bool = False) -> dict:
     store: dict = {"no_write": no_write}
@@ -651,9 +629,7 @@ async def _run_audit_async(*, no_write: bool = False) -> dict:
         "findings": [f.to_dict() for f in store.get("findings", [])],
     }
 
-
 # ─── CLI ─────────────────────────────────────────────────────────────
-
 
 def _cmd_run(args) -> int:
     result = run_audit(no_write=args.no_write)
@@ -665,13 +641,11 @@ def _cmd_run(args) -> int:
         print(f"\n→ report saved: {result['report_path']}")
     return 0
 
-
 def _cmd_list_stages(args) -> int:
     pipeline = _core.load_pipeline()
     stages = pipeline.get("stages", [])
     _emit(stages, counts={"stages": len(stages)})
     return 0
-
 
 def _cmd_path(args) -> int:
     _emit({
@@ -679,7 +653,6 @@ def _cmd_path(args) -> int:
         "pipeline": str(_core.DOMAIN_DIR / "audit-pipeline.yaml"),
     })
     return 0
-
 
 def main(argv: Optional[list[str]] = None) -> int:
     p = argparse.ArgumentParser(
@@ -702,7 +675,6 @@ def main(argv: Optional[list[str]] = None) -> int:
         # Bare invocation — run the audit
         return _cmd_run(argparse.Namespace(json=False, no_write=False))
     return args.func(args)
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

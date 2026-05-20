@@ -140,16 +140,12 @@ from collections import Counter
 from pathlib import Path
 from typing import Any, Awaitable, Callable, Iterable, Optional
 
-
 # ─── Constants ───────────────────────────────────────────────────────
-
 
 DEFAULT_ACTION = "default"
 DEFAULT_MAX_ITERATIONS = 1000
 
-
 # ─── AsyncNode (optimized) ───────────────────────────────────────────
-
 
 class AsyncNode:
     """Three-phase async node: ``prep_async`` → ``exec_async`` → ``post_async``.
@@ -289,7 +285,6 @@ class AsyncNode:
         timing[cls] = timing.get(cls, 0) + dt_us
         return nxt
 
-
 class _NodeActionTransition:
     """Helper returned by ``AsyncNode.__sub__``. Holds the (node,
     action) pair until ``>>`` chains a successor.
@@ -307,9 +302,7 @@ class _NodeActionTransition:
     def __rshift__(self, succ: AsyncNode) -> AsyncNode:
         return self._node.next(succ, self._action)
 
-
 # ─── Batch nodes ─────────────────────────────────────────────────────
-
 
 class AsyncBatchNode(AsyncNode):
     """Sequential batch: ``exec_async`` is replaced with
@@ -329,7 +322,6 @@ class AsyncBatchNode(AsyncNode):
         for item in items or []:
             out.append(await self.exec_one_async(item))
         return out
-
 
 class AsyncParallelBatchNode(AsyncNode):
     """Parallel batch: ``exec_one_async`` runs concurrently per item.
@@ -366,12 +358,9 @@ class AsyncParallelBatchNode(AsyncNode):
             *(self.exec_one_async(it) for it in items_list)
         )
 
-
 # ─── AsyncFlow (optimized) ───────────────────────────────────────────
 
-
 EventHook = Callable[..., Optional[Awaitable[None]]]
-
 
 class AsyncFlow:
     """Walks the per-node ``successors`` graph from ``start`` until a
@@ -469,7 +458,6 @@ class AsyncFlow:
 
             cur = cur.successors.get(action or DEFAULT_ACTION)
 
-
 async def _maybe_await(value: Any) -> None:
     """Await ``value`` if it's a coroutine/awaitable; no-op otherwise.
     Lets event-hook callers register sync OR async callbacks without
@@ -479,9 +467,7 @@ async def _maybe_await(value: Any) -> None:
     if asyncio.iscoroutine(value) or hasattr(value, "__await__"):
         await value
 
-
 # ─── Nodes (reference pipeline) ──────────────────────────────────────
-
 
 class ReadBacklog(AsyncNode):
     """Load backlog.json into the shared store."""
@@ -504,7 +490,6 @@ class ReadBacklog(AsyncNode):
         store["backlog_size"] = len(backlog.get("items", []))
         return DEFAULT_ACTION
 
-
 class DetectPackages(AsyncNode):
     """Discover packages in the workspace via docs_gen.detect_packages."""
 
@@ -519,7 +504,6 @@ class DetectPackages(AsyncNode):
         store["packages"] = packages
         store["package_count"] = len(packages)
         return DEFAULT_ACTION
-
 
 class GenerateDocs(AsyncParallelBatchNode):
     """FAN-OUT — exercises the new AsyncParallelBatchNode primitive.
@@ -558,7 +542,6 @@ class GenerateDocs(AsyncParallelBatchNode):
     async def post_async(self, store: dict, prep: list, records: list) -> str:
         store["doc_records"] = records
         return DEFAULT_ACTION
-
 
 class WriteReport(AsyncNode):
     """Aggregate stats + emit JSON summary. Terminal node."""
@@ -599,9 +582,7 @@ class WriteReport(AsyncNode):
         print(json.dumps(summary, indent=2))
         return None  # terminal — no successor
 
-
 # ─── Wiring + entry ──────────────────────────────────────────────────
-
 
 def resolve_backlog_path(workspace: Path) -> str:
     """Resolve backlog path: prefer .kaizen.toml's backlog_path, else default."""
@@ -614,7 +595,6 @@ def resolve_backlog_path(workspace: Path) -> str:
                 stem = rel.rsplit(".", 1)[0]
                 return str(workspace / f"{stem}.json")
     return str(workspace / ".workflow" / "backlog.json")
-
 
 async def run(workspace: Path) -> None:
     script_dir = Path(__file__).resolve().parent
@@ -643,11 +623,9 @@ async def run(workspace: Path) -> None:
     flow = AsyncFlow(read)
     await flow.run_async(store)
 
-
 def main() -> None:
     workspace = Path(sys.argv[1] if len(sys.argv) > 1 else ".").resolve()
     asyncio.run(run(workspace))
-
 
 if __name__ == "__main__":
     main()

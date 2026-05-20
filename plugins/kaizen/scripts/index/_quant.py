@@ -42,9 +42,7 @@ import sys
 # We don't import at module top-level so non-search consumers (e.g. a
 # quant-only migration script) can read this file without numpy.
 
-
 _SCALE_BYTES = 4  # float32
-
 
 def quantize(vec) -> bytes:
     """Symmetric per-vector int8 quantization.
@@ -68,7 +66,6 @@ def quantize(vec) -> bytes:
         q = np.clip(np.round(arr / scale), -128, 127).astype(np.int8)
     return struct.pack("f", float(scale)) + q.tobytes()
 
-
 def quantize_batch(mat) -> tuple[bytes, int]:
     """Vectorized quantization for an (N, D) matrix. Returns
     (concatenated_blobs, blob_size). Each blob is independently
@@ -87,7 +84,6 @@ def quantize_batch(mat) -> tuple[bytes, int]:
     ]
     return blobs, len(blobs[0]) if blobs else 0
 
-
 def dequantize(blob: bytes, dim: int):
     """Restore an (D,) float32 vector from a quantized blob.
 
@@ -104,7 +100,6 @@ def dequantize(blob: bytes, dim: int):
     scale = struct.unpack("f", blob[:_SCALE_BYTES])[0]
     q = np.frombuffer(blob[_SCALE_BYTES:], dtype=np.int8)
     return q.astype(np.float32) * scale
-
 
 def dequantize_batch(blobs: list[bytes], dim: int):
     """Vectorized dequant. Returns (N, D) float32 matrix."""
@@ -125,11 +120,9 @@ def dequantize_batch(blobs: list[bytes], dim: int):
         qmat[i] = np.frombuffer(b[_SCALE_BYTES:], dtype=np.int8)
     return qmat.astype(np.float32) * scales[:, None]
 
-
 def quant_size(dim: int) -> int:
     """Bytes per quantized vector at this dim. Equal to `4 + dim`."""
     return _SCALE_BYTES + dim
-
 
 # ─── E4 — binary (1-bit) quantization ─────────────────────────────────
 #
@@ -144,7 +137,6 @@ def quant_size(dim: int) -> int:
 #   2. int8 rerank (existing): top-K from stage 1 by int8 dot-product
 #   3. (optional) cross-encoder rerank: top-K → top-N final
 
-
 def quantize_binary(vec) -> bytes:
     """Pack a float32 vector into a 1-bit-per-dim bytestring.
 
@@ -157,7 +149,6 @@ def quantize_binary(vec) -> bytes:
     bits = (arr > 0).astype(np.uint8)
     packed = np.packbits(bits, bitorder="big")
     return packed.tobytes()
-
 
 def quantize_binary_batch(mat) -> tuple[list[bytes], int]:
     """Vectorized binary quantization. Returns ([bytes], bytes_per_vec).
@@ -172,7 +163,6 @@ def quantize_binary_batch(mat) -> tuple[list[bytes], int]:
     packed = np.packbits(bits, axis=1, bitorder="big")
     blobs = [packed[i].tobytes() for i in range(packed.shape[0])]
     return blobs, (packed.shape[1] if packed.size else 0)
-
 
 def dequantize_binary(blob: bytes, dim: int):
     """Unpack into a (D,) {-1.0, +1.0} float32 vector. Useful for
@@ -190,7 +180,6 @@ def dequantize_binary(blob: bytes, dim: int):
     # {0, 1} → {-1.0, +1.0}
     return (bits.astype(np.float32) * 2.0) - 1.0
 
-
 def hamming_distance(blob_a: bytes, blob_b: bytes) -> int:
     """Bitwise hamming distance between two binary-quantized blobs.
 
@@ -207,7 +196,6 @@ def hamming_distance(blob_a: bytes, blob_b: bytes) -> int:
     for x, y in zip(blob_a, blob_b):
         total += (x ^ y).bit_count()
     return total
-
 
 def hamming_distance_batch(query_blob: bytes, candidate_blobs: list[bytes]) -> list[int]:
     """Vectorized hamming distance: query against many candidates.
@@ -236,14 +224,11 @@ def hamming_distance_batch(query_blob: bytes, candidate_blobs: list[bytes]) -> l
         bc = lut[xored]
     return bc.sum(axis=1).tolist()
 
-
 def binary_size(dim: int) -> int:
     """Bytes per binary-quantized vector at this dim. ceil(D/8)."""
     return (dim + 7) // 8
 
-
 # ─── CLI inspector ────────────────────────────────────────────────────
-
 
 if __name__ == "__main__":
     import argparse

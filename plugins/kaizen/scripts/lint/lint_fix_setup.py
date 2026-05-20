@@ -45,13 +45,11 @@ _CANDIDATE_PORTS: tuple[tuple[int, str], ...] = (
     (8080,  "llama-server"),    # default llama.cpp
 )
 
-
 # ───────────────────────────────────────────────────────────────────────
 # Probe — low-level GET /v1/models with a tight timeout
 # ───────────────────────────────────────────────────────────────────────
 
 _ALLOWED_SCHEMES = frozenset({"http", "https"})
-
 
 def _probe(base_url: str, timeout: float = 1.0) -> dict | None:
     """Return /v1/models JSON if reachable, else None. Never raises.
@@ -81,11 +79,9 @@ def _probe(base_url: str, timeout: float = 1.0) -> dict | None:
              json.JSONDecodeError):
         return None
 
-
 def _which(name: str) -> str | None:
     """Wrap shutil.which so tests can monkeypatch this single symbol."""
     return shutil.which(name)
-
 
 def _spawn_background(cmd: list[str]) -> int:
     """Detached background spawn — Popen + start_new_session. Returns pid."""
@@ -96,7 +92,6 @@ def _spawn_background(cmd: list[str]) -> int:
         start_new_session=True,
     )
     return proc.pid
-
 
 # ───────────────────────────────────────────────────────────────────────
 # detect_servers — sweep
@@ -115,7 +110,6 @@ def _candidate_urls() -> list[tuple[str, str]]:
         out.append((url, kind))
     return out
 
-
 def detect_servers() -> list[dict[str, Any]]:
     reachable: list[dict[str, Any]] = []
     for url, kind in _candidate_urls():
@@ -130,7 +124,6 @@ def detect_servers() -> list[dict[str, Any]]:
             "reachable": True,
         })
     return reachable
-
 
 # ───────────────────────────────────────────────────────────────────────
 # generate_install_script
@@ -220,7 +213,6 @@ cat <<EOF
 EOF
 """
 
-
 _LLAMA_SERVER_SCRIPT = """#!/usr/bin/env bash
 # kaizen lint_fix — bootstrap llama.cpp's llama-server (heavier path).
 # Prefers homebrew on macOS, falls back to building from source.
@@ -243,14 +235,12 @@ echo "Then export:"
 echo "  export LLM_BASE_URL=http://127.0.0.1:8080"
 """
 
-
 def generate_install_script(target: str) -> str:
     if target == "ollama":
         return _OLLAMA_SCRIPT
     if target == "llama-server":
         return _LLAMA_SERVER_SCRIPT
     raise ValueError(f"unknown target {target!r}; must be 'ollama' or 'llama-server'")
-
 
 # ───────────────────────────────────────────────────────────────────────
 # start_ollama_if_idle — opportunistic boot
@@ -268,7 +258,6 @@ def start_ollama_if_idle() -> dict[str, Any]:
     pid = _spawn_background([ollama, "serve"])
     return {"status": "started", "pid": pid}
 
-
 # ───────────────────────────────────────────────────────────────────────
 # setup_summary — top-level orchestrator
 # ───────────────────────────────────────────────────────────────────────
@@ -277,7 +266,6 @@ _SETUP_COMMAND = (
     "bash " + str(SCRIPT_DIR / "setup-local-llm.sh")
     + "   # or: bash <(cat) <<< \"$(python3 -m lint_fix_setup --print-script)\""
 )
-
 
 def setup_summary() -> dict[str, Any]:
     servers = detect_servers()
@@ -300,12 +288,10 @@ def setup_summary() -> dict[str, Any]:
         "default_url": "http://127.0.0.1:11434",
     }
 
-
 __all__ = [
     "detect_servers", "generate_install_script", "start_ollama_if_idle",
     "setup_summary", "DEFAULT_OLLAMA_MODEL",
 ]
-
 
 # Tiny CLI: `python3 lint_fix_setup.py --print-script` prints the bash
 # script so users can pipe it into `bash`. No interactive flow.

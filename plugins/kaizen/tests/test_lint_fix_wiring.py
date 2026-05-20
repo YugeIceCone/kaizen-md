@@ -16,13 +16,13 @@ from pathlib import Path
 from unittest import mock
 
 PLUGIN_ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(PLUGIN_ROOT / "skills" / "workflow" / "scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 sys.path.insert(0, str(PLUGIN_ROOT / "scripts" / "lint"))
 sys.path.insert(0, str(PLUGIN_ROOT / "scripts" / "mcp"))
 
 import lint_fix_dispatch as lfd  # noqa: E402
 import lint_fix_prefs as prefs   # noqa: E402
-
 
 def _findings() -> list[dict]:
     return [{
@@ -30,7 +30,6 @@ def _findings() -> list[dict]:
         "file": "src/foo.py", "line": 1, "col": 1,
         "message": "Do not assert blind exception", "fix_available": False,
     }]
-
 
 # ─── dispatch() honors prefs when strategy="auto" ─────────────────────
 
@@ -62,7 +61,6 @@ class DispatchAuto(unittest.TestCase):
                     self.assertEqual(out["strategy"], "subagent")
                     self.assertTrue(out.get("local_llm_fallback"))
 
-
 # ─── dispatch() with explicit local_llm + unreachable → setup_needed ──
 
 class DispatchSetupNeeded(unittest.TestCase):
@@ -79,7 +77,6 @@ class DispatchSetupNeeded(unittest.TestCase):
                 self.assertEqual(out.get("status"), "setup_needed")
                 self.assertIn("install_script", out)
 
-
 # ─── auto_fix_lint wires through to dispatch + prefs ─────────────────
 
 class AutoFixLintWiring(unittest.TestCase):
@@ -89,7 +86,6 @@ class AutoFixLintWiring(unittest.TestCase):
         file so the next invocation honors it."""
         # Import inside test so module-level import side effects don't bleed
         import importlib
-        sys.path.insert(0, str(PLUGIN_ROOT / "skills" / "workflow" / "scripts"))
         lint_mcp = importlib.import_module("lint_mcp")
         importlib.reload(lint_mcp)
 
@@ -111,14 +107,12 @@ class AutoFixLintWiring(unittest.TestCase):
                 self.assertEqual(out["strategy"], "subagent")
                 self.assertEqual(prefs.get_strategy(td), "subagent")
 
-
 # ─── lint_fix_setup_local_llm MCP tool surface ───────────────────────
 
 class SetupToolSurface(unittest.TestCase):
 
     def test_lint_fix_setup_local_llm_returns_summary(self):
         import importlib
-        sys.path.insert(0, str(PLUGIN_ROOT / "skills" / "workflow" / "scripts"))
         lint_mcp = importlib.import_module("lint_mcp")
         importlib.reload(lint_mcp)
 
@@ -134,7 +128,6 @@ class SetupToolSurface(unittest.TestCase):
 
     def test_lint_fix_setup_local_llm_offers_install_when_idle(self):
         import importlib
-        sys.path.insert(0, str(PLUGIN_ROOT / "skills" / "workflow" / "scripts"))
         lint_mcp = importlib.import_module("lint_mcp")
         importlib.reload(lint_mcp)
 
@@ -145,7 +138,6 @@ class SetupToolSurface(unittest.TestCase):
             self.assertEqual(out["status"], "setup_needed")
             self.assertIn("install_script", out)
             self.assertIn("setup_command", out)
-
 
 if __name__ == "__main__":
     unittest.main()

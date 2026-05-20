@@ -17,17 +17,14 @@ from pathlib import Path
 
 _SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(_SCRIPT_DIR))
-# MIGRATION BRIDGE — legacy helpers still at skills/workflow/scripts/
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "io"))
 
 import _envelope  # noqa: E402
 
 _emit = _envelope.emitter("kaizen-dead-code", tool_version="1.0.0")
 
-
 def _plugin_root() -> Path:
     return _SCRIPT_DIR.parents[1]
-
 
 def is_available() -> bool:
     try:
@@ -35,7 +32,6 @@ def is_available() -> bool:
         return True
     except ImportError:
         return False
-
 
 def scan(*, targets: list[Path], min_confidence: int = 80) -> dict:
     if not is_available():
@@ -64,7 +60,6 @@ def scan(*, targets: list[Path], min_confidence: int = 80) -> dict:
             findings.append({"raw": line})
     return {"available": True, "findings": findings}
 
-
 def _run(args) -> int:
     targets = [_plugin_root() / "scripts"]
     rep = scan(targets=targets, min_confidence=args.min_confidence)
@@ -86,7 +81,6 @@ def _run(args) -> int:
     _emit(rep, verdict=verdict, counts={"findings": n})
     return 0
 
-
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="kaizen-dead-code",
         description="vulture wrapper — dead-code detection over kaizen scripts.")
@@ -98,7 +92,6 @@ def main(argv: list[str] | None = None) -> int:
         s.set_defaults(func=_run)
     args = ap.parse_args(argv)
     return args.func(args)
-
 
 if __name__ == "__main__":
     sys.exit(main())

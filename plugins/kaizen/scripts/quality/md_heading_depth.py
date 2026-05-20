@@ -9,7 +9,6 @@ from pathlib import Path
 
 _SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(_SCRIPT_DIR))
-# MIGRATION BRIDGE — legacy helpers still at skills/workflow/scripts/
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "io"))
 
 import _envelope  # noqa: E402
@@ -17,10 +16,8 @@ import _envelope  # noqa: E402
 _emit = _envelope.emitter("kaizen-md-heading-depth", tool_version="1.0.0")
 _H_RE = re.compile(r"^(#+)\s+\S", re.MULTILINE)
 
-
 def _plugin_root() -> Path:
     return _SCRIPT_DIR.parents[1]
-
 
 def scan_text(text: str, *, path: str) -> list[dict]:
     findings: list[dict] = []
@@ -33,7 +30,6 @@ def scan_text(text: str, *, path: str) -> list[dict]:
                               "line": text.count("\n", 0, m.start()) + 1})
         prev = depth
     return findings
-
 
 def scan(*, root: Path) -> dict:
     if not root.is_dir():
@@ -50,7 +46,6 @@ def scan(*, root: Path) -> dict:
     return {"md_total": len(mds), "findings": findings,
             "violation_count": len(findings)}
 
-
 def _run(args) -> int:
     root = Path(args.root).expanduser() if args.root else _plugin_root().parent
     rep = scan(root=root)
@@ -63,7 +58,6 @@ def _run(args) -> int:
     _emit(rep, verdict=verdict, counts={"findings": n})
     return 0
 
-
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="kaizen-md-heading-depth",
         description="Flag heading-depth jumps in *.md.")
@@ -75,7 +69,6 @@ def main(argv: list[str] | None = None) -> int:
         s.set_defaults(func=_run)
     args = ap.parse_args(argv)
     return args.func(args)
-
 
 if __name__ == "__main__":
     sys.exit(main())

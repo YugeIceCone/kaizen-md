@@ -46,7 +46,6 @@ import os
 import sys
 from pathlib import Path
 
-
 def inbox_dir() -> Path:
     # v1.22.0+: default location moved to ~/.claude/.kaizen/inbox/.
     # KAIZEN_INBOX_DIR still wins if set.
@@ -59,33 +58,26 @@ def inbox_dir() -> Path:
     import _paths as _p  # noqa: E402
     return _p.INBOX_DIR
 
-
 def _ensure() -> Path:
     d = inbox_dir()
     d.mkdir(parents=True, exist_ok=True)
     return d
-
 
 # scripts/intent/ → scripts/io/ for _time
 _INBOX_SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(_INBOX_SCRIPT_DIR.parent / "io"))
 from _time import utc_now  # M5 dedup
 
-
 def _now() -> dt.datetime:
     return utc_now()
-
 
 def _ts_iso() -> str:
     return _now().isoformat(timespec="milliseconds").replace("+00:00", "Z")
 
-
 def _ts_filename() -> str:
     return _now().strftime("%Y%m%dT%H%M%SZ")
 
-
 # ─── Core ops ────────────────────────────────────────────────────────
-
 
 def capture(prompt: str, session_id: str = "") -> Path:
     d = _ensure()
@@ -105,13 +97,10 @@ def capture(prompt: str, session_id: str = "") -> Path:
     }, indent=2))
     return path
 
-
 _SENTINEL_NAME = ".current-turn"
-
 
 def _sentinel_path() -> Path:
     return inbox_dir() / _SENTINEL_NAME
-
 
 def _turn_starter_file() -> str:
     """Return the absolute path string of the current turn's starter message,
@@ -128,7 +117,6 @@ def _turn_starter_file() -> str:
     except (OSError, json.JSONDecodeError):
         return ""
 
-
 def set_turn_starter(captured_path: str) -> bool:
     """Write the sentinel ONLY if absent. Returns True if newly set,
     False if a sentinel already exists (this is a mid-turn message).
@@ -144,7 +132,6 @@ def set_turn_starter(captured_path: str) -> bool:
         return True
     except OSError:
         return False
-
 
 def clear_turn_starter() -> bool:
     """Remove the sentinel AND mark the starter message as drained.
@@ -182,7 +169,6 @@ def clear_turn_starter() -> bool:
     except OSError:
         return False
 
-
 def list_messages(pending_only: bool = True) -> list[dict]:
     d = inbox_dir()
     if not d.exists():
@@ -198,7 +184,6 @@ def list_messages(pending_only: bool = True) -> list[dict]:
         m["_path"] = str(f)
         out.append(m)
     return out
-
 
 def drain() -> str:
     pending = list_messages(pending_only=True)
@@ -239,7 +224,6 @@ def drain() -> str:
     )
     return "\n".join(lines)
 
-
 def peek() -> str:
     pending = list_messages(pending_only=True)
     if not pending:
@@ -252,7 +236,6 @@ def peek() -> str:
         lines.append(f"  [{m.get('ts', '?')}] {prompt}")
     return "\n".join(lines)
 
-
 def clear() -> int:
     d = inbox_dir()
     if not d.exists():
@@ -262,7 +245,6 @@ def clear() -> int:
         f.unlink()
         n += 1
     return n
-
 
 def stats() -> dict:
     d = inbox_dir()
@@ -286,9 +268,7 @@ def stats() -> dict:
         "total": pending + drained_count,
     }
 
-
 # ─── CLI ─────────────────────────────────────────────────────────────
-
 
 def main() -> None:
     p = argparse.ArgumentParser(prog="inbox.py", description=__doc__,
@@ -355,7 +335,6 @@ def main() -> None:
     elif args.cmd == "clear-turn-starter":
         ok = clear_turn_starter()
         print("cleared" if ok else "absent")
-
 
 if __name__ == "__main__":
     main()

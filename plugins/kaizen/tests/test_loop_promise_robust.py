@@ -30,18 +30,15 @@ import unittest
 from pathlib import Path
 
 PLUGIN_ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(PLUGIN_ROOT / "skills" / "workflow" / "scripts"))
-
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 import loop_ledger as ll  # noqa: E402
 import loop_state as ls  # noqa: E402
-
 
 SETUP_SCRIPT = PLUGIN_ROOT / "skills" / "loop" / "scripts" / "setup-ralph-loop.sh"
 HOOK_CC = PLUGIN_ROOT / "hooks" / "claude" / "stop-ralph.sh"
 
-
 # ─── 1. check_completion_promise — fence-aware end-of-message matching ─
-
 
 class TestCheckCompletionPromise(unittest.TestCase):
     def test_promise_at_message_end_matches(self):
@@ -100,7 +97,6 @@ class TestCheckCompletionPromise(unittest.TestCase):
         msg = "ok\n\n<promise>\n  DONE\n  </promise>"
         self.assertTrue(ll.check_completion_promise(msg, "DONE"))
 
-
 class TestHasUnsafePromiseMention(unittest.TestCase):
     """Diagnostic helper for surfacing why a loop didn't end despite mentions."""
 
@@ -122,9 +118,7 @@ class TestHasUnsafePromiseMention(unittest.TestCase):
     def test_no_mention_no_diagnostic(self):
         self.assertFalse(ll.has_unsafe_promise_mention("plain text"))
 
-
 # ─── 2. promise-check CLI subcommand ─────────────────────────────────
-
 
 class TestPromiseCheckCLI(unittest.TestCase):
     HELPER = PLUGIN_ROOT / "scripts" / "state" / "loop_ledger.py"
@@ -153,9 +147,7 @@ class TestPromiseCheckCLI(unittest.TestCase):
     def test_exit_one_when_no_promise(self):
         self.assertEqual(self._run("just words", "DONE"), 1)
 
-
 # ─── 3. emit_promise — structured tool path ──────────────────────────
-
 
 class _CwdMixin:
     def setUp(self):
@@ -168,14 +160,12 @@ class _CwdMixin:
         os.chdir(self._cwd)
         self._tmpcm.cleanup()
 
-
 def _init_loop(tmpdir: Path, **flags):
     args = ["bash", str(SETUP_SCRIPT)]
     for k, v in flags.items():
         args.extend([f"--{k.replace('_', '-')}", str(v)])
     args.append("seed prompt")
     subprocess.run(args, cwd=tmpdir, check=True, capture_output=True)
-
 
 class TestEmitPromise(_CwdMixin, unittest.TestCase):
     def test_writes_last_promise_field(self):
@@ -212,7 +202,6 @@ class TestEmitPromise(_CwdMixin, unittest.TestCase):
         self.assertEqual(state.count("last_promise:"), 1)
         self.assertIn('last_promise: "DONE"', state)
 
-
 class TestEmitPromiseCLI(_CwdMixin, unittest.TestCase):
     HELPER = PLUGIN_ROOT / "scripts" / "state" / "loop_state.py"
 
@@ -226,9 +215,7 @@ class TestEmitPromiseCLI(_CwdMixin, unittest.TestCase):
         state = (self.tmp / ".kaizen" / "loop.state.md").read_text()
         self.assertIn('last_promise: "DONE"', state)
 
-
 # ─── 4. File-path auto-load in setup script ──────────────────────────
-
 
 class TestSetupFilePathAutoLoad(unittest.TestCase):
     def test_existing_file_path_loads_contents(self):
@@ -284,9 +271,7 @@ class TestSetupFilePathAutoLoad(unittest.TestCase):
             self.assertIn(str(doc), body)
             self.assertNotIn("file contents", body)
 
-
 # ─── 5. End-to-end via the bash hook ─────────────────────────────────
-
 
 class TestHookHonorsStructuredPromise(unittest.TestCase):
     """The Stop hook should end the loop when last_promise matches,
@@ -359,7 +344,6 @@ class TestHookHonorsStructuredPromise(unittest.TestCase):
             payload = json.loads(result.stdout)
             # Should NOT end — loop continues via decision: block
             self.assertEqual(payload.get("decision"), "block")
-
 
 if __name__ == "__main__":
     unittest.main()

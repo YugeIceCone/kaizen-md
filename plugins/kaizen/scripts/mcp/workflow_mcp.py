@@ -42,6 +42,8 @@ from __future__ import annotations
 import json
 import sys
 from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import _bootstrap  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 
 try:
     # ty: ignore[unresolved-import]  — uv-script PEP 723 deps invisible to ty
@@ -50,20 +52,15 @@ except ImportError as e:
     sys.stderr.write(f"kaizen-workflow-mcp: missing mcp dep: {e}\n")
     sys.exit(1)
 
-
 mcp = FastMCP("workflow")
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 # workflow.sh + workflow_runner.py now live alongside this file at
 # skills/workflow/scripts/ (v1.31.0 merge — was skills/workflow-routing/scripts/).
-WF_SH = SCRIPT_DIR.parents[1] / "skills" / "workflow" / "scripts" / "workflow.sh"
-WF_RUNNER = SCRIPT_DIR.parents[1] / "skills" / "workflow" / "scripts" / "workflow_runner.py"
-
 
 # M2 dedup: shared in _subproc.py (default timeout 30s is the workflow MCP variant).
 from _subproc import git_repo_root as _repo_root  # noqa: E402, F401
 from _subproc import run as _run  # noqa: E402
-
 
 def _read_state() -> dict | None:
     """Return current state.json contents (parsed) or None if no workflow active."""
@@ -75,9 +72,7 @@ def _read_state() -> dict | None:
     except (OSError, json.JSONDecodeError):
         return None
 
-
 # ─── Workflow state-machine tools ────────────────────────────────────
-
 
 @mcp.tool()
 async def workflow_init(
@@ -112,7 +107,6 @@ async def workflow_init(
         "state": state,
     }
 
-
 @mcp.tool()
 async def workflow_advance(stage: str, summary: str) -> dict:
     """Advance from <stage> to the next stage. summary is a one-line result note.
@@ -134,7 +128,6 @@ async def workflow_advance(stage: str, summary: str) -> dict:
         "state": state,
     }
 
-
 @mcp.tool()
 async def workflow_artifact(key: str, value: str) -> dict:
     """Record an artifact (key=value pair) in state.json.
@@ -146,7 +139,6 @@ async def workflow_artifact(key: str, value: str) -> dict:
         "output": r["stdout"].strip(),
         "stderr": r["stderr"] if r["exit_code"] != 0 else "",
     }
-
 
 @mcp.tool()
 async def workflow_branch(stage: str, key: str) -> dict:
@@ -164,7 +156,6 @@ async def workflow_branch(stage: str, key: str) -> dict:
         "stderr": r["stderr"] if r["exit_code"] != 0 else "",
         "state": _read_state(),
     }
-
 
 @mcp.tool()
 async def workflow_status() -> dict:
@@ -190,7 +181,6 @@ async def workflow_status() -> dict:
         },
     }
 
-
 @mcp.tool()
 async def workflow_reset(confirm: bool = False) -> dict:
     """Reset the active workflow (delete state.json). REQUIRES confirm=True.
@@ -211,9 +201,7 @@ async def workflow_reset(confirm: bool = False) -> dict:
         "stderr": r["stderr"] if r["exit_code"] != 0 else "",
     }
 
-
 # ─── Schema introspection ────────────────────────────────────────────
-
 
 @mcp.tool()
 async def workflow_list_schemas() -> list[dict]:
@@ -236,7 +224,6 @@ async def workflow_list_schemas() -> list[dict]:
             })
     return out
 
-
 @mcp.tool()
 async def workflow_show_schema(name: str) -> dict:
     """Return the full schema content (parsed). Useful for inspecting
@@ -249,7 +236,6 @@ async def workflow_show_schema(name: str) -> dict:
     except json.JSONDecodeError as e:
         return {"error": f"parse_error: {e}", "raw": r["stdout"][:2000]}
 
-
 @mcp.tool()
 async def workflow_validate_schema(name: str) -> dict:
     """Validate a schema's structure. Returns {valid: bool, errors: [str]}."""
@@ -259,7 +245,6 @@ async def workflow_validate_schema(name: str) -> dict:
         "output": r["stdout"].strip(),
         "errors": [e.strip("  • ") for e in r["stdout"].splitlines() if e.startswith("  •")] if r["exit_code"] != 0 else [],
     }
-
 
 if __name__ == "__main__":
     mcp.run()

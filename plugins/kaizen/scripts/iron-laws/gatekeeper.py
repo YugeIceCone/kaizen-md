@@ -37,13 +37,14 @@ import time
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from types import ModuleType
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import _bootstrap  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 
 _SCRIPT_DIR = Path(__file__).resolve().parent
 _PLUGIN_ROOT = _SCRIPT_DIR.parent.parent  # scripts/iron-laws → plugins/kaizen/
 _REPO_ROOT_DEFAULT = _PLUGIN_ROOT.parent.parent  # repo root (kaizen-md)
 
 # ─── Common shapes ──────────────────────────────────────────────────────
-
 
 @dataclass
 class GateFinding:
@@ -55,14 +56,12 @@ class GateFinding:
     file: str = ""
     line: int | None = None
 
-
 @dataclass
 class Verdict:
     overall: str            # green | yellow | red
     findings: list[GateFinding] = field(default_factory=list)
     durations_ms: dict[str, int] = field(default_factory=dict)
     counts: dict[str, int] = field(default_factory=dict)  # severity → count
-
 
 # ─── Severity normalization ─────────────────────────────────────────────
 
@@ -76,10 +75,8 @@ _SEV_MAP = {
     "info": "info",
 }
 
-
 def _norm_sev(s: str) -> str:
     return _SEV_MAP.get(s, "warn")
-
 
 def _load_module(name: str, path: Path) -> ModuleType:
     """Explicit module loader — avoids `sys.path` collisions when two skills
@@ -94,9 +91,7 @@ def _load_module(name: str, path: Path) -> ModuleType:
     spec.loader.exec_module(module)
     return module
 
-
 # ─── Sub-gate: iron-laws ────────────────────────────────────────────────
-
 
 def _gate_iron_laws(scope: str, repo_root: Path) -> list[GateFinding]:
     try:
@@ -120,9 +115,7 @@ def _gate_iron_laws(scope: str, repo_root: Path) -> list[GateFinding]:
         for f in findings
     ]
 
-
 # ─── Sub-gate: efficient-tool-use ───────────────────────────────────────
-
 
 def _gate_etu(scope: str, repo_root: Path) -> list[GateFinding]:
     etu_dir = _PLUGIN_ROOT / "scripts" / "etu"
@@ -151,9 +144,7 @@ def _gate_etu(scope: str, repo_root: Path) -> list[GateFinding]:
         for f in findings
     ]
 
-
 # ─── Sub-gate: karpathy scanners ────────────────────────────────────────
-
 
 def _gate_karpathy(scope: str, repo_root: Path) -> list[GateFinding]:
     """Run karpathy diff-level scanners. Skipped when no staged diff."""
@@ -204,9 +195,7 @@ def _gate_karpathy(scope: str, repo_root: Path) -> list[GateFinding]:
                                        message=line[:200]))
     return out
 
-
 # ─── Sub-gate: plugin-validator ─────────────────────────────────────────
-
 
 def _gate_validator(scope: str, repo_root: Path) -> list[GateFinding]:
     """Light wrapper: invoke validate.py and count hard/soft findings."""
@@ -249,13 +238,11 @@ def _gate_validator(scope: str, repo_root: Path) -> list[GateFinding]:
                                message=f"validate.py exited {proc.returncode}"))
     return out
 
-
 # ─── Sub-gate: token-bloat (waste-tokens threshold) ──────────────────
 
 def _gate_token_bloat(scope: str, repo_root: Path) -> list[GateFinding]:
     """Surface findings from kaizen-token-bloat when waste exceeds the
     notice threshold. Advisory only — never blocks the commit."""
-    script = _PLUGIN_ROOT / "skills" / "workflow" / "scripts" / "token_bloat.py"
     if not script.is_file():
         return []
     try:
@@ -278,12 +265,10 @@ def _gate_token_bloat(scope: str, repo_root: Path) -> list[GateFinding]:
             message=f"{high} high finding(s) — run `kaizen-token-bloat report`"))
     return out
 
-
 # ─── Sub-gate: coverage (test-coverage gap) ──────────────────────────
 
 def _gate_coverage(scope: str, repo_root: Path) -> list[GateFinding]:
     """Surface kaizen-coverage gaps — uncovered workflow scripts."""
-    script = _PLUGIN_ROOT / "skills" / "workflow" / "scripts" / "coverage.py"
     if not script.is_file():
         return []
     try:
@@ -306,14 +291,12 @@ def _gate_coverage(scope: str, repo_root: Path) -> list[GateFinding]:
             message=f"{len(gaps)} uncovered script(s): {sample}")]
     return []
 
-
 # ─── Sub-gate: schema-coverage (feature shape conformance) ───────────
 
 def _gate_schema_coverage(scope: str, repo_root: Path) -> list[GateFinding]:
     """Surface kaizen-schema-coverage gaps — features that fail shape
     conformance (lens-manifest / decision-rubric / plain-config /
     rule-catalog)."""
-    script = _PLUGIN_ROOT / "skills" / "workflow" / "scripts" / "schema_coverage.py"
     if not script.is_file():
         return []
     try:
@@ -336,7 +319,6 @@ def _gate_schema_coverage(scope: str, repo_root: Path) -> list[GateFinding]:
             rule_id="shape-gaps",
             message=f"{len(data)} feature(s) with shape gaps: {sample}")]
     return []
-
 
 # ─── Orchestrator ───────────────────────────────────────────────────────
 
@@ -377,14 +359,12 @@ def _classify_frontmatter_findings(audit_data: list) -> list[GateFinding]:
         ))
     return out
 
-
 def _gate_frontmatter(scope: str, repo_root: Path) -> list[GateFinding]:
     """SKILL.md frontmatter conformance: name matches dir + ≥3 trigger phrases.
 
     Emits TWO distinct findings (see ``_classify_frontmatter_findings``) —
     name-mismatch as error (hard-gate), weak-routing as warn (soft-gate).
     """
-    script = _PLUGIN_ROOT / "skills" / "workflow" / "scripts" / "frontmatter.py"
     if not script.is_file():
         return []
     try:
@@ -400,11 +380,9 @@ def _gate_frontmatter(scope: str, repo_root: Path) -> list[GateFinding]:
         return []
     return _classify_frontmatter_findings(data)
 
-
 def _gate_name_quality(scope: str, repo_root: Path) -> list[GateFinding]:
     """Surface kaizen-name-quality bad/weak findings — files whose
     name doesn't match their docstring intent."""
-    script = _PLUGIN_ROOT / "skills" / "workflow" / "scripts" / "name_quality.py"
     if not script.is_file():
         return []
     try:
@@ -435,7 +413,6 @@ def _gate_name_quality(scope: str, repo_root: Path) -> list[GateFinding]:
             message=f"{len(weak)} weak name-intent match(es)")]
     return []
 
-
 def _gate_slash_collision(scope: str, repo_root: Path) -> list[GateFinding]:
     """Surface tab-completion-ambiguous slash pairs (>=4-char shared prefix).
 
@@ -444,7 +421,6 @@ def _gate_slash_collision(scope: str, repo_root: Path) -> list[GateFinding]:
     collisions surfacing means a fresh slash collided with an existing
     one and the author should rename.
     """
-    script = _PLUGIN_ROOT / "skills" / "workflow" / "scripts" / "slash_collision.py"
     if not script.is_file():
         return []
     try:
@@ -474,13 +450,11 @@ def _gate_slash_collision(scope: str, repo_root: Path) -> list[GateFinding]:
                  f"Run `kaizen-slash-collision check` for the full list."),
     )]
 
-
 def _gate_menu_lint(scope: str, repo_root: Path) -> list[GateFinding]:
     """AskUserQuestion-driven menu slash commands must declare the perm
     + respect the 4Q × 4-option contract. Errors (missing perm = runtime
     AskUserQuestion failure) surface as error-severity; option/question
     overflows surface as warn-severity (advisory)."""
-    script = _PLUGIN_ROOT / "skills" / "workflow" / "scripts" / "menu_lint.py"
     if not script.is_file():
         return []
     try:
@@ -520,7 +494,6 @@ def _gate_menu_lint(scope: str, repo_root: Path) -> list[GateFinding]:
         ))
     return out
 
-
 # Phase 4.C — known kaizen index registry.
 # Each entry: (indexer_name, corpus_path_resolver, glob).
 # The resolver returns the directory whose contents drive index drift;
@@ -531,13 +504,11 @@ def _brain_corpus_dir() -> Path | None:
     notes = base / "Notes"
     return notes if notes.is_dir() else None
 
-
 _INDEXER_REGISTRY: list[tuple[str, "callable", str]] = [
     ("brain", _brain_corpus_dir, "*.md"),
     # Extension point: add (name, dir_fn, glob) for other indexers as
     # they migrate to _index_kit.compute_corpus_drift.
 ]
-
 
 def _check_indexer_stale() -> list[GateFinding]:
     """Compare each registered index's current corpus hash against the
@@ -548,7 +519,8 @@ def _check_indexer_stale() -> list[GateFinding]:
                   else Path.home() / ".claude" / ".kaizen")
     state_file = state_dir / "indexer-state.json"
     try:
-        sys.path.insert(0, str(_PLUGIN_ROOT / "skills" / "workflow" / "scripts"))
+        sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+        import _bootstrap  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
         # Post-DOMAIN-6: _index_kit moved to scripts/daemon/
         sys.path.insert(0, str(_PLUGIN_ROOT / "scripts" / "daemon"))
         import _index_kit as _ik  # type: ignore
@@ -582,7 +554,6 @@ def _check_indexer_stale() -> list[GateFinding]:
             ))
     return out
 
-
 def _top_level_imports(claude_md_text: str, base_dir: Path) -> list[Path]:
     """Return resolved Paths of top-level `@import` directives in
     a CLAUDE.md body. Same resolution rules as _expand_imports but
@@ -602,7 +573,6 @@ def _top_level_imports(claude_md_text: str, base_dir: Path) -> list[Path]:
         except OSError:
             continue
     return out
-
 
 def _loaded_file_paths_set() -> set[str]:
     """Set of file_paths from the InstructionsLoaded jsonl. Empty when
@@ -635,7 +605,6 @@ def _loaded_file_paths_set() -> set[str]:
     except OSError:
         return set()
     return seen
-
 
 def _check_expected_imports_fired() -> list[GateFinding]:
     """Detect @imports in CLAUDE.md whose targets exist on disk but the
@@ -672,9 +641,7 @@ def _check_expected_imports_fired() -> list[GateFinding]:
             ))
     return out
 
-
 # ─── Sub-gate: brain-drift ───────────────────────────────────────────
-
 
 def _gate_brain_drift(scope: str, repo_root: Path) -> list[GateFinding]:
     """Detect drift across the auto-recording flow:
@@ -736,7 +703,6 @@ def _gate_brain_drift(scope: str, repo_root: Path) -> list[GateFinding]:
     # (3) orphan gate files (slug not in current Persona directives)
     if gates_dir.is_dir() and persona.is_file():
         try:
-            sys.path.insert(0, str(_PLUGIN_ROOT / "skills" / "workflow" / "scripts"))
             import auto_load as _al  # type: ignore
             parsed = _al.parse_persona(persona.read_text(encoding="utf-8"))
             valid_slugs = {
@@ -783,12 +749,9 @@ def _gate_brain_drift(scope: str, repo_root: Path) -> list[GateFinding]:
 
     return out
 
-
 # ─── Sub-gate: claude-md-bloat (post-@import expansion) ─────────────
 
-
 _IMPORT_LINE_RE = re.compile(r"(?<!\\)@([^\s@]+)")
-
 
 def _expand_imports(text: str, base_dir: Path, max_depth: int = 5,
                      _seen: set | None = None) -> str:
@@ -846,7 +809,6 @@ def _expand_imports(text: str, base_dir: Path, max_depth: int = 5,
         out_lines.append(expanded)
     return "\n".join(out_lines)
 
-
 def _gate_claude_md_bloat(scope: str, repo_root: Path) -> list[GateFinding]:
     """Warn when CLAUDE.md's post-@import expansion exceeds budget.
 
@@ -887,9 +849,7 @@ def _gate_claude_md_bloat(scope: str, repo_root: Path) -> list[GateFinding]:
                  "frontmatter (path-scoped, not always-loaded)."),
     )]
 
-
 # ─── Sub-gate: auto-load-budget ──────────────────────────────────────
-
 
 def _gate_auto_load_budget(scope: str, repo_root: Path) -> list[GateFinding]:
     """Warn when the daemon-built ~/.claude/.kaizen/auto-load.md exceeds
@@ -924,7 +884,6 @@ def _gate_auto_load_budget(scope: str, repo_root: Path) -> list[GateFinding]:
                  "auto_load.build_auto_load()."),
     )]
 
-
 SUB_GATES = {
     "iron-laws":              _gate_iron_laws,
     "etu":                    _gate_etu,
@@ -941,7 +900,6 @@ SUB_GATES = {
     "brain-drift":            _gate_brain_drift,       # MEMORY/auto-load/gates/pins drift
     "claude-md-bloat":        _gate_claude_md_bloat,   # CLAUDE.md post-@import expansion size
 }
-
 
 def gate_all(scope: str = "staged",
              repo_root: Path | None = None,
@@ -977,7 +935,6 @@ def gate_all(scope: str = "staged",
     return Verdict(overall=overall, findings=findings,
                    durations_ms=durations, counts=counts)
 
-
 def render_text(v: Verdict) -> str:
     out = [f"kaizen gatekeeper: {v.overall.upper()}\n"]
     if v.counts:
@@ -990,7 +947,6 @@ def render_text(v: Verdict) -> str:
             out.append(f"  [{f.severity}] {f.gate}:{f.rule_id}  {loc}\n"
                        f"    {f.message}\n")
     return "".join(out)
-
 
 def render_json(v: Verdict, argv: list[str] | None = None) -> str:
     """Canonical-envelope-wrapped JSON output. Schema:
@@ -1012,9 +968,7 @@ def render_json(v: Verdict, argv: list[str] | None = None) -> str:
         argv=argv,
     ))
 
-
 # ─── CLI ────────────────────────────────────────────────────────────────
-
 
 def main(argv: list[str]) -> int:
     if not argv or argv[0] in ("-h", "--help"):
@@ -1046,7 +1000,6 @@ def main(argv: list[str]) -> int:
     v = gate_all(scope=scope, only=only)
     sys.stdout.write(render_json(v, argv=sys.argv) if want_json else render_text(v))
     return 1 if v.overall == "red" else 0
-
 
 if __name__ == "__main__":
     sys.exit(main(sys.argv[1:]))

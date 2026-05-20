@@ -77,7 +77,6 @@ import _envelope  # noqa: E402
 
 _emit = _envelope.emitter("kaizen-index-flow", tool_version="1.0.0")
 
-
 class DiscoverNode(_flow.AsyncNode):
     """Walk the source tree; produce the candidate file list. Pure read
     side-effect — does not mutate the db. Splitting this out lets future
@@ -99,7 +98,6 @@ class DiscoverNode(_flow.AsyncNode):
         store["candidate_files"] = files
         store["candidate_count"] = len(files)
         return "default"
-
 
 class DumpNode(_flow.AsyncNode):
     """Stage 1 — lossless capture into code_files_raw.
@@ -124,7 +122,6 @@ class DumpNode(_flow.AsyncNode):
         store["errors"] = result["errors"]
         return "default"
 
-
 class FilterEmbedNode(_flow.AsyncNode):
     """Stage 2 — clean + chunk + embed from code_files_raw.
 
@@ -143,7 +140,6 @@ class FilterEmbedNode(_flow.AsyncNode):
         store["chunks"] = result["chunks"]
         store["dropped"] = result["dropped"]
         return "default"
-
 
 class OptimizeNode(_flow.AsyncNode):
     """PRAGMA optimize + FTS5 optimize as an explicit pipeline stage.
@@ -184,7 +180,6 @@ class OptimizeNode(_flow.AsyncNode):
         store["optimized"] = ran
         return "default"
 
-
 class ReportNode(_flow.AsyncNode):
     """Terminal — compose the back-compat report dict for the caller.
 
@@ -218,7 +213,6 @@ class ReportNode(_flow.AsyncNode):
         store["report"] = report
         return None  # terminal
 
-
 def build_index_flow() -> _flow.AsyncFlow:
     """Construct the canonical ingest flow.
 
@@ -235,14 +229,12 @@ def build_index_flow() -> _flow.AsyncFlow:
     f.add_successor(optimize, "default", report)
     return f
 
-
 def index(root: Path, *, use_git: bool = True, optimize: bool = True) -> dict:
     """Sync wrapper — drop-in shape-compatible with `onboard_index.do_index`."""
     store: dict = {"root": root, "use_git": use_git, "optimize": optimize}
     f = build_index_flow()
     asyncio.run(f.run_async(store))
     return store["report"]
-
 
 def main():
     import argparse
@@ -284,7 +276,6 @@ def main():
         print("--- timing (ms) ---", file=sys.stderr)
         for name, ms in store.get("_timing", {}).items():
             print(f"  {name:<22} {ms} ms", file=sys.stderr)
-
 
 if __name__ == "__main__":
     main()

@@ -12,9 +12,8 @@ import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / "skills" / "workflow" / "scripts"))
-
-
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 class TestRegenIndex(unittest.TestCase):
     """`memory.regen_index(dir)` rebuilds MEMORY.md from the
     name + description frontmatter of every *.md sibling."""
@@ -75,7 +74,6 @@ class TestRegenIndex(unittest.TestCase):
             # Em-dash should render correctly (not mojibake)
             self.assertIn("—", text)
             self.assertIn("](project_broken.md)", text)
-
 
 class TestDefaultMemoryDir(unittest.TestCase):
     """`_default_memory_dir()` resolves to the git repo root's slug per
@@ -140,7 +138,6 @@ class TestDefaultMemoryDir(unittest.TestCase):
 
         self.assertIn(str(fake_cwd).replace("/", "-"), str(d))
         self.assertTrue(str(d).startswith("/fake/home/.claude/projects/"))
-
 
 if __name__ == "__main__":
     unittest.main()

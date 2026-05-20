@@ -37,7 +37,6 @@ import subprocess
 import sys
 from pathlib import Path
 
-
 def _git(*args: str, cwd: Path | None = None) -> tuple[int, str]:
     """Run git, return (rc, stdout). stderr discarded."""
     try:
@@ -49,7 +48,6 @@ def _git(*args: str, cwd: Path | None = None) -> tuple[int, str]:
         return r.returncode, r.stdout
     except (OSError, subprocess.SubprocessError):
         return 1, ""
-
 
 def detect_default_branch(cwd: Path | None = None) -> str:
     """Best-effort default-branch detection."""
@@ -67,7 +65,6 @@ def detect_default_branch(cwd: Path | None = None) -> str:
         if rc == 0:
             return cand
     return "main"
-
 
 def list_worktrees(cwd: Path | None = None) -> list[dict]:
     """Parse `git worktree list --porcelain`. Returns list of dicts
@@ -103,7 +100,6 @@ def list_worktrees(cwd: Path | None = None) -> list[dict]:
         worktrees.append(current)
     return worktrees
 
-
 def merged_branches(default_branch: str, cwd: Path | None = None) -> set[str]:
     """Branches fully merged into default_branch."""
     rc, out = _git("branch", "--merged", default_branch, cwd=cwd)
@@ -116,7 +112,6 @@ def merged_branches(default_branch: str, cwd: Path | None = None) -> set[str]:
         if name:
             merged.add(name)
     return merged
-
 
 def find_removable(cwd: Path | None = None) -> list[dict]:
     """List worktrees whose branch is merged + not the default + not locked.
@@ -138,14 +133,12 @@ def find_removable(cwd: Path | None = None) -> list[dict]:
             out.append(wt)
     return out
 
-
 def remove_worktree(path: str, cwd: Path | None = None) -> tuple[bool, str]:
     """`git worktree remove <path>`. Returns (ok, msg)."""
     rc, out = _git("worktree", "remove", path, cwd=cwd)
     return (rc == 0,
             (out.strip() or f"removed {path}") if rc == 0
             else f"failed (rc={rc}): {out.strip()[:200]}")
-
 
 def _cmd_list(args) -> int:
     candidates = find_removable()
@@ -162,7 +155,6 @@ def _cmd_list(args) -> int:
             print(f"  - {c['path']}  (branch={c['branch']})")
         print("\nRun with --apply to remove.")
     return 0
-
 
 def _cmd_apply(args) -> int:
     candidates = find_removable()
@@ -182,7 +174,6 @@ def _cmd_apply(args) -> int:
                                     "removed": sum(1 for r in results if r["ok"])}}))
     return 0 if all(r["ok"] for r in results) else 1
 
-
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(
         prog="kaizen-cleanup-worktrees",
@@ -194,7 +185,6 @@ def main(argv: list[str] | None = None) -> int:
                    help="Machine-readable output envelope")
     args = p.parse_args(argv)
     return _cmd_apply(args) if args.apply else _cmd_list(args)
-
 
 if __name__ == "__main__":
     sys.exit(main())

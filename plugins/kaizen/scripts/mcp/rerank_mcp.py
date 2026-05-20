@@ -46,8 +46,8 @@ from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR))
-# MIGRATION BRIDGE — relocated modules + legacy helpers
-sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "skills" / "workflow" / "scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import _bootstrap  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts" / "brain"))
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts" / "indexers"))
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts" / "handlers"))
@@ -62,9 +62,7 @@ except ImportError as e:
     )
     sys.exit(1)
 
-
 mcp = FastMCP("kaizen-rerank")
-
 
 @mcp.tool()
 async def embed_rerank(
@@ -99,7 +97,6 @@ async def embed_rerank(
         for rid, score in scored
     ]
 
-
 @mcp.tool()
 async def embed_rerank_status() -> dict:
     """Report the cross-encoder model that would be used + whether
@@ -112,7 +109,6 @@ async def embed_rerank_status() -> dict:
         "fallback_behavior": "input order preserved with score=0"
                              if not has_st else "cross-encoder predict",
     }
-
 
 if __name__ == "__main__":
     mcp.run()

@@ -46,7 +46,6 @@ or rely on refresh-cache.sh which invokes codegen before sync.
 
 """
 
-
 def _render_routines() -> str:
     routines = load_routines()
     out = [GENERATED_HEADER.format(source="routines"), "# Workflow Routines\n\n"]
@@ -111,7 +110,6 @@ def _render_routines() -> str:
         if cs:
             out.append(f"**Coding skills cross-link:** {', '.join(f'`kaizen:{s}`' for s in cs)}\n\n")
     return "".join(out)
-
 
 def _render_git_discipline() -> str:
     g = load_git_discipline()
@@ -234,7 +232,6 @@ def _render_git_discipline() -> str:
 
     return "".join(out)
 
-
 def _render_intent_routing() -> str:
     """Render references/code-router.md from intent_routing.yaml.
 
@@ -302,7 +299,6 @@ def _render_intent_routing() -> str:
     out.append(cfg.get("invocation_protocol", "").rstrip() + "\n")
     return "".join(out)
 
-
 def _write_atomic(path: Path, content: str) -> bool:
     """Write only if content differs. Returns True iff write happened."""
     if path.exists() and path.read_text(encoding="utf-8") == content:
@@ -310,7 +306,6 @@ def _write_atomic(path: Path, content: str) -> bool:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(content, encoding="utf-8")
     return True
-
 
 def generate(check_only: bool = False) -> int:
     targets = [
@@ -331,7 +326,6 @@ def generate(check_only: bool = False) -> int:
             changed = _write_atomic(path, content)
             print(f"{'wrote' if changed else 'unchanged'}: {path}")
     return 1 if (check_only and drift) else 0
-
 
 if __name__ == "__main__":
     sys.exit(generate(check_only="--check" in sys.argv))

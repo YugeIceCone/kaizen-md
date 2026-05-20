@@ -44,10 +44,10 @@ from typing import Any, Callable, Optional
 _SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(_SCRIPT_DIR))
 # MIGRATION BRIDGE — _envelope + other helpers still at skills/workflow/scripts/
-sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "skills" / "workflow" / "scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import _bootstrap  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 
 import _envelope  # noqa: E402
-
 
 try:
     import yaml as _yaml
@@ -64,28 +64,21 @@ try:
 except ImportError:
     _HAS_JSONSCHEMA = False
 
-
 # ─── Errors ──────────────────────────────────────────────────────────
-
 
 class ManifestError(ValueError):
     """A feature manifest is missing required keys, wrong version, etc."""
 
-
 class SchemaValidationError(ValueError):
     """Input or output failed schema validation. Stops the lens flow."""
-
 
 class RuleError(ValueError):
     """A rule yaml uses an unknown operator or malformed condition."""
 
-
 # ─── Manifest + Subcommand ───────────────────────────────────────────
-
 
 _MANIFEST_REQUIRED = ("version", "feature", "subcommands")
 _MANIFEST_VERSION = 2
-
 
 @dataclass
 class Subcommand:
@@ -108,7 +101,6 @@ class Subcommand:
         if self.output_schema_path is None:
             return
         _validate_against(self.output_schema_path, data, where="output")
-
 
 class Manifest:
     """A feature's v2 manifest, loaded from yaml.
@@ -177,7 +169,6 @@ class Manifest:
                 f"(known: {', '.join(sorted(self.subcommands)) or '<none>'})"
             )
 
-
 def _resolve_schema(manifest_dir: Path, ref: Optional[str]) -> Optional[Path]:
     if not ref:
         return None
@@ -185,7 +176,6 @@ def _resolve_schema(manifest_dir: Path, ref: Optional[str]) -> Optional[Path]:
     if not p.is_absolute():
         p = manifest_dir / p
     return p
-
 
 def _validate_against(schema_path: Path, data: Any, *, where: str) -> None:
     """Raise SchemaValidationError on miss; silently skip if jsonschema unavailable."""
@@ -209,9 +199,7 @@ def _validate_against(schema_path: Path, data: Any, *, where: str) -> None:
             f"at {list(exc.absolute_path) or '<root>'}"
         ) from exc
 
-
 # ─── Envelope emission (the "lens" rendering layer) ──────────────────
-
 
 def lens_emit(
     tool: str,
@@ -235,7 +223,6 @@ def lens_emit(
     sub.validate_output(data)
     emitter = _envelope.emitter(tool, tool_version=tool_version)
     emitter(data, verdict=verdict, counts=counts, file=file)
-
 
 def lens_dispatch(
     tool: str,
@@ -271,9 +258,7 @@ def lens_dispatch(
     emitter(output, verdict=verdict, counts=counts, file=file)
     return 0
 
-
 # ─── BucketWalker — data-driven classifier over a signal dict ────────
-
 
 _OPERATORS: dict[str, Callable[[Any, Any], bool]] = {
     ">=": operator.ge,
@@ -284,13 +269,11 @@ _OPERATORS: dict[str, Callable[[Any, Any], bool]] = {
     "!=": operator.ne,
 }
 
-
 @dataclass
 class _Rule:
     bucket: str
     require_all: list[dict] = field(default_factory=list)
     require_any: list[dict] = field(default_factory=list)
-
 
 @dataclass
 class WalkerResult:
@@ -300,7 +283,6 @@ class WalkerResult:
     matched_conditions: int
     total_conditions: int
     rationale: str
-
 
 class BucketWalker:
     """Walks a rubric yaml against a signal dict; first matching rule wins.
@@ -409,7 +391,6 @@ class BucketWalker:
         )
         return matched, total
 
-
 def _eval_condition(cond: dict, signals: dict[str, Any]) -> bool:
     """Apply one condition's op to the corresponding signal. Missing
     signal → unsatisfied (False), never raises."""
@@ -419,7 +400,6 @@ def _eval_condition(cond: dict, signals: dict[str, Any]) -> bool:
     if sig not in signals:
         return False
     return op_fn(signals[sig], value)
-
 
 if __name__ == "__main__":  # pragma: no cover — lens is a library
     sys.stderr.write(

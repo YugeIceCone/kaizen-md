@@ -42,7 +42,6 @@ from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 
-
 def _load_dxm():
     """Load dxm.py via explicit spec (mirrors the gatekeeper_mcp pattern).
     Post-DOMAIN-16: dxm.py lives at scripts/observe/."""
@@ -57,17 +56,14 @@ def _load_dxm():
     spec.loader.exec_module(mod)
     return mod
 
-
 try:
     from fastmcp import FastMCP
 except ImportError:
     sys.stderr.write("kaizen-dxm-mcp: fastmcp>=3.0 required\n")
     sys.exit(2)
 
-
 mcp = FastMCP("kaizen-dxm")
 _dxm = None
-
 
 def _dxm_mod():
     """Lazy-load dxm.py once."""
@@ -75,7 +71,6 @@ def _dxm_mod():
     if _dxm is None:
         _dxm = _load_dxm()
     return _dxm
-
 
 def _ns(**kwargs):
     """Build an argparse-like namespace for dxm._cmd_* handlers."""
@@ -86,9 +81,7 @@ def _ns(**kwargs):
         setattr(ns, k, v)
     return ns
 
-
 # ─── now ─────────────────────────────────────────────────────────────
-
 
 @mcp.tool()
 async def dxm_now(session_id: str) -> dict:
@@ -127,9 +120,7 @@ async def dxm_now(session_id: str) -> dict:
         }
     return await asyncio.to_thread(_run)
 
-
 # ─── tail ────────────────────────────────────────────────────────────
-
 
 @mcp.tool()
 async def dxm_tail(
@@ -183,9 +174,7 @@ async def dxm_tail(
         return {"session_id": session_id, "events": events, "count": len(events)}
     return await asyncio.to_thread(_run)
 
-
 # ─── link ────────────────────────────────────────────────────────────
-
 
 @mcp.tool()
 async def dxm_link(parent: str, child: str) -> dict:
@@ -214,9 +203,7 @@ async def dxm_link(parent: str, child: str) -> dict:
         return rec
     return await asyncio.to_thread(_run)
 
-
 # ─── chain ───────────────────────────────────────────────────────────
-
 
 @mcp.tool()
 async def dxm_chain(session_id: str, max_depth: int = 20) -> dict:
@@ -263,9 +250,7 @@ async def dxm_chain(session_id: str, max_depth: int = 20) -> dict:
         }
     return await asyncio.to_thread(_run)
 
-
 # ─── session-id discovery ────────────────────────────────────────────
-
 
 @mcp.tool()
 async def dxm_session_id(cwd: str | None = None) -> dict:
@@ -298,9 +283,7 @@ async def dxm_session_id(cwd: str | None = None) -> dict:
         }
     return await asyncio.to_thread(_run)
 
-
 # ─── replay ──────────────────────────────────────────────────────────
-
 
 @mcp.tool()
 async def dxm_replay(session_id: str, jsonl: str,
@@ -368,9 +351,7 @@ async def dxm_replay(session_id: str, jsonl: str,
         }
     return await asyncio.to_thread(_run)
 
-
 # ─── clean ───────────────────────────────────────────────────────────
-
 
 @mcp.tool()
 async def dxm_clean(older_than: str | None = None,
@@ -427,7 +408,6 @@ async def dxm_clean(older_than: str | None = None,
             "removed": sorted(str(p) for p in candidates if not p.exists()),
         }
     return await asyncio.to_thread(_run)
-
 
 if __name__ == "__main__":
     mcp.run()

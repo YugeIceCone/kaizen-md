@@ -37,13 +37,11 @@ import _envelope  # noqa: E402
 
 _emit = _envelope.emitter("kaizen-drift", tool_version="1.0.0")
 
-
 def _root(args) -> Path:
     return (
         Path(args.root).expanduser().resolve()
         if getattr(args, "root", None) else Path.cwd()
     )
-
 
 def cmd_record(args) -> int:
     root = _root(args)
@@ -57,7 +55,6 @@ def cmd_record(args) -> int:
         return 1
     print(f"recorded {result['copied']} profile(s) → {result['baseline_dir']}")
     return 0
-
 
 def cmd_check(args) -> int:
     root = _root(args)
@@ -94,7 +91,6 @@ def cmd_check(args) -> int:
         return 1
     return 0
 
-
 def cmd_explain(args) -> int:
     root = _root(args)
     report = kz_drift.run_check(
@@ -116,14 +112,12 @@ def cmd_explain(args) -> int:
     print(json.dumps(dataclasses.asdict(match), indent=2))
     return 0
 
-
 def cmd_paths(args) -> int:
     root = _root(args)
     print(f"root:     {root}")
     print(f"baseline: {kz_drift.default_baseline_dir(root)}")
     print(f"current:  {kz_drift.default_current_dir(root)}")
     return 0
-
 
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(
@@ -156,7 +150,6 @@ def main(argv=None) -> int:
 
     args = p.parse_args(argv)
     return args.func(args)
-
 
 if __name__ == "__main__":
     sys.exit(main())

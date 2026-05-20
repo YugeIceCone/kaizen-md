@@ -22,11 +22,10 @@ import tempfile
 import unittest
 from pathlib import Path
 
-SCRIPT_DIR = Path(__file__).resolve().parent.parent / "skills" / "workflow" / "scripts"
-sys.path.insert(0, str(SCRIPT_DIR))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 
 import docs_gen as dg  # noqa: E402
-
 
 class TestRustItemExtraction(unittest.TestCase):
     def test_extracts_pub_fn_with_signature(self) -> None:
@@ -72,7 +71,6 @@ class TestRustItemExtraction(unittest.TestCase):
     def test_pub_use_not_item(self) -> None:
         self.assertEqual(dg._extract_rust_items("pub use crate::foo::Bar;\n"), [])
 
-
 class TestRustModuleDoc(unittest.TestCase):
     def test_extracts_first_paragraph(self) -> None:
         src = "//! Crate doc.\n//! Second line.\n//!\n//! Second paragraph.\n\nfn x() {}\n"
@@ -84,7 +82,6 @@ class TestRustModuleDoc(unittest.TestCase):
 
     def test_returns_none_when_absent(self) -> None:
         self.assertIsNone(dg._extract_rust_module_doc("fn x() {}\n"))
-
 
 class TestRustManifest(unittest.TestCase):
     def test_parses_workspace_and_direct_deps(self) -> None:
@@ -129,7 +126,6 @@ class TestRustManifest(unittest.TestCase):
             self.assertEqual(bins[0].name, "test-bin")
             self.assertEqual(bins[0].path, "src/main.rs")
 
-
 class TestPythonItemExtraction(unittest.TestCase):
     def test_extracts_top_level_def_and_class(self) -> None:
         src = (
@@ -156,7 +152,6 @@ class TestPythonItemExtraction(unittest.TestCase):
         self.assertIn("__dunder__", names)
         self.assertIn("visible", names)
 
-
 class TestPythonModuleDoc(unittest.TestCase):
     def test_triple_double(self) -> None:
         src = '"""Hello.\n\nMore text.\n"""\nimport os\n'
@@ -171,7 +166,6 @@ class TestPythonModuleDoc(unittest.TestCase):
 
     def test_none_when_absent(self) -> None:
         self.assertIsNone(dg._extract_python_module_doc('import os\n\nx = 1\n'))
-
 
 class TestAnalyzeRustPackage(unittest.TestCase):
     def _build(self, root: Path) -> Path:
@@ -232,7 +226,6 @@ class TestAnalyzeRustPackage(unittest.TestCase):
             self.assertIn(f"~{profile.total_tests} test attribute", md)
             self.assertIn("crate::nested::Item", md)
 
-
 class TestAnalyzePythonPackage(unittest.TestCase):
     def test_analyzes_end_to_end(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -273,7 +266,6 @@ class TestAnalyzePythonPackage(unittest.TestCase):
             self.assertIn("### Functions", md)
             self.assertIn("### Classes", md)
 
-
 class TestJsonRoundtrip(unittest.TestCase):
     def test_serializable(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -292,7 +284,6 @@ class TestJsonRoundtrip(unittest.TestCase):
             self.assertEqual(again["schema_version"], dg.SCHEMA_VERSION)
             self.assertEqual(again["kind"], dg.KIND)
             self.assertEqual(again["package_name"], "x")
-
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

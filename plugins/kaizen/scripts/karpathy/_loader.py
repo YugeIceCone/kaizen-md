@@ -45,11 +45,9 @@ DOMAIN_DIR = (
 PRINCIPLES_YAML = DOMAIN_DIR / "principles.yaml"
 PRINCIPLE_SCHEMA = DOMAIN_DIR / "schemas" / "principle.schema.json"
 
-
 def _die(msg: str, code: int = 2) -> None:
     sys.stderr.write(f"kaizen karpathy loader: {msg}\n")
     sys.exit(code)
-
 
 def load_principles() -> dict:
     """Load principles.yaml. Validates against principle.schema.json when jsonschema is available."""
@@ -73,14 +71,12 @@ def load_principles() -> dict:
         )
     return data
 
-
 def _principle(data: dict, pid: str) -> dict:
     for p in data.get("principles", []):
         if p.get("id") == pid:
             return p
     _die(f"unknown principle id: {pid}")
     return {}  # unreachable
-
 
 def main(argv: list[str]) -> int:
     if not argv:
@@ -107,7 +103,6 @@ def main(argv: list[str]) -> int:
         return 0
     _die(f"unknown command: {cmd}")
     return 2
-
 
 if __name__ == "__main__":
     sys.exit(main(sys.argv[1:]))

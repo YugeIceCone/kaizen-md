@@ -69,9 +69,7 @@ except ImportError as e:
     )
     sys.exit(1)
 
-
 mcp = FastMCP("kaizen-loc")
-
 
 def _resolve_root() -> Path:
     """Repo root via git rev-parse, else cwd. MCP server inherits cwd
@@ -88,7 +86,6 @@ def _resolve_root() -> Path:
         return Path(out) if out else Path.cwd()
     except (subprocess.CalledProcessError, FileNotFoundError):
         return Path.cwd()
-
 
 @mcp.tool()
 async def loc_search(
@@ -133,7 +130,6 @@ async def loc_search(
         limit=top_k,
     )
 
-
 @mcp.tool()
 async def loc_function_at(file: str, line: int) -> list[dict]:
     """Return the symbol(s) enclosing <file>:<line>. Smallest (innermost)
@@ -148,7 +144,6 @@ async def loc_function_at(file: str, line: int) -> list[dict]:
         limit=10,
     )
 
-
 @mcp.tool()
 async def loc_god_symbols(tier: str = "critical", top_k: int = 20) -> list[dict]:
     """Symbols inside god-tier files. `tier` = 'critical' (>1000 lines) or
@@ -157,14 +152,12 @@ async def loc_god_symbols(tier: str = "critical", top_k: int = 20) -> list[dict]
     Use to triage the largest functions in the worst files first."""
     return li.do_search(_resolve_root(), god=tier, limit=top_k)
 
-
 @mcp.tool()
 async def loc_stats(by: str = "") -> dict:
     """Index health + grouped counts.
 
     by: '' (default — just totals), 'language', or 'kind'."""
     return li.do_stats(_resolve_root(), by=by or None)
-
 
 @mcp.tool()
 async def loc_files(
@@ -191,7 +184,6 @@ async def loc_files(
         limit=top_k,
     )
 
-
 @mcp.tool()
 async def loc_show(symbol_id: int) -> dict:
     """Fetch one symbol record + extract its source via byte range.
@@ -201,7 +193,6 @@ async def loc_show(symbol_id: int) -> dict:
     the file was deleted / moved since indexing)."""
     r = li.do_show(_resolve_root(), symbol_id)
     return r if r else {"error": f"id={symbol_id} not found"}
-
 
 @mcp.tool()
 async def loc_index_run(root: str = "") -> dict:
@@ -214,7 +205,6 @@ async def loc_index_run(root: str = "") -> dict:
     index fresh. Sha-deduped: unchanged files are skipped."""
     target = Path(root).expanduser().resolve() if root else _resolve_root()
     return li.do_index(target)
-
 
 if __name__ == "__main__":
     mcp.run()

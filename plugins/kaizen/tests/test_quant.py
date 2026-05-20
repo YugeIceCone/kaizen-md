@@ -11,8 +11,8 @@ import sys
 import unittest
 from pathlib import Path
 
-SCRIPT_DIR = Path(__file__).resolve().parent.parent / "skills" / "workflow" / "scripts"
-sys.path.insert(0, str(SCRIPT_DIR))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 
 try:
     import numpy as np  # noqa: F401
@@ -24,14 +24,12 @@ import _quant as q  # noqa: E402
 
 requires_numpy = unittest.skipUnless(NUMPY_AVAILABLE, "numpy not installed")
 
-
 class TestQuantSize(unittest.TestCase):
     def test_blob_size_formula(self) -> None:
         # 4-byte scale + D-byte int8
         self.assertEqual(q.quant_size(384), 388)
         self.assertEqual(q.quant_size(768), 772)
         self.assertEqual(q.quant_size(1), 5)
-
 
 @requires_numpy
 class TestRoundtrip(unittest.TestCase):
@@ -81,7 +79,6 @@ class TestRoundtrip(unittest.TestCase):
         blob = q.quantize(v)
         with self.assertRaises(ValueError):
             q.dequantize(blob, 32)  # wrong dim
-
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

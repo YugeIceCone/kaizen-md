@@ -18,10 +18,9 @@ from pathlib import Path
 from unittest.mock import patch, MagicMock
 
 _KZ = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(_KZ / "skills" / "workflow" / "scripts"))
-
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 import _ollama  # noqa: E402
-
 
 _SCHEMA = {
     "type": "object",
@@ -35,7 +34,6 @@ _SCHEMA = {
     "required": ["gold_worthy", "confidence", "pattern", "tag", "reason"],
 }
 
-
 def _ollama_response(body: dict) -> MagicMock:
     """Build a fake urlopen response whose .read() returns Ollama's
     chat-API shape: {message: {content: "<json-string>"}}."""
@@ -45,7 +43,6 @@ def _ollama_response(body: dict) -> MagicMock:
     resp.__enter__ = lambda s: s
     resp.__exit__ = lambda *a: None
     return resp
-
 
 class OllamaBase(unittest.TestCase):
     def setUp(self):
@@ -57,7 +54,6 @@ class OllamaBase(unittest.TestCase):
             os.environ.pop("KAIZEN_GOLD_MINE_ENABLE", None)
         else:
             os.environ["KAIZEN_GOLD_MINE_ENABLE"] = self._orig
-
 
 class TestEnableKnob(OllamaBase):
     def test_disabled_returns_none(self):
@@ -73,7 +69,6 @@ class TestEnableKnob(OllamaBase):
             out = _ollama.score_hint("hint", schema=_SCHEMA)
             self.assertIsNone(out)
             mock.assert_not_called()
-
 
 class TestGracefulFailure(OllamaBase):
     def test_connection_refused_returns_none(self):
@@ -99,7 +94,6 @@ class TestGracefulFailure(OllamaBase):
         with patch("urllib.request.urlopen",
                     return_value=_ollama_response(bad)):
             self.assertIsNone(_ollama.score_hint("h", schema=_SCHEMA))
-
 
 class TestHappyPath(OllamaBase):
     def test_returns_parsed_dict(self):
@@ -143,7 +137,6 @@ class TestHappyPath(OllamaBase):
             _ollama.score_hint("hint", schema=_SCHEMA)
             body = json.loads(mock.call_args.args[0].data.decode())
             self.assertEqual(body["model"], "granite4.1:8b")
-
 
 if __name__ == "__main__":
     unittest.main()

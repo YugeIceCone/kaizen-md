@@ -26,8 +26,8 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-SCRIPT_DIR = Path(__file__).resolve().parent.parent / "skills" / "workflow" / "scripts"
-sys.path.insert(0, str(SCRIPT_DIR))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts" / "indexers"))
 
 try:
@@ -44,14 +44,12 @@ requires_numpy = unittest.skipUnless(
     "numpy not installed; run tests under `uv run --script` to exercise the embed path",
 )
 
-
 def _vec(seed: int = 1) -> bytes:
     """Deterministic 384-dim float32 vector for mocking embeds."""
     import math
     base = seed / 100.0
     floats = [base + 0.001 * math.sin(i) for i in range(384)]
     return struct.pack(f"{len(floats)}f", *floats)
-
 
 def _seed_index(root: Path) -> None:
     """Seed an onboard.db with three small Rust files using mocked embeds."""
@@ -77,7 +75,6 @@ def _seed_index(root: Path) -> None:
         oi.do_dump(root, use_git=False)
         oi.do_filter(root)
 
-
 class TestEmbedQueryNode(unittest.TestCase):
     def test_rejects_empty_query(self) -> None:
         node = sf.EmbedQueryNode()
@@ -99,7 +96,6 @@ class TestEmbedQueryNode(unittest.TestCase):
         self.assertEqual(v.shape, (384,))
         # Already normalized (unit length, within rounding).
         self.assertAlmostEqual(float(np.linalg.norm(v)), 1.0, places=5)
-
 
 class TestFusionNode(unittest.TestCase):
     def test_linear_fusion_default(self) -> None:
@@ -137,7 +133,6 @@ class TestFusionNode(unittest.TestCase):
         action = asyncio.run(node.run_async(store))
         self.assertEqual(action, "rerank")
 
-
 class TestCitationNode(unittest.TestCase):
     def test_resolves_chunks_to_result_records(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -162,7 +157,6 @@ class TestCitationNode(unittest.TestCase):
                 self.assertIn("matched_chunk_idx", r)
                 self.assertIn("score", r)
 
-
 class TestBuildSearchFlow(unittest.TestCase):
     def test_assembles_valid_graph(self) -> None:
         f = sf.build_search_flow()
@@ -180,7 +174,6 @@ class TestBuildSearchFlow(unittest.TestCase):
                     stack.append(nxt)
         # Five nodes total: embed, fan-out, fusion, rerank, citation.
         self.assertEqual(len(seen), 5)
-
 
 class TestEndToEnd(unittest.TestCase):
     @requires_numpy
@@ -201,7 +194,6 @@ class TestEndToEnd(unittest.TestCase):
                 self.assertIn("score", r)
             # Timing metadata is captured.
             self.assertIsInstance(results[0]["score"], float)
-
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

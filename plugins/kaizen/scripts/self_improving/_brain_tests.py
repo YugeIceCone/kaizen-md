@@ -49,14 +49,12 @@ try:
 except ImportError:
     _HAS_JSONSCHEMA = False
 
-
 def _coerce_dates(d):
     import datetime as _dt
     if isinstance(d, dict): return {k: _coerce_dates(v) for k, v in d.items()}
     if isinstance(d, list): return [_coerce_dates(v) for v in d]
     if isinstance(d, (_dt.date, _dt.datetime)): return d.isoformat()
     return d
-
 
 def _read_frontmatter(path: Path) -> dict:
     """Read YAML frontmatter (between two `---` lines) of a markdown file."""
@@ -65,7 +63,6 @@ def _read_frontmatter(path: Path) -> dict:
     if not m:
         return {}
     return _coerce_dates(yaml.safe_load(m.group(1)) or {})
-
 
 class TestNotesSchema(unittest.TestCase):
     def setUp(self):
@@ -89,7 +86,6 @@ class TestNotesSchema(unittest.TestCase):
             except Exception as e:
                 self.fail(f"{nf.name} failed validation: {e}")
 
-
 class TestBrainSchemaCheckLinks(unittest.TestCase):
     """Post-retirement: brain_schema.check_links subsumed
     brain_validator.cmd_links."""
@@ -109,7 +105,6 @@ class TestBrainSchemaCheckLinks(unittest.TestCase):
         self.assertIn("broken", out)
         self.assertIsInstance(out["broken"], list)
 
-
 class TestBrainRankBeliefStats(unittest.TestCase):
     """Post-retirement: brain_rank.belief_stats subsumed
     brain_validator.cmd_belief_stats."""
@@ -127,7 +122,6 @@ class TestBrainRankBeliefStats(unittest.TestCase):
         stats = brain_rank.belief_stats(BRAIN)
         for key in ("count", "freshness", "sources_distribution", "confidence"):
             self.assertIn(key, stats)
-
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

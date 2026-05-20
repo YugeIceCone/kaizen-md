@@ -49,7 +49,6 @@ __all__ = [
     "extract_slots",
 ]
 
-
 # ─── Exclusions (V21/V22) ────────────────────────────────────────────
 
 _EXCLUDED_DIR_RE = re.compile(
@@ -57,7 +56,6 @@ _EXCLUDED_DIR_RE = re.compile(
     r"\.cargo|\.cache|\.kaizen)(/|$)"
 )
 _EXCLUDED_FILE_RE = re.compile(r"\.(swp|tmp|bak|pyc)$|~$")
-
 
 def is_extractable(path: Path) -> bool:
     """V21/V22: skip build outputs, VCS metadata, swap/backup files."""
@@ -68,29 +66,23 @@ def is_extractable(path: Path) -> bool:
         return False
     return True
 
-
 # ─── Line-ending normalization (V23) ─────────────────────────────────
-
 
 def normalize_lf(data: bytes) -> bytes:
     r"""Replace \r\n with \n. Stabilizes content_hash across Windows checkouts."""
     return data.replace(b"\r\n", b"\n")
 
-
 # ─── Language detection ──────────────────────────────────────────────
 
 _LANG_BY_EXT = {".rs": "rust", ".py": "python"}
-
 
 def detect_language(path: Path) -> Optional[str]:
     """Phase 1: Rust + Python only. Returns None for unknown extensions."""
     return _LANG_BY_EXT.get(path.suffix)
 
-
 # ─── Grammar loaders (lazy — first call pays the import cost) ────────
 
 _PARSER_CACHE: dict = {}
-
 
 def _get_parser(language: str):
     """Lazy-build + cache a tree-sitter Parser for `language`.
@@ -113,16 +105,13 @@ def _get_parser(language: str):
     _PARSER_CACHE[language] = parser
     return parser
 
-
 # ─── Slot extraction ─────────────────────────────────────────────────
 
 _INLINE_BODY_CAP = 4096
 
-
 def _hash_hex(data: bytes) -> str:
     """Phase 1: sha256[:32] (blake3 wheel deferred — see _token_db.py)."""
     return hashlib.sha256(data).hexdigest()[:32]
-
 
 def extract_slots(
     path: Path, body: bytes, language: Optional[str],
@@ -209,9 +198,7 @@ def extract_slots(
 
     return out
 
-
 # ─── Per-language node meta extractors ───────────────────────────────
-
 
 def _rust_node_meta(
     node, body: bytes,
@@ -231,13 +218,11 @@ def _rust_node_meta(
         return ("comment", None, "")
     return (None, None, "")
 
-
 def _rust_identifier(node, body: bytes) -> Optional[str]:
     for child in node.children:
         if child.type in ("identifier", "type_identifier"):
             return body[child.start_byte:child.end_byte].decode("utf-8")
     return None
-
 
 def _py_node_meta(
     node, body: bytes, parent: str,
@@ -249,16 +234,13 @@ def _py_node_meta(
         return ("struct", _py_identifier(node, body), parent)
     return (None, None, parent)
 
-
 def _py_identifier(node, body: bytes) -> Optional[str]:
     for child in node.children:
         if child.type == "identifier":
             return body[child.start_byte:child.end_byte].decode("utf-8")
     return None
 
-
 # ─── __main__ — JSON-dump probe for cross-venv subprocess tests ──────
-
 
 def _main_test() -> int:
     """Read {path, body_hex, language} JSON from stdin, run extract_slots,
@@ -286,7 +268,6 @@ def _main_test() -> int:
         serializable.append(d)
     print(json.dumps(serializable))
     return 0
-
 
 if __name__ == "__main__":
     import sys

@@ -58,7 +58,6 @@ __all__ = ["process_file_event"]
 _SIZE_CAP_BYTES = 1_000_000  # V19
 _GRAMMAR_VERSION = "0.23.0"  # mirrors PEP-723 dep pin
 
-
 def process_file_event(
     db: TokenDB, root: Path, rel_path: Path, event: str,
 ) -> None:
@@ -118,9 +117,7 @@ def process_file_event(
 
     db.upsert_slots(fid, new_slots)
 
-
 # ─── __main__ — JSON-driven test entry point (uv-venv path) ──────────
-
 
 def _main_test() -> int:
     """Drive a single `process_file_event` call from a JSON payload on
@@ -143,7 +140,6 @@ def _main_test() -> int:
     )
     db.conn.close()
     return 0
-
 
 if __name__ == "__main__":
     if len(sys.argv) > 1 and sys.argv[1] == "--test":

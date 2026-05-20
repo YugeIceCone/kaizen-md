@@ -18,9 +18,8 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / "skills" / "workflow" / "scripts"))
-
-
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 class TestSchemaFileExists(unittest.TestCase):
     """The schema must exist at the canonical location + be valid JSON."""
 
@@ -33,7 +32,6 @@ class TestSchemaFileExists(unittest.TestCase):
         # Minimal JSON Schema sanity
         self.assertIn("$schema", data)
         self.assertEqual(data.get("type"), "object")
-
 
 class TestValidate(unittest.TestCase):
     """`memory_schema.validate(frontmatter_dict)` returns a list of
@@ -89,7 +87,6 @@ class TestValidate(unittest.TestCase):
             "name": "X", "description": "Y", "confidence": 0.5})
         self.assertEqual(errors_ok, [])
 
-
 class TestValidateText(unittest.TestCase):
     """`validate_text(file_text)` parses the YAML frontmatter + validates."""
 
@@ -111,7 +108,6 @@ class TestValidateText(unittest.TestCase):
         text = "---\nname: 'unterminated\n---\n"
         errors = memory_schema.validate_text(text)
         self.assertTrue(errors)
-
 
 if __name__ == "__main__":
     unittest.main()

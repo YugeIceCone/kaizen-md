@@ -80,9 +80,7 @@ except ImportError as e:
     )
     sys.exit(1)
 
-
 mcp = FastMCP("knowledge-search")
-
 
 @mcp.tool()
 async def knowledge_search(
@@ -102,13 +100,11 @@ async def knowledge_search(
     closer to query."""
     return ki.do_search(query, top_k=top_k, source=source or None)
 
-
 @mcp.tool()
 async def knowledge_index_status() -> dict:
     """Index health: total items, model, dim, last_indexed_ts, counts
     by source. Call this first to verify the index is built + current."""
     return ki.do_stats()
-
 
 @mcp.tool()
 async def knowledge_index_run(embed_body: bool = False) -> dict:
@@ -121,13 +117,11 @@ async def knowledge_index_run(embed_body: bool = False) -> dict:
     (signature: source + title + tags only)."""
     return ki.do_index(embed_body=embed_body)
 
-
 @mcp.tool()
 async def knowledge_get(item_id: int) -> dict:
     """Fetch one indexed item by SQLite id (returned by knowledge_search)."""
     r = ki.do_get(item_id)
     return r if r else {"error": f"id={item_id} not found"}
-
 
 @mcp.tool()
 async def knowledge_recent(limit: int = 20, source: str = "") -> list[dict]:
@@ -161,7 +155,6 @@ async def knowledge_recent(limit: int = 20, source: str = "") -> list[dict]:
             }
         )
     return out
-
 
 if __name__ == "__main__":
     mcp.run()

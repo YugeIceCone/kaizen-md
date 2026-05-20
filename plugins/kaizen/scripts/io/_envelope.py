@@ -46,7 +46,6 @@ ENVELOPE_SCHEMA_VERSION = 1
 _PLUGIN_ROOT = Path(__file__).resolve().parents[2]  # plugins/kaizen/
 _PLUGIN_JSON = _PLUGIN_ROOT / ".claude-plugin" / "plugin.json"
 
-
 def _plugin_version() -> str:
     """Lookup plugin version from .claude-plugin/plugin.json. Cheap +
     cached at module load."""
@@ -56,9 +55,7 @@ def _plugin_version() -> str:
     except (OSError, json.JSONDecodeError):
         return "?"
 
-
 _PLUGIN_VERSION = _plugin_version()
-
 
 def wrap(
     tool: str,
@@ -118,7 +115,6 @@ def wrap(
         out["errors"] = list(errors)
     return out
 
-
 def render(envelope: dict, indent: int = 2) -> str:
     """JSON-serialize the envelope with deterministic key ordering.
 
@@ -127,12 +123,10 @@ def render(envelope: dict, indent: int = 2) -> str:
     for a single-line minified output (CI consumption)."""
     return json.dumps(envelope, sort_keys=True, indent=indent, default=str)
 
-
 def opt_in_json(argv: list[str]) -> bool:
     """Helper: True if `--json` flag is in argv. Tools that support both
     text + JSON output can call this for the standard detection."""
     return "--json" in argv
-
 
 def emitter(tool: str, tool_version: str | None = None):
     """Return a tool-bound emit() — closure pattern.
@@ -186,7 +180,6 @@ def emitter(tool: str, tool_version: str | None = None):
         )
     return _bound
 
-
 def emit(
     tool: str,
     data,
@@ -235,7 +228,6 @@ def emit(
         indent=indent,
     )
     print(out, file=file if file is not None else sys.stdout)
-
 
 if __name__ == "__main__":
     # Self-test: round-trip a sample envelope

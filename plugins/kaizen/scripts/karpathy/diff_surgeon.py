@@ -48,7 +48,6 @@ TYPE_ANNOTATION = re.compile(r"^[+-].*:\s*(?:str|int|float|bool|list|dict|Option
 SEMICOLON_CHANGE = re.compile(r"^[+-].*;\s*$")
 TRAILING_COMMA = re.compile(r"^[+-].*,\s*$")
 
-
 def get_diff(args):
     """Get diff text from args."""
     if args.file:
@@ -61,7 +60,6 @@ def get_diff(args):
     except (subprocess.TimeoutExpired, FileNotFoundError) as e:
         print(f"[error] git diff failed: {e}", file=sys.stderr)
         sys.exit(1)
-
 
 def parse_hunks(diff_text):
     """Parse a unified diff into per-file hunks."""
@@ -88,7 +86,6 @@ def parse_hunks(diff_text):
         files.append({"file": current_file, "lines": current_lines})
     return files
 
-
 def classify_line(line_text):
     """Classify a changed line. Returns a noise category or None if intentional."""
     if WHITESPACE_ONLY.match(line_text):
@@ -104,7 +101,6 @@ def classify_line(line_text):
             return None
         return "semicolon-style"
     return None
-
 
 def analyze_file_diff(file_data):
     """Analyze a single file's diff for noise."""
@@ -141,7 +137,6 @@ def analyze_file_diff(file_data):
 
     noise_ratio = noise_count / total_changes if total_changes > 0 else 0
     return findings
-
 
 def main():
     p = argparse.ArgumentParser(
@@ -219,7 +214,6 @@ def main():
         print("\n  All changes look intentional. Clean diff.")
 
     sys.exit(1 if verdict != "CLEAN" else 0)
-
 
 if __name__ == "__main__":
     main()

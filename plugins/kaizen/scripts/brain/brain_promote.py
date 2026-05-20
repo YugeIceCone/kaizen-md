@@ -40,8 +40,8 @@ from typing import Optional
 
 _SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(_SCRIPT_DIR))
-# MIGRATION BRIDGE — kaizen helpers still at skills/workflow/scripts/
-sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "skills" / "workflow" / "scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import _bootstrap  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 
 import _brain  # noqa: E402
 import flow as _flow  # noqa: E402
@@ -49,9 +49,7 @@ import _envelope  # noqa: E402
 
 _emit = _envelope.emitter("kaizen-brain-promote", tool_version="1.0.0")
 
-
 # ─── Helpers ──────────────────────────────────────────────────────────
-
 
 def _all_project_memory_roots() -> list[Path]:
     """All ~/.claude/projects/*/memory/ dirs that exist."""
@@ -64,7 +62,6 @@ def _all_project_memory_roots() -> list[Path]:
         if m.is_dir():
             out.append(m)
     return out
-
 
 def _candidate_brain_path(rec: dict, brain_root: Path) -> Path:
     """Pick a brain destination for a promoted note.
@@ -87,9 +84,7 @@ def _candidate_brain_path(rec: dict, brain_root: Path) -> Path:
         base_name = f"{base_name}.md"
     return brain_root / "Notes" / base_name
 
-
 # ─── Flow nodes ──────────────────────────────────────────────────────
-
 
 class ScanNode(_flow.AsyncNode):
     """Walk project-memory dir(s); read each .md file's frontmatter."""
@@ -136,7 +131,6 @@ class ScanNode(_flow.AsyncNode):
         store["all_records"] = records
         return "default"
 
-
 class FilterNode(_flow.AsyncNode):
     """Apply the promotion criteria from routing.yaml. Only beliefs /
     world-facts are eligible (observations + experiences are already
@@ -167,7 +161,6 @@ class FilterNode(_flow.AsyncNode):
         store["candidates"] = candidates
         return "default"
 
-
 class PreviewNode(_flow.AsyncNode):
     """Compute the proposed brain destination for each candidate. No
     writes — caller decides whether to call ApplyNode next."""
@@ -196,7 +189,6 @@ class PreviewNode(_flow.AsyncNode):
     async def post_async(self, store: dict, prep: dict, previews: list) -> str:
         store["previews"] = previews
         return "default"
-
 
 class ApplyNode(_flow.AsyncNode):
     """Copy source frontmatter+body into the brain destination and
@@ -264,7 +256,6 @@ class ApplyNode(_flow.AsyncNode):
         store["applied"] = results
         return "default"
 
-
 class ReportNode(_flow.AsyncNode):
     async def prep_async(self, store: dict) -> None:
         return None
@@ -281,7 +272,6 @@ class ReportNode(_flow.AsyncNode):
         }
         return "default"
 
-
 def build_promote_flow() -> _flow.AsyncFlow:
     scan = ScanNode()
     filt = FilterNode()
@@ -294,7 +284,6 @@ def build_promote_flow() -> _flow.AsyncFlow:
     f.add_successor(preview, "default", apply)
     f.add_successor(apply, "default", report)
     return f
-
 
 def promote(
     *,
@@ -311,7 +300,6 @@ def promote(
         brain_root=brain_root,
     ))
 
-
 async def _promote_async(**kwargs) -> dict:
     store: dict = {
         "project_slug": kwargs.get("project_slug"),
@@ -322,9 +310,7 @@ async def _promote_async(**kwargs) -> dict:
     await build_promote_flow().run_async(store)
     return store.get("report") or {}
 
-
 # ─── CLI ─────────────────────────────────────────────────────────────
-
 
 def _cmd_run(args) -> int:
     report = promote(
@@ -355,7 +341,6 @@ def _cmd_run(args) -> int:
         print(f"applied {report['total_applied']} promotion(s).")
     return 0
 
-
 def main(argv: Optional[list[str]] = None) -> int:
     p = argparse.ArgumentParser(
         prog="kaizen-brain-promote",
@@ -368,7 +353,6 @@ def main(argv: Optional[list[str]] = None) -> int:
     p.set_defaults(func=_cmd_run)
     args = p.parse_args(argv)
     return args.func(args)
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

@@ -59,7 +59,8 @@ UV = shutil.which("uv") or "uv"
 # v1.22.0+: state lives at ~/.claude/.kaizen/data/daemon/. KAIZEN_DAEMON_STATE still wins.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 # MIGRATION BRIDGE — _paths still at skills/workflow/scripts/
-sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "skills" / "workflow" / "scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import _bootstrap  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 import _paths as _p  # noqa: E402
 import _daemon_jobs as _jobs  # noqa: E402
 
@@ -67,27 +68,21 @@ STATE_DIR = Path(os.environ.get("KAIZEN_DAEMON_STATE", _p.DAEMON_DIR))
 STATE_FILE = STATE_DIR / "state.json"
 LOG_FILE = STATE_DIR / "log"
 
-
 from _time import iso, utc_now  # M5 dedup
-
 
 def now() -> dt.datetime:
     return utc_now()
 
-
 def now_iso() -> str:
     return iso(precision="seconds")
-
 
 def market_dir() -> Path:
     # SSOT: _paths.plugin_index_root() resolves KAIZEN_PLUGIN_INDEX_ROOT
     # / KAIZEN_MARKETPLACE. plugin_src() still appends plugins/kaizen.
     return _p.plugin_index_root()
 
-
 def plugin_src() -> Path:
     return market_dir() / "plugins" / "kaizen"
-
 
 def scripts_dir() -> Path:
     """Legacy resolver — kept for the .py shim cluster that still
@@ -97,9 +92,7 @@ def scripts_dir() -> Path:
     v1.40 consolidation."""
     return plugin_src() / "skills" / "workflow" / "scripts"
 
-
 # ─── State ───────────────────────────────────────────────────────────
-
 
 def load_state() -> dict:
     if not STATE_FILE.exists():
@@ -109,20 +102,16 @@ def load_state() -> dict:
     except (OSError, json.JSONDecodeError):
         return {"runs": 0, "actions": {}}
 
-
 def save_state(state: dict) -> None:
     STATE_DIR.mkdir(parents=True, exist_ok=True)
     STATE_FILE.write_text(json.dumps(state, indent=2, default=str))
-
 
 def log_line(level: str, msg: str) -> None:
     STATE_DIR.mkdir(parents=True, exist_ok=True)
     with LOG_FILE.open("a") as f:
         f.write(f"{now_iso()} [{level}] {msg}\n")
 
-
 # ─── Hash compare ────────────────────────────────────────────────────
-
 
 def dir_hash(p: Path, include_patterns: tuple[str, ...] = (".rs", ".py", ".sh", ".md", ".json", ".toml")) -> str:
     """SHA256 of all file contents under p, deterministic order."""
@@ -145,7 +134,6 @@ def dir_hash(p: Path, include_patterns: tuple[str, ...] = (".rs", ".py", ".sh", 
             continue
     return h.hexdigest()[:16]
 
-
 def remote_sha() -> str:
     if not (market_dir() / ".git").exists():
         return ""
@@ -159,7 +147,6 @@ def remote_sha() -> str:
     except Exception:
         pass
     return ""
-
 
 def local_sha() -> str:
     if not (market_dir() / ".git").exists():
@@ -175,9 +162,7 @@ def local_sha() -> str:
         pass
     return ""
 
-
 # ─── Actions ─────────────────────────────────────────────────────────
-
 
 def run_refresh_cache() -> tuple[bool, str]:
     # Post-consolidation: refresh-cache.sh canonical lives at scripts/install/.
@@ -190,7 +175,6 @@ def run_refresh_cache() -> tuple[bool, str]:
     except Exception as e:
         return False, str(e)
 
-
 def run_pull() -> tuple[bool, str]:
     try:
         r = subprocess.run(
@@ -200,7 +184,6 @@ def run_pull() -> tuple[bool, str]:
         return r.returncode == 0, r.stdout.strip() + r.stderr.strip()
     except Exception as e:
         return False, str(e)
-
 
 def run_hygiene_fix() -> tuple[bool, str]:
     hygiene = scripts_dir() / "hygiene.py"
@@ -214,7 +197,6 @@ def run_hygiene_fix() -> tuple[bool, str]:
         return r.returncode == 0, r.stdout.strip()
     except Exception as e:
         return False, str(e)
-
 
 def _run_index_refresh() -> tuple[bool, str]:
     """Step-5 of tick(): incremental loc + onboard index of the plugin
@@ -239,7 +221,6 @@ def _run_index_refresh() -> tuple[bool, str]:
         except (FileNotFoundError, subprocess.SubprocessError) as e:
             results.append(f"{label}=err({e})")
     return True, " ".join(results)
-
 
 def index_status(root: Path | None = None) -> dict:
     """Freshness self-check: compare loc.db's last_indexed_ts against the
@@ -273,12 +254,9 @@ def index_status(root: Path | None = None) -> dict:
         return {"fresh": False, "reason": f"stale ({int(behind)}s behind)"}
     return {"fresh": True, "reason": "up to date"}
 
-
 # ─── Cron install ────────────────────────────────────────────────────
 
-
 CRON_MARKER = "# kaizen daemon (auto-installed by kaizen-daemon install)"
-
 
 def cron_install(interval_min: int = 30) -> bool:
     """Install a crontab entry. Idempotent — removes existing first."""
@@ -311,7 +289,6 @@ def cron_install(interval_min: int = 30) -> bool:
         return False
     return True
 
-
 def cron_uninstall() -> bool:
     try:
         cur = subprocess.run(["crontab", "-l"], capture_output=True, text=True, timeout=5)
@@ -324,7 +301,6 @@ def cron_uninstall() -> bool:
     p = subprocess.run(["crontab", "-"], input=kept + ("\n" if kept else ""), text=True, capture_output=True, timeout=5)
     return p.returncode == 0
 
-
 def cron_is_installed() -> bool:
     try:
         cur = subprocess.run(["crontab", "-l"], capture_output=True, text=True, timeout=5)
@@ -332,9 +308,7 @@ def cron_is_installed() -> bool:
     except (FileNotFoundError, subprocess.SubprocessError):
         return False
 
-
 # ─── Main tick ───────────────────────────────────────────────────────
-
 
 def tick() -> dict:
     state = load_state()
@@ -443,9 +417,7 @@ def tick() -> dict:
     log_line("INFO", "daemon tick complete")
     return state
 
-
 # ─── Keep-alive watcher (hash-poll loop) ─────────────────────────────
-
 
 PID_FILE = STATE_DIR / "watcher.pid"
 DEFAULT_WATCH_INTERVAL_SEC = 5.0
@@ -464,7 +436,6 @@ _WATCH_DEBOUNCE_FLOOR = 0.05
 _WATCH_DEBOUNCE_CEILING = 5.0
 _SEMANTIC_THROTTLE_SEC = 5.0
 
-
 def _resolve_debounce() -> float:
     """Return the actual debounce seconds — env override (clamped) or
     module default. Pure; safe to call repeatedly."""
@@ -481,7 +452,6 @@ def _resolve_debounce() -> float:
         return _WATCH_DEBOUNCE_CEILING
     return v
 
-
 def _should_spawn_semantic(
     *, prev_proc, last_spawn: float, now: float, throttle_sec: float,
 ) -> bool:
@@ -497,14 +467,12 @@ def _should_spawn_semantic(
         return False
     return True
 
-
 def _watchdog_available() -> bool:
     try:
         import watchdog  # noqa: F401
         return True
     except ImportError:
         return False
-
 
 def _run_watchdog_foreground(stop_event) -> None:
     """watchdog-backed watch path. Runs on the calling thread; the
@@ -608,7 +576,6 @@ def _run_watchdog_foreground(stop_event) -> None:
         conn.close()
         log_line("INFO", "watchdog observer stopped")
 
-
 def _spawn_semantic_refresh(root: Path):
     """Background incremental onboard index — torch is seconds, runs
     detached, never on the loc critical path. Returns the Popen handle
@@ -625,7 +592,6 @@ def _spawn_semantic_refresh(root: Path):
         log_line("ERROR", f"semantic refresh spawn failed: {e}")
         return None
 
-
 def _pid_alive(pid: int) -> bool:
     try:
         os.kill(pid, 0)
@@ -634,7 +600,6 @@ def _pid_alive(pid: int) -> bool:
         return False
     except OSError:
         return False
-
 
 def watch_status() -> dict:
     if not PID_FILE.exists():
@@ -646,7 +611,6 @@ def watch_status() -> dict:
     if _pid_alive(pid):
         return {"running": True, "pid": pid}
     return {"running": False, "stale_pid_file": True, "dead_pid": pid}
-
 
 def watch_stop() -> tuple[bool, str]:
     import time
@@ -672,7 +636,6 @@ def watch_stop() -> tuple[bool, str]:
         pass
     PID_FILE.unlink(missing_ok=True)
     return True, f"SIGTERM ignored; SIGKILL'd pid {pid}"
-
 
 async def watch_loop(interval: float) -> None:
     """Foreground async loop. Hashes plugin source at interval; runs
@@ -709,7 +672,6 @@ async def watch_loop(interval: float) -> None:
 
     log_line("INFO", "watcher exited cleanly")
 
-
 def watch_foreground(interval: float) -> int:
     """Run the watcher in foreground (this process). Writes PID file.
     Uses watchdog (event-driven, ms-latency loc) when available; falls
@@ -743,7 +705,6 @@ def watch_foreground(interval: float) -> int:
     finally:
         PID_FILE.unlink(missing_ok=True)
 
-
 def watch_start(interval: float) -> tuple[bool, int | str]:
     """Spawn the watcher in the background via subprocess, detached
     from the current terminal. Returns (success, pid_or_reason)."""
@@ -776,7 +737,6 @@ def watch_start(interval: float) -> tuple[bool, int | str]:
     # Even if PID file isn't there yet, the subprocess may still be coming up
     return True, p.pid
 
-
 # ─── systems-check — keep-alive for the runtime systems (2026-05-18) ────
 #
 # Expanded from 4 → 9 systems per audit-heartbeat-daemon-watcher.md
@@ -804,7 +764,6 @@ _TRACKED_SYSTEMS = (
     #          would need a glob walk. Defer to a separate probe kind.
 )
 
-
 def _resolve_path(env_name, default_segs) -> Path:
     """Resolve a per-system path: env wins; else ~/.claude/.kaizen / segs."""
     import os as _os
@@ -816,12 +775,10 @@ def _resolve_path(env_name, default_segs) -> Path:
         return base.joinpath(*default_segs)
     return base
 
-
 def _stat_into(state: dict, path: Path) -> None:
     """Stamp size + last_mtime onto state dict from path.stat()."""
     state["size"] = path.stat().st_size
     state["last_mtime"] = path.stat().st_mtime
-
 
 def _count_jsonl_rows(path: Path) -> int:
     """Count VALID jsonl rows in path; skip blanks + malformed lines."""
@@ -839,7 +796,6 @@ def _count_jsonl_rows(path: Path) -> int:
     except OSError:
         pass
     return cnt
-
 
 def _apply_stale(state: dict) -> None:
     """Set state['stale'] from last_mtime + KAIZEN_KEEPALIVE_STALE_SEC.
@@ -860,7 +816,6 @@ def _apply_stale(state: dict) -> None:
     age = _time.time() - state["last_mtime"]
     state["stale"] = age > threshold
 
-
 def _probe_config_hooks(name: str) -> dict:
     # hooks.json lives at plugin_src/hooks/hooks.json — three .parents up
     # from scripts_dir() (plugin_src/skills/workflow/scripts).
@@ -871,7 +826,6 @@ def _probe_config_hooks(name: str) -> dict:
     if hooks_json.is_file():
         _stat_into(st, hooks_json)
     return st
-
 
 def _probe_sink(name: str, env_name, default_segs, sink_name) -> dict:
     sink_dir = _resolve_path(env_name, default_segs)
@@ -891,7 +845,6 @@ def _probe_sink(name: str, env_name, default_segs, sink_name) -> dict:
         state["count"] = _count_jsonl_rows(sink)
     return state
 
-
 def _probe_pid(name: str, env_name, default_segs, sink_name) -> dict:
     pid_file = _resolve_path(env_name, default_segs) / "watcher.pid"
     state = {"name": name, "kind": "pid",
@@ -900,7 +853,6 @@ def _probe_pid(name: str, env_name, default_segs, sink_name) -> dict:
     if pid_file.is_file():
         _stat_into(state, pid_file)
     return state
-
 
 def _probe_db(name: str, env_name, default_segs, sink_name) -> dict:
     # env_name override carries the FULL file path; default_segs the dir+filename
@@ -912,7 +864,6 @@ def _probe_db(name: str, env_name, default_segs, sink_name) -> dict:
         _stat_into(state, db_path)
     return state
 
-
 def _probe_meta(name: str, env_name, default_segs, sink_name) -> dict:
     # The keep-alive counter — meta-check (is the periodic hook firing?)
     counter = _resolve_path(env_name, default_segs) / "counter.txt"
@@ -923,7 +874,6 @@ def _probe_meta(name: str, env_name, default_segs, sink_name) -> dict:
         _stat_into(state, counter)
     return state
 
-
 _PROBES = {
     "config": lambda name, env, segs, snk: _probe_config_hooks(name),
     "sink":   _probe_sink,
@@ -931,7 +881,6 @@ _PROBES = {
     "db":     _probe_db,
     "meta":   _probe_meta,
 }
-
 
 def _check_one(name: str, kind: str, env_name, default_segs, sink_name=None) -> dict:
     """Probe a single runtime system; return state dict with stale flag."""
@@ -943,14 +892,12 @@ def _check_one(name: str, kind: str, env_name, default_segs, sink_name=None) -> 
     _apply_stale(state)
     return state
 
-
 def _keepalive_dir() -> Path:
     import os as _os
     env = _os.environ.get("KAIZEN_KEEPALIVE_DIR")
     if env:
         return Path(env)
     return Path.home() / ".claude" / ".kaizen" / "keepalive"
-
 
 def _maybe_rotate_heartbeat(hb_path: Path) -> None:
     """Rotate heartbeat.jsonl → .1 when > KAIZEN_KEEPALIVE_ROTATE_BYTES.
@@ -975,7 +922,6 @@ def _maybe_rotate_heartbeat(hb_path: Path) -> None:
         hb_path.rename(rotated)
     except OSError:
         pass
-
 
 def _cmd_systems_check(args) -> int:
     systems = [_check_one(name, kind, env_name, default_segs, sink_name)
@@ -1004,9 +950,7 @@ def _cmd_systems_check(args) -> int:
             print(f"  {s['name']:<16} {tag:<6} count={s.get('count', 0)}{stale_tag}")
     return 0
 
-
 # ─── CLI ─────────────────────────────────────────────────────────────
-
 
 def main() -> None:
     p = argparse.ArgumentParser(prog="daemon.py", description=__doc__,
@@ -1137,7 +1081,6 @@ def main() -> None:
     else:
         p.print_help()
         sys.exit(1)
-
 
 if __name__ == "__main__":
     main()

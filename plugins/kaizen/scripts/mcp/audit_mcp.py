@@ -51,8 +51,8 @@ from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR))
-# MIGRATION BRIDGE — relocated modules + legacy helpers
-sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "skills" / "workflow" / "scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import _bootstrap  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts" / "brain"))
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts" / "indexers"))
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts" / "handlers"))
@@ -66,12 +66,9 @@ except ImportError as e:
     )
     sys.exit(1)
 
-
 mcp = FastMCP("kaizen-audit")
 
-
 # ─── Path resolution ─────────────────────────────────────────────────
-
 
 def _audits_dir() -> Path:
     """`<repo>/.kaizen/workflow/audits/` — same path the shell script writes to."""
@@ -79,7 +76,6 @@ def _audits_dir() -> Path:
     if env:
         return Path(env).expanduser().resolve()
     return Path.cwd() / ".kaizen" / "workflow" / "audits"
-
 
 def _audit_sh() -> Path:
     """Resolve the audit.sh script. CLAUDE_PLUGIN_ROOT is set by CC; we
@@ -89,9 +85,7 @@ def _audit_sh() -> Path:
         return Path(env) / "skills" / "workflow" / "scripts" / "audit.sh"
     return SCRIPT_DIR.parents[1] / "skills" / "workflow" / "scripts" / "audit.sh"
 
-
 # ─── Report parsing ──────────────────────────────────────────────────
-
 
 _SEVERITY_H2 = re.compile(
     r"^##\s+(CRITICAL|HIGH|MEDIUM|LOW|INFO)\s*(?:—|--|-)?\s*(\d+)?\s*$",
@@ -100,7 +94,6 @@ _SEVERITY_H2 = re.compile(
 _BULLET = re.compile(r"^\s*-\s+(.+?)$", re.MULTILINE)
 _SCOPE_LINE = re.compile(r"^\*\*Scope:\*\*\s*(.+?)$", re.MULTILINE)
 _TOTAL_LINE = re.compile(r"^\*\*Total findings:\*\*\s*(\d+)", re.MULTILINE)
-
 
 def parse_report(text: str) -> dict:
     """Return {scope, total, findings: [{severity, text}, ...]}.
@@ -128,7 +121,6 @@ def parse_report(text: str) -> dict:
             findings.append({"severity": severity, "text": b.group(1).strip()})
     return {"scope": scope, "total": total, "findings": findings}
 
-
 def _list_reports() -> list[Path]:
     """All audit reports in audit dir, sorted newest-first."""
     d = _audits_dir()
@@ -139,9 +131,7 @@ def _list_reports() -> list[Path]:
     reports.sort(reverse=True)
     return reports
 
-
 # ─── MCP tools ───────────────────────────────────────────────────────
-
 
 @mcp.tool()
 async def audit_run(scope: str = "", agent: bool = False) -> dict:
@@ -190,7 +180,6 @@ async def audit_run(scope: str = "", agent: bool = False) -> dict:
         "by_severity": _count_by_severity(parsed["findings"]),
     }
 
-
 @mcp.tool()
 async def audit_list() -> list[dict]:
     """List existing audit reports, newest first. Returns
@@ -209,7 +198,6 @@ async def audit_list() -> list[dict]:
         })
     return out
 
-
 @mcp.tool()
 async def audit_latest() -> dict:
     """Most-recent audit report — path + parsed summary."""
@@ -226,7 +214,6 @@ async def audit_latest() -> dict:
         "total": parsed["total"],
         "by_severity": _count_by_severity(parsed["findings"]),
     }
-
 
 @mcp.tool()
 async def audit_read(name: str) -> dict:
@@ -250,7 +237,6 @@ async def audit_read(name: str) -> dict:
         "body": text,
     }
 
-
 @mcp.tool()
 async def audit_findings(severity: str = "", scope: str = "") -> list[dict]:
     """Findings from the LATEST audit, optionally filtered.
@@ -272,7 +258,6 @@ async def audit_findings(severity: str = "", scope: str = "") -> list[dict]:
         findings = [f for f in findings if scope.lower() in f["text"].lower()]
     return findings
 
-
 def _count_by_severity(findings: list[dict]) -> dict:
     """Counter dict for findings by severity, including zeros."""
     counts = {"CRITICAL": 0, "HIGH": 0, "MEDIUM": 0, "LOW": 0, "INFO": 0}
@@ -281,7 +266,6 @@ def _count_by_severity(findings: list[dict]) -> dict:
         if sev in counts:
             counts[sev] += 1
     return counts
-
 
 if __name__ == "__main__":
     mcp.run()

@@ -14,8 +14,8 @@ import unittest
 from pathlib import Path
 
 PLUGIN_ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(PLUGIN_ROOT / "skills" / "workflow" / "scripts"))
-
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 try:
     import numpy as np
     HAS_NUMPY = True
@@ -23,7 +23,6 @@ except ImportError:
     HAS_NUMPY = False
 
 import _quant as kz_quant  # noqa: E402
-
 
 @unittest.skipUnless(HAS_NUMPY, "numpy required for binary-quant tests")
 class TestQuantizeBinary(unittest.TestCase):
@@ -63,7 +62,6 @@ class TestQuantizeBinary(unittest.TestCase):
         expected_signs = np.where(vec > 0, 1.0, -1.0)
         np.testing.assert_array_equal(recovered, expected_signs)
 
-
 @unittest.skipUnless(HAS_NUMPY, "numpy required")
 class TestQuantizeBinaryBatch(unittest.TestCase):
     def test_returns_blobs_and_size(self):
@@ -93,14 +91,12 @@ class TestQuantizeBinaryBatch(unittest.TestCase):
         for b in blobs:
             self.assertEqual(len(b), 48)
 
-
 @unittest.skipUnless(HAS_NUMPY, "numpy required")
 class TestDequantizeBinaryEdgeCases(unittest.TestCase):
     def test_dim_mismatch_raises(self):
         blob = b"\xff"  # 1 byte = 8 dims
         with self.assertRaises(ValueError):
             kz_quant.dequantize_binary(blob, dim=16)
-
 
 @unittest.skipUnless(HAS_NUMPY, "numpy required")
 class TestHammingDistance(unittest.TestCase):
@@ -118,7 +114,6 @@ class TestHammingDistance(unittest.TestCase):
     def test_blob_length_mismatch_raises(self):
         with self.assertRaises(ValueError):
             kz_quant.hamming_distance(b"\xff", b"\xff\xff")
-
 
 @unittest.skipUnless(HAS_NUMPY, "numpy required")
 class TestHammingDistanceBatch(unittest.TestCase):
@@ -155,7 +150,6 @@ class TestHammingDistanceBatch(unittest.TestCase):
         self.assertEqual(dists[0], 0)
         self.assertEqual(dists[1], 384)  # all bits flipped
 
-
 @unittest.skipUnless(HAS_NUMPY, "numpy required")
 class TestStorageRatio(unittest.TestCase):
     """End-to-end: binary quant is ~32× more compact than float32."""
@@ -169,7 +163,6 @@ class TestStorageRatio(unittest.TestCase):
         self.assertEqual(len(binary_bytes), 48)
         # 32:1 ratio
         self.assertEqual(len(float_bytes) // len(binary_bytes), 32)
-
 
 class TestHammingDistancePurePython(unittest.TestCase):
     """hamming_distance uses int.bit_count() — pure Python (3.10+), no
@@ -189,7 +182,6 @@ class TestHammingDistancePurePython(unittest.TestCase):
         with self.assertRaises(ValueError):
             kz_quant.hamming_distance(b"\xff", b"\xff\xff")
 
-
 class TestBinarySizeFunction(unittest.TestCase):
     """binary_size is pure arithmetic — no numpy."""
 
@@ -199,7 +191,6 @@ class TestBinarySizeFunction(unittest.TestCase):
         self.assertEqual(kz_quant.binary_size(15), 2)  # rounds up
         self.assertEqual(kz_quant.binary_size(1), 1)
         self.assertEqual(kz_quant.binary_size(384), 48)
-
 
 if __name__ == "__main__":
     unittest.main()

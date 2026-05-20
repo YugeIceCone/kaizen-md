@@ -86,7 +86,6 @@ IMPORT_TS = re.compile(r"^import\s+", re.MULTILINE)
 ABC_PATTERN = re.compile(r"ABC|abstractmethod|Protocol|@abstract|Abstract\w+Base", re.MULTILINE)
 INDENT_RE = re.compile(r"^( *)\S", re.MULTILINE)
 
-
 def detect_lang(path):
     ext = path.suffix.lower()
     if ext in {".py"}:
@@ -95,11 +94,9 @@ def detect_lang(path):
         return "typescript"
     return None
 
-
 def count_branches(text, lang):
     pat = BRANCH_KEYWORDS_PY if lang == "python" else BRANCH_KEYWORDS_TS
     return len(pat.findall(text))
-
 
 def extract_functions(text, lang):
     """Return list of (name, start_line, line_count)."""
@@ -126,7 +123,6 @@ def extract_functions(text, lang):
         funcs.append({"name": name, "start_line": start + 1, "lines": end - start})
     return funcs
 
-
 def max_nesting(text, lang):
     """Return the maximum indentation depth in the file."""
     if lang == "python":
@@ -138,7 +134,6 @@ def max_nesting(text, lang):
         spaces = len(m.group(1))
         depths.append(spaces // unit if unit else 0)
     return max(depths) if depths else 0
-
 
 def analyze_file(path, thresholds):
     """Analyze a single file. Return dict with findings."""
@@ -234,7 +229,6 @@ def analyze_file(path, thresholds):
         "findings": findings,
     }
 
-
 def collect_files(target, extensions):
     target = Path(target)
     if target.is_file():
@@ -245,7 +239,6 @@ def collect_files(target, extensions):
     # Exclude common non-source dirs
     skip = {"node_modules", ".git", "__pycache__", ".venv", "venv", "dist", "build"}
     return [f for f in files if not any(p in skip for p in f.parts)]
-
 
 def main():
     p = argparse.ArgumentParser(
@@ -321,7 +314,6 @@ def main():
     if total_findings == 0:
         print("  No findings. Code looks appropriately simple.")
     print(f"\nVerdict: {summary['verdict']}")
-
 
 if __name__ == "__main__":
     main()

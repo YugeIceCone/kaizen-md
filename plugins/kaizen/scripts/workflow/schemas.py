@@ -60,9 +60,7 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass, field, fields
 from typing import Optional
 
-
 # ─── Helpers ─────────────────────────────────────────────────────────
-
 
 def from_dict(cls, data: dict):
     """Construct a dataclass instance from a dict, tolerating extra +
@@ -74,16 +72,13 @@ def from_dict(cls, data: dict):
     kwargs = {k: v for k, v in data.items() if k in known}
     return cls(**kwargs)
 
-
 # ─── TraceEvent ──────────────────────────────────────────────────────
 #
 # One line in events.jsonl. Producer: trace.py event command (called
 # by hooks/_trace.sh, llm_proxy.py, daemon.py, browser_mcp.py via
 # PreToolUse/PostToolUse, agent dispatches).
 
-
 VALID_TRACE_SOURCES = frozenset({"hook", "agent", "llm", "tool", "user", "cc", "plugin"})
-
 
 @dataclass
 class TraceEvent:
@@ -119,13 +114,11 @@ class TraceEvent:
             errs.append(f"ms must be >=0, got {self.ms}")
         return errs
 
-
 # ─── InboxMessage ────────────────────────────────────────────────────
 #
 # One file per user prompt under ~/.claude/kaizen-inbox/<ts>-<n>.json.
 # Producer: inbox.py capture (called by hooks/userprompt-inbox.sh).
 # Consumer: inbox.py {list,peek,drain,stats}.
-
 
 @dataclass
 class InboxMessage:
@@ -140,12 +133,10 @@ class InboxMessage:
         """Full dict for on-disk persistence (preserves nullable fields)."""
         return asdict(self)
 
-
 # ─── DaemonState ─────────────────────────────────────────────────────
 #
 # Single file ~/.claude/.kaizen-daemon/state.json. Producer + consumer:
 # daemon.py tick / status.
-
 
 @dataclass
 class DaemonState:
@@ -160,14 +151,12 @@ class DaemonState:
     def to_dict(self) -> dict:
         return asdict(self)
 
-
 # ─── BacklogItem / BacklogDecision / BacklogStore ────────────────────
 #
 # .workflow/backlog.json envelope. Producer + consumer: backlog.py.
 # Note: BacklogStore migration is deferred to a separate micro since
 # render_md() has a stable contract that's risky to refactor in one
 # step. These dataclasses are available for future adoption.
-
 
 @dataclass
 class BacklogItem:
@@ -185,13 +174,11 @@ class BacklogItem:
     parked_reason: str = ""
     committed_sha: str = ""
 
-
 @dataclass
 class BacklogDecision:
     text: str
     why: str = ""
     ts: Optional[str] = None
-
 
 @dataclass
 class BacklogStore:
@@ -201,9 +188,7 @@ class BacklogStore:
     decisions: list = field(default_factory=list) # list[BacklogDecision]
     metadata: dict = field(default_factory=dict)  # {created, updated, ...}
 
-
 # ═══ v1.19.0 additions ═══════════════════════════════════════════════
-
 
 # ─── WorkflowSchema + WorkflowArtifact + WorkflowApply ───────────────
 #
@@ -211,13 +196,11 @@ class BacklogStore:
 # yaml). Consumer: workflow_runner.py (parses to dicts; these dataclasses
 # document the validated shape).
 
-
 @dataclass
 class WorkflowApply:
     gate: str = ""                                # artifact id that gates implementation
     progress: str = ""                            # file path that tracks progress
     description: str = ""
-
 
 @dataclass
 class WorkflowArtifact:
@@ -232,7 +215,6 @@ class WorkflowArtifact:
     branch_medium: Optional[list] = None
     branch_low: Optional[list] = None
 
-
 @dataclass
 class WorkflowSchema:
     name: str = ""
@@ -241,13 +223,11 @@ class WorkflowSchema:
     artifacts: list = field(default_factory=list)   # list[WorkflowArtifact]
     apply: WorkflowApply = field(default_factory=WorkflowApply)
 
-
 # ─── WorkflowState ───────────────────────────────────────────────────
 #
 # `<repo>/.workflow/state.json`. Producer: workflow.sh (init/advance/
 # branch/artifact/dispatch). Consumer: workflow.sh status + read-side
 # of every other workflow command.
-
 
 @dataclass
 class WorkflowState:
@@ -267,17 +247,14 @@ class WorkflowState:
     started_at: str = ""
     updated_at: str = ""
 
-
 # ─── KnowledgeItem ───────────────────────────────────────────────────
 #
 # `~/.claude/.kaizen-knowledge/index.db` rows + the dict shape iter_*
 # functions yield before insert. Producer + consumer: knowledge_index.py.
 
-
 VALID_KNOWLEDGE_SOURCES = frozenset(
     {"brain-note", "plan", "backlog", "schema", "persona"}
 )
-
 
 @dataclass
 class KnowledgeItem:
@@ -301,20 +278,17 @@ class KnowledgeItem:
             errs.append("title is required (non-empty)")
         return errs
 
-
 # ─── KaizenBrainRule ─────────────────────────────────────────────────
 #
 # `<KAIZEN_BRAIN_DIR>/Notes/*.md` with a `kaizen:` frontmatter block
 # (default `~/.claude/.kaizen/brain/Notes/`).
 # Producer: hand-authored brain notes. Consumer: rules.py.
 
-
 VALID_BRAIN_RULE_TYPES = frozenset(
     {"deletion-allow", "check-severity", "custom-pattern", "dependency-allowlist"}
 )
 VALID_SEVERITY = frozenset({"skip", "warn", "block"})
 VALID_PATTERN_ACTION = frozenset({"warn", "block"})
-
 
 @dataclass
 class KaizenBrainRule:
@@ -362,12 +336,10 @@ class KaizenBrainRule:
                 errs.append("dependency-allowlist requires non-empty allowlist (comma-sep)")
         return errs
 
-
 # ─── CodeFile (v1.20.0+) ─────────────────────────────────────────────
 #
 # `<repo>/.kaizen/onboard.db` rows. Producer + consumer:
 # scripts/indexers/onboard_index.py.
-
 
 VALID_CODE_LANGUAGES = frozenset(
     {
@@ -376,7 +348,6 @@ VALID_CODE_LANGUAGES = frozenset(
         "elixir", "haskell", "ocaml", "sql", "yaml", "toml",
     }
 )
-
 
 @dataclass
 class CodeFile:
@@ -403,13 +374,11 @@ class CodeFile:
             errs.append(f"sloc must be >=0, got {self.sloc}")
         return errs
 
-
 # ─── ScrapeItem (v1.24.0+) ───────────────────────────────────────────
 #
 # `~/.claude/.kaizen/indexes/scrape/index.db` rows. Producer + consumer:
 # scripts/indexers/scrape_index.py. Built from a SmartScraperGraph
 # extraction passed through a PocketFlow async pipeline.
-
 
 @dataclass
 class ScrapeItem:
@@ -432,13 +401,11 @@ class ScrapeItem:
             errs.append("content_json is required (even '{}' is fine)")
         return errs
 
-
 # ─── AgentFormattingSchema (v1.18.0+) ────────────────────────────────
 #
 # Embedded yaml block in `skills/agent-formatting/SKILL.md`. Producer:
 # the skill author. Consumer: future linters / gate integration / agents
 # that want to verify their output compliance.
-
 
 @dataclass
 class FormattingRule:
@@ -448,13 +415,11 @@ class FormattingRule:
     format: dict = field(default_factory=dict)
     rationale: str = ""
 
-
 @dataclass
 class ForbiddenConstruct:
     description: str = ""
     example: str = ""
     fix: str = ""
-
 
 @dataclass
 class AgentFormattingSchema:
@@ -462,9 +427,7 @@ class AgentFormattingSchema:
     rules: list = field(default_factory=list)              # list[FormattingRule]
     forbidden_constructs: list = field(default_factory=list)  # list[ForbiddenConstruct]
 
-
 # ─── Module self-test ────────────────────────────────────────────────
-
 
 def _self_test() -> None:
     """Sanity-check round-trips. Run with: python3 schemas.py"""
@@ -600,7 +563,6 @@ def _self_test() -> None:
     assert fmt2.schema_version == 1 and len(fmt2.rules) == 1
 
     print("✓ all schema round-trips pass")
-
 
 if __name__ == "__main__":
     _self_test()

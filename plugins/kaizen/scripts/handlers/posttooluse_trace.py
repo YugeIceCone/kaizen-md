@@ -15,7 +15,6 @@ import json
 import sys
 from pathlib import Path
 
-
 def _extract_duration_ms(event: dict) -> int | None:
     """PostToolUse `duration_ms` may live on the event or nested in
     `tool_response`. Try both."""
@@ -31,7 +30,6 @@ def _extract_duration_ms(event: dict) -> int | None:
     except (TypeError, ValueError):
         return None
 
-
 def _extract_ok(event: dict) -> str:
     """Return 'ok' | 'err' | '' based on tool_response shape."""
     resp = event.get("tool_response")
@@ -40,7 +38,6 @@ def _extract_ok(event: dict) -> str:
     if "error" in resp or resp.get("isError"):
         return "err"
     return "ok"
-
 
 def main() -> int:
     try:
@@ -57,8 +54,8 @@ def main() -> int:
     ok = _extract_ok(event)
 
     sys.path.insert(0, str(Path(__file__).resolve().parent))
-    # MIGRATION BRIDGE — kaizen modules (trace, inbox) still at skills/workflow/scripts/
-    sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "skills" / "workflow" / "scripts"))
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    import _bootstrap  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
     try:
         import trace as _trace
     except ImportError:
@@ -79,7 +76,6 @@ def main() -> int:
 
     _trace.append_event(record)
     return 0
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

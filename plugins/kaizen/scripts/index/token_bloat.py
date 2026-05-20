@@ -41,7 +41,8 @@ from pathlib import Path
 _SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(_SCRIPT_DIR))
 # MIGRATION BRIDGE — cross-cluster sibs still at legacy or shimmed there.
-sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "skills" / "workflow" / "scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import _bootstrap  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 
 # ── Thresholds (override via env) ────────────────────────────────────
 
@@ -52,7 +53,6 @@ def _envint(key: str, default: int) -> int:
     except ValueError:
         return default
 
-
 _YAML_TEMPLATE_LINES_HIGH   = _envint("KAIZEN_BLOAT_YAML_LINES_HIGH",   15)
 _YAML_TEMPLATE_LINES_MED    = _envint("KAIZEN_BLOAT_YAML_LINES_MED",    8)
 _SKILLMD_LINES_HIGH         = _envint("KAIZEN_BLOAT_SKILLMD_LINES_HIGH", 800)
@@ -62,13 +62,11 @@ _COMMANDMD_LINES_MED        = _envint("KAIZEN_BLOAT_CMDMD_LINES_MED",    100)
 _HOOK_HEREDOC_LINES_HIGH    = _envint("KAIZEN_BLOAT_HOOK_LINES_HIGH",    40)
 _HOOK_HEREDOC_LINES_MED     = _envint("KAIZEN_BLOAT_HOOK_LINES_MED",     20)
 
-
 # ── Token estimation ─────────────────────────────────────────────────
 
 def estimate_tokens(text: str) -> int:
     """Rough char/4 heuristic. Good enough for relative ranking."""
     return len(text) // 4
-
 
 # ── Quality scoring ──────────────────────────────────────────────────
 
@@ -103,7 +101,6 @@ _IMPERATIVE_VERBS = (
     "run", "use", "set", "add", "remove", "fix", "check", "load",
     "scan", "trim", "split", "merge", "wire", "drop", "skip",
 )
-
 
 def quality_score(body: str) -> tuple[int, str]:
     """Return (score, hint) for a chunk of agent-loaded text.
@@ -172,13 +169,11 @@ def quality_score(body: str) -> tuple[int, str]:
     hint = "; ".join(notes) if notes else "uniform prose"
     return score, hint
 
-
 # ── Plugin root resolution ───────────────────────────────────────────
 
 def _plugin_root() -> Path:
     """Auto-discover plugins/kaizen root from this script's location."""
     return _SCRIPT_DIR.parents[1]  # scripts/index/ → plugins/kaizen/
-
 
 # ── DXM fire-frequency integration ───────────────────────────────────
 
@@ -187,7 +182,6 @@ def _dxm_dir() -> Path:
     if env:
         return Path(os.path.expandvars(env)).expanduser()
     return Path.home() / ".claude" / ".kaizen" / "dxm"
-
 
 def count_dxm_fires(evt_type: str) -> int:
     """Total occurrences of evt_type across ALL dxm event files (lifetime).
@@ -206,7 +200,6 @@ def count_dxm_fires(evt_type: str) -> int:
         except OSError:
             continue
     return total
-
 
 # Maps a finding's path/kind to the lifecycle evt_type whose count
 # approximates how often that template gets injected into agent context.
@@ -228,12 +221,10 @@ _LIFECYCLE_BY_PREFIX = (
 # Cache fire counts per-process — single dxm walk per scan.
 _FIRE_CACHE: dict[str, int] = {}
 
-
 def _fires_for(evt_type: str) -> int:
     if evt_type not in _FIRE_CACHE:
         _FIRE_CACHE[evt_type] = count_dxm_fires(evt_type)
     return _FIRE_CACHE[evt_type]
-
 
 def estimate_fire_count(finding: dict) -> int:
     """Approximate lifetime fire count for a finding. Returns 0 when
@@ -250,7 +241,6 @@ def estimate_fire_count(finding: dict) -> int:
     # SKILL.md / agents / commands — count handled separately
     # (would need PreToolUse Skill / Task payload inspection)
     return 0
-
 
 # ── Sensitivity tier (LLMLingua-inspired) ────────────────────────────
 #
@@ -276,7 +266,6 @@ def sensitivity_tier(finding: dict) -> str:
         return "instruction"  # appended to user prompt
     return "context"           # SKILL.md, references, default
 
-
 # ── Scanners ─────────────────────────────────────────────────────────
 
 # Match `key: |\n  ...indented block...` blocks in YAML.
@@ -284,7 +273,6 @@ _YAML_BLOCK_RE = re.compile(
     r"^(\s*)(reason_template|additionalContext|systemMessage|reason)\s*:\s*[|>][-+]?\s*$",
     re.MULTILINE,
 )
-
 
 def _scan_yaml_template(path: Path, root: Path) -> list[dict]:
     """Find oversized reason_template/additionalContext/systemMessage blocks."""
@@ -330,7 +318,6 @@ def _scan_yaml_template(path: Path, root: Path) -> list[dict]:
             })
     return findings
 
-
 def _scan_markdown_size(path: Path, root: Path, line_med: int, line_high: int,
                           kind: str, hint: str) -> list[dict]:
     """Flag oversized markdown bodies."""
@@ -357,17 +344,14 @@ def _scan_markdown_size(path: Path, root: Path, line_med: int, line_high: int,
         "hint":         hint,
     }]
 
-
 _HOOK_HEREDOC_RE = re.compile(
     r"""body\s*=\s*['"]['"]['"]([\s\S]*?)['"]['"]['"]""",
 )
-
 
 _AGENT_MD_LINES_HIGH    = _envint("KAIZEN_BLOAT_AGENT_LINES_HIGH",   400)
 _AGENT_MD_LINES_MED     = _envint("KAIZEN_BLOAT_AGENT_LINES_MED",    200)
 _FRONTMATTER_DESC_HIGH  = _envint("KAIZEN_BLOAT_DESC_CHARS_HIGH",     800)
 _FRONTMATTER_DESC_MED   = _envint("KAIZEN_BLOAT_DESC_CHARS_MED",      400)
-
 
 def _scan_agent_md(path: Path, root: Path) -> list[dict]:
     """Subagent definitions — loaded in full when the agent is dispatched.
@@ -395,7 +379,6 @@ def _scan_agent_md(path: Path, root: Path) -> list[dict]:
         "hint":         "agent body loads in full per Agent() dispatch — trim or split into helper agents",
     }]
 
-
 # Frontmatter `description:` extractor. Single-line OR YAML block scalar.
 _FRONTMATTER_RE = re.compile(
     r"^---\n(.*?)\n---", re.DOTALL,
@@ -403,7 +386,6 @@ _FRONTMATTER_RE = re.compile(
 _DESC_RE = re.compile(
     r"^description:\s*(.+?)$", re.MULTILINE,
 )
-
 
 def _scan_frontmatter_desc(path: Path, root: Path) -> list[dict]:
     """SKILL.md `description:` fields — loaded into the skills catalog
@@ -443,7 +425,6 @@ def _scan_frontmatter_desc(path: Path, root: Path) -> list[dict]:
     })
     return findings
 
-
 def _scan_hook_heredoc(path: Path, root: Path) -> list[dict]:
     """Find multi-line additionalContext / systemMessage embedded in hook scripts."""
     findings: list[dict] = []
@@ -473,7 +454,6 @@ def _scan_hook_heredoc(path: Path, root: Path) -> list[dict]:
                 "hint":         "hook injects this into SessionStart/Stop context — trim or move to a skill",
             })
     return findings
-
 
 def scan_all(root: Path | None = None) -> list[dict]:
     """Run every scanner over the plugin. Returns findings sorted by tokens desc."""
@@ -543,7 +523,6 @@ def scan_all(root: Path | None = None) -> list[dict]:
     ))
     return findings
 
-
 # ── Cache ────────────────────────────────────────────────────────────
 
 def _cache_path() -> Path:
@@ -552,11 +531,9 @@ def _cache_path() -> Path:
         else Path.home() / ".claude" / ".kaizen"
     return base / "token-bloat-findings.json"
 
-
 def _cache_ttl_seconds() -> int:
     hours = _envint("KAIZEN_TOKEN_BLOAT_TTL_HOURS", 6)
     return hours * 3600
-
 
 def _cache_fresh() -> bool:
     p = _cache_path()
@@ -564,7 +541,6 @@ def _cache_fresh() -> bool:
         return False
     age = _dt.datetime.now().timestamp() - p.stat().st_mtime
     return age < _cache_ttl_seconds()
-
 
 def _write_cache(findings: list[dict]) -> None:
     p = _cache_path()
@@ -579,13 +555,11 @@ def _write_cache(findings: list[dict]) -> None:
     }
     p.write_text(json.dumps(payload, indent=2), encoding="utf-8")
 
-
 def _kaizen_dir() -> Path:
     env = os.environ.get("KAIZEN_DIR")
     if env:
         return Path(os.path.expandvars(env)).expanduser()
     return Path.home() / ".claude" / ".kaizen"
-
 
 def _project_root() -> Path:
     """Walk up cwd to find the repo root (.git or .kaizen marker).
@@ -595,7 +569,6 @@ def _project_root() -> Path:
         if (parent / ".kaizen").is_dir() or (parent / ".git").is_dir():
             return parent
     return cwd
-
 
 def _project_slug() -> str:
     """`/home/u/repo` → `-home-u-repo` — same shape as CC's
@@ -609,7 +582,6 @@ def _project_slug() -> str:
     except ImportError:
         return str(root.resolve()).replace("/", "-")
 
-
 def _bloat_dir() -> Path:
     """Per-project token-bloat dir under the user-global $KAIZEN_DIR.
 
@@ -621,7 +593,6 @@ def _bloat_dir() -> Path:
     coexist without clobbering."""
     return _kaizen_dir() / "token-bloat" / _project_slug()
 
-
 def _session_state_path() -> Path:
     """Per-project state file. Override via KAIZEN_BLOAT_SESSION_FILE
     (full path; useful for tests / one-off redirection)."""
@@ -629,7 +600,6 @@ def _session_state_path() -> Path:
     if env:
         return Path(os.path.expandvars(env)).expanduser()
     return _bloat_dir() / "session.md"
-
 
 def _session_history_path() -> Path:
     """Continuous JSONL history. Sibling of the snapshot.
@@ -643,7 +613,6 @@ def _session_history_path() -> Path:
         return _session_state_path().with_suffix(".history.jsonl")
     return _bloat_dir() / "history.jsonl"
 
-
 def _archive_dir() -> Path:
     """Where rendered .md snapshots get archived per scan. Sibling of
     the live snapshot. Override via KAIZEN_BLOAT_ARCHIVE_DIR."""
@@ -652,13 +621,11 @@ def _archive_dir() -> Path:
         return Path(os.path.expandvars(env)).expanduser()
     return _session_state_path().parent / "archive"
 
-
 def _archive_path_for(scanned_at: str) -> Path:
     """Timestamped archive file. Filename matches the history JSONL
     entry's scanned_at field so they can be cross-referenced by grep."""
     safe = scanned_at.replace(":", "").replace("-", "").replace("Z", "Z")
     return _archive_dir() / f"{safe}.md"
-
 
 def _uniq_archive_path(scanned_at: str) -> Path:
     """Collision-safe archive path. When two scans share a second,
@@ -677,10 +644,8 @@ def _uniq_archive_path(scanned_at: str) -> Path:
             return cand
     return base  # cap: 1000 archives/sec is absurd — fall back
 
-
 def _history_max_mb() -> int:
     return _envint("KAIZEN_BLOAT_HISTORY_MAX_MB", 5)
-
 
 def _rotate_history_if_huge(p: Path) -> None:
     """Rotate the history file when it exceeds the cap — mirrors the
@@ -696,7 +661,6 @@ def _rotate_history_if_huge(p: Path) -> None:
         p.rename(rotated)
     except OSError:
         pass
-
 
 def _render_split_plans_section(plans: list[dict]) -> str:
     """Render the auto-generated split-plan summaries as an appendix
@@ -731,7 +695,6 @@ def _render_split_plans_section(plans: list[dict]) -> str:
         lines.append("")
     return "\n".join(lines)
 
-
 def _generate_split_plans_for_oversized(root: Path | None = None) -> list[dict]:
     """Auto-run split-plan against every SKILL.md > medium threshold.
     Returns the same list shape `_cmd_split_plan` emits with --json."""
@@ -752,7 +715,6 @@ def _generate_split_plans_for_oversized(root: Path | None = None) -> list[dict]:
         except OSError:
             continue
     return plans
-
 
 def _render_snapshot(findings: list[dict], scanned_at: str,
                        split_plans: list[dict] | None = None) -> str:
@@ -796,7 +758,6 @@ def _render_snapshot(findings: list[dict], scanned_at: str,
         f"# history:  history.jsonl  (grep '{scanned_at}' for this scan)\n"
     )
     return body
-
 
 def _write_session_state(findings: list[dict]) -> None:
     """Atomic snapshot + continuous JSONL history.
@@ -874,7 +835,6 @@ def _write_session_state(findings: list[dict]) -> None:
     except OSError:
         pass
 
-
 def validate_finding(finding: dict, root: Path | None = None) -> str:
     """Cross-reference a finding against the live filesystem. Returns one of:
 
@@ -912,7 +872,6 @@ def validate_finding(finding: dict, root: Path | None = None) -> str:
         return "resolved"
     return "active"
 
-
 def _validate_and_partition(findings: list[dict], root: Path | None = None) -> dict:
     """Split findings into {active, missing, moved, resolved, unknown}."""
     root = root or _plugin_root()
@@ -924,9 +883,7 @@ def _validate_and_partition(findings: list[dict], root: Path | None = None) -> d
         buckets.setdefault(status, []).append(f)
     return buckets
 
-
 _CITATION_RE = re.compile(r"^([^:]+):(\d+)(?:-(\d+))?$")
-
 
 def smart_read(citation: str, root: Path | None = None,
                  context_lines: int = 0) -> dict:
@@ -974,7 +931,6 @@ def smart_read(citation: str, root: Path | None = None,
         "content": snippet,
     }
 
-
 def _list_archives() -> list[dict]:
     """Sorted (newest first) list of archived snapshots with metadata."""
     d = _archive_dir()
@@ -994,7 +950,6 @@ def _list_archives() -> list[dict]:
             continue
     return out
 
-
 def _cmd_read(args) -> int:
     """Smart line-read: emit the cited `path:start-end` snippet."""
     out = smart_read(args.citation, context_lines=args.context)
@@ -1007,7 +962,6 @@ def _cmd_read(args) -> int:
     print(f"# {out['path']}:{out['start']}-{out['end']}")
     print(out["content"])
     return 0
-
 
 def _cmd_archives(args) -> int:
     archives = _list_archives()
@@ -1022,7 +976,6 @@ def _cmd_archives(args) -> int:
         kb = a["size"] // 1024
         print(f"  {a['name']:30s} {kb:>4d}KB  {a['path']}")
     return 0
-
 
 def _restore_snapshot_from_history() -> bool:
     """Regenerate the .md snapshot from the LAST entry in the history
@@ -1062,7 +1015,6 @@ def _restore_snapshot_from_history() -> bool:
             return False
     return True
 
-
 def _read_cache() -> dict | None:
     p = _cache_path()
     if not p.is_file():
@@ -1071,7 +1023,6 @@ def _read_cache() -> dict | None:
         return json.loads(p.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
         return None
-
 
 # ── Output formatters ────────────────────────────────────────────────
 
@@ -1095,7 +1046,6 @@ def _print_text(findings: list[dict]) -> None:
               f"{f['lines']:>4d} ln (~{f['tokens']:>5d} tok)  "
               f"{q_str} {sens:4s} {fire_str:>5s}→~{cumul:>7d} cumul")
 
-
 def _total_waste(findings: list[dict]) -> int:
     """Sum of estimated wasted tokens — Σ tokens × (100 - quality) / 100.
     A 1000-token finding at q=80 contributes 200 wasted tokens."""
@@ -1105,14 +1055,12 @@ def _total_waste(findings: list[dict]) -> int:
         total += f.get("tokens", 0) * (100 - q) // 100
     return total
 
-
 def _worst_quality(findings: list[dict]) -> dict | None:
     """Finding with the largest per-item waste (tokens × (100 - quality))."""
     if not findings:
         return None
     return max(findings,
                 key=lambda f: f.get("tokens", 0) * (100 - f.get("quality", 50)))
-
 
 def _surface_line(cache: dict | None) -> str:
     """One-line SessionStart-injection summary. Empty when nothing to say.
@@ -1152,7 +1100,6 @@ def _surface_line(cache: dict | None) -> str:
     parts.append("run `kaizen-token-bloat report` for the full list")
     return " — ".join(parts)
 
-
 # ── CLI ──────────────────────────────────────────────────────────────
 
 def _emit_trace(findings: list[dict]) -> None:
@@ -1179,7 +1126,6 @@ def _emit_trace(findings: list[dict]) -> None:
     except Exception:
         pass
 
-
 def _read_last_history_findings() -> list[dict]:
     """Pull findings list from the most recent history JSONL entry."""
     hist = _session_history_path()
@@ -1199,7 +1145,6 @@ def _read_last_history_findings() -> list[dict]:
     except OSError:
         return []
     return (last_obj or {}).get("findings") or []
-
 
 # ── Split-plan: rubric-driven section classifier ────────────────────
 
@@ -1248,7 +1193,6 @@ def _load_split_rubric() -> dict:
         rules.append(cur)
     return {"version": 1, "rules": rules}
 
-
 def _parse_skill_sections(path: Path) -> list[dict]:
     """Walk a markdown file; return [{heading, level, start, end, lines, body}].
     Heading levels 1-3. Frontmatter stripped."""
@@ -1292,7 +1236,6 @@ def _parse_skill_sections(path: Path) -> list[dict]:
         sections.append(cur)
     return sections
 
-
 def _classify_section(section: dict, rubric: dict) -> dict:
     """First-match-wins rule application. Returns the section dict
     augmented with kind / verdict / extract_to / reason."""
@@ -1324,7 +1267,6 @@ def _classify_section(section: dict, rubric: dict) -> dict:
         "reason":     "no rule matched; default keep-inline",
         "tokens":     estimate_tokens(section.get("body", "")),
     }
-
 
 def build_split_plan(skill: str, root: Path | None = None) -> dict:
     """Generate a split plan for `skills/<skill>/SKILL.md`. Returns a
@@ -1369,7 +1311,6 @@ def build_split_plan(skill: str, root: Path | None = None) -> dict:
         "candidates":             candidates,
     }
 
-
 def _print_split_plan(plan: dict) -> None:
     print(f"split-plan: {plan['skill']} "
           f"({plan['current_lines']} ln, ~{plan['current_tokens']} tok) — "
@@ -1380,7 +1321,6 @@ def _print_split_plan(plan: dict) -> None:
         print(f"  {mark} L{c['start']:>4d}-{c['end']:<4d} "
               f"[{c['verdict']:11s}] {c['kind']:18s} "
               f"~{c['tokens']:>5d}tok  {c['section']}  {target}")
-
 
 def _cmd_split_plan(args) -> int:
     """Emit a split plan for one skill (--skill) or all oversized skills."""
@@ -1408,7 +1348,6 @@ def _cmd_split_plan(args) -> int:
             _print_split_plan(plan)
             print()
     return 0
-
 
 def _cmd_validate(args) -> int:
     """Validate the LATEST snapshot's findings against the live FS.
@@ -1456,7 +1395,6 @@ def _cmd_validate(args) -> int:
                   f"contains {len(keep)} (audit: {resolved_log})")
     return 0
 
-
 def _cmd_scan(args) -> int:
     findings = scan_all()
     if args.cache:
@@ -1475,7 +1413,6 @@ def _cmd_scan(args) -> int:
         _print_text(findings)
     return 0
 
-
 def _cmd_report(args) -> int:
     cache = _read_cache()
     if cache is None:
@@ -1488,7 +1425,6 @@ def _cmd_report(args) -> int:
         print(f"\n(cache scanned_at: {cache.get('scanned_at')})")
     return 0
 
-
 def _cmd_surface(args) -> int:
     """One-line summary for SessionStart injection. Empty stdout when
     cache is missing, stale, or has no findings."""
@@ -1499,7 +1435,6 @@ def _cmd_surface(args) -> int:
     if line:
         print(line)
     return 0
-
 
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(prog="kaizen-token-bloat",
@@ -1562,7 +1497,6 @@ def main(argv=None) -> int:
 
     args = p.parse_args(argv)
     return args.func(args)
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

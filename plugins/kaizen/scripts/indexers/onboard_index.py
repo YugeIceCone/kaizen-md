@@ -130,11 +130,11 @@ from pathlib import Path
 _SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(_SCRIPT_DIR))
 # MIGRATION BRIDGE — until helpers move from skills/workflow/scripts/ → scripts/
-sys.path.insert(0, str(_SCRIPT_DIR.parents[1] / "skills" / "workflow" / "scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import _bootstrap  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 sys.path.insert(0, str(_SCRIPT_DIR.parents[1] / "scripts" / "brain"))
 
 # ─── Constants ───────────────────────────────────────────────────────
-
 
 DEFAULT_MODEL = os.environ.get("KAIZEN_ONBOARD_MODEL", "all-MiniLM-L6-v2")
 DEFAULT_DIM = 384
@@ -198,10 +198,8 @@ SKIP_PATH_PATTERNS = [
 
 # ─── Lazy ML imports ─────────────────────────────────────────────────
 
-
 _model = None
 _np = None
-
 
 def _load_model():
     global _model, _np
@@ -220,9 +218,7 @@ def _load_model():
         _model = SentenceTransformer(DEFAULT_MODEL)
     return _model, _np
 
-
 # ─── DB ──────────────────────────────────────────────────────────────
-
 
 def db_path(root: Path) -> Path:
     """Default location: <root>/.kaizen/onboard.db. Overridable via env."""
@@ -230,7 +226,6 @@ def db_path(root: Path) -> Path:
     if env:
         return Path(env).expanduser()
     return root / ".kaizen" / "onboard.db"
-
 
 # M1 — shared base in _sqlite.py. onboard is the only indexer that runs
 # performance PRAGMAs (WAL, synchronous=NORMAL, cache_size, mmap, temp_store,
@@ -251,9 +246,7 @@ _PRAGMAS_SQL = """
     PRAGMA foreign_keys = ON;
 """
 
-
 # ─── DB schema + migrations live in onboard_schema.py ────────────────
-
 
 def _populate_xref_imports(
     conn: sqlite3.Connection,
@@ -308,7 +301,6 @@ def _populate_xref_imports(
         [(chunk_id, imp.symbol, "import") for imp in imports],
     )
 
-
 def open_db(root: Path, create: bool = True) -> sqlite3.Connection:
     conn = _kz_sqlite.open_indexer_db(
         db_path(root), onboard_schema.SCHEMA_SQL,
@@ -322,25 +314,19 @@ def open_db(root: Path, create: bool = True) -> sqlite3.Connection:
         _kz_search.ensure_fts_mirror(conn, "code_chunks")
     return conn
 
-
 def set_meta(conn: sqlite3.Connection, key: str, value: str) -> None:
     _kz_sqlite.set_meta(conn, "code_meta", key, value)
-
 
 def get_meta(conn: sqlite3.Connection, key: str, default: str = "") -> str:
     return _kz_sqlite.get_meta(conn, "code_meta", key, default)
 
-
 # ─── Source-file discovery ───────────────────────────────────────────
-
 
 def _should_skip_path(rel_path: str) -> bool:
     return any(p.search(rel_path) for p in SKIP_PATH_PATTERNS)
 
-
 def _is_source_file(path: Path) -> bool:
     return path.suffix.lower() in LANG_TABLE
-
 
 def iter_tracked_files(root: Path) -> list[Path]:
     """Use `git ls-files` when available; falls back to fs walk."""
@@ -354,7 +340,6 @@ def iter_tracked_files(root: Path) -> list[Path]:
         return files
     except (subprocess.CalledProcessError, FileNotFoundError):
         return list(root.rglob("*"))
-
 
 def iter_source_files(root: Path, use_git: bool = True) -> list[Path]:
     """Filter to source files only: extension match + path skip + size cap."""
@@ -376,9 +361,7 @@ def iter_source_files(root: Path, use_git: bool = True) -> list[Path]:
         out.append(p)
     return out
 
-
 # ─── Comment stripping ───────────────────────────────────────────────
-
 
 _C_LINE = re.compile(r"//[^\n]*")
 _C_BLOCK = re.compile(r"/\*.*?\*/", re.DOTALL)
@@ -394,9 +377,7 @@ _OCAML_BLOCK = re.compile(r"\(\*.*?\*\)", re.DOTALL)
 _SQL_LINE = re.compile(r"--[^\n]*")
 _SQL_BLOCK = re.compile(r"/\*.*?\*/", re.DOTALL)
 
-
 # ─── Docstring extraction (O1: sidecar signal for "why" queries) ─────
-
 
 _RUST_DOC = re.compile(r"^\s*///([^\n]*)", re.MULTILINE)
 _RUST_INNER_DOC = re.compile(r"^\s*//!([^\n]*)", re.MULTILINE)
@@ -404,7 +385,6 @@ _JSDOC_BLOCK = re.compile(r"/\*\*(.*?)\*/", re.DOTALL)
 _PY_TRIPLE_DOUBLE_CAPTURE = re.compile(r'"""(.*?)"""', re.DOTALL)
 _PY_TRIPLE_SINGLE_CAPTURE = re.compile(r"'''(.*?)'''", re.DOTALL)
 _C_DOC_LINE = re.compile(r"^\s*//[/!]([^\n]*)", re.MULTILINE)
-
 
 def _clean_jsdoc_lines(block: str) -> str:
     """JSDoc /** lines often start with ` * `. Strip the leading-star
@@ -417,7 +397,6 @@ def _clean_jsdoc_lines(block: str) -> str:
         if s:
             out.append(s)
     return "\n".join(out)
-
 
 def _extract_python_docstrings(source: str) -> str:
     """AST-based for accuracy: pull module/class/function docstrings.
@@ -445,13 +424,11 @@ def _extract_python_docstrings(source: str) -> str:
                 parts.append(d.strip())
     return "\n\n".join(parts)
 
-
 def _extract_rust_docstrings(source: str) -> str:
     """Concatenate `///` outer-doc + `//!` inner-doc comments."""
     parts = [m.group(1).strip() for m in _RUST_DOC.finditer(source)]
     parts.extend(m.group(1).strip() for m in _RUST_INNER_DOC.finditer(source))
     return "\n".join(p for p in parts if p)
-
 
 def _extract_jsdoc(source: str) -> str:
     """Pull every JSDoc-style /** ... */ block and clean leading stars."""
@@ -462,13 +439,11 @@ def _extract_jsdoc(source: str) -> str:
             out.append(cleaned)
     return "\n\n".join(out)
 
-
 def _extract_c_family_doc_lines(source: str) -> str:
     """C/C++/Java/Kotlin/Go-style `///` and `//!` doc lines (less common
     but used in Rust and some C++ codebases)."""
     parts = [m.group(1).strip() for m in _C_DOC_LINE.finditer(source)]
     return "\n".join(p for p in parts if p)
-
 
 # Language → docstring-extractor registry. `c-family` extracts JSDoc
 # blocks + doc lines; languages without a canonical docstring shape
@@ -481,7 +456,6 @@ _DOCSTRING_EXTRACTORS = {
     ),
     "c-family-and-hash": _extract_jsdoc,  # JSX/TSX/etc.
 }
-
 
 def extract_docstrings(source: str, language: str) -> str:
     """Return the concatenated docstrings/header-comments for `source`.
@@ -499,7 +473,6 @@ def extract_docstrings(source: str, language: str) -> str:
     strategy = _strategy_for_language(language)
     fn = _DOCSTRING_EXTRACTORS.get(strategy)
     return fn(source) if fn else ""
-
 
 def strip_comments(text: str, strategy: str) -> str:
     """Strip per-language comments. Regex-based: imperfect inside string
@@ -535,13 +508,10 @@ def strip_comments(text: str, strategy: str) -> str:
         text = _SQL_LINE.sub("", text)
     return text
 
-
 # ─── Whitespace normalization ────────────────────────────────────────
-
 
 _TRAILING_WS = re.compile(r"[ \t]+$", re.MULTILINE)
 _MULTI_BLANK = re.compile(r"\n{3,}")
-
 
 def normalize_whitespace(text: str) -> str:
     """Trim trailing whitespace per line, collapse 3+ blank lines to one
@@ -551,25 +521,20 @@ def normalize_whitespace(text: str) -> str:
     text = _MULTI_BLANK.sub("\n\n", text)
     return text.strip() + "\n"
 
-
 def count_sloc(text: str) -> int:
     """Count non-blank lines after stripping + normalizing."""
     return sum(1 for line in text.split("\n") if line.strip())
 
-
 # ─── File → record ───────────────────────────────────────────────────
-
 
 def _file_sha(content: bytes) -> str:
     return hashlib.sha256(content).hexdigest()[:16]
-
 
 def _rel_path(path: Path, root: Path) -> str:
     try:
         return path.relative_to(root).as_posix()
     except ValueError:
         return path.as_posix()
-
 
 def read_raw_file(path: Path, root: Path) -> dict:
     """Stage 1 — lossless capture. Always returns a dict; on failure the
@@ -607,13 +572,11 @@ def read_raw_file(path: Path, root: Path) -> dict:
         "sha": _file_sha(raw_bytes),
     }
 
-
 def _strategy_for_language(language: str) -> str:
     for _ext, (lang, strat) in LANG_TABLE.items():
         if lang == language:
             return strat
     return "c-family"
-
 
 def clean_for_embed(raw_rec: dict) -> dict:
     """Stage 2a — comment-strip + whitespace-normalize. Error rows pass
@@ -644,7 +607,6 @@ def clean_for_embed(raw_rec: dict) -> dict:
     )
     out["sloc"] = count_sloc(cleaned)
     return out
-
 
 def chunk_record(cleaned_rec: dict) -> list[dict]:
     """Stage 2b — split a cleaned record into per-chunk records. Returns
@@ -750,7 +712,6 @@ def chunk_record(cleaned_rec: dict) -> list[dict]:
         }]
     return out
 
-
 def process_file(path: Path, root: Path) -> dict | None:
     """Back-compat wrapper around read_raw_file + clean_for_embed.
 
@@ -772,7 +733,6 @@ def process_file(path: Path, root: Path) -> dict | None:
         "updated_at": cleaned.get("mtime", ""),
     }
 
-
 import _embed as _kz_embed  # v1.25.0+: HTTP-first embedding backend
 import _chunk as _kz_chunk  # v1.27.0+: sentence-boundary chunker
 import _ast_chunk as _kz_ast  # v1.33.0+: symbol-aware Python chunker (O2)
@@ -783,13 +743,11 @@ import _sparse as _kz_sparse  # v1.34.0+: SPLADE sparse-embedding helpers (E9)
 import _colbert as _kz_colbert  # v1.34.0+: ColBERT late-interaction helpers (E10)
 import _summary as _kz_summary  # v1.34.0+: smart file-level summary (O5)
 
-
 def _has_embedding_q8_column(conn: sqlite3.Connection) -> bool:
     """Pre-v1.31 dbs lack `embedding_q8`. Cheap probe via PRAGMA so we
     can write quantized blobs only when the column exists."""
     cols = {row[1] for row in conn.execute("PRAGMA table_info(code_chunks)")}
     return "embedding_q8" in cols
-
 
 def _maybe_quantize_batch(
     conn: sqlite3.Connection, chunk_blobs: list[bytes], dim: int
@@ -809,13 +767,11 @@ def _maybe_quantize_batch(
     blobs, _ = _kz_quant.quantize_batch(mat)
     return blobs
 
-
 def _has_embedding_sparse_column(conn: sqlite3.Connection) -> bool:
     """Pre-v1.34 dbs lack `embedding_sparse`. PRAGMA-probe so we only
     write sparse blobs when the column exists."""
     cols = {row[1] for row in conn.execute("PRAGMA table_info(code_chunks)")}
     return "embedding_sparse" in cols
-
 
 def _maybe_sparse_batch(
     conn: sqlite3.Connection, texts: list[str]
@@ -839,7 +795,6 @@ def _maybe_sparse_batch(
         return None
     sparses = _kz_sparse.encode_sparse_batch(texts)
     return [_kz_sparse.serialize(s) if s else None for s in sparses]
-
 
 def _maybe_colbert_batch(
     conn: sqlite3.Connection, texts: list[str]
@@ -883,15 +838,12 @@ def _maybe_colbert_batch(
     return out
 from _progress import Progress as _Progress  # v1.30.0+: live stderr progress
 
-
 def embed_one(text: str):
     # v1.25.0+: routes via _embed (llama-server HTTP first, sentence-transformers fallback).
     blob, _dim = _kz_embed.embed_one(text)
     return blob
 
-
 # ─── do_* helpers (data-returning; mirrored by onboard_mcp.py) ───────
-
 
 def do_dump(root: Path, use_git: bool = True) -> dict:
     """Stage 1 — lossless capture into `code_files_raw`.
@@ -946,7 +898,6 @@ def do_dump(root: Path, use_git: bool = True) -> dict:
         "db": str(db_path(root)),
     }
 
-
 def _skip_reason(conn: sqlite3.Connection, raw_rec: dict) -> str | None:
     """Incremental-skip predicate for do_filter's per-row loop.
 
@@ -963,7 +914,6 @@ def _skip_reason(conn: sqlite3.Connection, raw_rec: dict) -> str | None:
     if existing and existing["sha"] == raw_rec.get("sha"):
         return "unchanged"
     return None
-
 
 def _build_chunk_payload(conn: sqlite3.Connection, raw_rec: dict) -> dict:
     """Computation half of do_filter — clean -> chunk -> embed for one raw row.
@@ -1012,7 +962,6 @@ def _build_chunk_payload(conn: sqlite3.Connection, raw_rec: dict) -> dict:
         "chunk_sparse_blobs": chunk_sparse_blobs,
         "chunk_colbert_payloads": chunk_colbert_payloads,
     }
-
 
 def _persist_file_and_chunks(conn: sqlite3.Connection, payload: dict) -> int:
     """Persistence half of do_filter — write one file row + its chunk rows
@@ -1124,7 +1073,6 @@ def _persist_file_and_chunks(conn: sqlite3.Connection, payload: dict) -> int:
             )
     return len(kept)
 
-
 def _finalize_filter(
     conn: sqlite3.Connection, root: Path, seen_paths: set[str]
 ) -> int:
@@ -1172,7 +1120,6 @@ def _finalize_filter(
         # FTS5 mirror absent (pre-v1.28 db): skip.
         pass
     return len(stale)
-
 
 def do_filter(root: Path) -> dict:
     """Stage 2 — clean + chunk + embed from `code_files_raw` into
@@ -1240,7 +1187,6 @@ def do_filter(root: Path) -> dict:
         "db": str(db_path(root)),
     }
 
-
 def do_index(root: Path, use_git: bool = True) -> dict:
     """End-to-end incremental indexing — dump → filter (v1.31.0+).
 
@@ -1272,7 +1218,6 @@ def do_index(root: Path, use_git: bool = True) -> dict:
         "dump": dump,
         "filter": filt,
     }
-
 
 def do_search(
     root: Path,
@@ -1371,7 +1316,6 @@ def do_search(
     conn.close()
     return out
 
-
 def _do_search_legacy(
     conn: sqlite3.Connection,
     query: str,
@@ -1423,7 +1367,6 @@ def _do_search_legacy(
     conn.close()
     return out
 
-
 def do_raw_errors(root: Path) -> list[dict]:
     """Stage-1 diagnostic — rows in `code_files_raw` where read or decode
     failed. Returns [{path, language, error, bytes}]; empty list if all
@@ -1438,7 +1381,6 @@ def do_raw_errors(root: Path) -> list[dict]:
     ).fetchall()
     conn.close()
     return [{k: r[k] for k in r.keys()} for r in rows]
-
 
 def do_dropped(root: Path) -> list[dict]:
     """Stage-2 diagnostic — files present in `code_files_raw` but absent
@@ -1460,7 +1402,6 @@ def do_dropped(root: Path) -> list[dict]:
         {**{k: r[k] for k in r.keys()}, "reason": "empty_after_clean_or_no_chunks"}
         for r in rows
     ]
-
 
 def do_stats(root: Path) -> dict:
     path = db_path(root)
@@ -1497,7 +1438,6 @@ def do_stats(root: Path) -> dict:
     conn.close()
     return out
 
-
 def do_get(root: Path, file_id: int) -> dict | None:
     path = db_path(root)
     if not path.is_file():
@@ -1511,9 +1451,7 @@ def do_get(root: Path, file_id: int) -> dict | None:
         return None
     return {k: r[k] for k in r.keys() if k != "embedding"}
 
-
 # ─── CLI ─────────────────────────────────────────────────────────────
-
 
 def _resolve_root(args) -> Path:
     if getattr(args, "root", None):
@@ -1529,7 +1467,6 @@ def _resolve_root(args) -> Path:
     except (subprocess.CalledProcessError, FileNotFoundError):
         return Path.cwd()
 
-
 def cmd_index(args):
     root = _resolve_root(args)
     result = do_index(root, use_git=not args.no_git)
@@ -1542,14 +1479,12 @@ def cmd_index(args):
     )
     print(f"  total: {result['total']} files at {result['db']}", file=sys.stderr)
 
-
 def cmd_reindex(args):
     root = _resolve_root(args)
     p = db_path(root)
     if p.is_file():
         p.unlink()
     cmd_index(args)
-
 
 def cmd_search(args):
     root = _resolve_root(args)
@@ -1574,7 +1509,6 @@ def cmd_search(args):
             first = r["snippet"].split("\n", 1)[0][:120]
             print(f"           {first}")
 
-
 def cmd_stats(args):
     root = _resolve_root(args)
     s = do_stats(root)
@@ -1591,7 +1525,6 @@ def cmd_stats(args):
     for lang, n in s["by_language"].items():
         print(f"  {lang:<12} {n}")
 
-
 def cmd_get(args):
     root = _resolve_root(args)
     r = do_get(root, args.id)
@@ -1599,11 +1532,9 @@ def cmd_get(args):
         sys.exit(f"id {args.id} not found")
     _emit(r)
 
-
 def cmd_path(args):
     root = _resolve_root(args)
     print(db_path(root))
-
 
 def cmd_clear(args):
     root = _resolve_root(args)
@@ -1614,7 +1545,6 @@ def cmd_clear(args):
     else:
         print("kaizen-onboard: no index to clear", file=sys.stderr)
 
-
 def cmd_dump(args):
     """v1.31.0+: stage 1 only — populate code_files_raw with lossless capture."""
     root = _resolve_root(args)
@@ -1624,7 +1554,6 @@ def cmd_dump(args):
         f"{result['errors']} errors → {result['db']}",
         file=sys.stderr,
     )
-
 
 def cmd_filter(args):
     """v1.31.0+: stage 2 only — clean + chunk + embed from code_files_raw.
@@ -1637,7 +1566,6 @@ def cmd_filter(args):
         f"{result['dropped']} dropped, {result['stale_removed']} stale removed",
         file=sys.stderr,
     )
-
 
 def cmd_raw(args):
     """v1.31.0+: query the lossless capture table — list, show one, or
@@ -1678,15 +1606,12 @@ def cmd_raw(args):
         print(f"  {r['status']:<6} {r['language']:<10} {r['bytes']:>8}b  {r['path']}")
     print(f"  ({len(rows)} rows)", file=sys.stderr)
 
-
 # ─── CLI (M7: thin IndexerCLI subclass) ──────────────────────────────
-
 
 from _indexer_cli import IndexerCLI  # noqa: E402
 import _envelope  # noqa: E402
 
 _emit = _envelope.emitter("kaizen-onboard", tool_version="1.0.0")
-
 
 class OnboardCLI(IndexerCLI):
     PROG = "kaizen-onboard-index"
@@ -1796,15 +1721,12 @@ class OnboardCLI(IndexerCLI):
                              "text")
         pw.set_defaults(func=cmd_raw)
 
-
 def build_parser() -> argparse.ArgumentParser:
     """Back-compat shim."""
     return OnboardCLI().build_parser()
 
-
 def main():
     OnboardCLI().run()
-
 
 if __name__ == "__main__":
     main()

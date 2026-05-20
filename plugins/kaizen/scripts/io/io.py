@@ -49,14 +49,12 @@ import json
 import sys
 from pathlib import Path
 
-
 _SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(_SCRIPT_DIR))
-# MIGRATION BRIDGE — legacy helpers still at skills/workflow/scripts/
-sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "skills" / "workflow" / "scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import _bootstrap  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 
 import _atomic  # noqa: E402
-
 
 def _read_one(path: str) -> dict:
     p = Path(path).expanduser()
@@ -68,7 +66,6 @@ def _read_one(path: str) -> dict:
         return {"op": "read", "file_path": path, "ok": False,
                 "error": str(e)}
 
-
 def _write_one(path: str, content: str) -> dict:
     try:
         _atomic.atomic_write(path, content)
@@ -77,7 +74,6 @@ def _write_one(path: str, content: str) -> dict:
     except OSError as e:
         return {"op": "write", "file_path": path, "ok": False,
                 "error": str(e)}
-
 
 def _write_bytes_one(path: str, b64: str) -> dict:
     try:
@@ -88,7 +84,6 @@ def _write_bytes_one(path: str, b64: str) -> dict:
     except (OSError, ValueError, base64.binascii.Error) as e:
         return {"op": "write_bytes", "file_path": path, "ok": False,
                 "error": str(e)}
-
 
 async def _run_op(op: dict) -> dict:
     """Dispatch a single op via asyncio.to_thread (atomic ops are sync IO)."""
@@ -112,7 +107,6 @@ async def _run_op(op: dict) -> dict:
         return await asyncio.to_thread(_write_bytes_one, path, b64)
     return {"op": kind, "file_path": path, "ok": False,
             "error": f"unknown op: {kind!r}"}
-
 
 async def _run_batch(ops: list[dict]) -> list[dict]:
     """Two-phase parallel dispatch — preserves order in the result.
@@ -158,7 +152,6 @@ async def _run_batch(ops: list[dict]) -> list[dict]:
 
     return results
 
-
 def _cmd_read(args) -> int:
     paths = args.file_path
     # Back-compat: single positional arg → identical to pre-multi-arg behavior
@@ -190,7 +183,6 @@ def _cmd_read(args) -> int:
                 print(f"[error] {r.get('error', 'unknown')}")
     return 0 if all(r.get("ok") for r in results) else 1
 
-
 def _cmd_write(args) -> int:
     if args.stdin:
         content = sys.stdin.read()
@@ -209,7 +201,6 @@ def _cmd_write(args) -> int:
             sys.stderr.write(f"[kaizen-io write] {r['error']}\n")
     return 0 if r["ok"] else 1
 
-
 def _cmd_batch(args) -> int:
     try:
         ops = json.load(sys.stdin)
@@ -227,7 +218,6 @@ def _cmd_batch(args) -> int:
     sys.stderr.write(f"[kaizen-io batch] {len(results)} op(s) — "
                       f"{ok} ok, {bad} failed\n")
     return 0 if bad == 0 else 1
-
 
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(
@@ -263,7 +253,6 @@ def main(argv=None) -> int:
 
     args = p.parse_args(argv)
     return args.func(args)
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

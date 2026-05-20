@@ -22,7 +22,6 @@ import os
 import sys
 from pathlib import Path
 
-
 def prune_orphans(user_bin: Path, *, dry_run: bool = False) -> list[str]:
     if not user_bin.is_dir():
         return []
@@ -38,7 +37,6 @@ def prune_orphans(user_bin: Path, *, dry_run: bool = False) -> list[str]:
             entry.unlink()
         removed.append(entry.name)
     return removed
-
 
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description=__doc__.splitlines()[0])
@@ -68,7 +66,6 @@ def main(argv: list[str] | None = None) -> int:
         else:
             print("no orphan kaizen-* symlinks found")
     return 0
-
 
 if __name__ == "__main__":
     sys.exit(main())

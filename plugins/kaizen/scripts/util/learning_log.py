@@ -35,7 +35,6 @@ _VALID_CATEGORIES = frozenset({
     "wasteful_tokens", "roundtrips", "anti_patterns",
 })
 
-
 def _detect_branch() -> str | None:
     """Resolve current git branch via cwd. None when not in a repo."""
     try:
@@ -50,7 +49,6 @@ def _detect_branch() -> str | None:
         pass
     return None
 
-
 def _learning_dir() -> Path:
     # DRY — delegates to shared _paths.env_overridable_dir helper.
     _here = Path(__file__).resolve().parent
@@ -58,10 +56,8 @@ def _learning_dir() -> Path:
     from _paths import env_overridable_dir
     return env_overridable_dir("KAIZEN_LEARNING_DIR", "learning")
 
-
 def _log_path() -> Path:
     return _learning_dir() / "log.jsonl"
-
 
 def _validate(payload: dict) -> str | None:
     """Return error string on invalid payload, else None."""
@@ -86,7 +82,6 @@ def _validate(payload: dict) -> str | None:
         return "source_commits must be a list"
     return None
 
-
 def _build_entry(payload: dict) -> dict:
     """Add ts + id + promotion_status defaults; preserve operator fields."""
     entry = {
@@ -97,7 +92,6 @@ def _build_entry(payload: dict) -> dict:
     entry.update(payload)
     return entry
 
-
 def _atomic_append(path: Path, entry: dict) -> None:
     # DRY — delegates to the shared _atomic.atomic_append_line helper
     _here = Path(__file__).resolve().parent
@@ -105,7 +99,6 @@ def _atomic_append(path: Path, entry: dict) -> None:
     # (also enforces append-only-sink iron-law).
     from _atomic import atomic_append_line
     atomic_append_line(path, json.dumps(entry))
-
 
 def _cmd_append(args: argparse.Namespace) -> int:
     if args.stdin:
@@ -150,7 +143,6 @@ def _cmd_append(args: argparse.Namespace) -> int:
         return 1
     return 0
 
-
 def _cmd_list(args: argparse.Namespace) -> int:
     p = _log_path()
     if not p.is_file():
@@ -179,7 +171,6 @@ def _cmd_list(args: argparse.Namespace) -> int:
             print(f"  → {e.get('solution', '')}")
             print(f"  pattern: {e.get('pattern', '')}")
     return 0
-
 
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(
@@ -227,7 +218,6 @@ def main(argv: list[str] | None = None) -> int:
         p.print_help()
         return 2
     return args.fn(args)
-
 
 if __name__ == "__main__":
     sys.exit(main())

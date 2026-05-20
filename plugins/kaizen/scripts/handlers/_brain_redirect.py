@@ -23,9 +23,10 @@ import json
 import os
 import sys
 from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import _bootstrap  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 
 _BRAIN_SUFFIX_PARTS = (".kaizen/brain/", "/projects/", "/memory/")
-
 
 def should_redirect(tool_name: str, tool_input: dict) -> bool:
     """True iff this Read tool call should get a redirect nudge.
@@ -57,12 +58,9 @@ def should_redirect(tool_name: str, tool_input: dict) -> bool:
         return True
     return False
 
-
 def build_hint(path: Path) -> str:
     """Render the additionalContext text — block list + suggested CLI."""
     try:
-        scripts_dir = Path(__file__).resolve().parent.parent.parent / "skills" / "workflow" / "scripts"
-        sys.path.insert(0, str(scripts_dir))
         # MIGRATION BRIDGE — _brain_blocks moved to scripts/brain/
         sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "scripts" / "brain"))
         import _brain_blocks as _bb  # type: ignore
@@ -91,7 +89,6 @@ def build_hint(path: Path) -> str:
         lines.append(f"Discover blocks:  kaizen-brain blocks --file {path}")
     return "\n".join(lines)
 
-
 def main() -> int:
     try:
         event = json.loads(sys.stdin.read() or "{}")
@@ -113,7 +110,6 @@ def main() -> int:
     }
     print(json.dumps(out))
     return 0
-
 
 if __name__ == "__main__":
     sys.exit(main())

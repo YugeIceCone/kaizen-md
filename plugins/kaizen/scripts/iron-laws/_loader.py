@@ -31,7 +31,6 @@ DOMAIN_DIR = (
 IRON_LAWS_YAML = DOMAIN_DIR / "iron-laws.yaml"
 SCHEMA_PATH = DOMAIN_DIR / "schemas" / "iron-law.schema.json"
 
-
 def _validate(data: dict, schema_path: Path, label: str) -> None:
     """Validate `data` against the JSON Schema. Raises on failure.
 
@@ -45,7 +44,6 @@ def _validate(data: dict, schema_path: Path, label: str) -> None:
     except jsonschema.ValidationError as e:
         raise ValueError(f"{label}: schema validation failed — {e.message}") from e
 
-
 def load_registry(path: Path | None = None) -> dict:
     """Load + validate the whole registry dict (`{version, laws}`)."""
     p = path or IRON_LAWS_YAML
@@ -53,30 +51,24 @@ def load_registry(path: Path | None = None) -> dict:
     _validate(data, SCHEMA_PATH, p.name)
     return data
 
-
 def load_laws(path: Path | None = None) -> list[dict]:
     """Return the list of law dicts. Validates first."""
     return load_registry(path).get("laws", [])
-
 
 def load_laws_by_id(path: Path | None = None) -> dict[str, dict]:
     """Return laws indexed by id."""
     return {law["id"]: law for law in load_laws(path)}
 
-
 def auto_laws(path: Path | None = None) -> list[dict]:
     """Laws with `enforcement: auto` — the machine-checked subset."""
     return [law for law in load_laws(path) if law["enforcement"] == "auto"]
-
 
 def manual_laws(path: Path | None = None) -> list[dict]:
     """Laws with `enforcement: manual` — listed + documented, not auto-checked."""
     return [law for law in load_laws(path) if law["enforcement"] == "manual"]
 
-
 def get_law(law_id: str, path: Path | None = None) -> dict | None:
     return load_laws_by_id(path).get(law_id)
-
 
 # ─── CLI ─────────────────────────────────────────────────────────────────
 
@@ -96,7 +88,6 @@ def _cli() -> int:
         return 0
     sys.stderr.write(f"[iron-laws/_loader] unknown command: {cmd}\n")
     return 2
-
 
 if __name__ == "__main__":
     sys.exit(_cli())

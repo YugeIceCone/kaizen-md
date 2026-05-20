@@ -32,7 +32,6 @@ import _iron_laws  # noqa: E402
 import _loader  # noqa: E402
 import codegen  # noqa: E402
 
-
 def _cmd_list(args) -> int:
     laws = list(_loader.load_laws())
     if getattr(args, "json", False):
@@ -49,7 +48,6 @@ def _cmd_list(args) -> int:
         print(f"{law['id']:42} {law['severity']:5} {law['enforcement']:7} {check}")
     return 0
 
-
 def _cmd_show(args) -> int:
     law = _loader.get_law(args.id)
     if law is None:
@@ -65,7 +63,6 @@ def _cmd_show(args) -> int:
         print(f"detect:      {law['detect']}")
     print(f"why:         {law['why']}")
     return 0
-
 
 def _cmd_check(args) -> int:
     scope = "all" if args.all else "staged"
@@ -99,10 +96,8 @@ def _cmd_check(args) -> int:
     print(f"\niron-laws: {hard} hard, {soft} soft ({scope} scope)")
     return 1 if hard else 0
 
-
 def _cmd_render(_args) -> int:
     return codegen.generate(check_only=False)
-
 
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
@@ -127,7 +122,6 @@ def build_parser() -> argparse.ArgumentParser:
     sub.add_parser("render", help="regenerate references/iron-laws.md")
     return p
 
-
 def _emit_envelope(*, data, verdict, counts) -> None:
     """Thin shim around `_envelope.emit()` — local convenience so the
     `--json` call sites stay one-line. Inline import keeps the text
@@ -141,7 +135,6 @@ def _emit_envelope(*, data, verdict, counts) -> None:
         data=data, verdict=verdict, counts=counts, argv=sys.argv,
     )
 
-
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     cmd = args.cmd or "list"  # no-arg default
@@ -151,7 +144,6 @@ def main(argv: list[str] | None = None) -> int:
         "check": _cmd_check,
         "render": _cmd_render,
     }[cmd](args)
-
 
 if __name__ == "__main__":
     sys.exit(main())

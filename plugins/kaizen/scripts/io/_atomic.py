@@ -50,12 +50,10 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
-
 def _ensure_parent(path: Path) -> None:
     parent = path.parent
     if parent and not parent.exists():
         parent.mkdir(parents=True, exist_ok=True)
-
 
 def atomic_write(path: os.PathLike | str, content: str,
                   *, encoding: str = "utf-8") -> None:
@@ -85,7 +83,6 @@ def atomic_write(path: os.PathLike | str, content: str,
             pass
         raise
 
-
 def atomic_write_bytes(path: os.PathLike | str, content: bytes) -> None:
     """Write `content` (bytes) to `path` atomically. Creates parent dirs.
 
@@ -109,7 +106,6 @@ def atomic_write_bytes(path: os.PathLike | str, content: bytes) -> None:
             pass
         raise
 
-
 def atomic_write_json(path: os.PathLike | str, data: Any,
                        *, indent: int = 2, sort_keys: bool = True) -> None:
     """Write `data` as JSON to `path` atomically.
@@ -120,7 +116,6 @@ def atomic_write_json(path: os.PathLike | str, data: Any,
     body = json.dumps(data, indent=indent, sort_keys=sort_keys,
                        default=str) + "\n"
     atomic_write(path, body)
-
 
 def atomic_append_line(path: os.PathLike | str, line: str) -> None:
     """Append one line + newline to `path`. Creates parent dirs.
@@ -137,6 +132,5 @@ def atomic_append_line(path: os.PathLike | str, line: str) -> None:
     suffix = "" if line.endswith("\n") else "\n"
     with target.open("a", encoding="utf-8") as f:
         f.write(line + suffix)
-
 
 __all__ = ["atomic_write", "atomic_write_json", "atomic_append_line"]

@@ -8,11 +8,10 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-SCRIPTS = Path(__file__).resolve().parent.parent / "skills" / "workflow" / "scripts"
-sys.path.insert(0, str(SCRIPTS))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts" / "daemon"))
 import daemon  # noqa: E402
-
 
 class TestScriptsDir(unittest.TestCase):
     def test_scripts_dir_exists_and_holds_daemon(self):
@@ -33,7 +32,6 @@ class TestScriptsDir(unittest.TestCase):
         plugin_root = daemon.plugin_src()
         self.assertTrue((plugin_root / "scripts" / "daemon" / "daemon.py").is_file(),
                         "daemon.py should live at scripts/daemon/ after DOMAIN-6")
-
 
 class TestIndexRefresh(unittest.TestCase):
     def test_tick_index_step_calls_indexers(self):
@@ -64,7 +62,6 @@ class TestIndexRefresh(unittest.TestCase):
             finally:
                 os.environ.pop("KAIZEN_DAEMON_INDEX_DISABLE", None)
 
-
 class TestIndexStatus(unittest.TestCase):
     def test_index_status_reports_stale_when_source_newer(self):
         with tempfile.TemporaryDirectory() as td:
@@ -74,7 +71,6 @@ class TestIndexStatus(unittest.TestCase):
             st = daemon.index_status(root)
             self.assertFalse(st["fresh"])
             self.assertIn("never", st["reason"].lower())
-
 
 class TestWatchBackendSelect(unittest.TestCase):
     def test_watchdog_available_true_when_importable(self):
@@ -99,7 +95,6 @@ class TestWatchBackendSelect(unittest.TestCase):
         self.assertIn(".git", joined)
         self.assertIn("__pycache__", joined)
 
-
 class TestDaemonUvScript(unittest.TestCase):
     def test_daemon_is_a_uv_run_script(self):
         lines = (Path(__file__).resolve().parent.parent / "scripts" / "daemon" / "daemon.py").read_text().splitlines()
@@ -116,7 +111,6 @@ class TestDaemonUvScript(unittest.TestCase):
         # 'uv' otherwise) — used for cron lines + the watch-start Popen.
         self.assertTrue(daemon.UV)
         self.assertIn("uv", daemon.UV)
-
 
 class TestCronSupervisor(unittest.TestCase):
     def test_cron_install_supervises_watch_start(self):
@@ -137,7 +131,6 @@ class TestCronSupervisor(unittest.TestCase):
         self.assertIn("watch-start", cron)
         self.assertIn("@reboot", cron)
         self.assertNotRegex(cron, r"daemon\.py run\b")
-
 
 if __name__ == "__main__":
     unittest.main()

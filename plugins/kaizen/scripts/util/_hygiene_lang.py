@@ -33,9 +33,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable
 
-
 # ─── Language detection ───────────────────────────────────────────────
-
 
 LANG_MANIFESTS: dict[str, list[str]] = {
     "rust":       ["Cargo.toml"],
@@ -44,7 +42,6 @@ LANG_MANIFESTS: dict[str, list[str]] = {
     "javascript": ["package.json"],
     "go":         ["go.mod"],
 }
-
 
 def detect_languages(root: Path) -> list[str]:
     """Return the list of languages with at least one canonical manifest
@@ -55,9 +52,7 @@ def detect_languages(root: Path) -> list[str]:
             found.append(lang)
     return found
 
-
 # ─── Probe runner (subprocess-stubbable for tests) ────────────────────
-
 
 @dataclass
 class Probe:
@@ -69,7 +64,6 @@ class Probe:
     description: str = ""
     interpret_exit: str = "nonzero_is_finding"  # or "diff_is_finding"
 
-
 @dataclass
 class Finding:
     language: str
@@ -78,7 +72,6 @@ class Finding:
     note: str
     detail: str = ""
     tool_missing: bool = False
-
 
 def _run(
     cmd: list[str],
@@ -104,14 +97,11 @@ def _run(
     except subprocess.TimeoutExpired:
         return -2, "", f"timed out after {timeout}s"
 
-
 def _tool_present(tool: str) -> bool:
     """True iff `tool` resolves on PATH (or runner stubs claim it does)."""
     return shutil.which(tool) is not None
 
-
 # ─── Per-language probe definitions ───────────────────────────────────
-
 
 PROBES: dict[str, list[Probe]] = {
     "rust": [
@@ -162,9 +152,7 @@ PROBES: dict[str, list[Probe]] = {
     ],
 }
 
-
 # ─── Composite runner ────────────────────────────────────────────────
-
 
 def run_probe(
     probe: Probe,
@@ -198,7 +186,6 @@ def run_probe(
         detail=(stderr or stdout)[:1000],
     )
 
-
 def run_language(
     lang: str,
     root: Path,
@@ -212,7 +199,6 @@ def run_language(
         f.language = lang
         out.append(f)
     return out
-
 
 @dataclass
 class CompositeResult:
@@ -235,7 +221,6 @@ class CompositeResult:
     def tool_missing_count(self) -> int:
         return sum(1 for f in self.findings if f.tool_missing)
 
-
 def run_composite(
     root: Path | str,
     runner: Callable | None = None,
@@ -253,9 +238,7 @@ def run_composite(
         ))
     return result
 
-
 # ─── Reporting ────────────────────────────────────────────────────────
-
 
 def format_report(result: CompositeResult, *, json_mode: bool = False) -> str:
     """Human-readable summary (or JSON when json_mode)."""

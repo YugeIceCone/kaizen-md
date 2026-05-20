@@ -8,11 +8,10 @@ import unittest
 from dataclasses import asdict
 from pathlib import Path
 
-SCRIPT_DIR = Path(__file__).resolve().parent.parent / "skills" / "workflow" / "scripts"
-sys.path.insert(0, str(SCRIPT_DIR))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 
 import schemas  # noqa: E402
-
 
 class TestTraceEvent(unittest.TestCase):
     def test_minimal(self):
@@ -55,7 +54,6 @@ class TestTraceEvent(unittest.TestCase):
         self.assertEqual(e.tool, "")
         self.assertIsNone(e.ms)
 
-
 class TestInboxMessage(unittest.TestCase):
     def test_round_trip(self):
         m = schemas.InboxMessage(ts="2026-05-12T00:00:00Z", prompt="hi")
@@ -70,7 +68,6 @@ class TestInboxMessage(unittest.TestCase):
             drained_at="y", drain_reason="turn-starter-completed",
         )
         self.assertEqual(m.drain_reason, "turn-starter-completed")
-
 
 class TestDaemonState(unittest.TestCase):
     def test_defaults(self):
@@ -87,7 +84,6 @@ class TestDaemonState(unittest.TestCase):
         s2 = schemas.from_dict(schemas.DaemonState, d)
         self.assertEqual(s2.runs, 5)
         self.assertEqual(s2.actions["refresh-cache"], 3)
-
 
 class TestBacklogItem(unittest.TestCase):
     def test_minimal(self):
@@ -110,7 +106,6 @@ class TestBacklogItem(unittest.TestCase):
         self.assertEqual(b2.committed_sha, "abc1234")
         self.assertEqual(b2.tags, ["feat", "rust"])
 
-
 class TestBacklogStore(unittest.TestCase):
     def test_empty(self):
         s = schemas.BacklogStore()
@@ -122,7 +117,6 @@ class TestBacklogStore(unittest.TestCase):
         s = schemas.BacklogStore()
         s.decisions.append(asdict(schemas.BacklogDecision(text="X", why="Y")))
         self.assertEqual(len(s.decisions), 1)
-
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

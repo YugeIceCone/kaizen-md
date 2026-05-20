@@ -27,7 +27,6 @@ import shutil
 import sys
 import time
 
-
 class Progress:
     def __init__(
         self,
@@ -88,9 +87,7 @@ class Progress:
         except Exception:
             pass
 
-
 # ─── Smoke test / demo ───────────────────────────────────────────────
-
 
 def _smoke_test() -> None:
     """`python3 _progress.py` — runs a tiny demo + asserts core behaviour.
@@ -136,7 +133,6 @@ def _smoke_test() -> None:
         bar.done("done")
 
     print("✓ _progress.py smoke test pass (3 / 3)")
-
 
 if __name__ == "__main__":
     _smoke_test()

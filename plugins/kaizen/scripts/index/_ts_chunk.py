@@ -50,7 +50,6 @@ from typing import Optional
 # unpacking different shapes — see chunk_record in onboard_index.py.
 from _ast_chunk import SymbolChunk  # type: ignore  # noqa: E402
 
-
 # ─── Language name normalization ─────────────────────────────────────
 #
 # kaizen's lang detection (in onboard_index.detect_language) uses a
@@ -89,7 +88,6 @@ _LANG_TO_TS = {
     "python": "python",
 }
 
-
 # Node-type substrings that we treat as "this is a definition we want
 # to chunk on." Substring match keeps the heuristic compact across
 # languages without enumerating every grammar.
@@ -115,20 +113,17 @@ _DEFINITION_SUFFIXES = (
     "_specifier",
 )
 
-
 # ─── Lazy loader ──────────────────────────────────────────────────────
 
 _ts_parsers: dict[str, object] = {}
 _load_attempted = False
 _ts_get_parser = None  # captured from the package import
 
-
 def _resolve_ts_lang(language: str) -> Optional[str]:
     """Map a kaizen language label to a tree-sitter grammar name."""
     if not language:
         return None
     return _LANG_TO_TS.get(language.lower())
-
 
 def _get_parser(ts_lang: str):
     """Lazy-load a tree-sitter parser for the named grammar. Returns
@@ -167,14 +162,12 @@ def _get_parser(ts_lang: str):
     _ts_parsers[ts_lang] = parser
     return parser
 
-
 def reset_cache() -> None:
     """Clear the cached parser map. Used by tests."""
     global _ts_parsers, _load_attempted, _ts_get_parser
     _ts_parsers = {}
     _load_attempted = False
     _ts_get_parser = None
-
 
 def is_available() -> bool:
     """Returns True iff at least one tree-sitter package is importable.
@@ -186,9 +179,7 @@ def is_available() -> bool:
         _get_parser("__probe__")
     return _ts_get_parser is not None
 
-
 # ─── Node classification ─────────────────────────────────────────────
-
 
 def _is_definition_node(node_type: str) -> bool:
     """Heuristic: does this node type represent a chunk-worthy
@@ -202,7 +193,6 @@ def _is_definition_node(node_type: str) -> bool:
         return True
     # Some grammars use bare type names (e.g. ruby's 'method', 'class')
     return any(hint == lower for hint in _DEFINITION_HINTS)
-
 
 def _extract_symbol_name(node) -> str:
     """Walk a definition node's children to find its name. Looks for
@@ -227,9 +217,7 @@ def _extract_symbol_name(node) -> str:
                     return "<anonymous>"
     return "<anonymous>"
 
-
 # ─── Public chunker ──────────────────────────────────────────────────
-
 
 def chunk_source_by_symbol(
     source: str,
@@ -315,7 +303,6 @@ def chunk_source_by_symbol(
 
     return chunks
 
-
 def _classify_kind(node_type: str) -> str:
     """Bucket a tree-sitter node type into one of:
     'function' | 'method' | 'class' | 'struct' | 'trait' | 'impl' |
@@ -331,9 +318,7 @@ def _classify_kind(node_type: str) -> str:
             return label if label != "impl" else "impl"
     return "block"
 
-
 # ─── CLI inspector ────────────────────────────────────────────────────
-
 
 if __name__ == "__main__":
     import argparse

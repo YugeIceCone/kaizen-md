@@ -16,18 +16,17 @@ import unittest
 from pathlib import Path
 
 PLUGIN_ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(PLUGIN_ROOT / "skills" / "workflow" / "scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 sys.path.insert(0, str(PLUGIN_ROOT / "scripts" / "mcp"))
 
 import _search as kz_search  # noqa: E402
-
 
 def _stub_score_fn(score_map: dict[str, float]):
     """Build a score_fn that returns a fixed score per text snippet."""
     def _fn(query, texts):
         return [score_map.get(t, 0.0) for t in texts]
     return _fn
-
 
 class TestCrossEncoderRerank(unittest.TestCase):
     def test_reorders_by_score(self):
@@ -96,7 +95,6 @@ class TestCrossEncoderRerank(unittest.TestCase):
         self.assertEqual([rid for rid, _ in out], [1, 2])
         self.assertEqual([s for _, s in out], [0.0, 0.0])
 
-
 class TestRerankMcpTools(unittest.TestCase):
     """Smoke + delegation tests for the embed_rerank MCP wrapper."""
 
@@ -155,7 +153,6 @@ class TestRerankMcpTools(unittest.TestCase):
             del os.environ["KAIZEN_RERANK_MODEL"]
         self.assertEqual(s["model"], "BAAI/bge-reranker-base")
 
-
 class TestRerankMcpRegistration(unittest.TestCase):
     def test_mcp_json_lists_rerank_server(self):
         import json
@@ -168,7 +165,6 @@ class TestRerankMcpRegistration(unittest.TestCase):
         import gateway
         module_names = [m for _, m in gateway.SUBSERVERS]
         self.assertIn("rerank_mcp", module_names)
-
 
 if __name__ == "__main__":
     unittest.main()

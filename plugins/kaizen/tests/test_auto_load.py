@@ -15,9 +15,8 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / "skills" / "workflow" / "scripts"))
-
-
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 _SAMPLE_PERSONA = """---
 created: 2026-05-10
 updated: 2026-05-19
@@ -53,7 +52,6 @@ Loaded at every session start.
 - [2026-05-19] Quote: "retire reliance on CLAUDE.md".
 """
 
-
 class TestParsePersona(unittest.TestCase):
     """Pure: extract structured beliefs/directives from Persona markdown."""
 
@@ -84,7 +82,6 @@ class TestParsePersona(unittest.TestCase):
         parsed = al.parse_persona(minimal)
         self.assertEqual(len(parsed["directives"]), 1)
         self.assertEqual(parsed["top_beliefs"], [])
-
 
 class TestBuildAutoLoad(unittest.TestCase):
     """Pure: structured persona → markdown auto-load file."""
@@ -133,7 +130,6 @@ class TestBuildAutoLoad(unittest.TestCase):
         self.assertGreater(heading_idx, 0,
             "fingerprint must precede the heading")
 
-
 class TestDaemonJob(unittest.TestCase):
     """Adapter: run_auto_load reads brain Persona, writes auto-load.md.
 
@@ -169,7 +165,6 @@ class TestDaemonJob(unittest.TestCase):
             self.assertTrue(target.is_file())
             content = target.read_text()
             self.assertIn("pref-no-deletions", content)
-
 
 class TestDeterminismAndConsistency(unittest.TestCase):
     """Parsing must be deterministic (same input → same output),
@@ -223,7 +218,6 @@ class TestDeterminismAndConsistency(unittest.TestCase):
         notes = [d["note"] for d in parsed["directives"]]
         self.assertNotIn("Notes/ghost", notes)
 
-
 class TestPinList(unittest.TestCase):
     """Pure pin list: load / add / remove / dedup. Sandboxed via
     KAIZEN_AUTO_LOAD_PINS_PATH (matches the kaizen per-feature env
@@ -268,7 +262,6 @@ class TestPinList(unittest.TestCase):
                 pins = al.load_pins()
             self.assertEqual(pins, [])
 
-
 class TestPinnedBuild(unittest.TestCase):
     """Pinned notes always render even when outside top-N. They sit in
     a dedicated `## Pinned` section above Top Beliefs so they're easy
@@ -304,7 +297,6 @@ class TestPinnedBuild(unittest.TestCase):
         import auto_load as al
         out = al.build_auto_load(_SAMPLE_PERSONA, top_n=10, byte_budget=5000)
         self.assertNotIn("## Pinned", out)
-
 
 class TestPerClusterGates(unittest.TestCase):
     """Tier 3: one gate file per Note marked hard-gate-worthy.
@@ -374,7 +366,6 @@ class TestPerClusterGates(unittest.TestCase):
         self.assertNotIn("pref-obsolete.md", remaining)
         self.assertIn("pref-no-deletions.md", remaining)
 
-
 class TestHtmlFingerprint(unittest.TestCase):
     """Improvement C: daemon stamps a `<!-- daemon: ISO-time sha256:xx -->`
     fingerprint line into auto-load.md + each gate file.
@@ -428,7 +419,6 @@ class TestHtmlFingerprint(unittest.TestCase):
                     f"{gf.name} missing daemon fingerprint")
                 self.assertIn("sha256:", text,
                     f"{gf.name} missing sha256 fingerprint")
-
 
 class TestProjectRules(unittest.TestCase):
     """Phase B: write per-Note hard-gate rules to <project>/.claude/rules/
@@ -532,7 +522,6 @@ class TestProjectRules(unittest.TestCase):
             self.assertEqual(content1, content2,
                 "re-run on same input produces byte-identical files")
 
-
 class TestExternalRuleFiles(unittest.TestCase):
     """Phase F: cross-tool rule compat.
 
@@ -635,7 +624,6 @@ class TestExternalRuleFiles(unittest.TestCase):
                 "---\npaths: ['**/*']\n---\nmy own rule\n")
             al.write_external_rule_imports(project)
             self.assertTrue((rules_dir / "external-custom.md").is_file())
-
 
 if __name__ == "__main__":
     unittest.main()

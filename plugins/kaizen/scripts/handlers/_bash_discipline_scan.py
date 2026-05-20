@@ -40,7 +40,6 @@ import json
 import re
 import sys
 
-
 # Pattern definitions — kept in-sync with
 # skills/workflow/domain/git-discipline.yaml::bash_invocation_discipline.rules
 # IDs match the yaml.rules[].id field.
@@ -57,7 +56,6 @@ _DESTRUCTIVE_RE = re.compile(
 )
 _ENV_PREFIX_RE = re.compile(r"^\s*[A-Z_][A-Z0-9_]*=[^\s]+\s+\S")
 _AND_CHAIN_RE = re.compile(r"&&")
-
 
 def scan(command: str) -> list[dict[str, str]]:
     """Return a list of warning objects for advisory hooks to emit.
@@ -126,7 +124,6 @@ def scan(command: str) -> list[dict[str, str]]:
 
     return warnings
 
-
 def _read_event_stdin() -> str:
     """Read the bash command from a PreToolUse event JSON on stdin."""
     try:
@@ -134,7 +131,6 @@ def _read_event_stdin() -> str:
         return e.get("tool_input", {}).get("command", "") or ""
     except (json.JSONDecodeError, OSError):
         return ""
-
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="kaizen bash-discipline scanner")
@@ -158,7 +154,6 @@ def main() -> int:
     json.dump({"warnings": warnings} if warnings else {}, sys.stdout)
     sys.stdout.write("\n")
     return 0
-
 
 if __name__ == "__main__":
     sys.exit(main())

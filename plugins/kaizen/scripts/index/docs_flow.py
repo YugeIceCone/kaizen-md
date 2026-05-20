@@ -54,14 +54,14 @@ from typing import Optional
 _SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(_SCRIPT_DIR))
 # MIGRATION BRIDGE — cross-cluster sibs still at legacy or shimmed there.
-sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "skills" / "workflow" / "scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import _bootstrap  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 
 import flow as _flow  # noqa: E402
 import docs_gen as _dg  # noqa: E402
 import _envelope  # noqa: E402
 
 _emit = _envelope.emitter("kaizen-docs-flow", tool_version="1.0.0")
-
 
 class DetectPackagesNode(_flow.AsyncNode):
     """Walk the workspace tree; produce (package_dir, language) tuples."""
@@ -82,7 +82,6 @@ class DetectPackagesNode(_flow.AsyncNode):
         if not packages:
             return "empty"
         return "default"
-
 
 class AnalyzePackagesNode(_flow.AsyncParallelBatchNode):
     """FAN-OUT: analyze N packages in parallel via AsyncParallelBatchNode.
@@ -108,7 +107,6 @@ class AnalyzePackagesNode(_flow.AsyncParallelBatchNode):
                          profiles: list) -> str:
         store["profiles"] = profiles
         return "default"
-
 
 class RenderNode(_flow.AsyncNode):
     """Per-profile render: md + json. Each render is independent; could
@@ -141,7 +139,6 @@ class RenderNode(_flow.AsyncNode):
                          rendered: list[dict]) -> str:
         store["rendered"] = rendered
         return "default"
-
 
 class WriteNode(_flow.AsyncParallelBatchNode):
     """Write per-package artifacts to output_dir in parallel.
@@ -178,7 +175,6 @@ class WriteNode(_flow.AsyncParallelBatchNode):
         store["written"] = flat
         return "default"
 
-
 class ReportNode(_flow.AsyncNode):
     """Terminal — compose summary dict for caller / stdout."""
 
@@ -198,7 +194,6 @@ class ReportNode(_flow.AsyncNode):
         store["report"] = report
         return None  # terminal
 
-
 class EmptyReportNode(_flow.AsyncNode):
     """Branch destination when DetectPackagesNode finds zero packages.
     Avoids running the rest of the pipeline on empty input."""
@@ -214,7 +209,6 @@ class EmptyReportNode(_flow.AsyncNode):
         store["report"] = report
         store["written"] = []
         return None
-
 
 def build_docs_flow() -> _flow.AsyncFlow:
     """Construct the canonical docs-gen flow.
@@ -234,7 +228,6 @@ def build_docs_flow() -> _flow.AsyncFlow:
     f.add_successor(write, "default", report)
     return f
 
-
 def docs_scan(root: Path, output_dir: Path, *, format: str = "both",
               port: bool = False, only: Optional[set[str]] = None) -> dict:
     """Sync wrapper — drop-in for `docs_gen.cmd_scan` side effects."""
@@ -248,7 +241,6 @@ def docs_scan(root: Path, output_dir: Path, *, format: str = "both",
     f = build_docs_flow()
     asyncio.run(f.run_async(store))
     return store.get("report", {})
-
 
 def main():
     import argparse
@@ -291,7 +283,6 @@ def main():
         print("--- timing (ms) ---", file=sys.stderr)
         for name, ms in store.get("_timing", {}).items():
             print(f"  {name:<24} {ms} ms", file=sys.stderr)
-
 
 if __name__ == "__main__":
     main()

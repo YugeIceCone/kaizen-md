@@ -25,7 +25,6 @@ import re
 
 _HEADING_RE = re.compile(r"^(#{1,6})\s+(.+?)\s*$")
 
-
 def parse_blocks(text: str) -> list[dict]:
     """Return list of blocks, each {path, level, start, end}.
 
@@ -63,7 +62,6 @@ def parse_blocks(text: str) -> list[dict]:
         stack.append((level, title))
     return blocks
 
-
 def _find_block(blocks: list[dict], block_ref: str) -> dict | None:
     """Resolve a block by full path OR trailing segment."""
     for b in blocks:
@@ -74,7 +72,6 @@ def _find_block(blocks: list[dict], block_ref: str) -> dict | None:
         return matches[0]
     return None
 
-
 def extract_block(text: str, block_ref: str) -> str | None:
     """Return the block's body text (heading included). None if missing."""
     blocks = parse_blocks(text)
@@ -83,7 +80,6 @@ def extract_block(text: str, block_ref: str) -> str | None:
         return None
     lines = text.splitlines()
     return "\n".join(lines[b["start"]:b["end"]])
-
 
 def replace_block(text: str, block_ref: str, new_body: str) -> str:
     """Replace the named block's lines with `new_body`. Raises KeyError if missing."""
@@ -95,7 +91,6 @@ def replace_block(text: str, block_ref: str, new_body: str) -> str:
     new_lines = new_body.splitlines()
     out_lines = lines[:b["start"]] + new_lines + lines[b["end"]:]
     return "\n".join(out_lines) + ("\n" if text.endswith("\n") else "")
-
 
 def append_to_list_block(text: str, block_ref: str,
                           new_item_line: str) -> str:
@@ -115,7 +110,6 @@ def append_to_list_block(text: str, block_ref: str,
             break
     new_lines = lines[:insert_at] + [new_item_line] + lines[insert_at:]
     return "\n".join(new_lines) + ("\n" if text.endswith("\n") else "")
-
 
 __all__ = ["parse_blocks", "extract_block",
             "replace_block", "append_to_list_block"]

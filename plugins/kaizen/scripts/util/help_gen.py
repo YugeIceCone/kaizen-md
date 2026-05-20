@@ -37,14 +37,11 @@ import re
 import sys
 from pathlib import Path
 
-
 _SCRIPT_DIR = Path(__file__).resolve().parent
-
 
 def _plugin_root() -> Path:
     # scripts/util/help_gen.py → parents[1] = plugin_root.
     return _SCRIPT_DIR.parents[1]
-
 
 # Cluster mapping: command-stem → cluster. Hand-maintained per the
 # CLAUDE.md "Slash commands by cluster" taxonomy. Unknown commands fall
@@ -81,11 +78,9 @@ CLUSTERS: list[tuple[str, list[str]]] = [
 # overflow. Picked by usage-importance, not raw command count.
 QA_CLUSTER_PICKS = ("audit/quality", "workflow", "observability", "brain/memory")
 
-
 _FM_RE   = re.compile(r"^---\n(.*?)\n---", re.DOTALL)
 _NAME_RE = re.compile(r"^name:\s*(\S+)\s*$", re.MULTILINE)
 _DESC_RE = re.compile(r"^description:\s*(.+?)$", re.MULTILINE)
-
 
 def _short_desc(raw: str) -> str:
     """Compact a frontmatter description to one ~80-char line.
@@ -101,7 +96,6 @@ def _short_desc(raw: str) -> str:
         raw = raw[:82] + "..."
     return raw.rstrip(".")
 
-
 def _read_command(p: Path) -> dict | None:
     try:
         text = p.read_text(encoding="utf-8")
@@ -115,7 +109,6 @@ def _read_command(p: Path) -> dict | None:
     name = (name_m.group(1) if name_m else p.stem).strip()
     desc = _short_desc(desc_m.group(1)) if desc_m else "(no description)"
     return {"name": name, "stem": p.stem, "desc": desc}
-
 
 def discover_commands(root: Path | None = None) -> list[dict]:
     """Walk commands/ recursively (CC's slash convention: `commands/foo/bar.md`
@@ -139,7 +132,6 @@ def discover_commands(root: Path | None = None) -> list[dict]:
         out.append(c)
     return out
 
-
 def cluster_assignments(commands: list[dict]) -> dict[str, list[dict]]:
     """Bucket commands by cluster. Unknown → 'uncategorized'."""
     by_stem = {c["stem"]: c for c in commands}
@@ -155,7 +147,6 @@ def cluster_assignments(commands: list[dict]) -> dict[str, list[dict]]:
         if stem not in assigned:
             buckets["uncategorized"].append(c)
     return buckets
-
 
 def _qa_preamble(buckets: dict[str, list[dict]]) -> list[str]:
     """The cluster-picker QA contract — instructions the agent follows
@@ -190,7 +181,6 @@ def _qa_preamble(buckets: dict[str, list[dict]]) -> list[str]:
         "",
     ])
     return lines
-
 
 def render_body(commands: list[dict]) -> str:
     buckets = cluster_assignments(commands)
@@ -244,7 +234,6 @@ def render_body(commands: list[dict]) -> str:
     ])
     return "\n".join(lines)
 
-
 def render_full_help_md(commands: list[dict]) -> str:
     """Render the entire help.md (frontmatter + body) atomically."""
     body = render_body(commands)
@@ -258,7 +247,6 @@ allowed-tools: ["AskUserQuestion", "Bash(${CLAUDE_PLUGIN_ROOT}/bin/kaizen-help-g
 """
     return front + body
 
-
 def _atomic_write(path: Path, content: str) -> None:
     try:
         sys.path.insert(0, str(_SCRIPT_DIR))
@@ -268,10 +256,8 @@ def _atomic_write(path: Path, content: str) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(content, encoding="utf-8")
 
-
 def _help_md_path() -> Path:
     return _plugin_root() / "commands" / "help.md"
-
 
 def _cmd_render(args) -> int:
     commands = discover_commands()
@@ -279,7 +265,6 @@ def _cmd_render(args) -> int:
     _atomic_write(_help_md_path(), out)
     print(f"[kaizen-help-gen] rendered {len(commands)} commands → {_help_md_path()}")
     return 0
-
 
 def _cmd_check(args) -> int:
     """Exit 1 if help.md is stale vs live commands."""
@@ -294,12 +279,10 @@ def _cmd_check(args) -> int:
         f"(re-run `kaizen-help-gen render` — {len(commands)} commands)\n")
     return 1
 
-
 def _cmd_print(args) -> int:
     commands = discover_commands()
     print(render_body(commands))
     return 0
-
 
 def _render_one_cluster(commands: list[dict], cluster_name: str) -> str:
     """Emit a single cluster's sub-table (header + rows). Backs the
@@ -315,7 +298,6 @@ def _render_one_cluster(commands: list[dict], cluster_name: str) -> str:
     for c in cmds:
         out.append(f"| `{c['stem']}` | {c['desc']} |")
     return "\n".join(out) + "\n"
-
 
 def _cmd_cluster(args) -> int:
     """Render one cluster's sub-table (drill-down from /kaizen:help QA)."""
@@ -336,7 +318,6 @@ def _cmd_cluster(args) -> int:
     commands = discover_commands()
     sys.stdout.write(_render_one_cluster(commands, args.name))
     return 0
-
 
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(
@@ -362,7 +343,6 @@ def main(argv=None) -> int:
 
     args = p.parse_args(argv)
     return args.func(args)
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

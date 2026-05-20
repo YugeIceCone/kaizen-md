@@ -15,10 +15,9 @@ import unittest
 from pathlib import Path
 
 PLUGIN_ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(PLUGIN_ROOT / "skills" / "workflow" / "scripts"))
-
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 import _chunk as kz_chunk  # noqa: E402
-
 
 class TestDetectModelFamily(unittest.TestCase):
     cases = [
@@ -43,7 +42,6 @@ class TestDetectModelFamily(unittest.TestCase):
                 self.assertEqual(
                     kz_chunk.detect_model_family(model), expected
                 )
-
 
 class TestPrefixesForModel(unittest.TestCase):
     def test_nomic_returns_search_query_search_document(self):
@@ -77,7 +75,6 @@ class TestPrefixesForModel(unittest.TestCase):
         self.assertEqual(q, "search_query: ")
         self.assertEqual(p, "search_document: ")
 
-
 class TestApplyQueryPrefixModelAware(unittest.TestCase):
     def test_nomic_prefix(self):
         out = kz_chunk.apply_query_prefix("hello", "nomic-embed-text")
@@ -108,7 +105,6 @@ class TestApplyQueryPrefixModelAware(unittest.TestCase):
         out = kz_chunk.apply_query_prefix("hello")
         self.assertEqual(out, "search_query: hello")
 
-
 class TestApplyPassagePrefixModelAware(unittest.TestCase):
     def test_nomic_passage(self):
         out = kz_chunk.apply_passage_prefix("body", "nomic-embed-text")
@@ -126,7 +122,6 @@ class TestApplyPassagePrefixModelAware(unittest.TestCase):
     def test_empty_model_uses_default_passage(self):
         out = kz_chunk.apply_passage_prefix("body")
         self.assertEqual(out, "search_document: body")
-
 
 class TestApplyPassagePrefixWithMetadataModelAware(unittest.TestCase):
     """The O3 metadata-rich wrapper must also honor E1's model detection."""
@@ -146,7 +141,6 @@ class TestApplyPassagePrefixWithMetadataModelAware(unittest.TestCase):
         )
         self.assertTrue(out.startswith("search_document: "))
 
-
 class TestBackCompatConstants(unittest.TestCase):
     """Module-level QUERY_PREFIX / PASSAGE_PREFIX preserve their values
     for callers that import them by name (embed-rerank MCP, ad-hoc)."""
@@ -156,7 +150,6 @@ class TestBackCompatConstants(unittest.TestCase):
 
     def test_passage_prefix_constant_unchanged(self):
         self.assertEqual(kz_chunk.PASSAGE_PREFIX, "search_document: ")
-
 
 if __name__ == "__main__":
     unittest.main()

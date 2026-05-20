@@ -21,8 +21,8 @@ from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR))
-# MIGRATION BRIDGE — relocated modules + legacy helpers
-sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "skills" / "workflow" / "scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import _bootstrap  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts" / "brain"))
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts" / "indexers"))
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts" / "handlers"))
@@ -34,9 +34,7 @@ except ImportError as e:
     sys.stderr.write(f"kaizen-manifests-mcp: missing dep: {e}\n")
     sys.exit(1)
 
-
 mcp = FastMCP("kaizen-manifests")
-
 
 def _root() -> Path:
     env = os.environ.get("KAIZEN_MANIFESTS_ROOT")
@@ -44,14 +42,12 @@ def _root() -> Path:
         return Path(env).expanduser().resolve()
     return Path.cwd()
 
-
 @mcp.tool()
 async def manifests_languages() -> list[str]:
     """List languages with at least one canonical manifest file under
     the current root (rust/python/javascript/go). Polyglot repos
     return multiple."""
     return kz_m.languages_present(_root())
-
 
 @mcp.tool()
 async def manifests_audit() -> dict:
@@ -73,7 +69,6 @@ async def manifests_audit() -> dict:
     ]
     return out
 
-
 @mcp.tool()
 async def manifests_unused() -> dict:
     """Heuristically-unused deps across the repo.
@@ -82,7 +77,6 @@ async def manifests_unused() -> dict:
     import/require/use mention. Cheap text-grep — false positives
     possible (build-time deps, macros). Treat as cleanup candidates."""
     return kz_m.unused(_root())
-
 
 if __name__ == "__main__":
     mcp.run()

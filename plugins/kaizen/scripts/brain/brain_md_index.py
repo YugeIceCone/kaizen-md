@@ -39,19 +39,17 @@ from typing import Optional
 
 _SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(_SCRIPT_DIR))
-sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "skills" / "workflow" / "scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import _bootstrap  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 
 import _brain  # noqa: E402
 
-
 # ─── Scanners (return list[dict]) ────────────────────────────────────
-
 
 def _title_from_stem(stem: str) -> str:
     """``pref-foo-bar`` → ``Pref Foo Bar`` for human-readable
     display when no `name:` in frontmatter."""
     return re.sub(r"\b\w", lambda m: m.group(0).upper(), stem.replace("-", " "))
-
 
 def _frontmatter_only(path: Path) -> dict:
     """Lightweight frontmatter read (max 2KB) for index scans. Avoids
@@ -74,7 +72,6 @@ def _frontmatter_only(path: Path) -> dict:
         fm["_title"] = h1.group(1).strip()
     return fm
 
-
 def _str_coerce(v) -> str:
     """Coerce a scalar frontmatter value to its string form for the
     markdown index output. ``datetime.date`` → ISO 8601, lists →
@@ -86,7 +83,6 @@ def _str_coerce(v) -> str:
     if isinstance(v, list):
         return ", ".join(_str_coerce(x) for x in v)
     return str(v)
-
 
 def scan_people(brain: Path) -> list[dict]:
     d = brain / "People"
@@ -107,7 +103,6 @@ def scan_people(brain: Path) -> list[dict]:
             "tags": _str_coerce(m.get("tags")),
         })
     return out
-
 
 def scan_projects(brain: Path) -> list[dict]:
     d = brain / "Projects"
@@ -135,7 +130,6 @@ def scan_projects(brain: Path) -> list[dict]:
         })
     return out
 
-
 def scan_areas(brain: Path) -> list[dict]:
     d = brain / "Areas"
     if not d.is_dir():
@@ -152,7 +146,6 @@ def scan_areas(brain: Path) -> list[dict]:
             "updated": _str_coerce(m.get("updated")),
         })
     return out
-
 
 def scan_notes(brain: Path) -> list[dict]:
     d = brain / "Notes"
@@ -171,7 +164,6 @@ def scan_notes(brain: Path) -> list[dict]:
             "created": _str_coerce(m.get("created")),
         })
     return out
-
 
 def scan_tasks(brain: Path) -> dict:
     """Count items in brain/Tasks/tasks.md per section. Returns
@@ -202,7 +194,6 @@ def scan_tasks(brain: Path) -> dict:
             counts[current] += 1
     return counts
 
-
 def scan_journal(brain: Path) -> dict:
     d = brain / "Journal"
     if not d.is_dir():
@@ -216,9 +207,7 @@ def scan_journal(brain: Path) -> dict:
         "latest": entries[-1][:-3] if entries else "",
     }
 
-
 # ─── Formatters ───────────────────────────────────────────────────────
-
 
 def format_full(brain: Path) -> str:
     """Markdown tables — one section per category. For human reading."""
@@ -285,7 +274,6 @@ def format_full(brain: Path) -> str:
 
     return "\n".join(lines)
 
-
 def format_compact(brain: Path) -> str:
     """One-line per category. For LLM context injection — cheap +
     routing-friendly. Mirrors upstream build-index.js::formatCompact."""
@@ -309,9 +297,7 @@ def format_compact(brain: Path) -> str:
         f"Journal: {journal['count']} entries, latest {journal['latest']}",
     ])
 
-
 # ─── CLI ─────────────────────────────────────────────────────────────
-
 
 def main(argv: Optional[list[str]] = None) -> int:
     ap = argparse.ArgumentParser(
@@ -359,7 +345,6 @@ def main(argv: Optional[list[str]] = None) -> int:
     out = format_compact(brain) if args.compact else format_full(brain)
     sys.stdout.write(out + "\n")
     return 0
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

@@ -32,13 +32,11 @@ from pathlib import Path
 
 _SCRIPT_DIR = Path(__file__).resolve().parent
 
-
 # verb → (interpreter, script path) — the dispatch table.
 _DISPATCH: dict[str, tuple[str, Path]] = {
     "path":   ("python3", _SCRIPT_DIR / "path_migrate.py"),
     "legacy": ("bash",    _SCRIPT_DIR / "migrate_paths.sh"),
 }
-
 
 _USAGE = """\
 usage: kaizen-migrate <verb> [args...]
@@ -55,7 +53,6 @@ Notes:
   - For brain data migration, use `kaizen-brain migrate apply`.
   - For code-lift / import rewrites, use `kaizen-code-lift`.
 """
-
 
 def main(argv: list[str] | None = None) -> int:
     argv = sys.argv[1:] if argv is None else list(argv)
@@ -86,7 +83,6 @@ def main(argv: list[str] | None = None) -> int:
     os.execvp(interpreter, [interpreter, str(script), *rest])
     # Unreachable; execvp either succeeds (no return) or raises.
     return 0  # pragma: no cover
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

@@ -35,9 +35,7 @@ if str(_HERE) not in sys.path:
 
 import _handoff as _ho  # noqa: E402
 
-
 mcp = FastMCP("handoff")
-
 
 def handoff_latest(limit: int = 1) -> dict:
     """The most-recent handoff(s) — full content included.
@@ -55,7 +53,6 @@ def handoff_latest(limit: int = 1) -> dict:
         "handoffs": rows,
     }
 
-
 def handoff_list(limit: int = 20, session_id: Optional[str] = None) -> dict:
     """Recent handoffs (metadata only — no `content` field).
 
@@ -69,7 +66,6 @@ def handoff_list(limit: int = 20, session_id: Optional[str] = None) -> dict:
     rows = _ho.list_handoffs(limit=limit, session_id=session_id)
     return {"handoffs": rows}
 
-
 def handoff_path() -> dict:
     """Resolved paths for the handoff store + YAML dir.
 
@@ -81,7 +77,6 @@ def handoff_path() -> dict:
         "db_path":  str(_ho.handoff_db_path()),
         "yaml_dir": str(_ho.handoffs_dir()),
     }
-
 
 def handoff_get(file: str, section: str) -> dict:
     """Extract one named section from a handoff YAML — surgical read for
@@ -116,12 +111,10 @@ def handoff_get(file: str, section: str) -> dict:
         else body.get(section)
     return {"section": section, "value": value}
 
-
 mcp.tool()(handoff_latest)
 mcp.tool()(handoff_list)
 mcp.tool()(handoff_path)
 mcp.tool()(handoff_get)
-
 
 if __name__ == "__main__":
     mcp.run()

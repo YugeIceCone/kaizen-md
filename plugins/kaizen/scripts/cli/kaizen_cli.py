@@ -49,6 +49,8 @@ import os
 import re
 import subprocess
 import sys
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import _bootstrap  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 import time
 from pathlib import Path
 
@@ -58,7 +60,6 @@ _BIN_DIR = _PLUGIN_ROOT / "bin"
 _COMMANDS_DIR = _PLUGIN_ROOT / "commands"
 
 DISPATCHER_VERSION = "1.1.0"
-
 
 # Category map: substring match against subcommand name → group label.
 # Order matters — first match wins. "misc" is the fallback.
@@ -108,7 +109,6 @@ _CATEGORIES: list[tuple[str, str]] = [
     ("manifests",  "lint"),
 ]
 
-
 def _list_wrappers() -> list[Path]:
     """All bin/kaizen-* executables (excluding `kaizen` itself)."""
     if not _BIN_DIR.is_dir():
@@ -117,7 +117,6 @@ def _list_wrappers() -> list[Path]:
         p for p in _BIN_DIR.glob("kaizen-*")
         if p.is_file() and os.access(p, os.X_OK)
     )
-
 
 def _wrapper_description(path: Path) -> str:
     """First non-shebang comment line of the wrapper, as the catalog entry."""
@@ -138,19 +137,15 @@ def _wrapper_description(path: Path) -> str:
         pass
     return ""
 
-
 def _categorize(name: str) -> str:
     for substr, cat in _CATEGORIES:
         if substr in name:
             return cat
     return "misc"
 
-
 # ─── Slash command inventory ────────────────────────────────────────────
 
-
 _FRONTMATTER_RX = re.compile(r"^---\n(.*?)\n---", re.DOTALL)
-
 
 def _parse_frontmatter(text: str) -> dict[str, str]:
     """Lightweight YAML-frontmatter parser — extracts top-level scalar
@@ -166,7 +161,6 @@ def _parse_frontmatter(text: str) -> dict[str, str]:
         k, _, v = line.partition(":")
         out[k.strip()] = v.strip().strip('"').strip("'")
     return out
-
 
 def _list_slash_commands() -> list[dict[str, str]]:
     """Every commands/*.md file → {name, description, argument_hint,
@@ -201,7 +195,6 @@ def _list_slash_commands() -> list[dict[str, str]]:
         })
     return out
 
-
 def _plugin_version() -> str:
     pj = _PLUGIN_ROOT / ".claude-plugin" / "plugin.json"
     if not pj.is_file():
@@ -210,7 +203,6 @@ def _plugin_version() -> str:
         return json.loads(pj.read_text()).get("version", "?")
     except json.JSONDecodeError:
         return "?"
-
 
 def cmd_list(args: argparse.Namespace) -> int:
     wrappers = _list_wrappers()
@@ -254,7 +246,6 @@ def cmd_list(args: argparse.Namespace) -> int:
     print(f"  plugin root: {_PLUGIN_ROOT}")
     return 0
 
-
 def cmd_help(args: argparse.Namespace) -> int:
     sub = args.subcommand
     wrapper = _BIN_DIR / f"kaizen-{sub}"
@@ -285,7 +276,6 @@ def cmd_help(args: argparse.Namespace) -> int:
     except (subprocess.TimeoutExpired, FileNotFoundError, PermissionError):
         pass
     return 0
-
 
 def cmd_commands(args: argparse.Namespace) -> int:
     """Inventory the slash commands at commands/*.md — discovery surface
@@ -339,20 +329,16 @@ def cmd_commands(args: argparse.Namespace) -> int:
         print("")
     return 0
 
-
 def cmd_version(args: argparse.Namespace) -> int:
     print(f"kaizen v{_plugin_version()}")
     print(f"dispatcher v{DISPATCHER_VERSION}")
     return 0
 
-
 # ─── kaizen patterns — canonical CLI-patterns catalog ────────────────
-
 
 _PATTERNS_YAML = (Path(__file__).resolve().parents[2]
                     / "skills" / "plugin-development"
                     / "domain" / "cli-patterns.yaml")
-
 
 def _load_patterns_catalog() -> dict:
     """Parse the cli-patterns.yaml SSOT. Stdlib-only via a tiny YAML
@@ -386,7 +372,6 @@ def _load_patterns_catalog() -> dict:
             out.append(cur)
         return {"version": 1, "patterns": out}
 
-
 def _find_repo_root() -> Path:
     """Walk up from this script until .git/ is found — the detect:
     recipes use repo-relative paths (plugins/kaizen/...)."""
@@ -398,7 +383,6 @@ def _find_repo_root() -> Path:
             break
         cur = cur.parent
     return Path.cwd()
-
 
 def _refresh_pattern_counts(dry_run: bool = False) -> int:
     """Re-run each pattern's detect: recipe and update its count: in
@@ -444,7 +428,6 @@ def _refresh_pattern_counts(dry_run: bool = False) -> int:
 
     return changed, len(updates)
 
-
 def cmd_patterns(args: argparse.Namespace) -> int:
     if getattr(args, "refresh", False):
         changed, total = _refresh_pattern_counts(dry_run=args.dry_run)
@@ -482,13 +465,10 @@ def cmd_patterns(args: argparse.Namespace) -> int:
     print("  json output:  kaizen patterns --json")
     return 0
 
-
 # ─── kaizen agents scaffold — generate Claude subagent stubs ─────────
-
 
 _AGENTS_DIR = _PLUGIN_ROOT / "agents"
 _SKILLS_DIR = _PLUGIN_ROOT / "skills"
-
 
 def _read_skill_frontmatter(skill_dir: Path) -> dict:
     """Read name / description / allowed-tools / version from a skill's
@@ -509,7 +489,6 @@ def _read_skill_frontmatter(skill_dir: Path) -> dict:
             fm[mm.group(1)] = mm.group(2).strip()
     return fm
 
-
 def _read_codex_short_description(skill_dir: Path) -> str:
     """Pull `short_description` from skills/<X>/agents/openai.yaml if
     present — Codex's 1-line agent label."""
@@ -520,7 +499,6 @@ def _read_codex_short_description(skill_dir: Path) -> str:
     text = oy.read_text(encoding="utf-8")
     m = _re.search(r'short_description:\s*"([^"]+)"', text)
     return m.group(1) if m else ""
-
 
 def _default_tools_for(skill: str, skill_fm: dict) -> str:
     """Pick a sensible default tool surface based on skill family.
@@ -538,7 +516,6 @@ def _default_tools_for(skill: str, skill_fm: dict) -> str:
     if any(sig in skill.lower() for sig in research_signals):
         return "[Read, Grep, WebFetch, WebSearch]"
     return "[Read, Glob, Grep, Bash]"  # read-only default
-
 
 def cmd_agents_scaffold(args: argparse.Namespace) -> int:
     """Generate a Claude subagent stub from a skill's metadata."""
@@ -587,7 +564,6 @@ def cmd_agents_scaffold(args: argparse.Namespace) -> int:
         print(stub, end="")
     return 0
 
-
 def cmd_agents(args: argparse.Namespace) -> int:
     if args.subcmd == "scaffold":
         return cmd_agents_scaffold(args)
@@ -606,7 +582,6 @@ def cmd_agents(args: argparse.Namespace) -> int:
         print(f"  {a.stem}")
     return 0
 
-
 def _dispatch(sub: str, sub_args: list[str], use_subprocess: bool = False) -> int:
     """Resolve sub → bin/kaizen-<sub> and exec/subprocess it."""
     wrapper = _BIN_DIR / f"kaizen-{sub}"
@@ -621,13 +596,11 @@ def _dispatch(sub: str, sub_args: list[str], use_subprocess: bool = False) -> in
     os.execv(str(wrapper), argv)
     return 0  # unreachable
 
-
 def _emit_trace_event(phase: str, sub: str, sub_args: list[str],
                       duration_ms: int | None = None,
                       exit_code: int | None = None) -> None:
     """Best-effort: write a kaizen-trace event. Silent on any failure
     so the dispatcher never blocks on telemetry."""
-    trace_py = _PLUGIN_ROOT / "skills" / "workflow" / "scripts" / "trace.py"
     if not trace_py.is_file():
         return
     payload = {
@@ -647,7 +620,6 @@ def _emit_trace_event(phase: str, sub: str, sub_args: list[str],
         )
     except (subprocess.TimeoutExpired, OSError):
         pass
-
 
 def main(argv: list[str]) -> int:
     # Top-level flags (--time, --trace) consumed before subcommand
@@ -739,7 +711,6 @@ def main(argv: list[str]) -> int:
 
     # Vanilla dispatch — execv replaces this process
     return _dispatch(sub, sub_args, use_subprocess=False)
-
 
 if __name__ == "__main__":
     sys.exit(main(sys.argv[1:]))

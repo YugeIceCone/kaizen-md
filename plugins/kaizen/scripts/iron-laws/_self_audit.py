@@ -14,16 +14,13 @@ import os
 import re
 from pathlib import Path
 
-
 SCRIPT_DIR = Path(__file__).resolve().parent
 PLUGIN_ROOT = SCRIPT_DIR.parent.parent  # scripts/iron-laws → plugins/kaizen
 REPO_ROOT = PLUGIN_ROOT.parent.parent           # kaizen-md repo
 DOMAIN_DIR = PLUGIN_ROOT / "skills" / "plugin-self-audit" / "domain"
 
-
 # Severity ordering matches audit-pipeline.yaml::severity_order
 SEVERITY_ORDER = ("info", "low", "medium", "high", "critical")
-
 
 @dataclasses.dataclass
 class Finding:
@@ -48,9 +45,7 @@ class Finding:
         h = hashlib.sha256(f"{stage}:{key}".encode()).hexdigest()[:8]
         return f"{stage}-{h}"
 
-
 # ─── Yaml loader (stdlib-friendly with PyYAML preferred) ─────────────
-
 
 def load_pipeline() -> dict:
     """Load domain/audit-pipeline.yaml. Falls back to a minimal parser
@@ -71,7 +66,6 @@ def load_pipeline() -> dict:
             "parser doesn't handle."
         )
 
-
 def load_agent_dispatch() -> dict:
     """Load domain/agent-dispatch.yaml — the agent-self-audit phase-A
     config (subagent type, prompt template, run dir). Same
@@ -89,7 +83,6 @@ def load_agent_dispatch() -> dict:
             "parser doesn't handle."
         )
 
-
 def agent_audit_dir() -> Path:
     """Root dir for agent-self-audit runs. Each run gets a <run-id>
     subdir under here. Env-overridable (KAIZEN_SELF_AUDIT_AGENT_DIR)
@@ -99,7 +92,6 @@ def agent_audit_dir() -> Path:
     if env:
         return Path(os.path.expandvars(env)).expanduser()
     return REPO_ROOT / ".kaizen" / "audits" / "agent"
-
 
 # ─── Plugin tree helpers ─────────────────────────────────────────────
 #
@@ -111,13 +103,11 @@ def agent_audit_dir() -> Path:
 # (self-audit found them; they had no caller in self_audit.py or
 # the tests).
 
-
 def list_bin_wrappers() -> list[Path]:
     bin_dir = PLUGIN_ROOT / "bin"
     if not bin_dir.is_dir():
         return []
     return sorted(p for p in bin_dir.iterdir() if p.is_file())
-
 
 def list_hook_scripts() -> list[Path]:
     hooks = PLUGIN_ROOT / "hooks" / "claude"
@@ -125,14 +115,11 @@ def list_hook_scripts() -> list[Path]:
         return []
     return sorted(p for p in hooks.glob("*.sh") if p.is_file())
 
-
 def read_plugin_manifest_text() -> str:
     p = PLUGIN_ROOT / ".claude-plugin" / "plugin.json"
     return p.read_text(encoding="utf-8") if p.is_file() else ""
 
-
 # ─── Mechanical check helpers ────────────────────────────────────────
-
 
 def hook_fires_trace(hook_path: Path) -> bool:
     """A hook 'fires trace' if it invokes _trace.sh OR runs trace.py
@@ -153,7 +140,6 @@ def hook_fires_trace(hook_path: Path) -> bool:
     # `trace.py` <quote/space/path...> `event` — tolerate the gap.
     return re.search(r'trace\.py["\'\s][^\n]*\bevent\b', text) is not None
 
-
 def file_contains_volatile(text: str) -> list[str]:
     """Return list of volatile-data hits (commit shas, ISO dates, LOC counts).
     Defines 'volatile' loosely — false positives acceptable; the user reviews."""
@@ -168,9 +154,7 @@ def file_contains_volatile(text: str) -> list[str]:
             hits.append("ISO date in rulebook")
     return hits
 
-
 # ─── Vendored skill list (matches plugin-development/scripts/validate.py) ──
-
 
 VENDORED_SKILLS = {
     "kiss", "solid", "dry", "yagni", "karpathy", "boy-scout-rule",

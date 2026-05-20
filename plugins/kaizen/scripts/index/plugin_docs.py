@@ -58,12 +58,10 @@ UMBRELLA_BINS: dict[str, str] = {
     "heading-depth":  "kaizen-md-heading-depth",
 }
 
-
 def resolve_umbrella_bin(subcommand: str) -> str | None:
     """Pure compute — return the sibling bin name for an umbrella
     subcommand, or None if unknown."""
     return UMBRELLA_BINS.get(subcommand)
-
 
 def _plugin_root() -> Path:
     env = os.environ.get("KAIZEN_PLUGIN_ROOT")
@@ -71,7 +69,6 @@ def _plugin_root() -> Path:
         return Path(env)
     # Default — resolve via the script's location.
     return Path(__file__).resolve().parent.parent.parent.parent
-
 
 def classify_kind(path: Path) -> Optional[str]:
     """Pure-function kind classifier — None if path is not in the doc surface."""
@@ -92,13 +89,11 @@ def classify_kind(path: Path) -> Optional[str]:
         return "root"
     return None
 
-
 def _sha256_file(path: Path) -> str:
     try:
         return hashlib.sha256(path.read_bytes()).hexdigest()
     except OSError:
         return ""
-
 
 def scan_root(root: Path) -> list[dict]:
     """Walk `root` and return per-file metadata for every doc-surface file.
@@ -126,7 +121,6 @@ def scan_root(root: Path) -> list[dict]:
         })
     return sorted(out, key=lambda e: e["path"])
 
-
 def _compute_dupes(entries: list[dict]) -> list[dict]:
     """Group entries by sha256; return groups with ≥2 members."""
     by_sha: dict[str, list[str]] = {}
@@ -137,7 +131,6 @@ def _compute_dupes(entries: list[dict]) -> list[dict]:
         {"sha256": sha, "paths": paths}
         for sha, paths in by_sha.items() if len(paths) >= 2
     ]
-
 
 def _cmd_scan(args) -> int:
     root = _plugin_root()
@@ -165,7 +158,6 @@ def _cmd_scan(args) -> int:
                 print(f"  sha={d['sha256'][:12]}  paths={d['paths']}")
     return 0
 
-
 def _cmd_list(args) -> int:
     root = _plugin_root()
     entries = scan_root(root)
@@ -177,7 +169,6 @@ def _cmd_list(args) -> int:
         for e in entries:
             print(f"{e['kind']:<10}  {e['size']:>7}B  {e['path']}")
     return 0
-
 
 def _cmd_umbrella(args, subcommand: str) -> int:
     """Dispatch an umbrella subcommand to its sibling bin. Passes raw
@@ -193,7 +184,6 @@ def _cmd_umbrella(args, subcommand: str) -> int:
         return 1
     rest = getattr(args, "rest", []) or []
     return subprocess.run(["bash", str(bin_path), *rest]).returncode
-
 
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(
@@ -232,7 +222,6 @@ def main(argv: list[str] | None = None) -> int:
         p.print_help()
         return 2
     return args.fn(args)
-
 
 if __name__ == "__main__":
     sys.exit(main())

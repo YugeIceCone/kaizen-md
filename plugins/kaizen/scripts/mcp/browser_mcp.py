@@ -88,7 +88,6 @@ except ImportError as e:  # pragma: no cover
     _PLAYWRIGHT_AVAILABLE = False
     _PLAYWRIGHT_ERR = str(e)
 
-
 mcp = FastMCP("browser")
 
 # Module-global state — single browser per server lifetime.
@@ -98,7 +97,6 @@ _pw: Playwright | None = None
 _browser: Browser | None = None
 _page: Page | None = None
 
-
 def _ensure_page() -> Page:
     if _page is None:
         raise RuntimeError(
@@ -106,9 +104,7 @@ def _ensure_page() -> Page:
         )
     return _page
 
-
 # ─── Lifecycle ────────────────────────────────────────────────────────
-
 
 @mcp.tool()
 async def open_browser(headless: bool = False, viewport_width: int = 1280, viewport_height: int = 800) -> str:
@@ -133,7 +129,6 @@ async def open_browser(headless: bool = False, viewport_width: int = 1280, viewp
     _page = await ctx.new_page()
     return f"opened (headless={headless}, viewport={viewport_width}x{viewport_height})"
 
-
 @mcp.tool()
 async def close_browser() -> str:
     """Tear down browser + Playwright. Safe to call when already closed."""
@@ -154,9 +149,7 @@ async def close_browser() -> str:
     _page = None
     return "closed"
 
-
 # ─── Navigation ───────────────────────────────────────────────────────
-
 
 @mcp.tool()
 async def navigate(url: str, wait_until: str = "load") -> str:
@@ -165,14 +158,11 @@ async def navigate(url: str, wait_until: str = "load") -> str:
     await page.goto(url, wait_until=wait_until)  # type: ignore[arg-type]
     return f"navigated to {page.url}"
 
-
 @mcp.tool()
 async def current_url() -> str:
     return _ensure_page().url
 
-
 # ─── Interaction ──────────────────────────────────────────────────────
-
 
 @mcp.tool()
 async def click(selector: str, timeout_ms: int = 10000) -> str:
@@ -181,7 +171,6 @@ async def click(selector: str, timeout_ms: int = 10000) -> str:
     await page.locator(selector).click(timeout=timeout_ms)
     return f"clicked {selector!r}"
 
-
 @mcp.tool()
 async def type_text(selector: str, text: str, timeout_ms: int = 10000) -> str:
     """Fill an input/textarea with the given text (clears existing value first)."""
@@ -189,13 +178,11 @@ async def type_text(selector: str, text: str, timeout_ms: int = 10000) -> str:
     await page.locator(selector).fill(text, timeout=timeout_ms)
     return f"typed {len(text)} chars into {selector!r}"
 
-
 @mcp.tool()
 async def press_key(key: str) -> str:
     """Press a keyboard key. Common: Enter, Tab, Escape, ArrowDown, ArrowUp, Backspace."""
     await _ensure_page().keyboard.press(key)
     return f"pressed {key}"
-
 
 @mcp.tool()
 async def wait_for(selector: str, timeout_ms: int = 10000, state: str = "visible") -> str:
@@ -204,28 +191,23 @@ async def wait_for(selector: str, timeout_ms: int = 10000, state: str = "visible
     await page.locator(selector).wait_for(state=state, timeout=timeout_ms)  # type: ignore[arg-type]
     return f"saw {selector!r} ({state})"
 
-
 # ─── Extraction ───────────────────────────────────────────────────────
-
 
 @mcp.tool()
 async def get_text(selector: str = "body") -> str:
     """inner_text of the selector (default: whole page body)."""
     return await _ensure_page().locator(selector).inner_text()
 
-
 @mcp.tool()
 async def get_html(selector: str = "html") -> str:
     """outerHTML of the selector (default: whole document)."""
     return await _ensure_page().locator(selector).evaluate("e => e.outerHTML")
-
 
 @mcp.tool()
 async def screenshot(path: str = "/tmp/kaizen-browser.png", full_page: bool = False) -> str:
     """Save PNG screenshot. Read with the Read tool to view as image in CC."""
     await _ensure_page().screenshot(path=path, full_page=full_page)
     return path
-
 
 @mcp.tool()
 async def list_links() -> list[dict]:
@@ -237,7 +219,6 @@ async def list_links() -> list[dict]:
         "  .filter(l => l.text)"
         "  .slice(0, 50)"
     )
-
 
 @mcp.tool()
 async def list_inputs() -> list[dict]:
@@ -256,9 +237,7 @@ async def list_inputs() -> list[dict]:
         "  .slice(0, 30)"
     )
 
-
 # ─── Power tool ───────────────────────────────────────────────────────
-
 
 @mcp.tool()
 async def evaluate(js_expression: str) -> str:
@@ -270,9 +249,7 @@ async def evaluate(js_expression: str) -> str:
     result = await _ensure_page().evaluate(js_expression)
     return repr(result)
 
-
 # ─── Entry ────────────────────────────────────────────────────────────
-
 
 if __name__ == "__main__":
     if not _PLAYWRIGHT_AVAILABLE:

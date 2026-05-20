@@ -50,7 +50,6 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR))
 import _chatlog  # noqa: E402
 
-
 def _load_rules(rules_path: Path) -> list[dict]:
     """Load rules from JSON or YAML. Returns the rules list."""
     text = rules_path.read_text(encoding="utf-8")
@@ -70,7 +69,6 @@ def _load_rules(rules_path: Path) -> list[dict]:
         raise SystemExit("chatlog: rules file must contain a top-level `rules:` list")
     return rules
 
-
 def _load_transcript(transcript_path: Path) -> list[dict]:
     """Load a JSONL transcript; skip malformed lines silently."""
     if not transcript_path.is_file():
@@ -85,7 +83,6 @@ def _load_transcript(transcript_path: Path) -> list[dict]:
         except json.JSONDecodeError:
             continue
     return events
-
 
 def cmd_slice(args) -> int:
     transcript = Path(args.transcript).expanduser()
@@ -120,7 +117,6 @@ def cmd_slice(args) -> int:
         print(f"  → {out_dir}")
     return 0
 
-
 def main() -> None:
     p = argparse.ArgumentParser(
         prog="kaizen-chatlog", description=__doc__,
@@ -142,7 +138,6 @@ def main() -> None:
         sys.exit(cmd_slice(args))
     p.print_help()
     sys.exit(2)
-
 
 if __name__ == "__main__":
     main()

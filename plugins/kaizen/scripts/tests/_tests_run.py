@@ -22,7 +22,6 @@ _UNITTEST_PARENT_RE = re.compile(r"\bclass\s+\w+\s*\(\s*unittest\.TestCase\s*\)"
 _BARE_TEST_CLASS_RE = re.compile(r"^class\s+Test\w*\s*:", re.MULTILINE)
 _MODULE_TEST_FN_RE  = re.compile(r"^def\s+test_\w+\s*\(", re.MULTILINE)
 
-
 def classify_style(path: Path) -> str:
     """Return "unittest" | "pytest" | "bash" based on filename + content.
 
@@ -47,7 +46,6 @@ def classify_style(path: Path) -> str:
     if _BARE_TEST_CLASS_RE.search(text) or _MODULE_TEST_FN_RE.search(text):
         return "pytest"
     return "unittest"
-
 
 # ─── dispatch_cmd ──────────────────────────────────────────────────────
 
@@ -75,7 +73,6 @@ def dispatch_cmd(path: Path, *, style: str,
         return ["bash", p]
     raise ValueError(f"unknown style {style!r}")
 
-
 # ─── bench_report ──────────────────────────────────────────────────────
 
 def bench_report(results: list[tuple[str, float, int]], *,
@@ -97,6 +94,5 @@ def bench_report(results: list[tuple[str, float, int]], *,
     lines.append(f"  {len(results)} files, {passed} passed, {failed} failed, "
                   f"total {total:.1f}s sequential ceiling")
     return "\n".join(lines)
-
 
 __all__ = ["classify_style", "dispatch_cmd", "bench_report"]

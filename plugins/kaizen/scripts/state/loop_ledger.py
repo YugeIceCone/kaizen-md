@@ -62,7 +62,6 @@ DEFAULT_MAX_AGE_DAYS = 30     # fallback when automation.yaml unreadable
 DEFAULT_STUCK_ITERATIONS = 5   # fallback when automation.yaml unreadable
 DEFAULT_MAX_AGE_HOURS = None  # disabled by default; yaml sets 12
 
-
 def _load_automation_yaml() -> dict:
     """Schema+yaml+json driven: read defaults from
     skills/loop/domain/automation.yaml. Stdlib-only minimal parser
@@ -121,9 +120,7 @@ def _load_automation_yaml() -> dict:
             stack[-1][k.strip()] = v
     return out
 
-
 _AUTOMATION = _load_automation_yaml()
-
 
 def _yaml_default(*keys, fallback=None):
     """Walk _AUTOMATION dict for nested keys; return fallback if missing."""
@@ -133,7 +130,6 @@ def _yaml_default(*keys, fallback=None):
             return fallback
         cur = cur[k]
     return cur
-
 
 def split_frontmatter(text: str) -> tuple[str, str]:
     """Return (frontmatter_block_with_delimiters, body). Body excludes both `---`."""
@@ -151,7 +147,6 @@ def split_frontmatter(text: str) -> tuple[str, str]:
     body = "\n".join(lines[end_idx + 1 :])
     return fm, body
 
-
 def parse_body(body: str) -> tuple[dict | None, str]:
     """Return (ledger_dict, freeform_body). ledger_dict is None for freeform."""
     stripped = body.strip()
@@ -167,7 +162,6 @@ def parse_body(body: str) -> tuple[dict | None, str]:
         return None, body
     return data, body
 
-
 def run_verify(cmd: str) -> bool:
     """Run a bash verify command; return True iff exit code 0 within timeout."""
     try:
@@ -181,13 +175,10 @@ def run_verify(cmd: str) -> bool:
     except (subprocess.TimeoutExpired, OSError):
         return False
 
-
 def iso_now() -> str:
     return dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
-
 # ─── Promise matching (robust against code-fence + mid-text mentions) ─
-
 
 import re as _re
 
@@ -198,7 +189,6 @@ _TRAILING_PROMISE = _re.compile(
     _re.DOTALL,
 )
 _ANY_PROMISE = _re.compile(r"<promise>\s*(.*?)\s*</promise>", _re.DOTALL)
-
 
 def check_completion_promise(
     last_output: str,
@@ -229,7 +219,6 @@ def check_completion_promise(
     want = " ".join(expected_phrase.split())
     return found == want
 
-
 def has_unsafe_promise_mention(last_output: str) -> bool:
     """Diagnostic: True if the message contains a promise tag that is NOT
     at the end (i.e. would have triggered the old buggy regex). The hook
@@ -242,7 +231,6 @@ def has_unsafe_promise_mention(last_output: str) -> bool:
     if _TRAILING_PROMISE.search(stripped):
         return False  # legitimate trailing promise — not unsafe
     return bool(_ANY_PROMISE.search(stripped))
-
 
 def transition(ledger: dict, iteration: int) -> tuple[dict, list[dict]]:
     """Run verify on each pending item; move passing ones to completed.
@@ -278,7 +266,6 @@ def transition(ledger: dict, iteration: int) -> tuple[dict, list[dict]]:
             new_ledger[key] = ledger[key]
     return new_ledger, just_completed
 
-
 def render_prompt(pending: list[dict]) -> str:
     """Build the next-iteration prompt from pending items.
 
@@ -295,7 +282,6 @@ def render_prompt(pending: list[dict]) -> str:
             lines.append(f"{i}. {desc}")
     return "\n".join(lines)
 
-
 def _max_age_days() -> int:
     """Resolution: env > yaml > hardcoded default."""
     env = os.environ.get("KAIZEN_LOOP_MAX_AGE_DAYS")
@@ -306,7 +292,6 @@ def _max_age_days() -> int:
     try: return max(1, int(y))
     except (ValueError, TypeError): return DEFAULT_MAX_AGE_DAYS
 
-
 def _stuck_iterations() -> int:
     """Resolution: env > yaml > hardcoded default."""
     env = os.environ.get("KAIZEN_LOOP_STUCK_ITERATIONS")
@@ -316,7 +301,6 @@ def _stuck_iterations() -> int:
     y = _yaml_default("stuck", "iterations", fallback=DEFAULT_STUCK_ITERATIONS)
     try: return max(2, int(y))
     except (ValueError, TypeError): return DEFAULT_STUCK_ITERATIONS
-
 
 def _frontmatter_value(fm: str, key: str) -> str:
     """Plain extract of `key: <value>` from a frontmatter block. Strips
@@ -331,7 +315,6 @@ def _frontmatter_value(fm: str, key: str) -> str:
             return v
     return ""
 
-
 def _max_age_hours() -> int | None:
     """Hour-resolution TTL. Resolution: env > yaml > None (disabled).
     When set, takes precedence over the day-resolution check in
@@ -344,7 +327,6 @@ def _max_age_hours() -> int | None:
     if y is None: return None
     try: return max(1, int(y))
     except (ValueError, TypeError): return None
-
 
 def _is_stale(fm: str) -> tuple[bool, int]:
     """Return (is_stale, age_days). True iff started_at is older than
@@ -373,13 +355,11 @@ def _is_stale(fm: str) -> tuple[bool, int]:
         return age_hours > hours_limit, age_days
     return age_days > _max_age_days(), age_days
 
-
 def _body_sha(body: str) -> str:
     """Stable sha of the body content (after stripping the framing
     frontmatter)."""
     import hashlib as _h
     return _h.sha256(body.strip().encode("utf-8")).hexdigest()[:16]
-
 
 def _check_no_progress(fm: str, body_now_sha: str) -> tuple[bool, int]:
     """Return (is_stuck, run_count). Stuck when the body hasn't changed
@@ -398,7 +378,6 @@ def _check_no_progress(fm: str, body_now_sha: str) -> tuple[bool, int]:
     else:
         run = 0
     return run >= _stuck_iterations(), run
-
 
 def _persist_progress_marks(fm: str, body_now_sha: str, stuck_run: int) -> str:
     """Update or append `last_body_sha:` + `stuck_run:` in the
@@ -427,7 +406,6 @@ def _persist_progress_marks(fm: str, body_now_sha: str, stuck_run: int) -> str:
         else:
             out.append(line)
     return "\n".join(out)
-
 
 def decide(state_path: Path, iteration: int) -> dict:
     """Main entry point. Returns the decision dict for the caller hook."""
@@ -552,7 +530,6 @@ def decide(state_path: Path, iteration: int) -> dict:
         "mode": "ledger",
     }
 
-
 def main(argv: list[str]) -> int:
     # Subcommand mode: `loop_ledger.py promise-check <last_output_file> <expected_phrase>`
     # Exit code 0 iff promise matched, 1 otherwise. Used by stop-ralph.sh
@@ -585,7 +562,6 @@ def main(argv: list[str]) -> int:
     result = decide(state_path, iteration)
     print(json.dumps(result))
     return 0
-
 
 if __name__ == "__main__":
     sys.exit(main(sys.argv))

@@ -11,7 +11,6 @@ from pathlib import Path
 
 _SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(_SCRIPT_DIR))
-# MIGRATION BRIDGE — legacy helpers still at skills/workflow/scripts/
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "io"))
 
 import _envelope  # noqa: E402
@@ -19,10 +18,8 @@ import _envelope  # noqa: E402
 _emit = _envelope.emitter("kaizen-unused-env", tool_version="1.0.0")
 _TOML_RE = re.compile(r'^\s*[A-Za-z_][A-Za-z0-9_]*\s*=\s*"([A-Z_][A-Z0-9_]+)"', re.MULTILINE)
 
-
 def _plugin_root() -> Path:
     return _SCRIPT_DIR.parents[1]
-
 
 def _declared_env_vars(repo_root: Path) -> set[str]:
     out: set[str] = set()
@@ -34,7 +31,6 @@ def _declared_env_vars(repo_root: Path) -> set[str]:
             pass
     return out
 
-
 def _all_python_blob(repo_root: Path) -> str:
     text = ""
     sd = repo_root / "scripts"
@@ -45,7 +41,6 @@ def _all_python_blob(repo_root: Path) -> str:
             except OSError:
                 pass
     return text
-
 
 def scan(*, repo_root: Path) -> dict:
     declared = _declared_env_vars(repo_root)
@@ -59,7 +54,6 @@ def scan(*, repo_root: Path) -> dict:
         ),
     }
 
-
 def _run(args) -> int:
     rep = scan(repo_root=_plugin_root())
     n = len(rep["gaps"])
@@ -71,7 +65,6 @@ def _run(args) -> int:
     _emit(rep, verdict=verdict, counts={"gaps": n})
     return 0
 
-
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="kaizen-unused-env",
         description="Env-vars declared but never read.")
@@ -82,7 +75,6 @@ def main(argv: list[str] | None = None) -> int:
         s.set_defaults(func=_run)
     args = ap.parse_args(argv)
     return args.func(args)
-
 
 if __name__ == "__main__":
     sys.exit(main())

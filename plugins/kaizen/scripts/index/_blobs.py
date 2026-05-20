@@ -70,7 +70,8 @@ from pathlib import Path
 SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR))
 # MIGRATION BRIDGE — _paths/_time shimmed at legacy skills/workflow/scripts/.
-sys.path.insert(0, str(SCRIPT_DIR.parents[1] / "skills" / "workflow" / "scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import _bootstrap  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 import _paths as _p  # noqa: E402
 
 # ─── Storage layout ──────────────────────────────────────────────────
@@ -82,9 +83,7 @@ MANIFEST_LOCK = _p.MANIFEST_LOCK
 MANIFEST_VERSION = 1
 CHUNK_SIZE = 1 << 20  # 1 MiB streaming chunk
 
-
 # ─── Manifest cross-process lock (M1) ────────────────────────────────
-
 
 @contextlib.contextmanager
 def _manifest_lock():
@@ -114,7 +113,6 @@ def _manifest_lock():
 
 # ─── Manifest I/O ────────────────────────────────────────────────────
 
-
 def _load_manifest() -> dict:
     if not MANIFEST_FILE.exists():
         return {"version": MANIFEST_VERSION, "blobs": {}}
@@ -138,7 +136,6 @@ def _load_manifest() -> dict:
     data.setdefault("blobs", {})
     return data
 
-
 def _save_manifest(data: dict) -> None:
     import sys as _sys
     from pathlib import Path as _Path
@@ -146,14 +143,11 @@ def _save_manifest(data: dict) -> None:
     import _atomic
     _atomic.atomic_write_json(MANIFEST_FILE, data)
 
-
 def manifest() -> dict:
     """Return the full manifest (read-only — do not mutate the returned dict)."""
     return _load_manifest()
 
-
 # ─── Hashing ─────────────────────────────────────────────────────────
-
 
 def sha256_file(path: Path) -> str:
     """Compute sha256 hex of a file, streaming in CHUNK_SIZE blocks."""
@@ -166,22 +160,17 @@ def sha256_file(path: Path) -> str:
             h.update(chunk)
     return h.hexdigest()
 
-
 def sha256_bytes(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
-
 # ─── Blob path resolution ────────────────────────────────────────────
-
 
 def _blob_path(sha: str) -> Path:
     if len(sha) != 64 or not all(c in "0123456789abcdef" for c in sha):
         raise ValueError(f"invalid sha256 hex: {sha!r}")
     return BLOBS_DIR / sha
 
-
 # ─── Public API ──────────────────────────────────────────────────────
-
 
 def get(sha: str) -> Path:
     """Resolve a sha to its blob path. Raises KeyError if absent."""
@@ -190,10 +179,8 @@ def get(sha: str) -> Path:
         raise KeyError(f"blob {sha} not in store at {p}")
     return p
 
-
 def has(sha: str) -> bool:
     return _blob_path(sha).exists()
-
 
 def put_file(
     path: Path,
@@ -230,7 +217,6 @@ def put_file(
         _materialise_ref(sha, ref)
     return sha
 
-
 def put_bytes(
     data: bytes,
     kind: str,
@@ -251,7 +237,6 @@ def put_bytes(
         _materialise_ref(sha, ref)
     return sha
 
-
 def add_ref(sha: str, ref_path: Path, context: str = "") -> None:
     """Register an additional logical ref + materialise the symlink."""
     if not has(sha):
@@ -266,7 +251,6 @@ def add_ref(sha: str, ref_path: Path, context: str = "") -> None:
             _save_manifest(data)
     _materialise_ref(sha, ref_path)
 
-
 def list_blobs(kind: str | None = None) -> list[dict]:
     data = _load_manifest()
     entries: list[dict] = []
@@ -276,9 +260,7 @@ def list_blobs(kind: str | None = None) -> list[dict]:
         entries.append({"sha": sha, **meta})
     return entries
 
-
 # ─── Helpers ─────────────────────────────────────────────────────────
-
 
 def _record(
     sha: str,
@@ -310,7 +292,6 @@ def _record(
                 refs.append({"path": rel, "context": context, "added": _now()})
         _save_manifest(data)
 
-
 def _materialise_ref(sha: str, ref_path: Path) -> None:
     """Create (or replace) a symlink at ref_path pointing at the blob."""
     ref_path = Path(ref_path)
@@ -320,16 +301,12 @@ def _materialise_ref(sha: str, ref_path: Path) -> None:
         ref_path.unlink()
     ref_path.symlink_to(blob)
 
-
 from _time import iso  # M5 dedup
-
 
 def _now() -> str:
     return iso(precision="seconds")
 
-
 # ─── Self-test ───────────────────────────────────────────────────────
-
 
 def _self_test() -> None:
     """RED / GREEN smoke test — exercised on import via `python3 _blobs.py`."""
@@ -396,9 +373,7 @@ def _self_test() -> None:
 
     print("✓ _blobs.py self-test pass (8 / 8)")
 
-
 # ─── CLI ─────────────────────────────────────────────────────────────
-
 
 def _cli(argv: list[str]) -> int:
     import argparse
@@ -490,7 +465,6 @@ def _cli(argv: list[str]) -> int:
         _self_test()
         return 0
     return 2
-
 
 if __name__ == "__main__":
     # Default behaviour when called with no args is the self-test (back-compat

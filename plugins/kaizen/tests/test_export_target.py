@@ -29,14 +29,12 @@ import tempfile
 import unittest
 from pathlib import Path
 
-SCRIPT_DIR = Path(__file__).resolve().parent.parent / "skills" / "workflow" / "scripts"
-sys.path.insert(0, str(SCRIPT_DIR))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 
 import export_target as et  # noqa: E402
 
-
 # ─── Synthetic plugin builder ────────────────────────────────────────
-
 
 def _make_plugin(root: Path) -> Path:
     """Build a minimal kaizen-shaped plugin tree under ``root``."""
@@ -78,9 +76,7 @@ def _make_plugin(root: Path) -> Path:
     }))
     return plugin
 
-
 # ─── Pure helpers ────────────────────────────────────────────────────
-
 
 class TestParseFrontmatter(unittest.TestCase):
     def test_parses_yaml_block(self):
@@ -97,7 +93,6 @@ class TestParseFrontmatter(unittest.TestCase):
         # Non-dict YAML parse should not crash the exporter.
         fm = et.parse_frontmatter("---\n- just a list\n---\nbody\n")
         self.assertEqual(fm.data, {})
-
 
 class TestSubstitutePluginRoot(unittest.TestCase):
     def test_replaces_all_occurrences(self):
@@ -128,7 +123,6 @@ class TestSubstitutePluginRoot(unittest.TestCase):
         text = f"$ARGUMENTS, ${zwsp}{{CLAUDE_PLUGIN_ROOT}}"
         self.assertEqual(et.substitute_plugin_root(text), text)
 
-
 class TestRenderFrontmatter(unittest.TestCase):
     def test_roundtrip_preserves_order_of_keys(self):
         data = {"name": "x", "description": "y", "tools": ["A", "B"]}
@@ -139,7 +133,6 @@ class TestRenderFrontmatter(unittest.TestCase):
 
     def test_empty_data_returns_body_only(self):
         self.assertEqual(et.render_frontmatter({}, "body"), "body")
-
 
 class TestEmitTomlTable(unittest.TestCase):
     def test_basic_types(self):
@@ -167,9 +160,7 @@ class TestEmitTomlTable(unittest.TestCase):
         with self.assertRaises(TypeError):
             et.emit_toml_table(None, {"x": {"nested": "dict"}})
 
-
 # ─── Codex shape converters ──────────────────────────────────────────
-
 
 class TestAgentMdToToml(unittest.TestCase):
     def test_basic_mapping(self):
@@ -201,7 +192,6 @@ class TestAgentMdToToml(unittest.TestCase):
         toml = et.agent_md_to_toml(md)
         self.assertIn("custom_thing = 42", toml)
 
-
 class TestMcpServersToToml(unittest.TestCase):
     def test_one_server_per_table(self):
         toml = et.mcp_servers_to_toml({
@@ -229,9 +219,7 @@ class TestMcpServersToToml(unittest.TestCase):
         toml = et.mcp_servers_to_toml({"mcpServers": {}})
         self.assertEqual(toml.strip(), "")
 
-
 # ─── CodexExporter (end-to-end) ──────────────────────────────────────
-
 
 class TestCodexExporter(unittest.TestCase):
     def setUp(self):
@@ -304,9 +292,7 @@ class TestCodexExporter(unittest.TestCase):
         self.assertEqual(len(result.skills), 2)
         self.assertFalse((self.out / "dry" / "skills" / "alpha.md").exists())
 
-
 # ─── CLI ─────────────────────────────────────────────────────────────
-
 
 class TestValidateBundle(unittest.TestCase):
     """Re-parse the emitted bundle to catch encoder bugs."""
@@ -352,7 +338,6 @@ class TestValidateBundle(unittest.TestCase):
         self.assertIn("toml files", text)
         self.assertIn("md  files", text)
         self.assertIn("PASS", text)
-
 
 class TestCli(unittest.TestCase):
     def test_main_exits_2_when_plugin_root_invalid(self):
@@ -447,7 +432,6 @@ class TestCli(unittest.TestCase):
             ])
             self.assertEqual(rc, 0)
             self.assertFalse(stale.exists())
-
 
 if __name__ == "__main__":
     unittest.main()

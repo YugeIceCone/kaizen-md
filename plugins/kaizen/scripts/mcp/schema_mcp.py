@@ -34,7 +34,6 @@ except ImportError as e:
 
 mcp = FastMCP("kaizen-schema")
 
-
 def _run(*args: str) -> dict:
     """Invoke workflow_runner. Most verbs emit JSON natively (`show`,
     `branches`, `artifact`); `list` + `stages` emit text — return raw."""
@@ -47,7 +46,6 @@ def _run(*args: str) -> dict:
         return json.loads(out)
     except json.JSONDecodeError:
         return {"output": out}
-
 
 @mcp.tool()
 async def schema_list() -> dict:
@@ -65,13 +63,11 @@ async def schema_list() -> dict:
         return {"schemas": items}
     return result
 
-
 @mcp.tool()
 async def schema_show(name: str) -> dict:
     """Full parsed schema as JSON — name, version, description, artifacts,
     apply block."""
     return await asyncio.to_thread(_run, "show", name)
-
 
 @mcp.tool()
 async def schema_stages(name: str) -> dict:
@@ -82,13 +78,11 @@ async def schema_stages(name: str) -> dict:
         return {"stages": [s for s in result["output"].splitlines() if s.strip()]}
     return result
 
-
 @mcp.tool()
 async def schema_artifact(name: str, artifact_id: str) -> dict:
     """One artifact's full dict — id, generates, template, requires,
     description, branches."""
     return await asyncio.to_thread(_run, "artifact", name, artifact_id)
-
 
 @mcp.tool()
 async def schema_branches(name: str, artifact_id: str) -> dict:
@@ -96,7 +90,6 @@ async def schema_branches(name: str, artifact_id: str) -> dict:
     artifact. Used by an agent to plan after completing the artifact
     (e.g. design.md) based on its Confidence Score."""
     return await asyncio.to_thread(_run, "branches", name, artifact_id)
-
 
 @mcp.tool()
 async def schema_validate(name: str) -> dict:
@@ -106,7 +99,6 @@ async def schema_validate(name: str) -> dict:
     if "error" in result and "rc" in result:
         return {"valid": False, "errors": [result["error"]]}
     return {"valid": True, "errors": []}
-
 
 if __name__ == "__main__":
     mcp.run()

@@ -16,13 +16,11 @@ from pathlib import Path
 
 _SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(_SCRIPT_DIR))
-# MIGRATION BRIDGE — legacy helpers still at skills/workflow/scripts/
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "io"))
 
 import _envelope  # noqa: E402
 
 _emit = _envelope.emitter("kaizen-silent-fail", tool_version="1.0.0")
-
 
 def _default_trace_log() -> Path:
     """Canonical trace log via _paths SSOT; legacy fallback for old installs."""
@@ -32,14 +30,11 @@ def _default_trace_log() -> Path:
     except (ImportError, AttributeError):
         return Path.home() / ".claude/.kaizen/indexes/trace/events.jsonl"
 
-
 _DEFAULT_TRACE_LOG = _default_trace_log()
 _THRESHOLD_PCT = 50.0
 
-
 def _plugin_root() -> Path:
     return _SCRIPT_DIR.parents[1]
-
 
 def _hook_fire_events(trace_log: Path):
     if not trace_log.is_file():
@@ -54,7 +49,6 @@ def _hook_fire_events(trace_log: Path):
             continue
         if ev.get("event") in ("hook_fired", "hook"):
             yield ev
-
 
 def scan(*, trace_log: Path, threshold_pct: float = _THRESHOLD_PCT) -> dict:
     if not trace_log.is_file():
@@ -77,7 +71,6 @@ def scan(*, trace_log: Path, threshold_pct: float = _THRESHOLD_PCT) -> dict:
     return {"findings": findings, "hooks_seen": len(by_hook),
             "events_seen": total}
 
-
 def _run(args) -> int:
     log = Path(args.trace_log).expanduser() if args.trace_log else _DEFAULT_TRACE_LOG
     rep = scan(trace_log=log, threshold_pct=args.threshold)
@@ -93,7 +86,6 @@ def _run(args) -> int:
     _emit(rep, verdict=verdict, counts={"findings": n})
     return 0
 
-
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="kaizen-silent-fail",
         description="Detect hooks that fire but return no output.")
@@ -106,7 +98,6 @@ def main(argv: list[str] | None = None) -> int:
         s.set_defaults(func=_run)
     args = ap.parse_args(argv)
     return args.func(args)
-
 
 if __name__ == "__main__":
     sys.exit(main())

@@ -64,8 +64,8 @@ from typing import Optional
 
 _SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(_SCRIPT_DIR))
-# MIGRATION BRIDGE — kaizen helpers still at skills/workflow/scripts/
-sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "skills" / "workflow" / "scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import _bootstrap  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 import _paths  # noqa: E402
 import _envelope  # noqa: E402
 import _migrator as _mig  # noqa: E402 — shared migrator primitives (DEBT-1)
@@ -79,28 +79,22 @@ _BACKUP_PREFIX = "brain-pre-migration-"
 _LEGACY_ENV_VARS = ("REMEMBER_BRAIN_PATH", "KAIZEN_BRAIN_PATH", "KAIZEN_BRAIN")
 _NEW_ENV_VAR = "KAIZEN_BRAIN_DIR"
 
-
 # ─── Helpers ─────────────────────────────────────────────────────────
-
 
 def _utc_stamp() -> str:
     """Thin wrapper retained for in-file readability; delegates to
     _migrator.utc_stamp (DEBT-1 SSOT)."""
     return _mig.utc_stamp()
 
-
 def _resolve_src(args) -> Path:
     return Path(args.src).expanduser() if args.src else _paths.LEGACY_PATHS["brain"]
-
 
 def _resolve_dst(args) -> Path:
     return Path(args.dst).expanduser() if args.dst else _paths.BRAIN_DIR
 
-
 def _resolve_settings(args) -> Path:
     return (Path(args.settings_file).expanduser() if args.settings_file
             else Path.home() / ".claude" / "settings.json")
-
 
 def _dir_stats(p: Path) -> dict:
     """Recursive file count + total byte size. Skips non-existent."""
@@ -117,7 +111,6 @@ def _dir_stats(p: Path) -> dict:
     return {"exists": True, "file_count": file_count, "size_bytes": size,
             "path": str(p.resolve())}
 
-
 def _classify(src_stats: dict, dst_stats: dict) -> str:
     """Decide what state the migration is in.
 
@@ -133,9 +126,7 @@ def _classify(src_stats: dict, dst_stats: dict) -> str:
         return "already-migrated"
     return "neither"
 
-
 # ─── Subcommand: status ──────────────────────────────────────────────
-
 
 def cmd_status(args) -> int:
     src = _resolve_src(args)
@@ -164,7 +155,6 @@ def cmd_status(args) -> int:
         print(f"action:     {_state_to_recommendation(state)}")
     return 0
 
-
 def _state_to_recommendation(state: str) -> str:
     return {
         "needs-migration": "run `kaizen-brain-migrate apply`",
@@ -172,7 +162,6 @@ def _state_to_recommendation(state: str) -> str:
         "both-have-data": "CONFLICT — inspect both manually before --force-overwrite",
         "neither": "no brain present anywhere — run `kaizen-brain init` first",
     }.get(state, "unknown state")
-
 
 def _state_to_verdict(state: str) -> str:
     return {
@@ -182,7 +171,6 @@ def _state_to_verdict(state: str) -> str:
         "neither": "yellow",
     }.get(state, "yellow")
 
-
 def _human_size(n: int) -> str:
     for unit in ("B", "KB", "MB", "GB"):
         if n < 1024:
@@ -190,9 +178,7 @@ def _human_size(n: int) -> str:
         n /= 1024
     return f"{n:.1f} TB"
 
-
 # ─── Subcommand: dry-run ─────────────────────────────────────────────
-
 
 def cmd_dry_run(args) -> int:
     src = _resolve_src(args)
@@ -245,9 +231,7 @@ def cmd_dry_run(args) -> int:
             print(f"  • {a}")
     return 0
 
-
 # ─── Subcommand: apply ───────────────────────────────────────────────
-
 
 def cmd_apply(args) -> int:
     src = _resolve_src(args)
@@ -342,7 +326,6 @@ def cmd_apply(args) -> int:
             "(restores src dir + settings.json)")
     return 0
 
-
 def _backup_src(src: Path, args) -> Optional[Path]:
     """Tar.gz the src dir to the backup location + sha256 sidecar
     (DEBT-1: delegates to _migrator.make_backup_tarball)."""
@@ -351,16 +334,13 @@ def _backup_src(src: Path, args) -> Optional[Path]:
         label=_LABEL, arcname=src.name,
     )
 
-
 # Back-compat thin wrappers — kept so existing tests that monkeypatch
 # `bm._write_sha256_sidecar` / `bm._verify_sha256_sidecar` still work.
 def _write_sha256_sidecar(tar_path: Path) -> bool:
     return _mig.write_sha256_sidecar(tar_path, label=_LABEL)
 
-
 def _verify_sha256_sidecar(tar_path: Path) -> bool:
     return _mig.verify_sha256_sidecar(tar_path, label=_LABEL)
-
 
 # DEBT-1: rsync + verify delegate to _migrator. These wrappers stay
 # because the test suite (test_brain_migrate.py) monkey-patches
@@ -368,13 +348,10 @@ def _verify_sha256_sidecar(tar_path: Path) -> bool:
 def _rsync_dir(src: Path, dst: Path, args) -> bool:
     return _mig.rsync_dir(src, dst, label=_LABEL)
 
-
 def _verify_dirs(src: Path, dst: Path) -> dict:
     return _mig.verify_dir(src, dst, size_tolerance_pct=1.0)
 
-
 # ─── Subcommand: rollback ────────────────────────────────────────────
-
 
 def cmd_rollback(args) -> int:
     src = _resolve_src(args)
@@ -429,15 +406,12 @@ def cmd_rollback(args) -> int:
             f"  dst rescue:   {rescue}")
     return 0
 
-
 # DEBT-1: cmd_edit_settings removed — zero call sites outside its own
 # tests. cmd_apply is idempotent on already-migrated state and handles
 # the settings edit internally; a user wanting "settings only" can
 # just re-run apply.
 
-
 # ─── Settings.json mutation (8-pattern foolproof recipe) ─────────────
-
 
 def _compute_settings_diff(settings_file: Path, dst: Path) -> str:
     """Build the would-be unified diff against settings.json. Read-only."""
@@ -457,7 +431,6 @@ def _compute_settings_diff(settings_file: Path, dst: Path) -> str:
         tofile=str(settings_file) + " (proposed)",
         n=2,
     ))
-
 
 def _settings_mutated(data: dict, dst: Path) -> dict:
     """Return a new dict with the brain env var migration applied.
@@ -484,7 +457,6 @@ def _settings_mutated(data: dict, dst: Path) -> dict:
     else:
         out.pop("env", None)
     return out
-
 
 def _edit_settings(settings_file: Path, dst: Path, args) -> dict:
     """Apply the 8-pattern foolproof settings.json mutation."""
@@ -549,7 +521,6 @@ def _edit_settings(settings_file: Path, dst: Path, args) -> dict:
     return {"edited": True, "backup": str(backup),
             "rollback_cmd": f"cp {backup} {settings_file}"}
 
-
 def _report(args, payload: dict, *, verdict: str, text: str) -> None:
     """Emit JSON envelope or text per --json flag."""
     if args.json:
@@ -557,9 +528,7 @@ def _report(args, payload: dict, *, verdict: str, text: str) -> None:
     else:
         print(text)
 
-
 # ─── CLI ─────────────────────────────────────────────────────────────
-
 
 def _add_common_flags(sp):
     sp.add_argument("--src", help="source brain dir (default: legacy ~/.claude/brain)")
@@ -568,7 +537,6 @@ def _add_common_flags(sp):
                     help="CC settings.json (default: ~/.claude/settings.json)")
     sp.add_argument("--json", action="store_true",
                     help="emit canonical envelope JSON")
-
 
 def main(argv: Optional[list[str]] = None) -> int:
     p = argparse.ArgumentParser(
@@ -602,7 +570,6 @@ def main(argv: Optional[list[str]] = None) -> int:
 
     args = p.parse_args(argv)
     return args.func(args)
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

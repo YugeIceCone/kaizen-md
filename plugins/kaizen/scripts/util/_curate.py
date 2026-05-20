@@ -49,7 +49,6 @@ SEVERITY_RANK = {
     "": 0,
 }
 
-
 def curate(
     findings: list[dict],
     top_n: int = 10,
@@ -106,7 +105,6 @@ def curate(
         "findings_top_n": findings[:top_n],
         "truncated": len(findings) > top_n,
     }
-
 
 def max_severity(by_sev: dict[str, int]) -> str:
     """Return the highest-ranked severity present in a by_severity map.

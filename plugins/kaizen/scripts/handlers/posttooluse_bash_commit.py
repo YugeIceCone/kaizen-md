@@ -22,10 +22,8 @@ import subprocess
 import sys
 from pathlib import Path
 
-
 _EMPTY = "{}"
 _GIT_COMMIT_RE = re.compile(r"(^|[^a-zA-Z])git\s+commit")
-
 
 def _resolve_repo() -> Path | None:
     try:
@@ -38,7 +36,6 @@ def _resolve_repo() -> Path | None:
     except (OSError, subprocess.SubprocessError):
         pass
     return None
-
 
 def _backlog_path(repo: Path) -> Path | None:
     toml = repo / ".kaizen.toml"
@@ -57,7 +54,6 @@ def _backlog_path(repo: Path) -> Path | None:
     json_rel = md_path[:-3] + ".json" if md_path.endswith(".md") else md_path + ".json"
     return repo / json_rel
 
-
 def _latest_commit_msg(repo: Path) -> str:
     try:
         r = subprocess.run(
@@ -67,7 +63,6 @@ def _latest_commit_msg(repo: Path) -> str:
         return r.stdout if r.returncode == 0 else ""
     except (OSError, subprocess.SubprocessError):
         return ""
-
 
 def _match_in_flight_items(commit: str, items: list[dict]) -> list[tuple[str, str, str]]:
     """Returns [(id, title, kind), ...] where kind is 'id' or 'title'."""
@@ -89,7 +84,6 @@ def _match_in_flight_items(commit: str, items: list[dict]) -> list[tuple[str, st
         if len(title_frag) >= 16 and title_frag.lower() in commit.lower():
             matches.append((item_id, title, "title"))
     return matches
-
 
 def main() -> int:
     if os.environ.get("KAIZEN_BACKLOG_COMMIT_DISABLE") == "1":
@@ -153,7 +147,6 @@ def main() -> int:
         }
     }))
     return 0
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

@@ -46,7 +46,6 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 # itself handles this internally; we just need to load the gatekeeper
 # module without sys.path pollution.
 
-
 def _load_gatekeeper():
     spec = importlib.util.spec_from_file_location(
         "kaizen_gatekeeper_mcp_inner", SCRIPT_DIR.parents[1] / "skills" / "workflow" / "scripts" / "gatekeeper.py"
@@ -58,16 +57,13 @@ def _load_gatekeeper():
     spec.loader.exec_module(mod)
     return mod
 
-
 try:
     from fastmcp import FastMCP
 except ImportError:
     sys.stderr.write("kaizen-gatekeeper-mcp: fastmcp>=3.0 required\n")
     sys.exit(2)
 
-
 mcp = FastMCP("kaizen-gatekeeper")
-
 
 @mcp.tool()
 async def gatekeeper_check(scope: str = "staged",
@@ -110,7 +106,6 @@ async def gatekeeper_check(scope: str = "staged",
 
     return await asyncio.to_thread(_run)
 
-
 @mcp.tool()
 async def gatekeeper_list() -> dict:
     """Enumerate the sub-gates the gatekeeper composes.
@@ -123,7 +118,6 @@ async def gatekeeper_list() -> dict:
         return {"sub_gates": list(gk.SUB_GATES.keys())}
 
     return await asyncio.to_thread(_run)
-
 
 if __name__ == "__main__":
     mcp.run()

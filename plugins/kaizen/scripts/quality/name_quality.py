@@ -42,14 +42,13 @@ import os
 import re
 import sys
 from pathlib import Path
-
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import _bootstrap  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 
 _SCRIPT_DIR = Path(__file__).resolve().parent
 
-
 def _plugin_root() -> Path:
     return _SCRIPT_DIR.parents[1]
-
 
 # Common English stopwords — drop these from intent tokens so the
 # jaccard isn't dominated by 'the', 'of', 'a', etc.
@@ -68,7 +67,6 @@ _JUNK_NAMES = frozenset({
     "base", "shared", "stuff", "things", "tmp", "temp",
 })
 
-
 def _tokenize_filename(stem: str) -> set[str]:
     """Filename stem → token set (alpha only, lowercased).
     Splits snake_case + kebab-case + camelCase."""
@@ -82,7 +80,6 @@ def _tokenize_filename(stem: str) -> set[str]:
                 out.append(sub.lower())
     # Drop leading-underscore marker (e.g. _atomic → {atomic})
     return {t for t in out if t and t not in _STOPWORDS}
-
 
 def _tokenize_intent(text: str, max_words: int = 40) -> set[str]:
     """First ~max_words alpha tokens from text, lowercased, stopwords dropped."""
@@ -98,7 +95,6 @@ def _tokenize_intent(text: str, max_words: int = 40) -> set[str]:
                 out.add(sub)
     return out
 
-
 def _extract_intent_py(path: Path) -> str:
     """Module docstring of a .py file (first one only)."""
     try:
@@ -110,7 +106,6 @@ def _extract_intent_py(path: Path) -> str:
     except SyntaxError:
         return ""
     return (ast.get_docstring(mod) or "").strip()
-
 
 def _extract_intent_sh(path: Path) -> str:
     """Top header comment block (consecutive `# …` lines) of a .sh file."""
@@ -133,7 +128,6 @@ def _extract_intent_sh(path: Path) -> str:
         break
     return "\n".join(lines).strip()
 
-
 def _normalize_token(t: str) -> str:
     """Strip trailing plural 's' so `paths` matches `path`. Skips short
     tokens (<= 3 chars) since `is`/`os` shouldn't be normalised."""
@@ -141,13 +135,11 @@ def _normalize_token(t: str) -> str:
         return t[:-1]
     return t
 
-
 def _normalized_overlap(fn_tokens: set[str], int_tokens: set[str]) -> set[str]:
     """Set overlap with singular/plural normalisation. Returns the
     FILENAME tokens that have a normalised match in intent tokens."""
     int_norm = {_normalize_token(t) for t in int_tokens}
     return {t for t in fn_tokens if _normalize_token(t) in int_norm}
-
 
 def score_file(path: Path) -> dict:
     """Compute the name-quality score for a single file."""
@@ -201,11 +193,9 @@ def score_file(path: Path) -> dict:
         "notes":           notes,
     }
 
-
 def scan_scripts(root: Path | None = None) -> list[dict]:
     """Score every .py file under skills/workflow/scripts/."""
     root = root or _plugin_root()
-    scripts_dir = root / "skills" / "workflow" / "scripts"
     if not scripts_dir.is_dir():
         return []
     results = []
@@ -217,7 +207,6 @@ def scan_scripts(root: Path | None = None) -> list[dict]:
     rank = {"bad": 0, "weak": 1, "active": 2}
     results.sort(key=lambda r: (rank.get(r["verdict"], 9), r["score"]))
     return results
-
 
 def _print_text(reports: list[dict]) -> None:
     counts = {"active": 0, "weak": 0, "bad": 0}
@@ -239,7 +228,6 @@ def _print_text(reports: list[dict]) -> None:
         for n in r["notes"]:
             print(f"      • {n}")
 
-
 def _cmd_report(args) -> int:
     reports = scan_scripts()
     if args.json:
@@ -247,7 +235,6 @@ def _cmd_report(args) -> int:
     else:
         _print_text(reports)
     return 0
-
 
 def _cmd_score(args) -> int:
     p = Path(args.path)
@@ -261,7 +248,6 @@ def _cmd_score(args) -> int:
         _print_text([r])
     return 0
 
-
 def _cmd_gaps(args) -> int:
     bad_or_weak = [r for r in scan_scripts() if r["verdict"] != "active"]
     if args.json:
@@ -269,7 +255,6 @@ def _cmd_gaps(args) -> int:
     else:
         _print_text(bad_or_weak)
     return 1 if bad_or_weak else 0
-
 
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(
@@ -293,7 +278,6 @@ def main(argv=None) -> int:
 
     args = p.parse_args(argv)
     return args.func(args)
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

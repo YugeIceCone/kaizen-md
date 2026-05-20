@@ -24,7 +24,6 @@ import json
 from pathlib import Path
 from typing import Iterator
 
-
 def iter_jsonl(path: Path) -> Iterator[dict]:
     """Yield each JSON record from a .jsonl or .jsonl.gz file.
 

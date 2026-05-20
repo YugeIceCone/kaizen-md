@@ -25,8 +25,8 @@ from pathlib import Path
 
 _SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(_SCRIPT_DIR))
-# MIGRATION BRIDGE — kaizen modules still at skills/workflow/scripts/
-sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "skills" / "workflow" / "scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import _bootstrap  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 
 import _envelope  # noqa: E402
 import _dxm_emit  # noqa: E402
@@ -35,13 +35,11 @@ import context as _ctx  # noqa: E402
 
 _emit = _envelope.emitter("kaizen-context-notifier", tool_version="1.0.0")
 
-
 def _dxm_dir() -> Path:
     env = os.environ.get("KAIZEN_DXM_DIR")
     if env:
         return Path(os.path.expandvars(env)).expanduser()
     return Path.home() / ".claude" / ".kaizen" / "dxm"
-
 
 def _latest_warn_zone(session_id: str) -> str | None:
     """Find the most-recent context.warn.* event's zone. Used for
@@ -68,7 +66,6 @@ def _latest_warn_zone(session_id: str) -> str | None:
     except OSError:
         return None
     return last_zone
-
 
 def _cmd_check(args) -> int:
     sid = args.session or _sj.discover_active_session_id()
@@ -133,7 +130,6 @@ def _cmd_check(args) -> int:
               f"pct={pct} emitted={emitted}")
     return 0
 
-
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(
         prog="kaizen-context-notifier",
@@ -146,7 +142,6 @@ def main(argv=None) -> int:
     sc.set_defaults(func=_cmd_check)
     args = p.parse_args(argv)
     return args.func(args)
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

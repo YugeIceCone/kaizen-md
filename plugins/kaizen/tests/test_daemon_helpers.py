@@ -21,11 +21,11 @@ from pathlib import Path
 from unittest import mock
 
 PLUGIN_ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(PLUGIN_ROOT / "skills" / "workflow" / "scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 sys.path.insert(0, str(PLUGIN_ROOT / "scripts" / "daemon"))
 
 import daemon  # noqa: E402
-
 
 # ─── _should_spawn_semantic ───────────────────────────────────────────
 
@@ -60,7 +60,6 @@ class ShouldSpawnSemantic(unittest.TestCase):
         )
         self.assertTrue(out)
 
-
 # ─── _resolve_debounce ────────────────────────────────────────────────
 
 class ResolveDebounce(unittest.TestCase):
@@ -90,7 +89,6 @@ class ResolveDebounce(unittest.TestCase):
         with mock.patch.dict("os.environ", {"KAIZEN_WATCH_DEBOUNCE_SEC": "60"}):
             self.assertLessEqual(daemon._resolve_debounce(), 5.0)
 
-
 # ─── Default debounce shouldn't be the 50ms spinner ───────────────────
 
 class DebounceDefault(unittest.TestCase):
@@ -99,7 +97,6 @@ class DebounceDefault(unittest.TestCase):
         """The original 0.05s default was a 20Hz wake-up loop.
         0.25s or higher = 4Hz, plenty responsive, ~5x less CPU."""
         self.assertGreaterEqual(daemon._WATCH_DEBOUNCE_SEC, 0.25)
-
 
 if __name__ == "__main__":
     unittest.main()

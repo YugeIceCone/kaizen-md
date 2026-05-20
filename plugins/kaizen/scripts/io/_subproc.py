@@ -30,7 +30,6 @@ from __future__ import annotations
 import os
 import subprocess
 
-
 def git_repo_root() -> str:
     """Return `git rev-parse --show-toplevel` or os.getcwd() on miss.
 
@@ -43,7 +42,6 @@ def git_repo_root() -> str:
         ).strip()
     except subprocess.CalledProcessError:
         return os.getcwd()
-
 
 def run(cmd: list[str], cwd: str | None = None, timeout: int = 30) -> dict:
     """List-form subprocess. Returns {exit_code, stdout, stderr}.

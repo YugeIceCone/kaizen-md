@@ -14,9 +14,9 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / "skills" / "workflow" / "scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 sys.path.insert(0, str(ROOT / "scripts" / "indexers"))
-
 
 class TestSchemaHasLineColumns(unittest.TestCase):
 
@@ -56,7 +56,6 @@ class TestSchemaHasLineColumns(unittest.TestCase):
             cols_after = {row[1] for row in conn.execute("PRAGMA table_info(code_chunks)")}
             self.assertEqual(cols_before, cols_after)
 
-
 class TestInsertPathPopulatesLines(unittest.TestCase):
     """When the indexer writes a Python file's chunks, the line columns
     carry the values from _ast_chunk.SymbolChunk."""
@@ -72,7 +71,6 @@ class TestInsertPathPopulatesLines(unittest.TestCase):
             self.assertGreater(c.line_start, 0,
                 f"chunk {c.symbol_name!r} missing line_start")
             self.assertGreaterEqual(c.line_end, c.line_start)
-
 
 if __name__ == "__main__":
     unittest.main()

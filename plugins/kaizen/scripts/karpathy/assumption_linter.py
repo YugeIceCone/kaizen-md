@@ -66,7 +66,6 @@ NO_VERIFICATION = [
      "no-verification", "No verification step found in this block. How will you know it works?"),
 ]
 
-
 def lint_text(text, source_name="stdin"):
     """Lint a plan text. Return list of findings."""
     findings = []
@@ -111,7 +110,6 @@ def lint_text(text, source_name="stdin"):
             })
 
     return findings
-
 
 def main():
     p = argparse.ArgumentParser(
@@ -171,7 +169,6 @@ def main():
         print("\n  Plan looks explicit. Assumptions are surfaced.")
 
     print(f"\nVerdict: {result['verdict']}")
-
 
 if __name__ == "__main__":
     main()

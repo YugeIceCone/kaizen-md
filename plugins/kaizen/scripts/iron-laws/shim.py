@@ -68,12 +68,10 @@ from pathlib import Path
 
 # ─── Manifest helpers ────────────────────────────────────────────────
 
-
 def manifest_path(slug: str, root: Path | None = None) -> Path:
     """Resolve <repo>/.kaizen/workflow/deletion-manifest-<slug>.txt."""
     root = root or _repo_root()
     return root / ".kaizen" / "workflow" / f"deletion-manifest-{slug}.txt"
-
 
 def _repo_root(start: Path | None = None) -> Path:
     """Walk up to find the git root (or the closest .kaizen/ dir)."""
@@ -83,7 +81,6 @@ def _repo_root(start: Path | None = None) -> Path:
             return p
     # Fall back to cwd — caller can recover.
     return cur
-
 
 def manifest_init(slug: str, root: Path | None = None) -> Path:
     """Create the manifest file with a header. Idempotent."""
@@ -100,7 +97,6 @@ def manifest_init(slug: str, root: Path | None = None) -> Path:
     )
     return p
 
-
 def manifest_append(slug: str, rel_path: str, root: Path | None = None, *, keep: str | None = None) -> None:
     """Append an entry to the manifest. Creates manifest if absent."""
     p = manifest_init(slug, root)
@@ -109,7 +105,6 @@ def manifest_append(slug: str, rel_path: str, root: Path | None = None, *, keep:
         line += f"  KEEP — {keep}"
     with p.open("a", encoding="utf-8") as fh:
         fh.write(line + "\n")
-
 
 def manifest_read(slug: str, root: Path | None = None) -> list[tuple[str, str, str | None]]:
     """Parse manifest → list of (date, path, keep_reason_or_None)."""
@@ -131,9 +126,7 @@ def manifest_read(slug: str, root: Path | None = None) -> list[tuple[str, str, s
             out.append((date, rest.strip(), None))
     return out
 
-
 # ─── Per-language shim writers ───────────────────────────────────────
-
 
 def _ts_relative_path(old: Path, new: Path) -> str:
     """Compute a TS-style import path: relative from old's dir to new (without ext).
@@ -152,7 +145,6 @@ def _ts_relative_path(old: Path, new: Path) -> str:
     if not rel.startswith(".") and not rel.startswith("/"):
         rel = "./" + rel
     return rel
-
 
 def shim_contents(old: Path, new: Path, reexport: str | None) -> str:
     """Return the file contents that should replace <old> after carving to <new>."""
@@ -194,9 +186,7 @@ def shim_contents(old: Path, new: Path, reexport: str | None) -> str:
         "supported: .rs .py .ts .tsx .js .jsx .mjs .cjs"
     )
 
-
 # ─── Carve operation ─────────────────────────────────────────────────
-
 
 def carve(
     old: Path,
@@ -255,13 +245,10 @@ def carve(
 
     return actions
 
-
 # ─── Sweep operation ─────────────────────────────────────────────────
-
 
 def _run_git(args: list[str], root: Path, check: bool = True) -> subprocess.CompletedProcess:
     return subprocess.run(["git", "-C", str(root), *args], check=check, capture_output=True, text=True)
-
 
 def sweep(
     slug: str,
@@ -308,9 +295,7 @@ def sweep(
         _run_git(["rm", "--", p], root, check=False)
     return result
 
-
 # ─── CLI ─────────────────────────────────────────────────────────────
-
 
 def _build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
@@ -356,7 +341,6 @@ def _build_parser() -> argparse.ArgumentParser:
     p_sweep.add_argument("--dry-run", action="store_true")
 
     return p
-
 
 def main(argv: list[str] | None = None) -> int:
     args = _build_parser().parse_args(argv)
@@ -419,7 +403,6 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     return 0
-
 
 if __name__ == "__main__":
     sys.exit(main())

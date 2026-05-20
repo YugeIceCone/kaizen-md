@@ -34,7 +34,6 @@ except ImportError as e:
 
 mcp = FastMCP("kaizen-rules")
 
-
 def _run(verb: str, *extra: str, want_json: bool = True) -> dict:
     cmd = ["python3", str(_TARGET), verb, *extra]
     if want_json:
@@ -47,13 +46,11 @@ def _run(verb: str, *extra: str, want_json: bool = True) -> dict:
     except json.JSONDecodeError:
         return {"output": r.stdout.strip()}
 
-
 @mcp.tool()
 async def rules_list() -> dict:
     """All kaizen rules sourced from <brain>/Notes/. Returns
     {rules: [{id, kind, source_file, applies_to, ...}]}."""
     return await asyncio.to_thread(_run, "list")
-
 
 @mcp.tool()
 async def rules_show(rule_id: str) -> dict:
@@ -62,13 +59,11 @@ async def rules_show(rule_id: str) -> dict:
     Returns the rule's frontmatter dict + body excerpt."""
     return await asyncio.to_thread(_run, "show", rule_id)
 
-
 @mcp.tool()
 async def rules_validate() -> dict:
     """Schema-validate every rule under <brain>/Notes/. Returns
     {valid: int, invalid: int, errors: [{file, message}, ...]}."""
     return await asyncio.to_thread(_run, "validate")
-
 
 if __name__ == "__main__":
     mcp.run()

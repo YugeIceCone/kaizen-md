@@ -21,11 +21,10 @@ import tempfile
 import unittest
 from pathlib import Path
 
-SCRIPT_DIR = Path(__file__).resolve().parent.parent / "skills" / "workflow" / "scripts"
-sys.path.insert(0, str(SCRIPT_DIR))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 
 import shim  # noqa: E402
-
 
 def _make_fake_repo(tmpdir: Path) -> Path:
     """Build a minimal git-rooted repo tree for testing."""
@@ -35,9 +34,7 @@ def _make_fake_repo(tmpdir: Path) -> Path:
     (root / ".kaizen" / "workflow").mkdir(parents=True)
     return root
 
-
 # ─── Manifest ────────────────────────────────────────────────────────
-
 
 class TestManifest(unittest.TestCase):
     def test_init_creates_file_with_header(self):
@@ -84,9 +81,7 @@ class TestManifest(unittest.TestCase):
         self.assertEqual(len(entries), 1)
         self.assertEqual(entries[0][1], "x.rs")
 
-
 # ─── Per-language shim writers ───────────────────────────────────────
-
 
 class TestShimContents(unittest.TestCase):
     def test_rust_requires_reexport(self):
@@ -134,9 +129,7 @@ class TestShimContents(unittest.TestCase):
         with self.assertRaises(ValueError):
             shim.shim_contents(Path("a/foo.go"), Path("b/foo.go"), reexport=None)
 
-
 # ─── carve() ─────────────────────────────────────────────────────────
-
 
 class TestCarve(unittest.TestCase):
     def setUp(self):
@@ -197,9 +190,7 @@ class TestCarve(unittest.TestCase):
         # New target NOT overwritten
         self.assertEqual(self.dst.read_text(), "// already here\n")
 
-
 # ─── sweep() ─────────────────────────────────────────────────────────
-
 
 class TestSweep(unittest.TestCase):
     def setUp(self):
@@ -269,9 +260,7 @@ class TestSweep(unittest.TestCase):
         ).strip()
         self.assertEqual(tags, "")
 
-
 # ─── CLI ─────────────────────────────────────────────────────────────
-
 
 class TestCli(unittest.TestCase):
     def setUp(self):
@@ -311,7 +300,6 @@ class TestCli(unittest.TestCase):
             os.chdir(root)
             rc = shim.main(["sweep", "--slug", "s"])
             self.assertEqual(rc, 2)
-
 
 if __name__ == "__main__":
     unittest.main()

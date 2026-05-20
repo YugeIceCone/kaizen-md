@@ -26,7 +26,8 @@ import json
 import os
 from pathlib import Path
 from typing import Any
-
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import _bootstrap  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 
 def _observer_dir() -> Path:
     """~/.claude/.kaizen/observer/ — env-overridable for tests + relocation.
@@ -36,16 +37,13 @@ def _observer_dir() -> Path:
     by default — resolve relative to plugin root.
     """
     import sys as _sys
-    scripts_dir = Path(__file__).resolve().parent.parent.parent / "skills" / "workflow" / "scripts"
     if str(scripts_dir) not in _sys.path:
         _sys.path.insert(0, str(scripts_dir))
     from _paths import env_overridable_dir
     return env_overridable_dir("KAIZEN_OBSERVER_DIR", "observer")
 
-
 def _sink_path() -> Path:
     return _observer_dir() / "events.jsonl"
-
 
 def _detect_source() -> tuple[str, str | None]:
     """Returns (source, subagent_type-or-None).
@@ -62,7 +60,6 @@ def _detect_source() -> tuple[str, str | None]:
         return "subagent", subagent_type
     return "parent", None
 
-
 def _parse_mcp_tool(tool_name: str) -> str | None:
     """Extract the MCP server identifier from a tool name like
     'mcp__clever-lama__parallel_subagents' → 'clever-lama'.
@@ -73,7 +70,6 @@ def _parse_mcp_tool(tool_name: str) -> str | None:
     if len(parts) < 3:
         return None
     return parts[1]
-
 
 def normalize_cc_event(stdin_text: str, *,
                          event_kind: str,
@@ -116,7 +112,6 @@ def normalize_cc_event(stdin_text: str, *,
         event["subagent_type"] = subagent_type
     return event
 
-
 def _atomic_append(sink: Path, event: dict) -> None:
     """Append-only — never reads existing file. Same iron-law as
     kaizen-progress / kaizen-learn. DRY — delegates to shared
@@ -125,12 +120,10 @@ def _atomic_append(sink: Path, event: dict) -> None:
     # by default — resolve relative to plugin root.
     import sys as _sys
     from pathlib import Path as _Path
-    scripts_dir = _Path(__file__).resolve().parent.parent.parent / "skills" / "workflow" / "scripts"
     if str(scripts_dir) not in _sys.path:
         _sys.path.insert(0, str(scripts_dir))
     from _atomic import atomic_append_line  # noqa: E402
     atomic_append_line(sink, json.dumps(event))
-
 
 def capture(stdin_text: str, *, event_kind: str, now: str) -> dict:
     """Normalize + append. Never raises.
@@ -149,6 +142,5 @@ def capture(stdin_text: str, *, event_kind: str, now: str) -> dict:
     except OSError as e:
         return {"ok": False, "reason": f"write_failed: {e}"}
     return {"ok": True, "tool": event.get("tool", "")}
-
 
 __all__ = ["normalize_cc_event", "capture"]

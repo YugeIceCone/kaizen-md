@@ -46,16 +46,13 @@ except ImportError:  # pragma: no cover — exercised manually
     sys.stderr.write("kaizen-export: PyYAML required (pip install pyyaml)\n")
     sys.exit(1)
 
-
 # Public for tests.
 PLUGIN_VAR_FROM = "${CLAUDE_PLUGIN_ROOT}"
 PLUGIN_VAR_TO = "${KAIZEN_PLUGIN_ROOT}"
 FRONTMATTER_RE = re.compile(r"\A---\n(.*?)\n---\n(.*)\Z", re.DOTALL)
 PROVENANCE_PREFIX = "<!-- kaizen-export source:"
 
-
 # ─── Frontmatter + path substitution ─────────────────────────────────
-
 
 @dataclass
 class Frontmatter:
@@ -63,7 +60,6 @@ class Frontmatter:
 
     data: dict
     body: str
-
 
 def parse_frontmatter(text: str) -> Frontmatter:
     """Split ``---\\n…\\n---\\n<body>`` into ``(data, body)``.
@@ -85,11 +81,9 @@ def parse_frontmatter(text: str) -> Frontmatter:
         return Frontmatter(data={}, body=text)
     return Frontmatter(data=parsed, body=body)
 
-
 def substitute_plugin_root(text: str) -> str:
     """Replace ``${CLAUDE_PLUGIN_ROOT}`` with ``${KAIZEN_PLUGIN_ROOT}``."""
     return text.replace(PLUGIN_VAR_FROM, PLUGIN_VAR_TO)
-
 
 def render_frontmatter(data: dict, body: str) -> str:
     """Re-emit a YAML-frontmatter markdown file."""
@@ -98,11 +92,9 @@ def render_frontmatter(data: dict, body: str) -> str:
     rendered = yaml.safe_dump(data, sort_keys=False, default_flow_style=False).rstrip()
     return f"---\n{rendered}\n---\n{body}"
 
-
 # ─── TOML mini-emitter (Codex agent + MCP shape) ─────────────────────
 # Codex configs are flat tables; hand-rolling avoids pulling tomli_w
 # in as a new dep. Restricted to: str, int, float, bool, list[str].
-
 
 def _toml_escape_string(value: str) -> str:
     """Emit a TOML basic-string literal. Multi-line strings use ``\"\"\"``."""
@@ -112,7 +104,6 @@ def _toml_escape_string(value: str) -> str:
         return f'"""\n{escaped}\n"""'
     escaped = value.replace("\\", "\\\\").replace('"', '\\"')
     return f'"{escaped}"'
-
 
 def _toml_value(value) -> str:
     if isinstance(value, bool):
@@ -125,7 +116,6 @@ def _toml_value(value) -> str:
         return "[" + ", ".join(_toml_value(v) for v in value) + "]"
     raise TypeError(f"unsupported TOML value type: {type(value).__name__}")
 
-
 def emit_toml_table(table_name: str | None, fields: dict) -> str:
     """Render a single TOML table (header + ``key = value`` lines)."""
     lines: list[str] = []
@@ -137,9 +127,7 @@ def emit_toml_table(table_name: str | None, fields: dict) -> str:
         lines.append(f"{key} = {_toml_value(value)}")
     return "\n".join(lines)
 
-
 # ─── Codex shape converters ──────────────────────────────────────────
-
 
 def agent_md_to_toml(md_text: str) -> str:
     """Convert a kaizen agent's YAML-frontmatter markdown to a Codex
@@ -183,7 +171,6 @@ def agent_md_to_toml(md_text: str) -> str:
         return f"{body}\n\n# ─── source body ─────────────────────────────────────────\n{commented}\n"
     return body + "\n"
 
-
 def mcp_servers_to_toml(mcp_json: dict) -> str:
     """Render ``.mcp.json`` as Codex-compatible TOML.
 
@@ -203,9 +190,7 @@ def mcp_servers_to_toml(mcp_json: dict) -> str:
         tables.append(emit_toml_table(f"mcp_servers.{name}", fields))
     return "\n\n".join(tables) + "\n"
 
-
 # ─── Exporter ────────────────────────────────────────────────────────
-
 
 @dataclass
 class ExportResult:
@@ -216,7 +201,6 @@ class ExportResult:
     agents: list[Path]
     config_toml: Path | None
     readme: Path | None
-
 
 class CodexExporter:
     """Walk the kaizen plugin and emit Codex-shaped layout under ``out_dir``."""
@@ -330,15 +314,11 @@ class CodexExporter:
             readme=self.export_readme(),
         )
 
-
 # ─── CLI ─────────────────────────────────────────────────────────────
-
 
 TARGETS = {"codex": CodexExporter}
 
-
 # ─── Validate (re-parse the emitted bundle) ──────────────────────────
-
 
 @dataclass
 class ValidationReport:
@@ -376,7 +356,6 @@ class ValidationReport:
             lines.append(f"    ~ YAML   {path}: {err}")
         lines.append("  → " + ("PASS" if self.ok else "FAIL"))
         return "\n".join(lines)
-
 
 def validate_bundle(out_dir: Path) -> ValidationReport:
     """Re-parse every .toml + every .md frontmatter under ``out_dir``.
@@ -417,9 +396,7 @@ def validate_bundle(out_dir: Path) -> ValidationReport:
 
     return ValidationReport(toml_count, toml_errors, md_count, md_warnings)
 
-
 # ─── CLI ─────────────────────────────────────────────────────────────
-
 
 def _build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
@@ -464,7 +441,6 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     return p
 
-
 def main(argv: list[str] | None = None) -> int:
     args = _build_parser().parse_args(argv)
 
@@ -479,7 +455,8 @@ def main(argv: list[str] | None = None) -> int:
         _here = Path(__file__).resolve().parent
         sys.path.insert(0, str(_here))
         # _plugin_root.py deferred at legacy skills/workflow/scripts/.
-        sys.path.insert(0, str(_here.parents[1] / "skills" / "workflow" / "scripts"))
+        sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+        import _bootstrap  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
         from _plugin_root import plugin_root as resolve  # noqa: E402
         plugin_root = resolve()
 
@@ -513,7 +490,6 @@ def main(argv: list[str] | None = None) -> int:
             return 1
 
     return 0
-
 
 if __name__ == "__main__":
     sys.exit(main())

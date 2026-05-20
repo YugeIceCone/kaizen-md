@@ -41,8 +41,8 @@ from pathlib import Path
 SCRIPT_DIR = Path(__file__).resolve().parent
 APP_DIR = SCRIPT_DIR.parent.parent / "iron-laws" / "application"
 sys.path.insert(0, str(SCRIPT_DIR))
-# MIGRATION BRIDGE — relocated modules + legacy helpers
-sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "skills" / "workflow" / "scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import _bootstrap  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts" / "brain"))
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts" / "indexers"))
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts" / "handlers"))
@@ -62,7 +62,6 @@ import _loader  # noqa: E402
 
 mcp = FastMCP("kaizen-iron-laws")
 
-
 @mcp.tool()
 async def iron_laws_list() -> list[dict]:
     """Every iron law — id / severity / enforcement / check / statement.
@@ -71,7 +70,6 @@ async def iron_laws_list() -> list[dict]:
     source of truth; this returns it schema-validated."""
     return await asyncio.to_thread(_loader.load_laws)
 
-
 @mcp.tool()
 async def iron_laws_show(law_id: str) -> dict:
     """One law's full record. Returns {"error": ...} for an unknown id."""
@@ -79,7 +77,6 @@ async def iron_laws_show(law_id: str) -> dict:
     if law is None:
         return {"error": f"no law with id '{law_id}'"}
     return law
-
 
 @mcp.tool()
 async def iron_laws_check(scope: str = "staged", law_id: str = "") -> dict:
@@ -101,7 +98,6 @@ async def iron_laws_check(scope: str = "staged", law_id: str = "") -> dict:
         "soft": len(findings) - hard,
         "findings": [asdict(f) for f in findings],
     }
-
 
 if __name__ == "__main__":
     mcp.run()

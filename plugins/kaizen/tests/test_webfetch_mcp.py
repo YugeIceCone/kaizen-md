@@ -18,20 +18,18 @@ from pathlib import Path
 from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / "skills" / "workflow" / "scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 sys.path.insert(0, str(ROOT / "scripts" / "mcp"))
-
 
 def _iso(t: dt.datetime) -> str:
     return t.strftime("%Y-%m-%dT%H:%M:%SZ")
-
 
 def _seed_entries(path: Path, entries: list[dict]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8") as f:
         for e in entries:
             f.write(json.dumps(e) + "\n")
-
 
 class TestCached(unittest.TestCase):
     """webfetch_cached recalls fetches within TTL."""
@@ -106,7 +104,6 @@ class TestCached(unittest.TestCase):
                 r = wf.webfetch_cached("http://x/", "p", ttl_min=60)
         self.assertEqual(r["hit"], False)
 
-
 class TestSessionSeen(unittest.TestCase):
     """webfetch_session_seen tracks per-session re-reads."""
 
@@ -155,7 +152,6 @@ class TestSessionSeen(unittest.TestCase):
         self.assertFalse(r["seen"])
         self.assertIn("reason", r)
 
-
 class TestSearch(unittest.TestCase):
 
     def test_substring_match_returns_hits(self):
@@ -199,7 +195,6 @@ class TestSearch(unittest.TestCase):
                             {"KAIZEN_WEBFETCH_CAPTURE_LOG": str(log)}):
                 r = wf.webfetch_search("needle", top_k=3)
         self.assertEqual(len(r["matches"]), 3)
-
 
 class TestPolicy(unittest.TestCase):
 
@@ -249,7 +244,6 @@ class TestPolicy(unittest.TestCase):
             with patch.dict(os.environ, env_copy, clear=True):
                 r = wf.webfetch_policy("https://example.com/new")
         self.assertEqual(r["verdict"], "rate-limited")
-
 
 class TestWebfetchStore(unittest.TestCase):
     """webfetch_store fetches via stdlib + stores body — agent gets only
@@ -341,7 +335,6 @@ class TestWebfetchStore(unittest.TestCase):
         self.assertFalse(r["stored"])
         self.assertIn("URLError", r["error"])
 
-
 class TestWebfetchSemsearch(unittest.TestCase):
     """webfetch_semsearch returns snippets-only (never full bodies).
     Falls back to substring when embedding unavailable."""
@@ -418,7 +411,6 @@ class TestWebfetchSemsearch(unittest.TestCase):
         # NEVER the full 7KB body — bounded snippet only
         self.assertLessEqual(len(snippet), 350)
         self.assertIn("needle", snippet)
-
 
 if __name__ == "__main__":
     unittest.main()

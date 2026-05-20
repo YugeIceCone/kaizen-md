@@ -41,7 +41,6 @@ import sys
 from pathlib import Path
 from typing import Any
 
-
 _VALID_SCOPES = ("project", "global")
 _VALID_RUN_MODES = ("routine", "loop", "schema")
 _VALID_THRESHOLDS = (25, 50, 75, 85)
@@ -55,9 +54,7 @@ _VALID_DISCIPLINES = (
 )
 _VALID_LOOP_STOP = ("promise", "ledger-empty", "iteration-cap", "manual-cancel")
 
-
 # ─── Path resolution ─────────────────────────────────────────────────
-
 
 def _project_path() -> Path:
     """Resolve <repo>/.kaizen/workflow.json (test override honored)."""
@@ -72,7 +69,6 @@ def _project_path() -> Path:
         cur = cur.parent
     return Path.cwd() / ".kaizen" / "workflow.json"
 
-
 def _global_path() -> Path:
     """Resolve ~/.claude/.kaizen/workflow-global.json (KAIZEN_DIR honored)."""
     override = os.environ.get("KAIZEN_WORKFLOW_GLOBAL_CONFIG_PATH")
@@ -82,7 +78,6 @@ def _global_path() -> Path:
                                  Path.home() / ".claude" / ".kaizen"))
     return root / "workflow-global.json"
 
-
 def _resolve(scope: str) -> Path:
     if scope == "project":
         return _project_path()
@@ -90,9 +85,7 @@ def _resolve(scope: str) -> Path:
         return _global_path()
     raise SystemExit(f"workflow_config: unknown scope: {scope!r}")
 
-
 # ─── I/O ─────────────────────────────────────────────────────────────
-
 
 def _read(path: Path) -> dict[str, Any]:
     if not path.exists():
@@ -102,13 +95,11 @@ def _read(path: Path) -> dict[str, Any]:
     except (OSError, json.JSONDecodeError) as e:
         raise SystemExit(f"workflow_config: cannot read {path}: {e}")
 
-
 def _write(path: Path, data: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(path.suffix + ".tmp")
     tmp.write_text(json.dumps(data, indent=2, sort_keys=True) + "\n")
     os.replace(tmp, path)
-
 
 def _merged() -> dict[str, Any]:
     """Project overrides global. Used by `get` / `show` default reads."""
@@ -116,9 +107,7 @@ def _merged() -> dict[str, Any]:
     out.update(_read(_project_path()))
     return out
 
-
 # ─── Validation ──────────────────────────────────────────────────────
-
 
 def _validate_disciplines(raw: str | None) -> list[str] | None:
     if raw is None:
@@ -131,7 +120,6 @@ def _validate_disciplines(raw: str | None) -> list[str] | None:
             f"  valid: {', '.join(_VALID_DISCIPLINES)}"
         )
     return picks
-
 
 def _validate_threshold(raw: str | None) -> int | None | str:
     if raw is None:
@@ -148,7 +136,6 @@ def _validate_threshold(raw: str | None) -> int | None | str:
         )
     return v
 
-
 def _validate_loop_stop(raw: str | None) -> list[str] | None:
     if raw is None:
         return None
@@ -161,9 +148,7 @@ def _validate_loop_stop(raw: str | None) -> list[str] | None:
         )
     return picks
 
-
 # ─── Subcommands ─────────────────────────────────────────────────────
-
 
 def cmd_set(args: argparse.Namespace) -> int:
     scope = args.scope or "project"
@@ -212,7 +197,6 @@ def cmd_set(args: argparse.Namespace) -> int:
     print(f"workflow_config: wrote {path} (scope={scope})")
     return 0
 
-
 def cmd_get(args: argparse.Namespace) -> int:
     if args.scope:
         data = _read(_resolve(args.scope))
@@ -227,7 +211,6 @@ def cmd_get(args: argparse.Namespace) -> int:
         for k in sorted(data):
             print(f"{k}: {data[k]}")
     return 0
-
 
 def cmd_get_key(args: argparse.Namespace) -> int:
     """Print a single scalar field from the merged config. Lists print
@@ -246,7 +229,6 @@ def cmd_get_key(args: argparse.Namespace) -> int:
     else:
         print(cur)
     return 0
-
 
 def cmd_show(args: argparse.Namespace) -> int:
     if args.scope:
@@ -271,12 +253,10 @@ def cmd_show(args: argparse.Namespace) -> int:
             print(f"  {k}: {v}")
     return 0
 
-
 def cmd_path(args: argparse.Namespace) -> int:
     scope = args.scope or "project"
     print(_resolve(scope))
     return 0
-
 
 def cmd_reset(args: argparse.Namespace) -> int:
     scope = args.scope or "project"
@@ -291,9 +271,7 @@ def cmd_reset(args: argparse.Namespace) -> int:
     print(f"workflow_config: deleted {path}")
     return 0
 
-
 # ─── dry-run (classify task → bucket → stage list, no execution) ─────
-
 
 def _resolve_schema_dir(name: str) -> Path | None:
     """Locate <schema_name>/ — env override, project CWD walk, user, built-in.
@@ -329,7 +307,6 @@ def _resolve_schema_dir(name: str) -> Path | None:
     if (candidate / "schema.yaml").exists():
         return candidate
     return None
-
 
 def _parse_bucket_stage_skips(rubric_text: str) -> dict[str, dict[str, list[str]]]:
     """Extract the `bucket_stage_skips:` section from rubric.yaml.
@@ -375,7 +352,6 @@ def _parse_bucket_stage_skips(rubric_text: str) -> dict[str, dict[str, list[str]
                     items = [s.strip().strip("\"'") for s in rest[1:-1].split(",") if s.strip()]
                     out[current_bucket][current_field] = items
     return out
-
 
 def cmd_dry_run(args) -> int:
     """Classify a task without executing it: signals → bucket → stages."""
@@ -460,7 +436,6 @@ def cmd_dry_run(args) -> int:
             print(f"  skip stages: {', '.join(bucket_skips['skip'])}")
     return 0
 
-
 def cmd_run(args) -> int:
     """Start a schema run — `kaizen-workflow-config run [--schema X] [--force]`.
 
@@ -481,9 +456,7 @@ def cmd_run(args) -> int:
         return 1
     return _wr.cmd_start(schema_name, force=bool(getattr(args, "force", False)))
 
-
 # ─── argparse wiring ─────────────────────────────────────────────────
-
 
 def _build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
@@ -567,11 +540,9 @@ def _build_parser() -> argparse.ArgumentParser:
 
     return p
 
-
 def main(argv: list[str] | None = None) -> int:
     args = _build_parser().parse_args(argv)
     return args.func(args)
-
 
 if __name__ == "__main__":
     sys.exit(main())

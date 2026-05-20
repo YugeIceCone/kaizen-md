@@ -15,8 +15,8 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-SCRIPT_DIR = Path(__file__).resolve().parent.parent / "skills" / "workflow" / "scripts"
-sys.path.insert(0, str(SCRIPT_DIR))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts" / "indexers"))
 
 try:
@@ -30,10 +30,8 @@ import index_flow as ix  # noqa: E402
 
 requires_numpy = unittest.skipUnless(NUMPY_AVAILABLE, "numpy not installed")
 
-
 def _vec(seed: int = 1) -> bytes:
     return struct.pack("384f", *([seed / 100.0] * 384))
-
 
 class TestDiscoverNode(unittest.TestCase):
     def test_lists_source_files(self) -> None:
@@ -48,7 +46,6 @@ class TestDiscoverNode(unittest.TestCase):
             paths = sorted(p.name for p in store["candidate_files"])
             self.assertEqual(paths, ["a.py", "b.rs"])
             self.assertEqual(store["candidate_count"], 2)
-
 
 class TestDumpNode(unittest.TestCase):
     def test_writes_to_code_files_raw(self) -> None:
@@ -65,7 +62,6 @@ class TestDumpNode(unittest.TestCase):
             n = conn.execute("SELECT COUNT(*) FROM code_files_raw").fetchone()[0]
             self.assertEqual(n, 2)
             conn.close()
-
 
 @requires_numpy
 class TestEndToEndIndexFlow(unittest.TestCase):
@@ -96,7 +92,6 @@ class TestEndToEndIndexFlow(unittest.TestCase):
                                "embedding_q8 should be populated on fresh dbs")
             conn.close()
 
-
 class TestSkipOptimize(unittest.TestCase):
     @requires_numpy
     def test_optimize_disabled_via_store_key(self) -> None:
@@ -107,7 +102,6 @@ class TestSkipOptimize(unittest.TestCase):
             with patch.object(oi._kz_embed, "embed_batch", side_effect=fake_batch):
                 report = ix.index(root, use_git=False, optimize=False)
             self.assertFalse(report["optimized"])
-
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

@@ -40,7 +40,6 @@ from _bash_discipline_scan import scan  # noqa: E402
 _PLUGIN_ROOT = Path(__file__).resolve().parent.parent.parent
 _ETU_SCAN = _PLUGIN_ROOT / "scripts" / "etu" / "etu_scan.py"
 
-
 def _load_etu_scan_text():
     """Return etu_scan.scan_text if available, else a no-op stub.
 
@@ -64,7 +63,6 @@ def _load_etu_scan_text():
     except (ImportError, AttributeError, OSError):
         return None
 
-
 # Long-form path → short-form `kaizen <sub>` suggester.
 # Matches `bash plugins/kaizen/.../bin/kaizen-FOO` OR
 # `python3 plugins/kaizen/scripts/<cluster>/FOO.py` and infers the
@@ -76,7 +74,6 @@ _LONG_FORM_BIN = re.compile(
 _LONG_FORM_SCRIPT = re.compile(
     r"(?:^|[\s|;&])(?:python3?|uv run --script)\s+[^\s]*plugins/kaizen/(?:skills/workflow/scripts|scripts/[\w-]+)/([\w-]+)\.(?:py|sh)\b"
 )
-
 
 # Destructive-op patterns — ordered most-specific first. Mirrors the grep
 # ladder that lived inline in pretooluse-bash-gate.sh pre-collapse.
@@ -107,7 +104,6 @@ _NO_DELETIONS_BELIEF = Path.home() / ".claude" / "brain" / "Notes" / "pref-no-de
 #   who want hard blocks on destructive ops opt into strict mode.
 _STRICT_SENTINEL = Path.home() / ".claude" / ".kaizen" / "strict"
 
-
 def _strict_mode() -> bool:
     """True if the user has explicitly opted into the blocking-prompt gate."""
     import os
@@ -116,7 +112,6 @@ def _strict_mode() -> bool:
     override = os.environ.get("KAIZEN_GATE_STRICT_FILE")
     sentinel = Path(override) if override else _STRICT_SENTINEL
     return sentinel.is_file()
-
 
 def _ask_to_advisory(reason: str) -> dict:
     """Wrap an `ask` reason as a non-blocking advisory.
@@ -142,7 +137,6 @@ _HEREDOC = re.compile(r"<<-?\s*['\"]?(\w+)['\"]?.*?\n[ \t]*\1\b", re.DOTALL)
 _DQUOTE = re.compile(r'"[^"]*"')
 _SQUOTE = re.compile(r"'[^']*'")
 
-
 def _strip_noncommand(command: str) -> str:
     """Blank out heredoc bodies and quoted-string literals.
 
@@ -160,7 +154,6 @@ def _strip_noncommand(command: str) -> str:
     s = _DQUOTE.sub(" ", s)
     s = _SQUOTE.sub(" ", s)
     return s
-
 
 def destructive_decision(command: str) -> tuple[str, str] | None:
     """Return (permissionDecision, reason) for a destructive command, else None.
@@ -194,7 +187,6 @@ def destructive_decision(command: str) -> tuple[str, str] | None:
                 "source-of-truth (config, brain, plans/, .workflow/).")
     return None
 
-
 def advisory_message(command: str) -> str | None:
     """Return a formatted bash-discipline advisory string, else None."""
     warnings = scan(command)
@@ -208,7 +200,6 @@ def advisory_message(command: str) -> str | None:
             w.get("rule", "?"),
             w.get("message", "")))
     return "\n".join(lines)
-
 
 def etu_decision(command: str) -> tuple[str, str] | None:
     """Run etu_scan.scan_text against the command. Return (verb, reason)
@@ -245,7 +236,6 @@ def etu_decision(command: str) -> tuple[str, str] | None:
     )
     return ("ask", "\n".join(lines))
 
-
 def long_form_nudge(command: str) -> str | None:
     """Detect long-form invocations of kaizen scripts and suggest the
     `kaizen <sub>` short form. Advisory-only — never blocks."""
@@ -272,7 +262,6 @@ def long_form_nudge(command: str) -> str | None:
     if len(matches) > 3:
         lines.append(f"  + {len(matches) - 3} more")
     return "\n".join(lines)
-
 
 def decide(command: str) -> dict:
     """Pure decision function — command in, hook-output dict out.
@@ -345,7 +334,6 @@ def decide(command: str) -> dict:
 
     return {}
 
-
 def _read_command() -> str:
     """Extract tool_input.command from a PreToolUse event JSON on stdin."""
     try:
@@ -359,11 +347,9 @@ def _read_command() -> str:
         return ""
     return tool_input.get("command", "") or ""
 
-
 def main() -> int:
     print(json.dumps(decide(_read_command())))
     return 0
-
 
 if __name__ == "__main__":
     sys.exit(main())

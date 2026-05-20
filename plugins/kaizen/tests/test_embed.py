@@ -20,11 +20,10 @@ import urllib.error
 from pathlib import Path
 from unittest.mock import patch
 
-SCRIPT_DIR = Path(__file__).resolve().parent.parent / "skills" / "workflow" / "scripts"
-sys.path.insert(0, str(SCRIPT_DIR))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 
 import _embed  # noqa: E402
-
 
 class TestStaleHttpCacheFallback(unittest.TestCase):
     """When the cached HTTP endpoint dies, embed_one/embed_batch must
@@ -94,7 +93,6 @@ class TestStaleHttpCacheFallback(unittest.TestCase):
         http_mock.assert_not_called()
         local_mock.assert_not_called()
 
-
 class TestBypassEnvHttp(unittest.TestCase):
     """v1.29.3+: when the env-forced HTTP endpoint dies, the fallback
     path must pass bypass_env_http=True so refresh doesn't return the
@@ -135,16 +133,13 @@ class TestBypassEnvHttp(unittest.TestCase):
         self.assertEqual(cfg["kind"], "local")
         self.assertNotEqual(cfg.get("base_url", ""), "http://dead.local/v1")
 
-
 import os  # noqa: E402 — used by TestBypassEnvHttp only
-
 
 class TestInvalidateCache(unittest.TestCase):
     def test_clears_in_memory_state(self) -> None:
         _embed._cached_cfg = {"kind": "http", "base_url": "x", "model": "y"}
         _embed._invalidate_cache()
         self.assertIsNone(_embed._cached_cfg)
-
 
 class TestIsEmbeddingModelName(unittest.TestCase):
     """Spot-check the heuristic that distinguishes embed-shaped names
@@ -173,7 +168,6 @@ class TestIsEmbeddingModelName(unittest.TestCase):
             "claude-opus-4-7",
         ]:
             self.assertFalse(_embed.is_embedding_model_name(name), f"false positive: {name}")
-
 
 if __name__ == "__main__":
     unittest.main()

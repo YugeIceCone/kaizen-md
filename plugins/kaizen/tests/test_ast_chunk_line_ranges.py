@@ -11,25 +11,21 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / "skills" / "workflow" / "scripts"))
-
-
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 _SAMPLE = '''"""module docstring"""
 
 import os
 
 CONST = 1
 
-
 def foo(x):
     return x + 1
-
 
 class Bar:
     def method(self):
         return self
 '''
-
 
 class TestSymbolChunkHasLineFields(unittest.TestCase):
 
@@ -52,7 +48,6 @@ class TestSymbolChunkHasLineFields(unittest.TestCase):
         )
         self.assertEqual(sc.line_start, 0)
         self.assertEqual(sc.line_end, 0)
-
 
 class TestLineRangesPopulated(unittest.TestCase):
 
@@ -83,7 +78,6 @@ class TestLineRangesPopulated(unittest.TestCase):
         for c in bar_chunks:
             self.assertGreaterEqual(c.line_start, 12)
             self.assertLessEqual(c.line_end, 14)
-
 
 if __name__ == "__main__":
     unittest.main()

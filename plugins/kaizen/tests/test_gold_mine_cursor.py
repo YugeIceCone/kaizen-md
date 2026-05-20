@@ -18,10 +18,9 @@ import unittest
 from pathlib import Path
 
 _KZ = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(_KZ / "skills" / "workflow" / "scripts"))
-
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 import gold_mine  # noqa: E402
-
 
 class CursorBase(unittest.TestCase):
     def setUp(self):
@@ -45,7 +44,6 @@ class CursorBase(unittest.TestCase):
             for line in lines:
                 f.write(line + "\n")
 
-
 class TestCursorPath(CursorBase):
     def test_cursor_path_inside_project_slug(self):
         p = gold_mine.cursor_path()
@@ -62,7 +60,6 @@ class TestCursorPath(CursorBase):
         loaded = gold_mine.load_cursor()
         self.assertEqual(loaded["dxm"]["inode"], 7)
         self.assertEqual(loaded["dxm"]["byte_offset"], 100)
-
 
 class TestTailDiff(CursorBase):
     def test_first_read_returns_all_lines(self):
@@ -117,7 +114,6 @@ class TestTailDiff(CursorBase):
                                                 prior=None)
         self.assertEqual(lines, [])
         self.assertEqual(cur, {})
-
 
 if __name__ == "__main__":
     unittest.main()

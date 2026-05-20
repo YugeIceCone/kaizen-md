@@ -16,10 +16,8 @@ import sys
 import time
 from pathlib import Path
 
-
 def _disabled() -> bool:
     return os.environ.get("KAIZEN_INTENT_DISABLE") == "1"
-
 
 def _dxm_dir() -> Path:
     env = os.environ.get("KAIZEN_DXM_DIR")
@@ -27,16 +25,14 @@ def _dxm_dir() -> Path:
         return Path(os.path.expandvars(env)).expanduser()
     return Path.home() / ".claude" / ".kaizen" / "dxm"
 
-
 def _discover_session(cwd: Path) -> str | None:
     """Shared session discovery via _session_jsonl helper."""
     _SCRIPT_DIR = Path(__file__).resolve().parent
     sys.path.insert(0, str(_SCRIPT_DIR))
-    # MIGRATION BRIDGE — kaizen modules still at skills/workflow/scripts/
-    sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "skills" / "workflow" / "scripts"))
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    import _bootstrap  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
     from _session_jsonl import discover_active_session_id
     return discover_active_session_id(cwd)
-
 
 def _read_recent_events(sid: str, back_seconds: float) -> list[dict]:
     path = _dxm_dir() / f"events-{sid}.jsonl"
@@ -60,7 +56,6 @@ def _read_recent_events(sid: str, back_seconds: float) -> list[dict]:
     except OSError:
         return []
     return out
-
 
 def _run_intent_scan(events: list[dict]) -> dict | None:
     """Load intents + return best event_pattern match (or None)."""
@@ -91,7 +86,6 @@ def _run_intent_scan(events: list[dict]) -> dict | None:
         "action":      best.get("action") or {},
     }
 
-
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(
         prog="statusline_intent",
@@ -121,7 +115,6 @@ def main(argv=None) -> int:
     # Compact segment: "intent: <id> (conf)"
     print(f"intent: {match['id']} ({match['confidence']:.2f})")
     return 0
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

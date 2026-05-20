@@ -31,14 +31,11 @@ from pathlib import Path
 MARKER = Path(".claude-plugin") / "plugin.json"
 ENV_VARS = ("CLAUDE_PLUGIN_ROOT", "KAIZEN_PLUGIN_ROOT")
 
-
 class PluginRootNotFound(RuntimeError):
     """Raised when no candidate satisfies the resolution order."""
 
-
 def _is_plugin_dir(candidate: Path) -> bool:
     return (candidate / MARKER).is_file()
-
 
 def _from_env() -> Path | None:
     """Return the first env-var value that points at a kaizen plugin dir."""
@@ -51,7 +48,6 @@ def _from_env() -> Path | None:
             return p
     return None
 
-
 def _from_script_path(start: Path) -> Path | None:
     """Walk up from `start` looking for the plugin marker. Returns None if not found."""
     cur = start.resolve()
@@ -59,7 +55,6 @@ def _from_script_path(start: Path) -> Path | None:
         if _is_plugin_dir(candidate):
             return candidate
     return None
-
 
 def plugin_root(strict: bool = True) -> Path | None:
     """Resolve the kaizen plugin root.
@@ -82,7 +77,6 @@ def plugin_root(strict: bool = True) -> Path | None:
             "containing .claude-plugin/plugin.json"
         )
     return None
-
 
 if __name__ == "__main__":
     import sys

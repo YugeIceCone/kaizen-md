@@ -92,7 +92,6 @@ import sys
 from pathlib import Path
 from typing import Any
 
-
 class IndexerCLI:
     """Base class for SQLite-backed indexer CLIs (M7).
 

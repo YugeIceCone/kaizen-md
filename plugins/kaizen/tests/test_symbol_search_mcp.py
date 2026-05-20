@@ -15,10 +15,10 @@ from pathlib import Path
 from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / "skills" / "workflow" / "scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 sys.path.insert(0, str(ROOT / "scripts" / "mcp"))
 sys.path.insert(0, str(ROOT / "scripts" / "indexers"))
-
 
 def _seed_onboard_db(root: Path) -> None:
     """Create a minimal onboard.db with 2 code_files + 3 code_chunks
@@ -61,7 +61,6 @@ def _seed_onboard_db(root: Path) -> None:
     conn.commit()
     conn.close()
 
-
 class TestResolveRoot(unittest.TestCase):
 
     def test_env_override_wins(self):
@@ -72,7 +71,6 @@ class TestResolveRoot(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td:
             with patch.dict(os.environ, {"KAIZEN_ONBOARD_ROOT": td}):
                 self.assertEqual(str(ss._resolve_root()), td)
-
 
 class TestSymbolSearch(unittest.TestCase):
 
@@ -137,7 +135,6 @@ class TestSymbolSearch(unittest.TestCase):
                 results = ss.symbol_search("anything")
             self.assertEqual(results, [])
 
-
 class TestSymbolAtLine(unittest.TestCase):
 
     def test_returns_enclosing_symbol(self):
@@ -166,7 +163,6 @@ class TestSymbolAtLine(unittest.TestCase):
                 # Line 999 isn't inside any symbol
                 results = ss.symbol_at_line("auth.py", 999)
             self.assertEqual(results, [])
-
 
 if __name__ == "__main__":
     unittest.main()

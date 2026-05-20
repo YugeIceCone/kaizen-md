@@ -52,20 +52,16 @@ import os
 import sys
 from typing import Any, Optional
 
-
 try:
     from fastmcp import FastMCP
 except ImportError:
     sys.stderr.write("kaizen-ollama-mcp: fastmcp>=3.0 required\n")
     sys.exit(2)
 
-
 _DEFAULT_HOST = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
 _CHAT_TIMEOUT_S = float(os.environ.get("KAIZEN_OLLAMA_TIMEOUT", "60"))
 
-
 _client = None
-
 
 def _ollama_client():
     """Lazy-load the official ollama Python client. Returns the
@@ -85,7 +81,6 @@ def _ollama_client():
         return None
     return _client
 
-
 def _normalize(model_obj: Any) -> dict:
     """Ollama returns model objects that may be dict or pydantic-y."""
     if isinstance(model_obj, dict):
@@ -97,12 +92,9 @@ def _normalize(model_obj: Any) -> dict:
             out[attr] = val if not hasattr(val, "model_dump") else val.model_dump()
     return out
 
-
 mcp = FastMCP("kaizen-ollama")
 
-
 # ─── reachable ────────────────────────────────────────────────────────
-
 
 @mcp.tool()
 async def ollama_reachable() -> dict:
@@ -124,9 +116,7 @@ async def ollama_reachable() -> dict:
                     "error": str(e)}
     return await asyncio.to_thread(_run)
 
-
 # ─── list ─────────────────────────────────────────────────────────────
-
 
 @mcp.tool()
 async def ollama_list() -> dict:
@@ -150,9 +140,7 @@ async def ollama_list() -> dict:
             return {"error": str(e)}
     return await asyncio.to_thread(_run)
 
-
 # ─── ps ───────────────────────────────────────────────────────────────
-
 
 @mcp.tool()
 async def ollama_ps() -> dict:
@@ -175,9 +163,7 @@ async def ollama_ps() -> dict:
             return {"error": str(e)}
     return await asyncio.to_thread(_run)
 
-
 # ─── show ─────────────────────────────────────────────────────────────
-
 
 @mcp.tool()
 async def ollama_show(model: str) -> dict:
@@ -203,9 +189,7 @@ async def ollama_show(model: str) -> dict:
             return {"error": str(e)}
     return await asyncio.to_thread(_run)
 
-
 # ─── chat ─────────────────────────────────────────────────────────────
-
 
 @mcp.tool()
 async def ollama_chat(
@@ -298,7 +282,6 @@ async def ollama_chat(
         return out
 
     return await asyncio.wait_for(asyncio.to_thread(_run), timeout=t)
-
 
 if __name__ == "__main__":
     # Standalone runtime — usually mounted into the gateway, but the

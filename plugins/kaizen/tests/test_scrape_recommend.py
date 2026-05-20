@@ -18,12 +18,11 @@ import sys
 import unittest
 from pathlib import Path
 
-SCRIPT_DIR = Path(__file__).resolve().parent.parent / "skills" / "workflow" / "scripts"
-sys.path.insert(0, str(SCRIPT_DIR))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts" / "indexers"))
 
 import scrape_index as si  # noqa: E402
-
 
 class TestRecommendationsShape(unittest.TestCase):
     def test_list_is_ranked(self) -> None:
@@ -48,7 +47,6 @@ class TestRecommendationsShape(unittest.TestCase):
         names = [r["name"] for r in si.OLLAMA_SCRAPE_RECOMMENDATIONS]
         self.assertEqual(len(names), len(set(names)))
 
-
 class TestModelNameMatches(unittest.TestCase):
     def test_exact(self) -> None:
         self.assertTrue(si._model_name_matches("qwen3.5:9b", "qwen3.5:9b"))
@@ -67,7 +65,6 @@ class TestModelNameMatches(unittest.TestCase):
     def test_family_only_no_loose_match(self) -> None:
         # `qwen3.5` should NOT match `qwen3.5:9b` (different size)
         self.assertFalse(si._model_name_matches("qwen3.5", "qwen3.5:9b"))
-
 
 class TestPickBestChatModel(unittest.TestCase):
     def test_empty_returns_none(self) -> None:
@@ -105,7 +102,6 @@ class TestPickBestChatModel(unittest.TestCase):
         # Installed model has a quant suffix; should still match the rec.
         out = si.pick_best_chat_model(["qwen3.5:9b-instruct-q4_0"])
         self.assertEqual(out, "qwen3.5:9b-instruct-q4_0")
-
 
 if __name__ == "__main__":
     unittest.main()

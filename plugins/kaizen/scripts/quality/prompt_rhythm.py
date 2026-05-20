@@ -14,14 +14,12 @@ from pathlib import Path
 
 _SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(_SCRIPT_DIR))
-# MIGRATION BRIDGE — legacy helpers still at skills/workflow/scripts/
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "io"))
 
 import _envelope  # noqa: E402
 
 _emit = _envelope.emitter("kaizen-prompt-rhythm", tool_version="1.0.0")
 _DEFAULT_LOG = Path.home() / ".claude/.kaizen/trace/events.jsonl"
-
 
 def scan(*, trace_log: Path) -> dict:
     if not trace_log.is_file():
@@ -49,7 +47,6 @@ def scan(*, trace_log: Path) -> dict:
         "prompt_count":   len(timestamps),
     }
 
-
 def _run(args) -> int:
     log = Path(args.trace_log).expanduser() if args.trace_log else _DEFAULT_LOG
     rep = scan(trace_log=log)
@@ -63,7 +60,6 @@ def _run(args) -> int:
           counts={"prompts": rep.get("prompt_count", 0)})
     return 0
 
-
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="kaizen-prompt-rhythm",
         description="Time between UserPromptSubmit events.")
@@ -75,7 +71,6 @@ def main(argv: list[str] | None = None) -> int:
         s.set_defaults(func=_run)
     args = ap.parse_args(argv)
     return args.func(args)
-
 
 if __name__ == "__main__":
     sys.exit(main())
