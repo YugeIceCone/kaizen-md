@@ -155,11 +155,16 @@ def _cmd_list(_args) -> int:
 
 def _cmd_run(args) -> int:
     yaml_path = Path(args.axis)
-    if not yaml_path.is_absolute():
-        # Try resolving relative to domain/axes/ first, then CWD
-        candidate = _AXES_DIR / yaml_path
-        if candidate.exists():
-            yaml_path = candidate
+    if not yaml_path.is_absolute() and not yaml_path.exists():
+        # Try resolving as a stem under domain/axes/
+        for candidate in (
+            _AXES_DIR / yaml_path,
+            _AXES_DIR / f"{yaml_path}.yaml",
+            _AXES_DIR / f"{yaml_path}.yml",
+        ):
+            if candidate.exists():
+                yaml_path = candidate
+                break
     root = Path(args.root) if args.root else _PLUGIN_ROOT
     envelope = run_axis(yaml_path, root=root)
     print(_envelope.render(envelope))
