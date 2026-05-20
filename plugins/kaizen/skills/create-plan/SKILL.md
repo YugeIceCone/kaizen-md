@@ -62,6 +62,21 @@ If context is still thin after step 5, **stop and report the gap** rather than p
 7. Add a per-phase **Status** field initialized to `pending`.
 8. Write the **Resume Protocol** so a fresh agent can pick up at any phase.
 
+## Content discipline
+
+Phase titles + step summaries must be **specific + implicit + no prose**.
+Signals + verbs + file:line / file:symbol — not narrative paragraphs.
+
+- Phase title: `"Phase 2 — refactor superpower_bundle.py::_superpowers_dir()"`
+  NOT `"Refactor the bundle module to use the new helper"`.
+- Step: `"add disallowedTools to agents/kaizen-implementer.md:30"`
+  NOT `"Update the agent definition for safety"`.
+- Verification: exact command `python3 -m unittest tests.test_X | tail -3`
+  NOT `"Ensure tests pass"`.
+
+Pairs with `feedback-descriptions-specific-no-prose` (saved in this
+project's auto-memory). Applies to every plan this skill emits.
+
 ## Agent-Reusable Plan Shape
 
 This is the **non-negotiable structure** for a plan that another agent will consume. Every plan that will be executed by a different session or subagent must include all of these sections. For the full template and worked examples, see `references/plan-template.md`.

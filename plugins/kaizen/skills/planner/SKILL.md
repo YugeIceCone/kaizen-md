@@ -197,6 +197,20 @@ silent runaway.
 - A formal pipeline gate (e.g. monthly planning sweep) wants disciplined
   artifact lineage.
 
+## Content discipline (applies to generated plan items + tasks)
+
+Plan items + task subjects must be **specific + implicit + no prose**.
+Same rule as SKILL.md descriptions (see `feedback-descriptions-specific-
+no-prose`).
+
+- Item title: `"Phase 2 — refactor superpower_bundle.py + 4 tests"`
+  NOT `"Refactor the bundle module and update its tests"`
+- Task subject: `"add disallowedTools to kaizen-implementer:30"`
+  NOT `"Update the kaizen-implementer agent for safety"`
+- Item summary: 1-2 sentences max, signals first
+- `refs`: file:line / commit-sha / URL. Never `"the relevant module"`.
+- `tags`: concrete domain labels (`tdd-red`, `phase-3`, `iron-law`)
+
 ## When NOT to use this skill
 
 - User has a concrete one-line change ("rename X to Y") — use `task` directly.

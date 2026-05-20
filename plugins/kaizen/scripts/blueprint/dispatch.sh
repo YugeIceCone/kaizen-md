@@ -102,70 +102,50 @@ print(','.join(t['id'] for t in chunks[n]))
         echo "  ✓ created worktree at $worktree on branch $branch" >&2
     fi
 
-    # Emit the canonical prompt to a file for Agent() consumption.
+    # Emit the canonical prompt — verbs / paths / commits only.
     local prompt_file="$worktree/.dispatch-prompt.md"
     cat > "$prompt_file" <<EOF
-# Chunk dispatch — $CHUNK_ID
+# $CHUNK_ID — $AGENT_TYPE in worktree
 
-You are dispatched as a $AGENT_TYPE subagent in an isolated git
-worktree. Your scope is the tasks listed below — nothing else.
+- **cwd:**    $worktree
+- **branch:** $branch
+- **plan:**   $PLAN
+- **list:**   $LIST_ID
+- **tasks:**  $task_ids
+- **agent:**  $AGENT_TYPE
+- **scope:**  exclusive to this worktree; no cd to repo root, no symlink edits
 
-## Working directory
+## Read plan (1-roundtrip)
 
-\`$worktree\` (branch \`$branch\`)
+- \`kaizen-blueprint show --id $LIST_ID --md\`
+- \`kaizen-blueprint show --id <task-id>\`
 
-Do NOT cd to the repo root. Do NOT edit through symlinks. All work
-happens here.
+## TDD per task
 
-## Plan
+RED test → GREEN impl → commit. One commit per task.
+Subject prefix: \`feat($CHUNK_ID-<task-id>):\`
 
-Source plan: \`$PLAN\`
+## Allow
 
-Read the plan with the blueprint CLI (1-roundtrip per call):
+Read / Edit / Write / Glob / Grep / Bash (worktree-local). git add /
+commit / status / diff / log / show / worktree / mv / restore <file>.
+python3 / bash / chmod / mkdir / ls / cat / head / tail / grep / find / wc.
+All \`kaizen-*\` bins.
 
-\`\`\`bash
-kaizen-blueprint show --id $LIST_ID --md         # the task-list this chunk belongs to
-kaizen-blueprint show --id <task-id>              # any individual task ref
-\`\`\`
+## Deny
 
-## Your tasks (in order)
+git push / reset --hard / checkout <other> / merge / rebase / clean /
+branch -D|-d / remote. rm -rf / curl / wget. Edits outside worktree.
+Direct writes to master.
 
-$(echo "$task_ids" | tr ',' '\n' | while read tid; do
-    echo "- \`$tid\` — see plan for subject/refs"
-done)
+## On finish — emit
 
-## TDD discipline
+- branch: $branch
+- commits: \`git log --oneline HEAD ^master\`
+- skipped tasks + reason
+- test baseline: \`python3 -m unittest discover ... | tail -3\`
 
-For each task: RED test → GREEN impl → commit.
-Per task = one commit. Commit subject prefix: \`feat($CHUNK_ID-$tid):\`.
-
-## What you ARE allowed to do
-
-- Read / Edit / Write / Glob / Grep / safe Bash inside this worktree
-- \`git add\`, \`git commit\`, \`git status\`, \`git diff\`, \`git log\`,
-  \`git show\`, \`git worktree\`, \`git mv\`, \`git restore <file>\`
-- \`python3\`, \`bash\`, \`chmod\`, \`mkdir\`, \`ls\`, \`cat\`, \`head\`,
-  \`tail\`, \`grep\`, \`find\`, \`wc\`
-- All \`kaizen-*\` plugin bins (including \`kaizen-blueprint\`)
-
-## What you must NEVER do
-
-- \`git push\`, \`git reset --hard\`, \`git checkout <other-branch>\`,
-  \`git merge\`, \`git rebase\`, \`git clean\`, \`git branch -D|-d\`,
-  \`git remote\`, \`rm -rf\`, \`curl\`, \`wget\`
-- Edit files OUTSIDE this worktree
-- Touch master directly — the parent will merge after all chunks settle
-
-## When you finish
-
-Report back:
-- The branch (\`$branch\`)
-- The commits you landed (\`git log --oneline HEAD ^master\`)
-- Any tasks you couldn't complete + why
-- Test baseline (\`python3 -m unittest discover ... | tail -3\`)
-
-Parent will run \`kaizen-blueprint dispatch finalize ...\` to flip
-task statuses + optionally clean up the worktree.
+Parent runs \`kaizen-blueprint dispatch finalize\` to flip statuses.
 EOF
 
     # Machine-readable meta block on stdout.

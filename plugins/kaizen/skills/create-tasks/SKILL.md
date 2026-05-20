@@ -64,6 +64,20 @@ Each task brief answers, at minimum:
 - **Blocked-by / blocks** — sequencing relationship to other tasks
 - **Redirect signals** — symptoms that mean the task should pause and re-route
 
+## Content discipline
+
+Task `subject` + `refs` + `tags` follow the
+**specific + implicit + no prose** rule (see `feedback-descriptions-
+specific-no-prose`):
+
+- subject: `"add disallowedTools to agents/kaizen-implementer.md:30"`
+  NOT `"Update the kaizen-implementer agent for safety"`.
+- refs: `["scripts/blueprint/blueprint.py:412", "commits/be6e240"]`
+  NOT `["the relevant module"]`.
+- tags: `["tdd-red", "iron-law", "phase-3"]` — concrete domain labels.
+
+Same rule applies to plan items emitted by `kaizen:create-plan`.
+
 For full task templates (refactor split, bug repair, migration slice, spike-then-execute, characterization tests), see `references/task-templates.md`.
 
 ## Output Forms
