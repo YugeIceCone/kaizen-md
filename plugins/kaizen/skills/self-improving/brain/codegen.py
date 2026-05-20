@@ -1,7 +1,7 @@
-"""MIGRATION BRIDGE — codegen moved to scripts/self_improving/brain/codegen.py.
+"""MIGRATION BRIDGE — codegen moved to scripts/self_improving/brain_codegen.py.
 
-Domain yaml + JSON schemas stay with the skill; only the .py adapter
-migrated as part of the v1.40+ scripts/<feature>/ consolidation.
+Flattened from the originally-migrated scripts/self_improving/brain/codegen.py
+(no nested subdirs in scripts/<feature>/ per kaizen convention).
 """
 from __future__ import annotations
 
@@ -10,9 +10,9 @@ import sys
 from pathlib import Path
 
 _PLUGIN_ROOT = Path(__file__).resolve().parents[3]
-_CANON_DIR = _PLUGIN_ROOT / "scripts/self_improving/brain"
+_CANON_DIR = _PLUGIN_ROOT / "scripts" / "self_improving"
 _LEGACY_DIR = Path(__file__).resolve().parent
-_CANONICAL = _CANON_DIR / "codegen.py"
+_CANONICAL = _CANON_DIR / "brain_codegen.py"
 
 for _p in (_LEGACY_DIR, _CANON_DIR):
     if str(_p) not in sys.path:

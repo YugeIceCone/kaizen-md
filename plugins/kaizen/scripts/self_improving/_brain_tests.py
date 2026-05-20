@@ -18,7 +18,9 @@ from pathlib import Path
 SCRIPT_DIR = Path(__file__).resolve().parent
 _PLUGIN_ROOT = SCRIPT_DIR.parent.parent
 DOMAIN = _PLUGIN_ROOT / "skills" / "self-improving" / "domain"
-BRAIN_TOOLS = _PLUGIN_ROOT / "scripts" / "self_improving" / "brain"
+# Post-flatten: brain_codegen.py + brain_validator.py live alongside this file
+# (no nested brain/ subdir). BRAIN_TOOLS unused now — kept for API compat.
+BRAIN_TOOLS = SCRIPT_DIR
 # Canonical note schema lives in the brain skill (not self-improving) — single
 # source of truth for <KAIZEN_BRAIN_DIR>/Notes/*.md frontmatter.
 BRAIN_SCHEMA_DOMAIN = _PLUGIN_ROOT / "skills" / "brain" / "domain"
@@ -84,7 +86,7 @@ class TestNotesSchema(unittest.TestCase):
 
 class TestBrainValidator(unittest.TestCase):
     def setUp(self):
-        self.tool = BRAIN_TOOLS / "validator.py"
+        self.tool = BRAIN_TOOLS / "brain_validator.py"
 
     def test_validator_exists(self):
         self.assertTrue(self.tool.exists(), f"missing: {self.tool}")
@@ -103,7 +105,7 @@ class TestBrainValidator(unittest.TestCase):
 
 class TestBrainCodegen(unittest.TestCase):
     def setUp(self):
-        self.tool = BRAIN_TOOLS / "codegen.py"
+        self.tool = BRAIN_TOOLS / "brain_codegen.py"
 
     def test_codegen_exists(self):
         self.assertTrue(self.tool.exists())
