@@ -1232,7 +1232,7 @@
     },
     {
       "id": "BK-065",
-      "section": "next_up",
+      "section": "done",
       "title": "Bulk shim sweep — delete the 60 MIGRATION BRIDGE shims with zero functional consumers",
       "ref": "remember-port-2026-05-20",
       "probe": "After the v1.40 application/ + scripts/ migration arc (commits 2a8eb3e..14c1a63), 132 MIGRATION BRIDGE shims exist in plugins/kaizen/skills/<feature>/{scripts,application,brain}/. Audit shows 60 of them have zero functional consumers (only doc/CHANGELOG references). They can be deleted in a single sweep. The other 72 still serve consumers.",
@@ -1244,14 +1244,14 @@
       ],
       "created": "2026-05-20",
       "started_at": null,
-      "committed": null,
-      "committed_at": null,
+      "committed": "f6b36e9",
+      "committed_at": "2026-05-20T10:58:51Z",
       "parked_reason": null,
       "probe_output": null
     },
     {
       "id": "BK-066",
-      "section": "next_up",
+      "section": "done",
       "title": "Fix nesting in plugins/kaizen/skills/ — no .py under skills/<feature>/{scripts,application,brain}/",
       "ref": "remember-port-2026-05-20",
       "probe": "Post-consolidation: every .py file under skills/<feature>/{scripts,application,brain}/ is a MIGRATION BRIDGE shim. The canonical layout (per the rule 'scripts/<feature>/.py — flat') means skills/<feature>/ should only contain: SKILL.md, domain/, references/, tests/ — never .py nesting. Once the shim sweep completes (BK-065), the nested subdirs (scripts/, application/, brain/) under skills/<feature>/ become empty and can be removed too.",
@@ -1261,6 +1261,26 @@
         "cleanup",
         "layout",
         "migration"
+      ],
+      "created": "2026-05-20",
+      "started_at": null,
+      "committed": "HEAD",
+      "committed_at": "2026-05-20T10:58:51Z",
+      "parked_reason": null,
+      "probe_output": null
+    },
+    {
+      "id": "BK-067",
+      "section": "next_up",
+      "title": "Sweep 110 .py shims at skills/workflow/scripts/ (high-risk .py subset of BK-065)",
+      "ref": "BK-065-py-subset",
+      "probe": "After f6b36e9 the .sh subset of BK-065 is done. 110 .py MIGRATION BRIDGE shims remain at skills/workflow/scripts/. Earlier bulk-delete attempt this arc went 4 fail → 70 fail because consumers use sys.path.insert(0, '<skills/workflow/scripts>') + bare 'import <name>' chains. Each shim forwards via importlib.spec_from_file_location + sys.modules alias, so deleting the shim breaks the consumer's import even when canonical exists.",
+      "verify": "Safer protocol: (1) for each consumer that does sys.path.insert into skills/workflow/scripts/, audit which module names it imports; (2) replace the sys.path insert with the canonical-feature dir (scripts/io, scripts/util, scripts/index, etc.) or add the canonical alongside; (3) verify suite green; (4) delete shim. Or: write a single 'shim-redirector' at skills/workflow/scripts/__init__.py that programmatically aliases sys.modules['<name>'] for every legacy name once and for all, then drop the per-file shims. Test each batch of ~10 shims; revert any that break suite.",
+      "tags": [
+        "shim",
+        "cleanup",
+        "migration",
+        "py"
       ],
       "created": "2026-05-20",
       "started_at": null,
