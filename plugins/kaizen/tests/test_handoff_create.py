@@ -97,6 +97,48 @@ class TestCreateHappy(CreateBase):
         self.assertEqual(latest_env["data"]["handoff"]["session_id"], "demo")
 
 
+class TestCreateInlineFinalize(CreateBase):
+    """Collapses `create --stdin` + `auto-finalize` into one call when
+    --outcome is set. Saves one tool-call per handoff and avoids the
+    interim 'partial / IN_PROGRESS' state."""
+
+    def test_outcome_inline_finalizes_to_complete(self):
+        r = self._run(_SAMPLE, "--outcome", "PARTIAL_PLUS",
+                      "--justification", "all committed work shipped; forward queue is planning")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        env = json.loads(r.stdout)
+        body = Path(env["data"]["file_path"]).read_text(encoding="utf-8")
+        self.assertIn("status: complete", body)
+        self.assertIn("outcome: PARTIAL_PLUS", body)
+        self.assertIn("outcome_assigned_by: agent", body)
+        self.assertIn("outcome_justification: all committed work shipped", body)
+        self.assertNotIn("status: partial", body)
+        self.assertNotIn("outcome: IN_PROGRESS", body)
+        # status surfaced in --json envelope too
+        self.assertEqual(env["data"]["status"], "complete")
+
+    def test_outcome_invalid_exits_2(self):
+        r = self._run(_SAMPLE, "--outcome", "BOGUS")
+        self.assertEqual(r.returncode, 2)
+        self.assertIn("invalid", r.stderr.lower() + r.stdout.lower())
+
+    def test_no_outcome_keeps_partial(self):
+        # Backward-compat: omitting --outcome leaves the YAML at
+        # status=partial / outcome=IN_PROGRESS as before.
+        r = self._run(_SAMPLE)
+        env = json.loads(r.stdout)
+        body = Path(env["data"]["file_path"]).read_text(encoding="utf-8")
+        self.assertIn("status: partial", body)
+        self.assertIn("outcome: IN_PROGRESS", body)
+
+    def test_outcome_assigned_by_user_overrides_default(self):
+        r = self._run(_SAMPLE, "--outcome", "SUCCEEDED",
+                      "--assigned-by", "user")
+        env = json.loads(r.stdout)
+        body = Path(env["data"]["file_path"]).read_text(encoding="utf-8")
+        self.assertIn("outcome_assigned_by: user", body)
+
+
 class TestCreateSchemaValidation(CreateBase):
     def test_missing_required_field_rejected(self):
         bad = dict(_SAMPLE)

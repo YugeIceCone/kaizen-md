@@ -1215,13 +1215,27 @@ def _quote_if_unsafe(value: str) -> str:
     return "'" + value.replace("'", "''") + "'"
 
 
-def _render_create_yaml(payload: dict, date_str: str) -> str:
+def _render_create_yaml(
+    payload: dict,
+    date_str: str,
+    *,
+    status: str = "partial",
+    outcome: str = "IN_PROGRESS",
+    assigned_by: str | None = None,
+    justification: str | None = None,
+) -> str:
     lines = [
         "---",
         f"session: {payload['session']}",
         f"date: {date_str}",
-        "status: partial",
-        "outcome: IN_PROGRESS",
+        f"status: {status}",
+        f"outcome: {outcome}",
+    ]
+    if assigned_by:
+        lines.append(f"outcome_assigned_by: {assigned_by}")
+    if justification:
+        lines.append(f"outcome_justification: {_quote_if_unsafe(justification)}")
+    lines += [
         "---",
         "",
         f"goal: {_quote_if_unsafe(payload['goal'])}",
@@ -1316,22 +1330,54 @@ def _cmd_create(args) -> int:
     session_dir.mkdir(parents=True, exist_ok=True)
     yaml_path = session_dir / f"{timestamp}_{slug}.yaml"
 
-    body = _render_create_yaml(payload, date_str)
+    # Inline-finalize: --outcome collapses create + auto-finalize into
+    # one call. Validate outcome/status before rendering so a bad value
+    # exits 2 without writing.
+    outcome = getattr(args, "outcome", None)
+    status = "partial"
+    assigned_by = None
+    justification = None
+    if outcome:
+        if outcome not in _core.VALID_OUTCOME:
+            print(f"[kaizen-handoff create] invalid --outcome {outcome!r} "
+                  f"(expected one of: {', '.join(_core.VALID_OUTCOME)})",
+                  file=sys.stderr)
+            return 2
+        status = getattr(args, "status", "complete")
+        if status not in _core.VALID_STATUS:
+            print(f"[kaizen-handoff create] invalid --status {status!r} "
+                  f"(expected one of: {', '.join(_core.VALID_STATUS)})",
+                  file=sys.stderr)
+            return 2
+        assigned_by = getattr(args, "assigned_by", "agent")
+        justification = getattr(args, "justification", None)
+        body_outcome = outcome
+    else:
+        body_outcome = "IN_PROGRESS"
+
+    body = _render_create_yaml(
+        payload, date_str,
+        status=status, outcome=body_outcome,
+        assigned_by=assigned_by, justification=justification,
+    )
 
     # Atomic write (shared util)
     _atomic.atomic_write(yaml_path, body)
 
     # Index into the store
     db_id = _core.save_handoff(
-        payload["session"], body, str(yaml_path.resolve()), status="partial",
+        payload["session"], body, str(yaml_path.resolve()), status=status,
     )
 
     data = {
         "file_path":  str(yaml_path.resolve()),
         "session_id": payload["session"],
         "db_id":      int(db_id),
-        "status":     "partial",
+        "status":     status,
     }
+    if outcome:
+        data["outcome"] = outcome
+        data["outcome_assigned_by"] = assigned_by
     _dxm_emit.emit_subcommand_complete(
         "handoff", "create",
         {"file_path": data["file_path"], "db_id": data["db_id"]},
@@ -2329,6 +2375,23 @@ def main(argv: Optional[list[str]] = None) -> int:
     src.add_argument("--data-file", default=None,
                       help="read JSON payload from a file")
     s_create.add_argument("--json", action="store_true")
+    # Inline-finalize: collapse `create` + `auto-finalize` into one call.
+    # When --outcome is set, the YAML lands with status=complete (override
+    # via --status) and the outcome/assigned_by/justification fields filled.
+    s_create.add_argument(
+        "--outcome", default=None,
+        help="inline-finalize: SUCCEEDED / PARTIAL_PLUS / PARTIAL_MINUS / "
+             "FAILED. When set, the YAML lands status=complete "
+             "(override via --status). Equivalent to running create "
+             "then auto-finalize as one call.",
+    )
+    s_create.add_argument("--status", default="complete",
+                           help="status when --outcome is set (default: complete)")
+    s_create.add_argument("--justification", default=None,
+                           help="one-line outcome justification when --outcome is set")
+    s_create.add_argument("--assigned-by", default="agent",
+                           choices=list(_core.VALID_ASSIGNED_BY),
+                           help="who assigned the outcome (default: agent)")
     s_create.set_defaults(func=_cmd_create)
 
     s_scaffold = sub.add_parser(
