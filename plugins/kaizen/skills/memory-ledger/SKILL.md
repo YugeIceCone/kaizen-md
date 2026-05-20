@@ -87,7 +87,7 @@ manifest:
 - **Does not own data.** Each surface keeps its existing owner feature.
 - **Does not mutate.** Read-only audit. Mutation lives in owner CLIs (`kaizen-brain`, `kaizen-backlog`, `kaizen-handoff`, etc.).
 - **Does not consolidate paths.** Moving where data lives breaks the no-deletion rule + risks user-data loss. Catalog the layout, don't fork it.
-- **Not a router.** `kaizen-memory-ledger catalog` returns paths; the agent invokes the owner CLI directly. Routing belongs in `kaizen:kaizen-md` (the umbrella entry skill).
+- **Not a router.** `kaizen-memory-ledger catalog` returns paths; the agent invokes the owner CLI directly. Discovery + cluster orientation lives in `Skill(agent-brief)` (fresh agents) or `/kaizen:help` (surface inventory).
 
 ## Pairing with related features
 
