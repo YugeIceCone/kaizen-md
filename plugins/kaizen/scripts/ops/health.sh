@@ -151,7 +151,7 @@ echo ""
 
 # ─── Section 5: Plugin bundle integrity ───────────────────────────────
 echo "${BOLD}[ plugin bundle ]${RESET}"
-PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$(cd "$_LIB_DIR/../../.." 2>/dev/null && pwd)}"
+PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$(cd "$_LIB_DIR/../.." 2>/dev/null && pwd)}"
 if [ -d "$PLUGIN_ROOT/skills" ]; then
     SKILL_COUNT=$(find "$PLUGIN_ROOT/skills" -maxdepth 2 -name "SKILL.md" | wc -l)
     log_pass "plugin skills: $SKILL_COUNT bundled"
