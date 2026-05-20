@@ -15,6 +15,7 @@ from __future__ import annotations
 import datetime as _dt
 import os
 import re
+import sys
 from pathlib import Path
 
 _OVERRIDE_PREFIX_RE = re.compile(r"^override:\s*", re.IGNORECASE)
@@ -132,16 +133,26 @@ def build_capture_context(
     cwd = cwd or Path.cwd()
 
     # Brain index summary (best-effort — falls back gracefully).
+    # Primary: brain_md_index (markdown entity inventory; mirrors upstream
+    # build-index.js::formatCompact). Better for capture routing because
+    # the LLM gets actual entity names (People / Projects / Areas / Notes)
+    # to attach captures to. Fallback: build_index semantic stats — kept
+    # as a graceful-degradation path when brain_md_index can't load.
     try:
-        from build_index import do_stats as _do_stats
-        stats = _do_stats()
-        compact_index = (
-            f"BRAIN INDEX ({brain})\n"
-            f"  total notes: {stats.get('total', 0)}\n"
-            f"  by type: {stats.get('by_type', {})}"
-        )
+        sys.path.insert(0, str(Path(__file__).resolve().parent / "brain"))
+        from brain_md_index import format_compact as _fmt_compact
+        compact_index = _fmt_compact(brain)
     except Exception:  # noqa: BLE001
-        compact_index = f"BRAIN INDEX ({brain})\n(index unavailable)"
+        try:
+            from build_index import do_stats as _do_stats
+            stats = _do_stats()
+            compact_index = (
+                f"BRAIN INDEX ({brain})\n"
+                f"  total notes: {stats.get('total', 0)}\n"
+                f"  by type: {stats.get('by_type', {})}"
+            )
+        except Exception:  # noqa: BLE001
+            compact_index = f"BRAIN INDEX ({brain})\n(index unavailable)"
 
     # Plugin defaults — REMEMBER.md.template (or REMEMBER.md if present)
     plugin_rulebook_path = plugin_root / "REMEMBER.md"
