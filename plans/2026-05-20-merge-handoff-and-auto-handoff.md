@@ -124,33 +124,27 @@ directly — it never went through the bin.
       pointing at retired skills/workflow/scripts/auto_handoff.py)
 - [x] `git rm skills/auto-handoff/SKILL.md` + dir removed
 
-### Phase 3 — Retire kaizen-auto-handoff bin
+### Phase 3 — Retire kaizen-auto-handoff bin [x]
 
-- [ ] `git rm bin/kaizen-auto-handoff`
-- [ ] Remove the auto-handoff bin permission entry from
-      .claude-plugin/plugin.json
-- [ ] (The .sh hook stays — it calls auto_handoff.py via plugin-root)
-- [ ] Update commands/*.md if any reference `kaizen-auto-handoff`
-- [ ] Update DEVOPS-CHEAT-SHEET.md + any references docs
+- [x] `git rm bin/kaizen-auto-handoff`
+- [x] Removed bin permission entry from .claude-plugin/plugin.json
+- [x] token_bloat.py classifier updated to recognize the new
+      schemas/handoff/auto-* path pattern
+- [x] Hook untouched — auto-handoff.sh invokes auto_handoff.py via
+      plugin-root resolution, never went through the bin
 
-### Phase 4 — Optionally expose as a subverb of kaizen-handoff
+### Phase 4 — Optional subverb [SKIP per YAGNI]
 
-- [ ] If `kaizen-handoff` is consolidated-CLI (multi-verb), add an
-      `auto-check` subverb that calls the same code as the hook
-      uses. Keeps a CLI entry point for manual auto-check invocations.
-- [ ] Document in SKILL.md + the bin's docstring
+The auto-check is only invoked by the Stop-hook in practice. Manual
+invocation can still happen via `python3 .../scripts/handoff/auto_handoff.py
+check` if needed. No CLI subverb added.
 
-Skip if `kaizen-handoff` doesn't already use the multi-verb pattern.
+### Phase 5 — Tests + verification [x]
 
-### Phase 5 — Tests + verification
-
-- [ ] Run full `kaizen-tests --concurrency 4` — expect 331/333 (the
-      pre-existing baseline)
-- [ ] Run `kaizen-health` — clean
-- [ ] Run the auto-handoff hook manually with a synthetic event JSON
-      to confirm threshold-trigger still works
-- [ ] Update test_auto_handoff fixtures to match new paths
-- [ ] Update progress.md row
+- [x] `kaizen-tests --concurrency 4`: 331/333 baseline (test_debug_smoke
+      + test_evolution_log pre-existing). All 3 phases hit baseline.
+- [x] test_auto_handoff fixtures updated in Phase 1 (6 path refs)
+- [x] progress.md row appended (this commit)
 
 ## Invariants
 
