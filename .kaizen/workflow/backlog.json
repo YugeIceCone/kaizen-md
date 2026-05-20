@@ -971,7 +971,7 @@
     },
     {
       "id": "BK-051",
-      "section": "next_up",
+      "section": "done",
       "title": "Investigate tokens_mcp orphan — file + tests exist but not mounted in gateway SUBSERVERS",
       "ref": null,
       "probe": "scripts/mcp/tokens_mcp.py exists; tests/test_tokens_mcp.py exists; plugin.json permissions reference it; but gateway.py::SUBSERVERS doesn't mount it. Tools (read_token, read_token_by_name, batch_read) unreachable via the unified kaizen MCP. Decide: (a) mount it normally, (b) keep standalone with documented reason (tree-sitter deps?), or (c) retire if unused.",
@@ -984,13 +984,13 @@
       "created": "2026-05-19",
       "started_at": null,
       "committed": null,
-      "committed_at": null,
+      "committed_at": "2026-05-20T03:15:54Z",
       "parked_reason": null,
       "probe_output": null
     },
     {
       "id": "BK-052",
-      "section": "next_up",
+      "section": "done",
       "title": "Extend iron-law bin-wrapper-per-cli to also check argparse(prog=) + _envelope.emitter() tool-name",
       "ref": "self-improving-review-2026-05-20",
       "probe": "scripts/quality/density.py / sandbox_check.py / tname_quality.py had 3-way naming drift (bin symlink vs argparse prog= vs emitter tool-name) silently disagree post-rename. Extend the bin-wrapper-per-cli law detect step to walk the underlying script and assert argparse(prog=<bin-basename>) AND _envelope.emitter(\"<bin-basename>\", ...) AND first SKILL.md cross-reference all match the bin's basename.",
@@ -1003,7 +1003,7 @@
       "created": "2026-05-20",
       "started_at": null,
       "committed": null,
-      "committed_at": null,
+      "committed_at": "2026-05-20T03:15:54Z",
       "parked_reason": null,
       "probe_output": null
     },
