@@ -28,7 +28,7 @@ skills/workflow/
 │   └── schemas/
 │       ├── routine.schema.json
 │       └── git-rules.schema.json
-├── application/                      (loaders + codegen — MIGRATION BRIDGES to scripts/workflow/)
+├── application/                      (placeholder — code moved to scripts/workflow/ in v1.40)
 │   ├── _loader.py                    (yaml → typed dict, JSON Schema validated)
 │   ├── codegen.py                    (regenerates references/{routines,git-discipline}.md)
 │   └── _tests.py                     (17 tests)
@@ -84,7 +84,7 @@ Probe via trace + sem + grep. Count actual files, manifest edits, trait moves, c
 
 Full sizing rules + worked examples: `references/git-discipline.md` (generated from yaml).
 
-## Pre-commit gates (12)
+## Pre-commit gates (13)
 
 The pre-commit hook iterates `domain/git-discipline.yaml::pre_commit_gates[]` in order. Each gate is one of `error` (block), `warn` (notify), or `info` (log). Highlights:
 

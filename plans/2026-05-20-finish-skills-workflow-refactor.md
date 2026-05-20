@@ -135,21 +135,18 @@ fix commits behind them.
 
 ### Phase 6 — SKILL.md + kaizen-env.sh cleanup
 
-- [ ] `skills/workflow/SKILL.md`:
-  - remove the "Onion-DDD layout inside this skill" mention of
-    `application/` as bridges (no longer bridges — gone)
-  - fix `## Pre-commit gates (12)` → `(13)` (separate drift item)
-  - update the Onion-DDD diagram to show the final post-sweep layout:
-    `skills/workflow/{SKILL.md, agents/, domain/, references/}` only
-- [ ] `scripts/util/kaizen-env.sh` (was `skills/workflow/scripts/kaizen-env.sh`):
-  - update `KAIZEN_SCRIPTS=skills/workflow/scripts/` to either remove the var
-    or point at a multi-cluster path mechanism
-  - update the 7 interactive aliases to canonical scripts/<cluster>/ paths
-- [ ] `skills/workflow/application/` directory: keep only `__init__.py`
-- [ ] Append progress.md architecture-log row
-- [ ] Update SKILL.md routine count and any remaining "MIGRATION BRIDGE" prose
-
-**Commit:** `docs(workflow): SKILL.md + kaizen-env.sh post-sweep cleanup`
+- [x] `skills/workflow/SKILL.md`:
+  - "Pre-commit gates (12)" → (13)
+  - "MIGRATION BRIDGES to scripts/workflow/" → "(placeholder — code
+    moved to scripts/workflow/ in v1.40)"
+- [x] `skills/workflow/scripts/kaizen-env.sh`:
+  - `KAIZEN_SCRIPTS=skills/workflow/scripts/` → `$KAIZEN_ROOT/scripts/`
+  - 7 interactive aliases rewired to canonical scripts/<cluster>/
+  - PATH prepends `$KAIZEN_ROOT/bin` (bin/ wrappers) instead of scripts/
+- [x] `skills/workflow/application/` retains only `__init__.py` (package
+  marker, not a shim)
+- [x] Append progress.md architecture-log row
+- [x] kaizen-tests holds at 331/2 baseline parity post-cleanup
 
 ## Verification commands
 

@@ -10,8 +10,8 @@
 #
 # Sets:
 #   KAIZEN_ROOT       — plugin root (the dir with .claude-plugin/)
-#   KAIZEN_SCRIPTS    — $KAIZEN_ROOT/skills/workflow/scripts/
-#   PATH              — prepends KAIZEN_SCRIPTS so scripts are directly callable
+#   KAIZEN_SCRIPTS    — $KAIZEN_ROOT/scripts/  (post-v1.40 layout)
+#   PATH              — prepends $KAIZEN_ROOT/bin so wrappers are callable
 #
 # Aliases (interactive shells only):
 #   kaizen-flow       consolidated flow dispatcher (demo|docs|index|search)
@@ -37,29 +37,31 @@ _kz_resolve() {
 }
 
 _KZ_SCRIPT_PATH=$(_kz_resolve)
-KAIZEN_SCRIPTS="$(dirname "$_KZ_SCRIPT_PATH")"
-# Plugin root is 3 levels above scripts/: scripts/ → kaizen/ → skills/ → <plugin-root>
-KAIZEN_ROOT="$(cd "$KAIZEN_SCRIPTS/../../.." && pwd)"
+# This file lives at skills/workflow/scripts/kaizen-env.sh until Phase 6
+# moves it to scripts/util/. Plugin root is 3 levels above its dir.
+KAIZEN_ROOT="$(cd "$(dirname "$_KZ_SCRIPT_PATH")/../../.." && pwd)"
+KAIZEN_SCRIPTS="$KAIZEN_ROOT/scripts"
 
 export KAIZEN_ROOT
 export KAIZEN_SCRIPTS
 
-# Prepend scripts dir to PATH (idempotent)
+# Prepend bin/ to PATH so kaizen-* wrappers are directly callable.
 case ":$PATH:" in
-    *":$KAIZEN_SCRIPTS:"*) ;;  # already there
-    *) PATH="$KAIZEN_SCRIPTS:$PATH" ;;
+    *":$KAIZEN_ROOT/bin:"*) ;;  # already there
+    *) PATH="$KAIZEN_ROOT/bin:$PATH" ;;
 esac
 export PATH
 
-# Interactive aliases — guarded so non-interactive shells stay quiet
+# Interactive aliases — guarded so non-interactive shells stay quiet.
+# Aliases point at canonical scripts/<cluster>/ post-v1.40.
 if [ -n "${PS1:-}" ] || [ -n "${ZSH_VERSION:-}" ]; then
-    alias kaizen-flow='python3 "$KAIZEN_SCRIPTS/flow_cli.py"'
-    alias kaizen-docs='python3 "$KAIZEN_SCRIPTS/docs_gen.py"'
-    alias kaizen-backlog='python3 "$KAIZEN_SCRIPTS/backlog.py"'
-    alias kaizen-cache='python3 "$KAIZEN_SCRIPTS/cache.py"'
-    alias kaizen-context='python3 "$KAIZEN_SCRIPTS/context.py"'
-    alias kaizen-inbox='python3 "$KAIZEN_SCRIPTS/inbox.py"'
-    alias kaizen-rules='python3 "$KAIZEN_SCRIPTS/rules.py"'
+    alias kaizen-flow='python3 "$KAIZEN_SCRIPTS/workflow/flow_cli.py"'
+    alias kaizen-docs='python3 "$KAIZEN_SCRIPTS/index/docs_gen.py"'
+    alias kaizen-backlog='python3 "$KAIZEN_SCRIPTS/backlog/backlog.py"'
+    alias kaizen-cache='python3 "$KAIZEN_SCRIPTS/util/cache.py"'
+    alias kaizen-context='python3 "$KAIZEN_SCRIPTS/util/context.py"'
+    alias kaizen-inbox='python3 "$KAIZEN_SCRIPTS/intent/inbox.py"'
+    alias kaizen-rules='python3 "$KAIZEN_SCRIPTS/rules/rules.py"'
 fi
 
 unset _KZ_SCRIPT_PATH
