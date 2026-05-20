@@ -1046,7 +1046,7 @@
     },
     {
       "id": "BK-055",
-      "section": "parked",
+      "section": "done",
       "title": "Backfill .jsonl siblings for historical audit reports + older plans",
       "ref": "format-coverage-audit-2026-05-20",
       "probe": "find .kaizen/workflow/audits/*.md — ZERO have paired .jsonl. find .kaizen/plans/2026-05-14-*.md — ZERO have paired .jsonl. Per pref-jsonl-indexed-deliverables, files with ≥30 structured entries should ship both. Audit reports typically have many severity-classified findings; plans have many phase/task entries.",
@@ -1059,13 +1059,13 @@
       "created": "2026-05-20",
       "started_at": null,
       "committed": null,
-      "committed_at": null,
+      "committed_at": "2026-05-20T04:01:27Z",
       "parked_reason": null,
       "probe_output": null
     },
     {
       "id": "BK-056",
-      "section": "next_up",
+      "section": "done",
       "title": "Automate progress.md → progress.jsonl regen (post-commit hook or pre-commit emit)",
       "ref": "format-coverage-audit-2026-05-20",
       "probe": "Today the regen is a manual inline Python script. Every commit that appends a progress.md row should auto-emit the matching jsonl record so the paired file stays in sync. Options: (a) post-commit hook walks the last commit's progress.md diff; (b) pre-commit hook re-parses progress.md to progress.jsonl whenever the former changes; (c) move the append logic to a kaizen-progress CLI that always writes both.",
@@ -1078,7 +1078,7 @@
       "created": "2026-05-20",
       "started_at": null,
       "committed": null,
-      "committed_at": null,
+      "committed_at": "2026-05-20T03:34:23Z",
       "parked_reason": null,
       "probe_output": null
     },

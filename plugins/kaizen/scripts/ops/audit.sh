@@ -32,7 +32,12 @@ source "$_SCRIPT_REAL_DIR/../../skills/workflow/scripts/_paths.sh"  # _paths.sh 
 # audit parent. The standalone /kaizen:<axis> commands stay as aliases
 # for back-compat.
 _SCRIPT_DIR="$(cd "$(dirname "$(python3 -c "import os, sys; print(os.path.realpath(sys.argv[1]))" "${BASH_SOURCE[0]}")")" && pwd)"
-_PLUGIN_ROOT="$(cd "$_SCRIPT_DIR/../../.." && pwd)"
+_PLUGIN_ROOT="$(cd "$_SCRIPT_DIR/../.." && pwd)"
+
+if [ "${1:-}" = "regen-jsonl" ]; then
+  shift
+  exec python3 "$_PLUGIN_ROOT/scripts/util/audit_jsonl.py" "$@"
+fi
 
 if [ "${1:-}" = "axis" ]; then
   shift
