@@ -245,7 +245,7 @@
       "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/scripts/iron-laws/gatekeeper.py:*)",
       "Bash(uv run --script ${CLAUDE_PLUGIN_ROOT}/scripts/mcp/gatekeeper_mcp.py:*)",
       "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/scripts/iron-laws/surface.py:*)",
-      "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/scripts/io/_kaizen_dispatcher.py:*)",
+      "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/scripts/cli/kaizen_cli.py:*)",
       "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/scripts/lint/lint_fix_dispatch.py:*)",
       "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/scripts/lint/lint_fix_prefs.py:*)",
       "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/scripts/lint/lint_fix_setup.py:*)",

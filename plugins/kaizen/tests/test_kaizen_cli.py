@@ -1,4 +1,8 @@
-"""Tests for scripts/io/_kaizen_dispatcher.py — unified dispatcher."""
+"""Tests for scripts/cli/kaizen_cli.py — unified dispatcher.
+
+Moved from scripts/io/_kaizen_dispatcher.py — the dispatcher isn't an
+I/O primitive; it's a CLI surface. scripts/cli/ is the canonical home
+for the public dispatch entry-point."""
 from __future__ import annotations
 
 import importlib.util
@@ -9,7 +13,7 @@ import unittest
 from pathlib import Path
 
 _REPO_ROOT = Path(__file__).resolve().parents[3]
-_KAIZEN_CLI = _REPO_ROOT / "plugins/kaizen/scripts/io/_kaizen_dispatcher.py"
+_KAIZEN_CLI = _REPO_ROOT / "plugins/kaizen/scripts/cli/kaizen_cli.py"
 _BIN_KAIZEN = _REPO_ROOT / "plugins/kaizen/bin/kaizen"
 
 

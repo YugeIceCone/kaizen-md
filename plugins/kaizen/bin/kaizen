@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # kaizen — unified CLI dispatcher (entry point for the bash loop).
 #
-# Thin wrapper around skills/workflow/scripts/_kaizen_dispatcher.py — the
-# Python dispatcher is the SSOT. This shell wrapper resolves the
-# plugin root (symlink-safe) and execs the dispatcher.
+# Thin wrapper around scripts/cli/kaizen_cli.py — the Python dispatcher
+# is the SSOT. This shell wrapper resolves the plugin root (symlink-safe)
+# and execs the dispatcher.
 #
 # Usage:
 #   kaizen                       (or `kaizen list`) — list subcommands
@@ -35,4 +35,4 @@ SCRIPT_PATH=$(_resolve "${BASH_SOURCE[0]:-$0}")
 BIN_DIR=$(dirname "$SCRIPT_PATH")
 PLUGIN_ROOT=$(cd "$BIN_DIR/.." && pwd)
 
-exec python3 "$PLUGIN_ROOT/scripts/io/_kaizen_dispatcher.py" "$@"
+exec python3 "$PLUGIN_ROOT/scripts/cli/kaizen_cli.py" "$@"

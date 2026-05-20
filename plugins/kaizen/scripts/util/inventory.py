@@ -95,6 +95,7 @@ PATH_PATTERNS: list[tuple[str, str]] = [
     ("*/scripts/mcp/*_mcp.py",                    "mcp"),
     ("*/scripts/indexers/*.py",                   "indexer"),
     ("*/scripts/handlers/*.py",                   "handler"),
+    ("*/scripts/cli/*.py",                        "cli-dispatcher"),
     ("*/scripts/git-hooks/*.sh",                  "git-hook"),
     ("*/iron-laws/domain/iron-laws.yaml",         "iron-law-registry"),
     ("*/domain/*rubric*.yaml",                    "rubric-yaml"),
