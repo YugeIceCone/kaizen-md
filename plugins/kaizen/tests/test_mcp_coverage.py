@@ -17,8 +17,8 @@ import mcp_coverage  # noqa: E402
 class TestMcpCoverage(unittest.TestCase):
     def test_real_gateway_picks_up_subservers(self):
         rep = mcp_coverage.scan(
-            scripts_dir=_KZ / "skills/workflow/scripts",
-            gateway_py=_KZ / "skills/workflow/scripts/gateway.py",
+            scripts_dir=_KZ / "scripts/mcp",
+            gateway_py=_KZ / "scripts/mcp/gateway.py",
         )
         for k in ("mcp_modules_on_disk", "mounted_subservers",
                    "orphans", "gaps_total"):

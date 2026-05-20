@@ -122,8 +122,13 @@ def list_hook_files() -> list[str]:
 
 
 def _gateway_subservers() -> list[tuple[str, str]]:
-    """Parse SUBSERVERS list from gateway.py via lightweight regex."""
-    gw = _PLUGIN_ROOT / "skills" / "workflow" / "scripts" / "gateway.py"
+    """Parse SUBSERVERS list from gateway.py via lightweight regex.
+
+    Reads the canonical at scripts/mcp/gateway.py (post-consolidation).
+    The legacy path skills/workflow/scripts/gateway.py is now a shim
+    that uses runpy/importlib — its bytes no longer contain the literal
+    SUBSERVERS table."""
+    gw = _PLUGIN_ROOT / "scripts" / "mcp" / "gateway.py"
     if not gw.exists():
         return []
     text = gw.read_text()
@@ -137,8 +142,8 @@ def _gateway_subservers() -> list[tuple[str, str]]:
 
 
 def _curated_core() -> list[str]:
-    """Parse CURATED_CORE list from gateway.py."""
-    gw = _PLUGIN_ROOT / "skills" / "workflow" / "scripts" / "gateway.py"
+    """Parse CURATED_CORE list from gateway.py (canonical at scripts/mcp/)."""
+    gw = _PLUGIN_ROOT / "scripts" / "mcp" / "gateway.py"
     if not gw.exists():
         return []
     text = gw.read_text()

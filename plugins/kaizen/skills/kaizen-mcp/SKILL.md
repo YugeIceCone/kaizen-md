@@ -44,7 +44,7 @@ the run() causes side effects at import time.
 
 ## The fleet
 
-Authoritative mount list: `skills/workflow/scripts/gateway.py::SUBSERVERS`
+Authoritative mount list: `scripts/mcp/gateway.py::SUBSERVERS`
 (grep it for the current set; the table below documents per-MCP
 domains, not the live count).
 

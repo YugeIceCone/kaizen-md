@@ -5,7 +5,8 @@ import sys
 import unittest
 from pathlib import Path
 
-SCRIPTS = Path(__file__).resolve().parent.parent / "skills" / "workflow" / "scripts"
+# Post-migration: gateway.py lives at scripts/mcp/.
+SCRIPTS = Path(__file__).resolve().parent.parent / "scripts" / "mcp"
 sys.path.insert(0, str(SCRIPTS))
 
 try:

@@ -62,7 +62,7 @@ plugins/kaizen/
 |---|---|---|
 | Plugin version | `.claude-plugin/plugin.json::version` + `CHANGELOG.md` `[Unreleased]` → tagged section | `kaizen version` reflects it |
 | Add to global PATH | Already there via `kaizen-env.sh` ; runs from `~/.bashrc` after `/kaizen:env install` | Subshells under the user's terminal pick it up; agent Bash tool inherits from user shell |
-| Add an MCP tool to "always visible" | `skills/workflow/scripts/gateway.py::CURATED_CORE` list | Default tool budget ~15; consider what to drop |
+| Add an MCP tool to "always visible" | `scripts/mcp/gateway.py::CURATED_CORE` list | Default tool budget ~15; consider what to drop |
 | Make a hook non-blocking | Return `{}` from the hook (or `systemMessage` not `permissionDecision: ask`) | PreToolUse `ask` blocks until user confirms; SystemMessage just surfaces a warning |
 | Bypass a check temporarily | Set the documented `KAIZEN_<X>_DISABLE=1` env var per command | See `kaizen iron-laws show hook-bypass-knob` |
 | Add a new gate to pre-commit | Edit `skills/workflow/scripts/pre-commit.sh` (Check N+1) OR add to gatekeeper sub-gates (Python) | Iron-laws checker is Check 7.5; gatekeeper pre-flight is Check 7.6 — model new ones after these |

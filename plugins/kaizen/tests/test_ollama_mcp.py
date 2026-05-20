@@ -20,7 +20,7 @@ from pathlib import Path
 
 _KZ_DIR = Path(__file__).resolve().parent.parent
 _MCP_FILE = _KZ_DIR / "scripts/mcp/ollama_mcp.py"
-_GATEWAY = _KZ_DIR / "skills/workflow/scripts/gateway.py"
+_GATEWAY = _KZ_DIR / "scripts/mcp/gateway.py"
 
 
 def _ollama_reachable() -> bool:

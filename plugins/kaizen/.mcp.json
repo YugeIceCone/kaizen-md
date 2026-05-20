@@ -5,7 +5,7 @@
       "args": [
         "run",
         "--script",
-        "${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/gateway.py"
+        "${CLAUDE_PLUGIN_ROOT}/scripts/mcp/gateway.py"
       ]
     }
   }
