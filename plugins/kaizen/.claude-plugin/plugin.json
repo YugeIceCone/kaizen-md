@@ -198,6 +198,8 @@
       "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/scripts/util/progress_log.py:*)",
       "Bash(bash ${CLAUDE_PLUGIN_ROOT}/bin/kaizen-progress:*)",
       "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/scripts/util/blueprint.py:*)",
+      "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/scripts/blueprint/blueprint.py:*)",
+      "Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/blueprint/dispatch.sh:*)",
       "Bash(bash ${CLAUDE_PLUGIN_ROOT}/bin/kaizen-blueprint:*)",
       "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/scripts/util/learning_log.py:*)",
       "Bash(bash ${CLAUDE_PLUGIN_ROOT}/bin/kaizen-learn:*)",
