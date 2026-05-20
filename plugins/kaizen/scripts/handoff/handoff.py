@@ -650,6 +650,18 @@ def _derive_slug(text: str, max_len: int = 40) -> str:
     return (s[:max_len].rstrip("-") or "session")
 
 
+def _default_test_line(repo: Path) -> str:
+    """Smarter `test:` template — when the repo looks like the kaizen-md
+    plugin (has `plugins/kaizen/tests/`), pre-fill a runnable test
+    invocation that includes `--tests-dir` so bare `kaizen-tests` doesn't
+    error with 'no test files matched' from the wrong cwd. Otherwise
+    keep the agent-fill TBD placeholder (we have no opinion outside
+    kaizen-md's specific layout)."""
+    if (repo / "plugins" / "kaizen" / "tests").is_dir():
+        return "test: kaizen-tests --tests-dir plugins/kaizen/tests"
+    return "test: TBD"
+
+
 def _git_log_files(repo: Path, since: str) -> tuple[list[str], int]:
     """Return (changed_files_sorted, commit_count) since the given date.
 
@@ -1005,7 +1017,7 @@ def _cmd_scaffold(args) -> int:
         "",
         f"goal: {_quote_if_unsafe(goal)}",
         f"now: {_quote_if_unsafe(now_text)}",
-        "test: TBD",
+        _default_test_line(repo),
         "",
     ]
 

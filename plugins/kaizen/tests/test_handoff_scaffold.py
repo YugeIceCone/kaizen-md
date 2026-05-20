@@ -488,6 +488,42 @@ class TestScaffoldFiltersNonExistentPaths(ScaffoldBase):
         self.assertNotIn("files: [a.py, b.py, c.py]", body)
 
 
+class TestScaffoldTestTemplate(ScaffoldBase):
+    """The bare `test: TBD` placeholder routinely got filled with
+    `kaizen-tests` (no flags) by agents — which errors with
+    'no test files matched' when run from a parent dir. When the
+    scaffolder detects the kaizen-md plugin layout, pre-fill a
+    runnable invocation that includes --tests-dir."""
+
+    def test_kaizen_md_repo_gets_runnable_test_line(self):
+        # Plant the kaizen-md layout marker
+        (self.repo / "plugins" / "kaizen" / "tests").mkdir(parents=True)
+        self._commit("src/x.py", "x\n")
+        r = self._run(
+            "--session", "kmd",
+            "--goal", "g", "--now", "n",
+            "--since", "2000-01-01",
+            "--at", "2026-05-20_03-00", "--json",
+        )
+        self.assertEqual(r.returncode, 0, r.stderr)
+        body = Path(json.loads(r.stdout)["data"]["yaml_path"]).read_text()
+        self.assertIn("test: kaizen-tests --tests-dir plugins/kaizen/tests", body)
+        self.assertNotIn("test: TBD", body)
+
+    def test_non_kaizen_repo_keeps_tbd_placeholder(self):
+        # No plugins/kaizen/tests/ in this repo — should keep TBD.
+        self._commit("src/x.py", "x\n")
+        r = self._run(
+            "--session", "other",
+            "--goal", "g", "--now", "n",
+            "--since", "2000-01-01",
+            "--at", "2026-05-20_03-00", "--json",
+        )
+        self.assertEqual(r.returncode, 0, r.stderr)
+        body = Path(json.loads(r.stdout)["data"]["yaml_path"]).read_text()
+        self.assertIn("test: TBD", body)
+
+
 class TestScaffoldFilesCapped(ScaffoldBase):
     """Long sessions can push the synthetic git-touched entry to 200+
     paths — that single block was responsible for ~half of the 1779-line
