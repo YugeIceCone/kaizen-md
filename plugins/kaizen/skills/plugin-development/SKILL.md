@@ -625,7 +625,7 @@ delivery:
 
 | Shape | When | Mechanism |
 |---|---|---|
-| **PEP-723 inline-deps + `uv run --script`** | The script IS the entry point AND needs heavy deps (sentence-transformers, torch, mcp, ollama) | `#!/usr/bin/env -S uv run --script` shebang + `# /// script` block declaring `dependencies = [...]`. Auto-installs on first invocation; kaizen-bootstrap pre-warms the venv. |
+| **PEP-723 inline-deps + `uv run --script`** | The script IS the entry point AND needs heavy deps (sentence-transformers, torch, mcp, ollama) | `#!/usr/bin/env -S uv run --script` shebang + `# /// script` block declaring `dependencies = [...]`. Auto-installs on first invocation; `kaizen-setup bootstrap` pre-warms the venv. |
 | **Lazy-load + graceful-fallback** | The script is a LIBRARY (`_embed.py`, `_chunk.py`) consumed in-process by many callers, and a missing dep should not crash callers | `try: import heavy; except ImportError: return None` (NOT `sys.exit`! — see gotcha) — let callers route to a stdlib fallback. |
 
 **EXPLICIT routing rule** (real failure mode hit this session): when a

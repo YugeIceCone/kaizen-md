@@ -20,6 +20,8 @@ from pathlib import Path
 PLUGIN_ROOT = Path(__file__).resolve().parent.parent
 SETUP_SH = PLUGIN_ROOT / "scripts" / "install" / "setup.sh"
 ENABLE_ALL_SH = PLUGIN_ROOT / "scripts" / "install" / "enable_all.sh"
+SETUP_BIN = PLUGIN_ROOT / "bin" / "kaizen-setup"
+BOOTSTRAP_SH = PLUGIN_ROOT / "scripts" / "install" / "bootstrap.sh"
 
 
 def _run(cmd: list[str], cwd: Path, env=None) -> tuple[int, str, str]:
@@ -129,6 +131,36 @@ class TestEnableAllPath(unittest.TestCase):
             repo = _git_repo(td)
             rc, _, err = _run(["bash", str(ENABLE_ALL_SH), "--dry-run"], repo)
             self.assertEqual(rc, 0, err)
+
+
+class TestConsolidatedSubverbs(unittest.TestCase):
+    """`kaizen-setup bootstrap` + `kaizen-setup enable-all` subverbs are the
+    sole entry points for venv-warm + curated-stack install; no standalone
+    `kaizen-bootstrap` / `kaizen-enable-all` bin should exist alongside."""
+
+    def test_bootstrap_subverb_dispatches_to_bootstrap_sh(self):
+        # --check is non-destructive: prints uv status, exits 0.
+        rc, out, err = _run([str(SETUP_BIN), "bootstrap", "--check"], PLUGIN_ROOT)
+        self.assertEqual(rc, 0, f"stderr={err}")
+        self.assertIn("uv", (out + err).lower())
+
+    def test_enable_all_subverb_equivalent_to_enable_all_flag(self):
+        with tempfile.TemporaryDirectory() as td:
+            repo = _git_repo(td)
+            rc, out, err = _run(
+                [str(SETUP_BIN), "enable-all", "--dry-run"], repo)
+            self.assertEqual(rc, 0, f"stderr={err}")
+            self.assertTrue(
+                "globals" in out.lower() or "would" in out.lower()
+                or "dry" in (out + err).lower(),
+                f"enable-all subverb should run the enable-all path; got:\n{out}")
+
+    def test_retired_standalone_bins_are_gone(self):
+        for retired in ("kaizen-bootstrap", "kaizen-enable-all"):
+            self.assertFalse(
+                (PLUGIN_ROOT / "bin" / retired).exists(),
+                f"bin/{retired} should be retired; reachable via "
+                f"`kaizen-setup {retired.replace('kaizen-', '')}`")
 
 
 class TestDocs(unittest.TestCase):

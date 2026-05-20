@@ -38,12 +38,11 @@ _SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SKILL_DIR="$(cd "$_SCRIPT_DIR/../../skills/workflow" && pwd)"
 PLUGIN_ROOT="$(cd "$_SCRIPT_DIR/../.." && pwd)"
 
-# ─── Subcommand dispatch (v1.37+) ────────────────────────────────────
+# ─── Subcommand dispatch ─────────────────────────────────────────────
 #
-# /kaizen:setup folds the former /kaizen:install + /kaizen:uninstall +
-# /kaizen:cache + /kaizen:enable-all into one command. The first
-# positional selects the path; no positional (or `install`) falls
-# through to the install path below. The --enable-all / --with-* /
+# /kaizen:setup is the one entry point for install / uninstall / cache.
+# The first positional selects the path; no positional (or `install`)
+# falls through to the install path below. The --enable-all / --with-* /
 # --no-* FLAGS are handled by the delegation block right after.
 case "${1:-}" in
   uninstall)

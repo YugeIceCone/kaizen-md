@@ -1,8 +1,8 @@
 ---
 name: setup
 description: "Unified plugin setup. No-args wizard (install/uninstall/health/maintenance) or direct dispatch. Triggers - "install kaizen", "setup plugin", "kaizen cache", "first-time setup"."
-argument-hint: "(empty = interactive super-menu) | [install|uninstall|cache ...] [--enable-all] [--with-index] [--with-browser] [--with-daemon] [--with-trace-proxy] [--no-globals] [--no-project] [--dry-run]"
-allowed-tools: ["AskUserQuestion", "Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/install/setup.sh:*)", "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/scripts/util/detect_stack.py:*)", "Bash(kaizen-detect-stack:*)"]
+argument-hint: "(empty = interactive super-menu) | [install|uninstall|cache|bootstrap|enable-all|env ...] [--enable-all] [--with-index] [--with-browser] [--with-daemon] [--with-trace-proxy] [--no-globals] [--no-project] [--dry-run]"
+allowed-tools: ["AskUserQuestion", "Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/install/setup.sh:*)", "Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/install/bootstrap.sh:*)", "Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/install/enable_all.sh:*)", "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/scripts/util/detect_stack.py:*)", "Bash(kaizen-detect-stack:*)"]
 ---
 
 # kaizen setup
@@ -226,9 +226,11 @@ the Maintenance + Health branches, dispatch the sibling slash directly
 | Invocation | What runs |
 |---|---|
 | `/kaizen:setup` *(or)* `/kaizen:setup install` | Per-repo gate (pre-commit + commit-msg hooks, `.kaizen.toml`, backlog seed) + a cache check. Default. |
-| `/kaizen:setup --enable-all` | The gate **plus** the curated global stack (disable-dupes, statusline, shell env). Any `--with-*` / `--no-*` flag also triggers this path. |
+| `/kaizen:setup --enable-all` *(or)* `/kaizen:setup enable-all` | The gate **plus** the curated global stack (disable-dupes, statusline, shell env). Any `--with-*` / `--no-*` flag also triggers this path. |
 | `/kaizen:setup uninstall` | Reverse per-repo activation. Default dry-run; `--execute` to apply, auto-backs up first. Does NOT uninstall the plugin (use `/plugin uninstall`). |
 | `/kaizen:setup cache [stats\|key\|get\|put\|delete\|clear]` | Inspect / mutate the per-repo hash cache at `<repo>/.kaizen/cache/`. No arg = `stats`. |
+| `/kaizen:setup bootstrap [--check\|--list]` | Pre-warm the uv-managed Python venvs used by indexer / MCP scripts. |
+| `/kaizen:setup env [print\|install\|install-zsh\|path\|uninstall]` | Manage the shell env source-line in `~/.bashrc` / `~/.zshrc`. |
 
 ## Opt-in flags (forwarded to the `--enable-all` path)
 
@@ -279,7 +281,7 @@ Lifecycle bins reachable directly:
 
 | Concern | Bin (direct) | Use case |
 |---|---|---|
-| Pre-warm uv venvs | `kaizen-bootstrap [--check\|--list]` | One-shot venv warm; auto-runs as part of `setup --enable-all` — was `/kaizen:bootstrap` |
+| Pre-warm uv venvs | `kaizen-setup bootstrap [--check\|--list]` | One-shot venv warm; auto-runs as part of `setup --enable-all`. |
 | Disable duplicate skills | `kaizen-disable-dupes` | One-off install fix; rename `SKILL.md` ↔ `SKILL.md.disabled` — was `/kaizen:disable-dupes` |
 | Cron daemon | `kaizen-daemon` | run / install / uninstall / status / log — was `/kaizen:daemon` |
 | Ollama model mgmt | `kaizen-models` | list / pull / show / delete / copy / pin — was `/kaizen:models` |

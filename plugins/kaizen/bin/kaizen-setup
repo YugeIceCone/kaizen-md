@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # kaizen-setup — CLI shortcut for /kaizen:setup.
 #
-# Default: delegates to skills/workflow/scripts/setup.sh (install/uninstall
-# /cache surface). The `env` subcommand is folded in here so the env surface
-# lives under setup instead of as a separate top-level verb.
+# Default: delegates to scripts/install/setup.sh (install/uninstall/cache
+# surface). The `env`, `bootstrap`, and `enable-all` subverbs are folded
+# in here so the related install surface lives under one top-level verb.
 #
 # Strict-name wrapper required by iron-law `bin-wrapper-per-cli`.
 #
@@ -14,7 +14,9 @@
 #   kaizen setup env [print|install|        — shell env install
 #                     install-zsh|path|
 #                     uninstall]
-#   kaizen setup --enable-all [--with-...]  — install + global stack
+#   kaizen setup bootstrap [--check|--list] — pre-warm uv-managed venvs
+#   kaizen setup enable-all [--with-...]    — install + curated global stack
+#   kaizen setup --enable-all [--with-...]  — flag equivalent of enable-all
 #   kaizen setup --dry-run                  — preview without applying
 
 set -euo pipefail
@@ -23,12 +25,23 @@ _SCRIPT_REAL="$(readlink -f "${BASH_SOURCE[0]}" 2>/dev/null \
   || python3 -c 'import os,sys; print(os.path.realpath(sys.argv[1]))' "${BASH_SOURCE[0]}")"
 _BIN_DIR="$(cd "$(dirname "$_SCRIPT_REAL")" && pwd)"
 PLUGIN_ROOT="$(cd "$_BIN_DIR/.." && pwd)"
-SCRIPTS="$PLUGIN_ROOT/skills/workflow/scripts"
+
+# ─── bootstrap subverb ─────────────────────────────────────────────────
+if [ "${1:-}" = "bootstrap" ]; then
+    shift
+    exec bash "$PLUGIN_ROOT/scripts/install/bootstrap.sh" "$@"
+fi
+
+# ─── enable-all subverb ────────────────────────────────────────────────
+if [ "${1:-}" = "enable-all" ]; then
+    shift
+    exec bash "$PLUGIN_ROOT/scripts/install/enable_all.sh" "$@"
+fi
 
 # ─── env subcommand (folded from /kaizen:env) ──────────────────────────
 if [ "${1:-}" = "env" ]; then
     shift
-    SRC="$SCRIPTS/kaizen-env.sh"
+    SRC="$PLUGIN_ROOT/scripts/util/kaizen-env.sh"
     SUB="${1:-print}"
     case "$SUB" in
         print)
@@ -80,4 +93,4 @@ if [ "${1:-}" = "env" ]; then
 fi
 
 # ─── default: delegate to setup.sh (install / uninstall / cache) ───────
-exec bash "$SCRIPTS/setup.sh" "$@"
+exec bash "$PLUGIN_ROOT/scripts/install/setup.sh" "$@"

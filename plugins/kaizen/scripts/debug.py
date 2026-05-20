@@ -622,9 +622,9 @@ def cmd_tail(args) -> int:
 # Bins that need user input / run long / mutate state / interactive.
 # Excluded from --help smoke (they'd hang or do work).
 _SMOKE_BIN_DENY: frozenset = frozenset({
-    "kaizen-setup", "kaizen-bootstrap", "kaizen-update", "kaizen-publish",
+    "kaizen-setup", "kaizen-update", "kaizen-publish",
     "kaizen-uninstall", "kaizen-setup-local-llm", "kaizen-refresh-cache",
-    "kaizen-disable-skill", "kaizen-enable-all", "kaizen-browser",
+    "kaizen-disable-skill", "kaizen-browser",
     "kaizen-daemon", "kaizen-watch", "kaizen-trace-proxy", "kaizen-loop",
     "kaizen-fg",
 })
