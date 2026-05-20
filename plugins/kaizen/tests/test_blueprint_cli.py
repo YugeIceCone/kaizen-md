@@ -350,6 +350,72 @@ class TestCli(unittest.TestCase):
             data = json.loads(p.read_text())
             self.assertEqual(data["items"][0]["status"], "shipped")
 
+    def test_add_item_auto_picks_id(self):
+        with tempfile.TemporaryDirectory() as td:
+            p = _write_plan(Path(td), _fresh_plan([
+                {"id": "01", "kind": "plan", "title": "Root",
+                 "status": "draft", "links": {}},
+            ]))
+            env = self._isolated_env(Path(td) / "state.json")
+            rc, out, err = self._run(
+                "add-item", str(p), "--kind", "decision",
+                "--title", "Pick the storage", env=env)
+            self.assertEqual(rc, 0, err)
+            self.assertIn("02", out)  # next free id after 01
+            data = json.loads(p.read_text())
+            self.assertEqual(len(data["items"]), 2)
+            self.assertEqual(data["items"][1]["id"], "02")
+            self.assertEqual(data["items"][1]["kind"], "decision")
+
+    def test_add_item_auto_links_parent_children(self):
+        with tempfile.TemporaryDirectory() as td:
+            p = _write_plan(Path(td), _fresh_plan([
+                {"id": "01", "kind": "plan", "title": "Root",
+                 "status": "draft",
+                 "links": {"children": [], "parents": [],
+                           "related": [], "supersedes": [],
+                           "superseded_by": None}},
+            ]))
+            env = self._isolated_env(Path(td) / "state.json")
+            rc, _, err = self._run(
+                "add-item", str(p), "--kind", "note",
+                "--title", "Side note", "--parent", "01", env=env)
+            self.assertEqual(rc, 0, err)
+            data = json.loads(p.read_text())
+            self.assertIn("02", data["items"][0]["links"]["children"])
+            self.assertIn("01", data["items"][1]["links"]["parents"])
+
+    def test_add_task_auto_picks_id(self):
+        with tempfile.TemporaryDirectory() as td:
+            p = _write_plan(Path(td), _fresh_plan([
+                {"id": "07", "kind": "task-list", "title": "Phase X",
+                 "status": "active", "links": {},
+                 "tasks": [
+                     {"id": "07.1", "subject": "first", "status": "pending"},
+                 ]},
+            ]))
+            env = self._isolated_env(Path(td) / "state.json")
+            rc, out, err = self._run(
+                "add-task", str(p), "--to", "07",
+                "--subject", "second task", env=env)
+            self.assertEqual(rc, 0, err)
+            self.assertIn("07.2", out)
+            data = json.loads(p.read_text())
+            self.assertEqual(data["items"][0]["tasks"][1]["id"], "07.2")
+
+    def test_add_task_rejects_non_task_list(self):
+        with tempfile.TemporaryDirectory() as td:
+            p = _write_plan(Path(td), _fresh_plan([
+                {"id": "01", "kind": "plan", "title": "R",
+                 "status": "draft", "links": {}},
+            ]))
+            env = self._isolated_env(Path(td) / "state.json")
+            rc, _, err = self._run(
+                "add-task", str(p), "--to", "01",
+                "--subject", "x", env=env)
+            self.assertNotEqual(rc, 0)
+            self.assertIn("task-list", err)
+
     def test_chunk_command_runs(self):
         with tempfile.TemporaryDirectory() as td:
             p = _write_plan(Path(td), _fresh_plan([

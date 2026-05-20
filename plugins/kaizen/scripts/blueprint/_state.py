@@ -114,7 +114,7 @@ def _summarize_plan(plan_path: Path) -> dict:
         "items": items_idx,
         "status_rollup": status_rollup,
         "kind_rollup": kind_rollup,
-        "cached_at": datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "cached_at": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
     }
 
 

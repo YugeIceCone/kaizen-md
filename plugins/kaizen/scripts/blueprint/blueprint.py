@@ -332,6 +332,112 @@ def cmd_state(args: argparse.Namespace) -> int:
     return 0
 
 
+def _next_item_id(target: str) -> str:
+    """Pick the next unused 2-digit id (01..99)."""
+    plan = bp.read_plan(target)
+    used = {it.get("id") for it in plan.get("items", [])}
+    for i in range(1, 100):
+        candidate = f"{i:02d}"
+        if candidate not in used:
+            return candidate
+    # Fall back to numeric beyond 99
+    return str(max((int(u) for u in used if u and u.isdigit()),
+                   default=0) + 1)
+
+
+def _next_task_id(target: str, list_id: str) -> str:
+    """Pick the next task id like '<list-id>.<n>' for an existing list."""
+    plan = bp.read_plan(target)
+    item = next((i for i in plan.get("items", []) if i.get("id") == list_id),
+                None)
+    if not item:
+        raise KeyError(f"no item with id={list_id!r}")
+    used = {t.get("id") for t in (item.get("tasks") or [])}
+    n = 1
+    while f"{list_id}.{n}" in used:
+        n += 1
+    return f"{list_id}.{n}"
+
+
+def cmd_add_item(args: argparse.Namespace) -> int:
+    """add-item [file] --kind K --title T [--id I] [--parent P]
+                                [--status S] [--summary X] [--owner O]
+                                [--tags T1,T2]"""
+    target = _resolve_file(args.file)
+    if not target:
+        print("no plan given and no active plan in cache", file=sys.stderr)
+        return 2
+    item_id = args.id or _next_item_id(target)
+    import datetime
+    today = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d")
+    new_item = {
+        "id": item_id,
+        "kind": args.kind,
+        "title": args.title,
+        "status": args.status,
+        "summary": args.summary or "",
+        "created": today,
+        "updated": today,
+        "tags": [t.strip() for t in args.tags.split(",")] if args.tags else [],
+        "owner": args.owner or "agent",
+        "links": {
+            "parents": [args.parent] if args.parent else [],
+            "children": [],
+            "related": [],
+            "supersedes": [],
+            "superseded_by": None,
+        },
+        "content": None,
+        "content_ref": None,
+        "tasks": [] if args.kind == "task-list" else None,
+        "outcome": None,
+        "confidence": None,
+        "sources": [],
+        "meta": {},
+    }
+    bp.add_item(target, new_item, validate=args.validate)
+    # Auto-link parent's children
+    if args.parent:
+        plan = bp.read_plan(target)
+        for it in plan["items"]:
+            if it.get("id") == args.parent:
+                children = it.setdefault("links", {}).setdefault("children", [])
+                if item_id not in children:
+                    children.append(item_id)
+                break
+        from _atomic import atomic_write_json
+        atomic_write_json(target, plan, sort_keys=False)
+    st.touch(target)
+    print(f"✓ added item {item_id} (kind={args.kind})")
+    return 0
+
+
+def cmd_add_task(args: argparse.Namespace) -> int:
+    """add-task [file] --to <list-id> --subject S
+                                [--id I] [--status S] [--owner O]
+                                [--blocked-by B1,B2] [--refs R1,R2]
+                                [--tags T1,T2]"""
+    target = _resolve_file(args.file)
+    if not target:
+        print("no plan given and no active plan in cache", file=sys.stderr)
+        return 2
+    task_id = args.id or _next_task_id(target, args.to)
+    new_task = {
+        "id": task_id,
+        "subject": args.subject,
+        "status": args.status,
+        "owner": args.owner or "agent",
+        "blocked_by": ([b.strip() for b in args.blocked_by.split(",")]
+                       if args.blocked_by else []),
+        "refs": [r.strip() for r in args.refs.split(",")] if args.refs else [],
+        "tags": [t.strip() for t in args.tags.split(",")] if args.tags else [],
+    }
+    bp.add_task(target, args.to, new_task, validate=args.validate)
+    st.touch(target)
+    print(f"✓ added task {task_id} to list {args.to}")
+    return 0
+
+
 def cmd_chunk(args: argparse.Namespace) -> int:
     """chunk [file] --list-id X [--subagents] — chunk a task-list.
 
@@ -390,8 +496,8 @@ def cmd_init(args: argparse.Namespace) -> int:
     text = template.read_text(encoding="utf-8")
     # Fill placeholders
     import datetime
-    now = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
-    today = datetime.datetime.utcnow().strftime("%Y-%m-%d")
+    now = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    today = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d")
     project = args.project or "kaizen-md"
     text = (
         text.replace("<project-slug>", project)
@@ -472,6 +578,41 @@ def build_parser() -> argparse.ArgumentParser:
                                "blocked", "skipped"])
     sttp.add_argument("--validate", action="store_true")
     sttp.set_defaults(func=cmd_set_task_status)
+
+    aip = sub.add_parser("add-item",
+                         help="append a new item to items[]")
+    aip.add_argument("file", nargs="?", default=None)
+    aip.add_argument("--kind", required=True,
+                     choices=["plan", "research", "idea", "task-list",
+                              "spec", "decision", "note", "audit", "brainstorm"])
+    aip.add_argument("--title", required=True)
+    aip.add_argument("--id", default=None, help="auto-picked if omitted")
+    aip.add_argument("--parent", default=None,
+                     help="auto-links parent's links.children")
+    aip.add_argument("--status", default="draft",
+                     choices=["draft", "active", "shipped", "parked",
+                              "superseded", "blocked"])
+    aip.add_argument("--summary", default=None)
+    aip.add_argument("--owner", default=None)
+    aip.add_argument("--tags", default=None, help="comma-separated")
+    aip.add_argument("--validate", action="store_true")
+    aip.set_defaults(func=cmd_add_item)
+
+    atp = sub.add_parser("add-task",
+                         help="append a task to a kind=task-list item")
+    atp.add_argument("file", nargs="?", default=None)
+    atp.add_argument("--to", required=True, help="task-list item id")
+    atp.add_argument("--subject", required=True)
+    atp.add_argument("--id", default=None, help="auto-picked if omitted")
+    atp.add_argument("--status", default="pending",
+                     choices=["pending", "in_progress", "completed",
+                              "blocked", "skipped"])
+    atp.add_argument("--owner", default=None)
+    atp.add_argument("--blocked-by", default=None, help="comma-separated")
+    atp.add_argument("--refs", default=None, help="comma-separated")
+    atp.add_argument("--tags", default=None, help="comma-separated")
+    atp.add_argument("--validate", action="store_true")
+    atp.set_defaults(func=cmd_add_task)
 
     cp = sub.add_parser("chunk",
                         help="chunk a task-list (default: 3-task parent batches)")
