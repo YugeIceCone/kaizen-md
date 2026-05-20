@@ -1,0 +1,94 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kaizen.invalid/schemas/axis.schema.json",
+  "title": "Kaizen declarative axis",
+  "description": "Validates skills/workflow/domain/axes/<name>.yaml — declarative coverage-axis spec dispatched by kaizen-axis-runner. One axis YAML = one scan-spec (grep | ast-rule | file-coverage) + a verdict rule. The loader subsumes simple standalone-Python axes per blueprint /tmp/axis-runner.blueprint.json item-02.",
+  "type": "object",
+  "required": ["name", "scan_spec", "verdict_rule"],
+  "additionalProperties": false,
+  "properties": {
+    "name": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*$",
+      "description": "Axis identifier (kebab-case). Surfaces in the envelope, in `list_axes()`, and in the filename."
+    },
+    "description": {
+      "type": "string",
+      "description": "One-sentence human summary of what this axis checks."
+    },
+    "scan_spec": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["type", "pattern", "glob"],
+          "additionalProperties": false,
+          "properties": {
+            "type": { "const": "grep" },
+            "pattern": {
+              "type": "string",
+              "description": "Python `re` regex pattern matched against each line."
+            },
+            "glob": {
+              "type": "string",
+              "description": "Path glob (Path.rglob-style) resolved relative to the scan root."
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["type", "rule", "glob"],
+          "additionalProperties": false,
+          "properties": {
+            "type": { "const": "ast-rule" },
+            "rule": {
+              "type": "string",
+              "description": "Name of an axis_runner_rules.run_ast_rule rule (e.g. `class-camelcase`, `subprocess-rc-check`)."
+            },
+            "glob": {
+              "type": "string",
+              "description": "Path glob — typically `**/*.py` for AST rules."
+            },
+            "params": {
+              "type": "object",
+              "description": "Rule-specific parameters passed through to the rule function.",
+              "additionalProperties": true
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["type", "expected_glob", "actual_glob"],
+          "additionalProperties": false,
+          "properties": {
+            "type": { "const": "file-coverage" },
+            "expected_glob": {
+              "type": "string",
+              "description": "Glob enumerating files that SHOULD have a matching counterpart (e.g. `scripts/quality/*.py`)."
+            },
+            "actual_glob": {
+              "type": "string",
+              "description": "Glob enumerating the actual counterparts (e.g. `tests/test_*.py`). The match heuristic is stem-based: `name.py` ↔ `test_name.py`."
+            }
+          }
+        }
+      ]
+    },
+    "verdict_rule": {
+      "type": "object",
+      "required": ["green_max", "yellow_max"],
+      "additionalProperties": false,
+      "properties": {
+        "green_max": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Findings count ≤ this → verdict=green."
+        },
+        "yellow_max": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Findings count ≤ this → verdict=yellow; above → red. MUST be ≥ green_max."
+        }
+      }
+    }
+  }
+}
