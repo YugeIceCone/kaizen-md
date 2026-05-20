@@ -12,6 +12,7 @@ Run:
 from __future__ import annotations
 
 import os
+import re
 import subprocess
 import tempfile
 import unittest
@@ -131,6 +132,26 @@ class TestEnableAllPath(unittest.TestCase):
             repo = _git_repo(td)
             rc, _, err = _run(["bash", str(ENABLE_ALL_SH), "--dry-run"], repo)
             self.assertEqual(rc, 0, err)
+
+    def test_enable_all_dry_run_paths_resolve(self):
+        """Every script path printed by --dry-run must exist. Catches
+        PLUGIN_ROOT miscomputation (e.g. one ../ too many)."""
+        with tempfile.TemporaryDirectory() as td:
+            repo = _git_repo(td)
+            rc, out, err = _run(
+                ["bash", str(ENABLE_ALL_SH), "--dry-run"], repo)
+            self.assertEqual(rc, 0, err)
+            targets: list[str] = []
+            targets += re.findall(r"bash\s+'([^']+\.(?:sh|py))'", out)
+            targets += re.findall(r'uv run --script "([^"]+\.py)"', out)
+            targets += re.findall(r"python3\s+'([^']+\.py)'", out)
+            self.assertGreater(len(targets), 0,
+                               f"no targets found in dry-run output:\n{out}")
+            missing = [t for t in targets if not Path(t).exists()]
+            if missing:
+                self.fail(
+                    f"{len(missing)} dry-run path(s) don't exist:\n  "
+                    + "\n  ".join(missing))
 
 
 class TestConsolidatedSubverbs(unittest.TestCase):

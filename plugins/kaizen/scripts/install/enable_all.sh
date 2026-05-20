@@ -33,7 +33,7 @@
 set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$(python3 -c "import os,sys; print(os.path.realpath(sys.argv[1]))" "${BASH_SOURCE[0]}")")" && pwd)"
-PLUGIN_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
+PLUGIN_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
 # ─── Args ────────────────────────────────────────────────────────────
 
