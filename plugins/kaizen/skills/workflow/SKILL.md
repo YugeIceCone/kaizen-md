@@ -167,9 +167,9 @@ Each links to the corresponding `kaizen:*` skill (kaizen:solid, kaizen:kiss, etc
 | `audit` | `kaizen:audit` |
 | `debug` | `kaizen:systematic-debugging` |
 | `fix` | `fix` (built-in) |
-| `create-plan` | `kaizen:writing-plans` / `create-plan` |
+| `create-plan` | `kaizen:create-plan` / `create-plan` |
 | `create-tasks` | `create-tasks` |
-| `execute-plan` | `kaizen:executing-plans` |
+| `execute-plan` | `kaizen:execute-plan` |
 | `execute-tasks` | `execute-tasks` + **`kaizen:verify-before-execution`** (RED-GREEN gate per task) |
 | `review` | `kaizen:review` / `review` (+ `kaizen:verify-before-execution` for in-flow cleanups) |
 | `simplify` | bundled `/simplify` |

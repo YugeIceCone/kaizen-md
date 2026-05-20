@@ -92,7 +92,7 @@ principles:
       - vague_success_criteria
       - missing_test_assertion
       - unverifiable_step
-    pairs_with: [kaizen:tdd, kaizen:test-driven-development]
+    pairs_with: [kaizen:tdd, kaizen:tdd]
 
 # When to relax (carry-over from upstream — applies to all 4 principles).
 relax_when:

@@ -94,7 +94,7 @@ Measure: track via `kaizen-trace query --evt PostToolUse-bash --since 7d | grep 
 - `kaizen:workflow` — the gate that enforces the checklist
 - `kaizen:plugin-pitfalls` — concrete anti-pattern catalogue
 - `kaizen:behaviour-config` — how to author brain rules (incl. `dependency-allowlist`)
-- `kaizen:writing-plans` — when a vibe-coded change grows beyond micro size
+- `kaizen:create-plan` — when a vibe-coded change grows beyond micro size
 - `coding-skills:kiss` + `:yagni` — the "stop over-engineering" principles vibe-coding tends to violate
 
 ## Iron Laws (non-negotiable)

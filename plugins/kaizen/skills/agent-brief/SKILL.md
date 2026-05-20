@@ -235,7 +235,7 @@ When a task crosses your default knowledge, load these (via `Skill` tool):
 | Authoring a brain rule | `kaizen:behaviour-config` |
 | Publishing the plugin to GitHub | `kaizen:publishing` |
 | Building a new plugin / SKILL.md | `kaizen:writing-skills` |
-| Multi-phase work | `kaizen:writing-plans` (plans/) + `kaizen:execute-plan` |
+| Multi-phase work | `kaizen:create-plan` (plans/) + `kaizen:execute-plan` |
 | Plugin gotchas seen in production | `kaizen:plugin-pitfalls` |
 
 ## Critical Iron Laws (applies to ALL agent actions in a kaizen repo)

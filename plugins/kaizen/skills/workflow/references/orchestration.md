@@ -30,7 +30,7 @@ Use `Explore` subagent for codebase mapping; `general-purpose` for everything el
 
 ### `subagent=full` — execution delegation
 
-Execution stages (execute-tasks / execute-plan) dispatch one subagent per phase or task batch, parallelizing where the plan declares no inter-phase dependencies. Requires the plan to be **agent-reusable** (see `kaizen:writing-plans` skill).
+Execution stages (execute-tasks / execute-plan) dispatch one subagent per phase or task batch, parallelizing where the plan declares no inter-phase dependencies. Requires the plan to be **agent-reusable** (see `kaizen:create-plan` skill).
 
 Dispatch template for parallel phases:
 
@@ -58,10 +58,10 @@ Each stage routes to a single skill. Subagent flag may further wrap the invocati
 | audit | `kaizen:audit` | `general-purpose` |
 | debug | `kaizen:systematic-debugging` | (not dispatched) |
 | fix | built-in `fix` | (not dispatched — single session) |
-| create-plan | `kaizen:writing-plans` | (not dispatched — local writes) |
+| create-plan | `kaizen:create-plan` | (not dispatched — local writes) |
 | create-tasks | built-in `create-tasks` | (not dispatched) |
 | execute-tasks | built-in `execute-tasks` | one per task batch (subagent=full) |
-| execute-plan | `kaizen:executing-plans` | one per phase (subagent=full) |
+| execute-plan | `kaizen:execute-plan` | one per phase (subagent=full) |
 | review | `kaizen:review` | `general-purpose` |
 | validate | built-in `validate` | (not dispatched — full session) |
 | simplify | bundled `/simplify` | n/a (atomic) |

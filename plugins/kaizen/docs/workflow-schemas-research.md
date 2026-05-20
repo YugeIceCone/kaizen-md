@@ -141,6 +141,6 @@ To be resolved with empirical use of the v1.13.0 scaffold before v1.14.0 lands.
 ## Cross-references
 
 - `kaizen:workflow-routing` — current hardcoded routine system; target of the migration.
-- `kaizen:writing-plans` — plan-file authoring discipline (input to the `plan` artifact).
+- `kaizen:create-plan` — plan-file authoring discipline (input to the `plan` artifact).
 - `kaizen:agent-brief` — fresh-agent orientation; will be updated in v1.14.0 to describe schema-driven workflows.
 - `docs/sdd-ssot-research.md` — broader schema-driven design research; this doc is one application of that thinking.

@@ -165,9 +165,9 @@ to Conventional Commits prefixes (`refactor(scope)`, `refactor(scope)-SWEEP`).
 
 Load alongside:
 
-- `kaizen:writing-plans` — Phase 4 plan structure
-- `kaizen:executing-plans` — Phase 6 task-by-task discipline
-- `kaizen:test-driven-development` — Phase 3 characterization
+- `kaizen:create-plan` — Phase 4 plan structure
+- `kaizen:execute-plan` — Phase 6 task-by-task discipline
+- `kaizen:tdd` — Phase 3 characterization
 - `kaizen:boy-scout-rule` — Phase 6 incidental cleanups (without
   scope creep)
 - `kaizen:onion-ddd-workflow` — when the carve also fixes a
