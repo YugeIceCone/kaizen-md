@@ -55,6 +55,10 @@ _SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(_SCRIPT_DIR))
 # MIGRATION BRIDGE — kaizen helpers still at skills/workflow/scripts/
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "skills" / "workflow" / "scripts"))
+# Sibling cluster — build_index.py (the `index` verb's backing module)
+# lives at scripts/indexers/, not scripts/brain/. Add to path so the
+# consolidated-CLI dispatch can resolve `import build_index`.
+sys.path.insert(0, str(_SCRIPT_DIR.parent / "indexers"))
 
 import _brain  # noqa: E402
 import flow as _flow  # noqa: E402
@@ -792,6 +796,9 @@ def _cmd_promote_belief(args) -> int:
     if not note:
         sys.stderr.write("brain promote-belief: <note> ref required (e.g. Notes/pref-x)\n")
         return 1
+    # Normalize: accept "pref-x" / "pref-x.md" / "Notes/pref-x" / "Notes/pref-x.md"
+    if not note.startswith("Notes/"):
+        note = "Notes/" + note
     if not note.endswith(".md"):
         note = note + ".md"
 

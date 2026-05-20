@@ -1006,6 +1006,43 @@
       "committed_at": null,
       "parked_reason": null,
       "probe_output": null
+    },
+    {
+      "id": "BK-053",
+      "section": "next_up",
+      "title": "Regression test: kaizen-brain promote-belief auto-prefixes Notes/",
+      "ref": "self-improving-review-followup-2026-05-20",
+      "probe": "kaizen-brain promote-belief pref-foo (bare slug, no Notes/ prefix) writes line as '[[Notes/pref-foo.md]]' not '[[pref-foo.md]]'. Pre-fix (committed): bare slug got promoted without Notes/ prefix, breaking Persona Top Beliefs format consistency AND defeating the idempotency check (same note re-promoted under different format counts as new). Fix landed in scripts/brain/brain.py — auto-prefixes Notes/ when missing.",
+      "verify": "Add tests/test_brain_command.py test_promote_belief_auto_prefixes_notes: invoke kaizen-brain promote-belief pref-x; assert Persona.md gets '[[Notes/pref-x.md]]' line. Plus negative test: passing Notes/pref-x doesn't double-prefix to Notes/Notes/.",
+      "tags": [
+        "brain",
+        "regression-test"
+      ],
+      "created": "2026-05-20",
+      "started_at": null,
+      "committed": null,
+      "committed_at": null,
+      "parked_reason": null,
+      "probe_output": null
+    },
+    {
+      "id": "BK-054",
+      "section": "next_up",
+      "title": "Regression test: bin/kaizen-brain dispatches index verb to scripts/indexers/build_index.py",
+      "ref": "self-improving-review-followup-2026-05-20",
+      "probe": "kaizen-brain index --help / search / stats actually invokes scripts/indexers/build_index.py (not the non-existent scripts/brain/brain_index.py). Pre-fix (committed): bin wrapper assumed brain_index.py would live alongside brain_evolve.py and built script path with brain_${verb}.py uniformly; broke index verb. Fix landed: per-verb path map (index → indexers/build_index.py; evolve → brain/brain_evolve.py).",
+      "verify": "Add tests/test_kaizen_cli.py test_brain_index_dispatch_path: subprocess.run(['kaizen-brain', 'index', '--help']) returns 0 and stdout contains 'kaizen-build-index'. Also bin/kaizen-debug smoke continues to pass for the brain bin.",
+      "tags": [
+        "brain",
+        "bin-wrapper",
+        "regression-test"
+      ],
+      "created": "2026-05-20",
+      "started_at": null,
+      "committed": null,
+      "committed_at": null,
+      "parked_reason": null,
+      "probe_output": null
     }
   ],
   "decisions": []

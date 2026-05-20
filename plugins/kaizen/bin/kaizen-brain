@@ -33,11 +33,18 @@ PLUGIN_ROOT="$(kaizen_plugin_root)" || {
 # migrate) stay on plain python3 — no heavy deps needed.
 case "${1:-}" in
     index|evolve)
-        # `kaizen-brain index ...` → uv run --script brain_index.py ...
-        # `kaizen-brain evolve ...` → uv run --script brain_evolve.py ...
-        # (evolve uses the same embed pipeline for clustering)
+        # `kaizen-brain index ...`  → uv run --script scripts/indexers/build_index.py ...
+        # `kaizen-brain evolve ...` → uv run --script scripts/brain/brain_evolve.py ...
+        # Both need the heavy-dep venv (numpy + sentence-transformers).
+        # In-process importlib in brain.py would silently bypass the
+        # PEP-723 shebang — we'd fall back to LIKE-only search without
+        # anyone noticing. Route here, not there, so the user-visible
+        # bin always gets the right Python env.
         verb="$1"; shift
-        script="$PLUGIN_ROOT/scripts/brain/brain_${verb}.py"
+        case "$verb" in
+            index)  script="$PLUGIN_ROOT/scripts/indexers/build_index.py" ;;
+            evolve) script="$PLUGIN_ROOT/scripts/brain/brain_evolve.py" ;;
+        esac
         if command -v uv >/dev/null 2>&1; then
             exec uv run --script "$script" "$@"
         else
