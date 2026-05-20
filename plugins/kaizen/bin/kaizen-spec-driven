@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# kaizen-spec-driven — EARS lint + confidence score + phase gate.
+#
+# Verbs: lint-ears | score | gate
+#
+# /kaizen:setup symlinks bin/ entries into ~/.local/bin/.
+
+set -euo pipefail
+_SCRIPT_REAL="$(readlink -f "${BASH_SOURCE[0]}" 2>/dev/null \
+  || python3 -c 'import os,sys; print(os.path.realpath(sys.argv[1]))' "${BASH_SOURCE[0]}")"
+SCRIPT_DIR="$(cd "$(dirname "$_SCRIPT_REAL")" && pwd)"
+PLUGIN_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+
+exec python3 "$PLUGIN_ROOT/scripts/spec_driven/spec_driven.py" "$@"
