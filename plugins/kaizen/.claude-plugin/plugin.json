@@ -267,7 +267,12 @@
       "Read(.kaizen.toml)",
       "Write(.kaizen/cache/**)",
       "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/scripts/tests/run_tests_parallel.py:*)",
-      "Bash(bash ${CLAUDE_PLUGIN_ROOT}/bin/kaizen-run-tests-parallel:*)"
+      "Bash(bash ${CLAUDE_PLUGIN_ROOT}/bin/kaizen-run-tests-parallel:*)",
+      "Bash(${CLAUDE_PLUGIN_ROOT}/bin/kaizen-axis-runner:*)",
+      "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/axis_runner.py:*)",
+      "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/workflow/scripts/axis_runner_rules.py:*)",
+      "Bash(${CLAUDE_PLUGIN_ROOT}/bin/kaizen-axis-runner-mcp:*)",
+      "Bash(uv run --script ${CLAUDE_PLUGIN_ROOT}/scripts/mcp/axis_runner_mcp.py:*)"
     ]
   }
 }

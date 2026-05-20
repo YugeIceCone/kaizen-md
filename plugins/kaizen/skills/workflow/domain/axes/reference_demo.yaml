@@ -1,0 +1,20 @@
+# reference_demo — proof axis (#161 axis-runner).
+#
+# Demonstrates the declarative-axis pattern using the `grep` dispatcher.
+# Detects trailing whitespace in markdown files. Loaded + dispatched by
+# kaizen-axis-runner; emits the canonical envelope.
+#
+# Run:
+#   kaizen-axis-runner run --axis reference_demo --root <project-root>
+#
+# Subsumes the simplest standalone Python axis (a one-line regex scan
+# wrapped in argparse + _envelope) — proves blueprint item-06.
+name: reference-demo
+description: Proof axis — trailing whitespace in markdown files (grep dispatcher).
+scan_spec:
+  type: grep
+  pattern: " +$"
+  glob: "**/*.md"
+verdict_rule:
+  green_max: 0
+  yellow_max: 25
