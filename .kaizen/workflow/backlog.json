@@ -3,7 +3,7 @@
   "kind": "kaizen.backlog",
   "metadata": {
     "created": "2026-05-12",
-    "updated": "2026-05-19",
+    "updated": "2026-05-20",
     "active_workflow_ref": null
   },
   "items": [
@@ -982,6 +982,25 @@
         "investigation"
       ],
       "created": "2026-05-19",
+      "started_at": null,
+      "committed": null,
+      "committed_at": null,
+      "parked_reason": null,
+      "probe_output": null
+    },
+    {
+      "id": "BK-052",
+      "section": "next_up",
+      "title": "Extend iron-law bin-wrapper-per-cli to also check argparse(prog=) + _envelope.emitter() tool-name",
+      "ref": "self-improving-review-2026-05-20",
+      "probe": "scripts/quality/density.py / sandbox_check.py / tname_quality.py had 3-way naming drift (bin symlink vs argparse prog= vs emitter tool-name) silently disagree post-rename. Extend the bin-wrapper-per-cli law detect step to walk the underlying script and assert argparse(prog=<bin-basename>) AND _envelope.emitter(\"<bin-basename>\", ...) AND first SKILL.md cross-reference all match the bin's basename.",
+      "verify": "Add check_bin_wrapper_per_cli_strict() to _iron_laws.py; positive test: 3 quality scripts post-fix (commit 861c97e) pass; negative test: synthetic script with mismatched prog fails. Run kaizen-iron-laws check --law bin-wrapper-per-cli-strict --all returns 0 issues.",
+      "tags": [
+        "iron-laws",
+        "naming",
+        "drift"
+      ],
+      "created": "2026-05-20",
       "started_at": null,
       "committed": null,
       "committed_at": null,
