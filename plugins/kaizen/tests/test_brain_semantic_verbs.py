@@ -185,6 +185,32 @@ class TestPromoteBelief(_PersonaSandbox):
         self.assertEqual(text.count("Notes/pref-z.md"), 1)
         self.assertIn("already", r.stdout.lower() + r.stderr.lower())
 
+    def test_auto_prefixes_notes_for_bare_slug(self):
+        """BK-053: bare slug `pref-foo` must promote as `[[Notes/pref-foo.md]]`,
+        not `[[pref-foo.md]]`. Pre-fix, bare slugs landed without the `Notes/`
+        prefix, breaking Top Beliefs format consistency AND defeating the
+        idempotency check (same note re-promoted under different format would
+        duplicate)."""
+        r = self._run("promote-belief", "pref-foo", "--conf", "0.85")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        text = self.persona.read_text()
+        self.assertIn("[[Notes/pref-foo.md]]", text)
+        # Negative: must NOT land as bare slug without the Notes/ prefix.
+        import re
+        self.assertIsNone(
+            re.search(r"^\d+\.\s+\[\[pref-foo", text, re.M),
+            "bare slug must be auto-prefixed with Notes/",
+        )
+
+    def test_does_not_double_prefix_notes(self):
+        """BK-053: `Notes/pref-bar` must NOT become `Notes/Notes/pref-bar`.
+        The prefix normalizer must be idempotent on already-prefixed refs."""
+        r = self._run("promote-belief", "Notes/pref-bar", "--conf", "0.8")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        text = self.persona.read_text()
+        self.assertIn("[[Notes/pref-bar.md]]", text)
+        self.assertNotIn("Notes/Notes/", text)
+
 
 class TestErrorHandling(_PersonaSandbox):
 
