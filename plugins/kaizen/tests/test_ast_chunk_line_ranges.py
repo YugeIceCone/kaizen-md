@@ -19,8 +19,10 @@ import os
 
 CONST = 1
 
+
 def foo(x):
     return x + 1
+
 
 class Bar:
     def method(self):
