@@ -1168,6 +1168,26 @@
       "committed_at": null,
       "parked_reason": null,
       "probe_output": null
+    },
+    {
+      "id": "BK-062",
+      "section": "done",
+      "title": "PostToolUse WHILE_BUSY drain trailer causes redundant re-acknowledgments",
+      "ref": "remember-port-2026-05-20",
+      "probe": "PostToolUse hook injects 'USER MESSAGE(S) RECEIVED WHILE BUSY' via inbox.drain(). The drain block is attached as a system-reminder to the originating tool result and PERSISTS across later turns. Once acknowledged, the reminder text doesn't disappear — when a later turn re-reads that tool result, agent sees the same 'Pause current task to acknowledge' prompt and re-acknowledges. Observed 2026-05-20 during remember-md port arc: Turn N said 'Got it — direct inline execution. Starting Phase 1...'; Turn N+1 said 'Acknowledged — already pivoted to inline execution. Continuing.' — duplicate.",
+      "verify": "Fix landed in commit 3bb0d63: rewrote the drain trailer to explicitly say 'If your immediately prior assistant turn already addressed these, continue silently — do NOT re-acknowledge.' Hard signal 'do NOT re-acknowledge' + actionable prior-turn check phrase. Paired test test_drain_trailer_discourages_redundant_ack asserts both phrases. 11/11 inbox tests pass.",
+      "tags": [
+        "hook",
+        "user-experience",
+        "bug",
+        "inbox"
+      ],
+      "created": "2026-05-20",
+      "started_at": null,
+      "committed": "3bb0d63",
+      "committed_at": "2026-05-20T08:03:58Z",
+      "parked_reason": null,
+      "probe_output": null
     }
   ],
   "decisions": []
