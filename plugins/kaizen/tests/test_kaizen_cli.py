@@ -228,6 +228,71 @@ class TestPatternsSubcommand(unittest.TestCase):
                 self.assertIn(k, p, f"pattern {p.get('id','?')} missing {k}")
 
 
+class TestNewExplorationAgents(unittest.TestCase):
+    """3 new Claude subagents ported from Codex orientation skills.
+    Fills the read-only / orientation gap in the existing 7-agent
+    surface (which skews toward write/review roles)."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls._agents_dir = _REPO_ROOT / "plugins/kaizen/agents"
+
+    def _frontmatter(self, name: str) -> dict:
+        path = self._agents_dir / f"{name}.md"
+        self.assertTrue(path.is_file(), f"missing agent: {name}")
+        text = path.read_text()
+        import re
+        m = re.match(r"---\n(.*?)\n---", text, re.DOTALL)
+        self.assertIsNotNone(m, f"no frontmatter in {name}.md")
+        fm: dict = {}
+        for line in m.group(1).splitlines():
+            mm = re.match(r"^([a-z]+):\s*(.+)$", line)
+            if mm:
+                fm[mm.group(1)] = mm.group(2).strip()
+        return fm
+
+    def test_kaizen_explorer_exists(self):
+        fm = self._frontmatter("kaizen-explorer")
+        self.assertEqual(fm.get("name"), "kaizen-explorer")
+        self.assertIn("tools", fm)
+
+    def test_kaizen_analyzer_exists(self):
+        fm = self._frontmatter("kaizen-analyzer")
+        self.assertEqual(fm.get("name"), "kaizen-analyzer")
+        self.assertIn("tools", fm)
+
+    def test_kaizen_researcher_exists(self):
+        fm = self._frontmatter("kaizen-researcher")
+        self.assertEqual(fm.get("name"), "kaizen-researcher")
+        # Researcher needs network access
+        self.assertIn("WebFetch", self._frontmatter("kaizen-researcher")["tools"])
+
+
+class TestAgentScaffoldCommand(unittest.TestCase):
+    """`kaizen agents scaffold <skill>` generates a Claude agent stub
+    from a skill's SKILL.md + Codex openai.yaml metadata."""
+
+    def test_scaffold_emits_valid_frontmatter(self):
+        r = subprocess.run(
+            [str(_BIN_KAIZEN), "agents", "scaffold", "debug"],
+            capture_output=True, text=True, timeout=10)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        # Starts with YAML frontmatter delimiter
+        self.assertTrue(r.stdout.startswith("---\n"), r.stdout[:200])
+        self.assertIn("name: kaizen-debug", r.stdout)
+        self.assertIn("tools:", r.stdout)
+        self.assertIn("description:", r.stdout)
+
+    def test_scaffold_includes_codex_short_description(self):
+        """If Codex openai.yaml has a short_description, the scaffold
+        surfaces it in the agent's description."""
+        r = subprocess.run(
+            [str(_BIN_KAIZEN), "agents", "scaffold", "explore"],
+            capture_output=True, text=True, timeout=10)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("Map code structure before changes", r.stdout)
+
+
 class TestTimeMode(unittest.TestCase):
     """Standalone — `--time` is a subprocess-driven CLI mode, not
     inventory or commands-discovery related."""

@@ -483,6 +483,130 @@ def cmd_patterns(args: argparse.Namespace) -> int:
     return 0
 
 
+# ─── kaizen agents scaffold — generate Claude subagent stubs ─────────
+
+
+_AGENTS_DIR = _PLUGIN_ROOT / "agents"
+_SKILLS_DIR = _PLUGIN_ROOT / "skills"
+
+
+def _read_skill_frontmatter(skill_dir: Path) -> dict:
+    """Read name / description / allowed-tools / version from a skill's
+    SKILL.md frontmatter. Stdlib-only line scan — keeps the dispatcher
+    zero-dep."""
+    import re as _re
+    skill_md = skill_dir / "SKILL.md"
+    if not skill_md.is_file():
+        return {}
+    text = skill_md.read_text(encoding="utf-8")
+    m = _re.match(r"---\n(.*?)\n---", text, _re.DOTALL)
+    if not m:
+        return {}
+    fm: dict = {}
+    for line in m.group(1).splitlines():
+        mm = _re.match(r"^([\w-]+):\s*(.+)$", line)
+        if mm:
+            fm[mm.group(1)] = mm.group(2).strip()
+    return fm
+
+
+def _read_codex_short_description(skill_dir: Path) -> str:
+    """Pull `short_description` from skills/<X>/agents/openai.yaml if
+    present — Codex's 1-line agent label."""
+    import re as _re
+    oy = skill_dir / "agents" / "openai.yaml"
+    if not oy.is_file():
+        return ""
+    text = oy.read_text(encoding="utf-8")
+    m = _re.search(r'short_description:\s*"([^"]+)"', text)
+    return m.group(1) if m else ""
+
+
+def _default_tools_for(skill: str, skill_fm: dict) -> str:
+    """Pick a sensible default tool surface based on skill family.
+
+    Heuristic — author can edit after scaffolding. Conservative read-only
+    default; expand to Write/Edit when the skill name signals mutation."""
+    # Honor declared allowed-tools first (some Claude skills already have it)
+    if "allowed-tools" in skill_fm:
+        return skill_fm["allowed-tools"]
+    mutating_signals = ("fix", "implement", "execute", "create", "write",
+                        "extract", "edit", "refactor", "migrate")
+    if any(sig in skill.lower() for sig in mutating_signals):
+        return "[Read, Edit, Write, Glob, Grep, Bash]"
+    research_signals = ("research", "claude-docs", "knowledge", "context7")
+    if any(sig in skill.lower() for sig in research_signals):
+        return "[Read, Grep, WebFetch, WebSearch]"
+    return "[Read, Glob, Grep, Bash]"  # read-only default
+
+
+def cmd_agents_scaffold(args: argparse.Namespace) -> int:
+    """Generate a Claude subagent stub from a skill's metadata."""
+    skill_dir = _SKILLS_DIR / args.skill
+    if not skill_dir.is_dir():
+        sys.stderr.write(f"kaizen agents scaffold: skill '{args.skill}' not found "
+                          f"at {skill_dir}\n")
+        return 2
+    fm = _read_skill_frontmatter(skill_dir)
+    codex_short = _read_codex_short_description(skill_dir)
+    name = f"kaizen-{args.skill}"
+    desc = fm.get("description", "(no description)")
+    if codex_short:
+        desc = f"{codex_short}. {desc}"
+    tools = _default_tools_for(args.skill, fm)
+    stub = (
+        f"---\n"
+        f"name: {name}\n"
+        f"description: {desc}\n"
+        f"tools: {tools}\n"
+        f"model: inherit\n"
+        f"---\n"
+        f"\n"
+        f"# {name}\n"
+        f"\n"
+        f"Spawned to perform the `{args.skill}` skill as an isolated subagent.\n"
+        f"\n"
+        f"## What you do\n"
+        f"\n"
+        f"<fill in from SKILL.md `## What this skill does` — see\n"
+        f"`plugins/kaizen/skills/{args.skill}/SKILL.md`>\n"
+        f"\n"
+        f"## What you DON'T do\n"
+        f"\n"
+        f"- Don't operate outside the declared tool surface.\n"
+        f"- Don't speculate — report what is, not what should be.\n"
+        f"\n"
+        f"## Pairing\n"
+        f"\n"
+        f"<list sibling agents that compose with this one>\n"
+    )
+    if args.out:
+        Path(args.out).write_text(stub, encoding="utf-8")
+        print(f"wrote agent stub → {args.out}", file=sys.stderr)
+    else:
+        print(stub, end="")
+    return 0
+
+
+def cmd_agents(args: argparse.Namespace) -> int:
+    if args.subcmd == "scaffold":
+        return cmd_agents_scaffold(args)
+    # Default: list existing Claude subagents
+    agents = sorted(_AGENTS_DIR.glob("*.md"))
+    if args.json:
+        import json as _json
+        rows = []
+        for a in agents:
+            fm = _read_skill_frontmatter(a.parent)  # not exactly — let's parse inline
+            rows.append({"name": a.stem, "path": str(a)})
+        print(_json.dumps(rows, indent=2))
+        return 0
+    print(f"kaizen Claude subagents ({len(agents)} total)\n")
+    for a in agents:
+        print(f"  {a.stem}")
+    return 0
+
+
 def _dispatch(sub: str, sub_args: list[str], use_subprocess: bool = False) -> int:
     """Resolve sub → bin/kaizen-<sub> and exec/subprocess it."""
     wrapper = _BIN_DIR / f"kaizen-{sub}"
@@ -565,6 +689,20 @@ def main(argv: list[str]) -> int:
         return cmd_commands(ns)
     if cmd in ("version", "--version", "-v"):
         return cmd_version(argparse.Namespace())
+    if cmd == "agents":
+        parser = argparse.ArgumentParser(prog="kaizen agents")
+        parser.add_argument("subcmd", nargs="?", default="list",
+                             choices=["list", "scaffold"])
+        parser.add_argument("skill", nargs="?", default=None,
+                             help="skill name (for scaffold)")
+        parser.add_argument("--out", metavar="FILE",
+                             help="write the stub to FILE (default: stdout)")
+        parser.add_argument("--json", action="store_true")
+        ns = parser.parse_args(argv[1:])
+        if ns.subcmd == "scaffold" and not ns.skill:
+            sys.stderr.write("kaizen agents scaffold: needs <skill>\n")
+            return 2
+        return cmd_agents(ns)
     if cmd == "patterns":
         parser = argparse.ArgumentParser(prog="kaizen patterns")
         parser.add_argument("--json", action="store_true",
