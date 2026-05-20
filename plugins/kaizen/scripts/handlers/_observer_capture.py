@@ -24,21 +24,21 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 from pathlib import Path
 from typing import Any
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import _bootstrap  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 
 def _observer_dir() -> Path:
     """~/.claude/.kaizen/observer/ — env-overridable for tests + relocation.
 
-    DRY — delegates to shared _paths.env_overridable_dir. _paths.py
-    lives in skills/workflow/scripts/, not on this hook's sys.path
-    by default — resolve relative to plugin root.
+    DRY — delegates to shared _paths.env_overridable_dir. _paths lives
+    at scripts/io/_paths.py; _bootstrap (imported at module level) has
+    already added every scripts/<cluster>/ dir to sys.path so the bare
+    `from _paths import ...` resolves directly.
     """
-    import sys as _sys
-    if str(scripts_dir) not in _sys.path:
-        _sys.path.insert(0, str(scripts_dir))
     from _paths import env_overridable_dir
     return env_overridable_dir("KAIZEN_OBSERVER_DIR", "observer")
 
@@ -115,13 +115,8 @@ def normalize_cc_event(stdin_text: str, *,
 def _atomic_append(sink: Path, event: dict) -> None:
     """Append-only — never reads existing file. Same iron-law as
     kaizen-progress / kaizen-learn. DRY — delegates to shared
-    _atomic.atomic_append_line."""
-    # _atomic lives in skills/workflow/scripts/, not on this module's sys.path
-    # by default — resolve relative to plugin root.
-    import sys as _sys
-    from pathlib import Path as _Path
-    if str(scripts_dir) not in _sys.path:
-        _sys.path.insert(0, str(scripts_dir))
+    _atomic.atomic_append_line (at scripts/io/_atomic.py; reachable via
+    _bootstrap at module-import time)."""
     from _atomic import atomic_append_line  # noqa: E402
     atomic_append_line(sink, json.dumps(event))
 
