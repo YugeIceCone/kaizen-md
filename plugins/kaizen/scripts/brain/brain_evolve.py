@@ -261,17 +261,46 @@ class ReportNode(_flow.AsyncNode):
         return "default"
 
 
+class RerankPersonaNode(_flow.AsyncNode):
+    """v1.40+ — score-rank beliefs and (when not dry-run + auto_promote)
+    rewrite Persona ## Top Beliefs. Replaces the detect-only behavior
+    that previously only flagged drift — now closes the loop.
+
+    Honors ``store["dry_run"]`` so callers can preview without writing.
+    Falls back gracefully if brain_rank isn't importable (e.g. dev
+    environment mid-migration)."""
+
+    async def prep_async(self, store: dict) -> dict:
+        return {
+            "brain_root": store["brain_root"],
+            "dry_run": bool(store.get("dry_run", False)),
+        }
+
+    async def exec_async(self, prep: dict) -> dict:
+        try:
+            import brain_rank as _br
+        except ImportError:
+            return {"skipped": "brain_rank import failed"}
+        return _br.run(brain=prep["brain_root"], dry_run=prep["dry_run"])
+
+    async def post_async(self, store: dict, _prep, result: dict) -> str:
+        store["rerank"] = result
+        return "default"
+
+
 def build_evolve_flow() -> _flow.AsyncFlow:
     load = LoadNotesNode()
     dupe = FindDuplicatesNode()
     fresh = CheckFreshnessNode()
     persona = ScanPersonaRefsNode()
+    rerank = RerankPersonaNode()
     report = ReportNode()
     f = _flow.AsyncFlow(load)
     f.add_successor(load, "default", dupe)
     f.add_successor(dupe, "default", fresh)
     f.add_successor(fresh, "default", persona)
-    f.add_successor(persona, "default", report)
+    f.add_successor(persona, "default", rerank)
+    f.add_successor(rerank, "default", report)
     return f
 
 
@@ -279,9 +308,10 @@ def evolve(
     *,
     brain_root: Optional[Path] = None,
     stale_days: int = 30,
+    dry_run: bool = False,
 ) -> dict:
     return asyncio.run(_evolve_async(
-        brain_root=brain_root, stale_days=stale_days,
+        brain_root=brain_root, stale_days=stale_days, dry_run=dry_run,
     ))
 
 
@@ -289,16 +319,20 @@ async def _evolve_async(**kwargs) -> dict:
     store: dict = {
         "brain_root": kwargs.get("brain_root") or _brain.brain_root(),
         "stale_days": kwargs.get("stale_days", 30),
+        "dry_run": kwargs.get("dry_run", False),
     }
     await build_evolve_flow().run_async(store)
-    return store.get("report") or {}
+    report = store.get("report") or {}
+    # Surface the rerank result alongside the existing drift report
+    report["rerank"] = store.get("rerank") or {}
+    return report
 
 
 # ─── CLI ─────────────────────────────────────────────────────────────
 
 
 def _cmd_run(args) -> int:
-    report = evolve(stale_days=args.stale_days)
+    report = evolve(stale_days=args.stale_days, dry_run=args.dry_run)
     if args.json:
         _emit(report)
         return 0
@@ -322,6 +356,14 @@ def _cmd_run(args) -> int:
         for d in report["persona_drift"]:
             print(f"  - {d['issue']:<14} {d['stem']}: {d}")
         print()
+    rerank = report.get("rerank") or {}
+    if rerank and not rerank.get("skipped"):
+        mode = "bootstrap" if rerank.get("bootstrap") else "normal"
+        print(f"RERANK (mode={mode}): "
+              f"{len(rerank.get('promoted', []))} promoted, "
+              f"{len(rerank.get('demoted', []))} demoted, "
+              f"wrote={rerank.get('wrote', False)}")
+        print()
     if not (report["duplicates"] or report["freshness_drift"] or report["persona_drift"]):
         print("  no drift detected — brain is consolidated.")
     return 0
@@ -334,6 +376,8 @@ def main(argv: Optional[list[str]] = None) -> int:
     )
     p.add_argument("--stale-days", type=int, default=30,
                    help="days before 'fresh' notes get flagged (default 30)")
+    p.add_argument("--dry-run", action="store_true",
+                   help="preview rerank deltas without writing Persona ## Top Beliefs")
     p.add_argument("--json", action="store_true")
     p.set_defaults(func=_cmd_run)
     args = p.parse_args(argv)

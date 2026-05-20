@@ -950,6 +950,28 @@ def cmd_seed(args) -> int:
 
 
 def main(argv: Optional[list[str]] = None) -> int:
+    # Early-exit dispatch for verbs whose argument surface is owned by a
+    # sibling module's argparse (audit / evolve / index / promote / migrate /
+    # rank / schema-upgrade / md-index). Bypasses the parent argparse so
+    # `kaizen-brain <verb> --flag` doesn't trip Python's argparse REMAINDER
+    # bug (https://bugs.python.org/issue9334) where leading `--flag` is
+    # consumed by the parent parser instead of the REMAINDER positional.
+    _dispatch_map = {
+        "audit":          "brain_audit",
+        "evolve":         "brain_evolve",
+        "index":          "build_index",
+        "promote":        "brain_promote",
+        "migrate":        "brain_migrate",
+        "rank":           "brain_rank",
+        "schema-upgrade": "brain_schema",
+        "md-index":       "brain_md_index",
+    }
+    _argv = list(sys.argv[1:] if argv is None else argv)
+    if _argv and _argv[0] in _dispatch_map:
+        import importlib
+        mod = importlib.import_module(_dispatch_map[_argv[0]])
+        return mod.main(_argv[1:])
+
     p = argparse.ArgumentParser(
         prog="kaizen-brain",
         description="Capture / classify / route thoughts into the kaizen Second Brain.",
@@ -1019,7 +1041,9 @@ def main(argv: Optional[list[str]] = None) -> int:
     nd.set_defaults(func=_cmd_new_directive)
 
     pb = sub.add_parser("promote-belief",
-                         help="append a Note to Persona's Top Beliefs (auto-ranks)")
+                         help="manually append ONE Note to Persona's Top Beliefs at rank=max+1 "
+                              "(no score reordering — use `kaizen-brain rank` for "
+                              "automatic score-based ranking + demotion)")
     pb.add_argument("note", help="Notes/<slug>[.md] — the Note to promote")
     pb.add_argument("--conf", type=float, default=None, help="confidence (e.g. 0.85)")
     pb.add_argument("--sources", type=int, default=None, help="evidence count")
@@ -1071,6 +1095,15 @@ def main(argv: Optional[list[str]] = None) -> int:
          "project-memory → brain promotion flow"),
         ("migrate", "brain_migrate",
          "relocate brain dir (v1.38 migration tool)"),
+        # v1.40+ — upstream remember-md/remember port closure:
+        ("rank",    "brain_rank",
+         "score-rank beliefs + rewrite Persona ## Top Beliefs "
+         "(auto-ranker; bootstrap mode for fresh brains)"),
+        ("schema-upgrade", "brain_schema",
+         "validate + auto-repair frontmatter against the path-inferred schema"),
+        ("md-index", "brain_md_index",
+         "render brain markdown inventory "
+         "(People/Projects/Areas/Notes/Tasks/Journal entity tables)"),
     ):
         _sp = sub.add_parser(verb, help=help_text, add_help=False)
         # All-args passthrough — the underlying module's argparse owns
