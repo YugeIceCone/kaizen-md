@@ -88,7 +88,7 @@ class SandboxBase(unittest.TestCase):
 class TestModuleAndDomain(unittest.TestCase):
     def test_modules_parse(self):
         for mod in ("_handoff.py", "handoff.py"):
-            path = _KZ_DIR / "skills/workflow/scripts" / mod
+            path = _KZ_DIR / "scripts/handoff" / mod
             compile(path.read_text(encoding="utf-8"), str(path), "exec")
 
     def test_domain_yaml_loads(self):

@@ -139,6 +139,7 @@ def _cmd_bridge(args) -> int:
     if args.apply:
         # Onion-clean: handoff is a CLI *consumer* of brain — cross the
         # process boundary, no `_brain` import.
+        brain_py = _core.PLUGIN_ROOT / "scripts" / "brain" / "brain.py"
         rows = []
         for c in candidates:
             try:
@@ -1453,6 +1454,7 @@ def _maybe_auto_bridge(fp: Path, *, outcome: str, force: bool) -> dict | None:
     if not candidates:
         return {"applied": 0, "failed": 0, "total": 0,
                 "reason": "no durable candidates", "rows": []}
+    brain_py = _core.PLUGIN_ROOT / "scripts" / "brain" / "brain.py"
     rows = []
     applied = 0
     failed = 0

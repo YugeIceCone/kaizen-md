@@ -146,7 +146,7 @@ GITIGNORE="$REPO_ROOT/.gitignore"
 # Moves ~/.claude/.kaizen-*, kaizen-inbox, backups/kaizen, kaizen-schemas
 # under the unified ~/.claude/.kaizen/ tree, and <repo>/.workflow/ →
 # <repo>/.kaizen/workflow/. Idempotent.
-MIGRATOR="$SKILL_DIR/scripts/migrate_paths.sh"
+MIGRATOR="$PLUGIN_ROOT/scripts/migrate/migrate_paths.sh"
 if [ -x "$MIGRATOR" ]; then
     echo "  ▸ running path migrator (v1.22.0+ layout)..." >&2
     bash "$MIGRATOR" --project-root "$REPO_ROOT" 2>&1 | sed 's/^/    /' >&2 || true
@@ -313,13 +313,13 @@ echo ""
 # Resolve backlog_path via config.py (SSOT for .kaizen.toml parsing —
 # replaces the per-script grep+sed pattern that lived in install/statusline/
 # pre-commit pre-v1.8.x).
-BACKLOG_REL=$(cd "$REPO_ROOT" && python3 "$SKILL_DIR/scripts/config.py" backlog_path --default "${DEFAULT_BACKLOG:-backlog.md}" 2>/dev/null)
+BACKLOG_REL=$(cd "$REPO_ROOT" && python3 "$PLUGIN_ROOT/scripts/util/config.py" backlog_path --default "${DEFAULT_BACKLOG:-backlog.md}" 2>/dev/null)
 BACKLOG_REL="${BACKLOG_REL:-${DEFAULT_BACKLOG:-backlog.md}}"
 BACKLOG_MD="$REPO_ROOT/$BACKLOG_REL"
 BACKLOG_JSON="${BACKLOG_MD%.md}.json"
 if [ ! -f "$BACKLOG_JSON" ]; then
     mkdir -p "$(dirname "$BACKLOG_JSON")"
-    python3 "$SKILL_DIR/scripts/backlog.py" render >/dev/null 2>&1 || true
+    python3 "$PLUGIN_ROOT/scripts/backlog/backlog.py" render >/dev/null 2>&1 || true
     if [ -f "$BACKLOG_JSON" ]; then
         echo "  ✓ seeded $BACKLOG_JSON"
         echo "  ✓ rendered $BACKLOG_MD"
@@ -336,7 +336,7 @@ if [ "${KAIZEN_NO_BIN:-0}" = "0" ] && [ -d "$PLUGIN_BIN" ]; then
     if [ -d "$USER_BIN" ] && [ -w "$USER_BIN" ]; then
         # GC orphans first — kaizen-* symlinks whose targets vanished in a
         # prior plugin update accumulate without this step.
-        python3 "$SKILL_DIR/scripts/_prune_bin_symlinks.py" \
+        python3 "$PLUGIN_ROOT/scripts/util/_prune_bin_symlinks.py" \
             --user-bin "$USER_BIN" 2>/dev/null | sed 's/^/  /' || true
         BIN_COUNT=0
         for src in "$PLUGIN_BIN"/kaizen "$PLUGIN_BIN"/kaizen-*; do
