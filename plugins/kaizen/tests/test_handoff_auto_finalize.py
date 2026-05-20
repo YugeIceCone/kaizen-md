@@ -227,8 +227,9 @@ class TestStoreIndexing(HandoffAutoFinalizeBase):
         )
         self.assertEqual(result.returncode, 0, result.stderr)
 
-        # Latest query reads from DB; should show complete + SUCCEEDED content
-        latest = self._run("latest", "--json")
+        # Latest query reads from DB; should show complete + SUCCEEDED content.
+        # --full opts back in to the YAML body (default --json is metadata-only).
+        latest = self._run("latest", "--json", "--full")
         env = json.loads(latest.stdout)
         h = env["data"]["handoff"]
         self.assertEqual(h["status"], "complete")

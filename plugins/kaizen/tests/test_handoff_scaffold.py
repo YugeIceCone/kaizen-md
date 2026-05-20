@@ -435,5 +435,58 @@ class TestScaffoldSessionMineSurfaces(ScaffoldSessionMineBase):
         self.assertNotEqual(r.returncode, 0)
 
 
+class TestScaffoldFiltersNonExistentPaths(ScaffoldBase):
+    """Files created-then-deleted within the same since-window are stale
+    references — including them in the handoff's files lists causes
+    verify to false-positive 'missing' on every consolidation/rename.
+    The prefill MUST filter to paths that still exist in the worktree."""
+
+    def test_consolidated_path_excluded_from_done_files(self):
+        # Create then delete a path in the same window — simulates a
+        # within-session consolidation (e.g. 44 root slashes -> 9 menus).
+        self._commit("legacy/old_command.md", "old\n")
+        (self.repo / "legacy" / "old_command.md").unlink()
+        subprocess.run(["git", "add", "-A"], cwd=str(self.repo),
+                        check=True, capture_output=True)
+        subprocess.run(["git", "commit", "-q", "-m", "consolidate"],
+                        cwd=str(self.repo), check=True, capture_output=True)
+        # And a file that does still exist
+        self._commit("src/kept.py", "x\n")
+
+        r = self._run(
+            "--session", "consol",
+            "--goal", "consolidate", "--now", "next",
+            "--since", "2000-01-01",
+            "--at", "2026-05-20_03-00", "--json",
+        )
+        self.assertEqual(r.returncode, 0, r.stderr)
+        body = Path(json.loads(r.stdout)["data"]["yaml_path"]).read_text()
+        self.assertIn("src/kept.py", body)
+        self.assertNotIn("legacy/old_command.md", body)
+
+    def test_synthetic_git_touched_uses_one_path_per_line(self):
+        # Three files, all still present — prior format dumped them in
+        # a single bracketed line that exploded the YAML size.
+        # Without JSONL mining the scaffolder takes the `elif changed`
+        # branch (task: "TBD (scaffolded — agent fills)") which also
+        # must emit per-line files.
+        for p in ("a.py", "b.py", "c.py"):
+            self._commit(p, "x\n")
+
+        r = self._run(
+            "--session", "demo",
+            "--goal", "did", "--now", "next",
+            "--since", "2000-01-01",
+            "--at", "2026-05-20_03-00", "--json",
+        )
+        self.assertEqual(r.returncode, 0, r.stderr)
+        body = Path(json.loads(r.stdout)["data"]["yaml_path"]).read_text()
+        # files: are emitted one-per-line, not bracketed.
+        self.assertIn("    files:\n      - a.py", body)
+        self.assertIn("\n      - b.py", body)
+        self.assertIn("\n      - c.py", body)
+        self.assertNotIn("files: [a.py, b.py, c.py]", body)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -100,7 +100,10 @@ def _cmd_save(args) -> int:
 def _cmd_latest(args) -> int:
     rows = _core.latest_handoffs(1)
     if args.json:
-        _emit({"handoff": rows[0] if rows else None})
+        row = rows[0] if rows else None
+        if row and not getattr(args, "full", False):
+            row = {k: v for k, v in row.items() if k != "content"}
+        _emit({"handoff": row})
         return 0
     if not rows:
         print("[kaizen-handoff] no handoffs in the store yet.")
@@ -648,7 +651,13 @@ def _derive_slug(text: str, max_len: int = 40) -> str:
 
 
 def _git_log_files(repo: Path, since: str) -> tuple[list[str], int]:
-    """Return (changed_files_sorted, commit_count) since the given date."""
+    """Return (changed_files_sorted, commit_count) since the given date.
+
+    Filters out paths that no longer exist in the worktree — files
+    created-then-deleted-then-renamed within the same session window
+    would otherwise leak stale paths into the handoff's files list,
+    causing verify to false-positive 'missing' on every consolidation.
+    """
     # Commit count — `--oneline` gives one line per commit.
     r_count = _git(repo, "log", f"--since={since}", "--oneline")
     commits = (
@@ -662,15 +671,20 @@ def _git_log_files(repo: Path, since: str) -> tuple[list[str], int]:
     if r_files.returncode != 0:
         return [], commits
     files = {line.strip() for line in r_files.stdout.splitlines() if line.strip()}
+    files = {p for p in files if (repo / p).exists()}
     return sorted(files), commits
 
 
 def _git_created_files(repo: Path, since: str) -> list[str]:
+    """Files first created in the since-window AND still present in the
+    worktree. Filters out created-then-removed-in-same-window paths so
+    they don't surface as false-positive verify 'missing' warnings."""
     r = _git(repo, "log", f"--since={since}", "--diff-filter=A",
              "--name-only", "--pretty=format:")
     if r.returncode != 0:
         return []
-    return sorted({line.strip() for line in r.stdout.splitlines() if line.strip()})
+    raw = {line.strip() for line in r.stdout.splitlines() if line.strip()}
+    return sorted(p for p in raw if (repo / p).exists())
 
 
 _HUNK_RE = __import__("re").compile(
@@ -837,8 +851,9 @@ def _git_changed_line_ranges(repo: Path, since: str) -> dict[str, list[tuple[int
             parsed = _parse_hunk_header(line)
             if parsed:
                 ranges[current_file].append(parsed)
-    # Drop empty entries (no new-side hunks)
-    return {p: rs for p, rs in ranges.items() if rs}
+    # Drop empty entries (no new-side hunks) AND paths that no longer
+    # exist in the worktree (consolidated/renamed/deleted within window).
+    return {p: rs for p, rs in ranges.items() if rs and (repo / p).exists()}
 
 
 def _discover_active_session(cwd: Path):
@@ -1014,13 +1029,16 @@ def _cmd_scaffold(args) -> int:
                 "  - task: (git-touched files this session)")
             body_lines.append(
                 f"    commits: [{', '.join(all_window_shas)}]")
-            body_lines.append(
-                f"    files: [{', '.join(changed)}]")
+            body_lines.append("    files:")
+            for p in changed:
+                body_lines.append(f"      - {p}")
     elif changed:
         body_lines.append("done_this_session:")
         body_lines.append("  - task: TBD (scaffolded — agent fills)")
         body_lines.append(f"    commits: [{', '.join(all_window_shas)}]")
-        body_lines.append(f"    files: [{', '.join(changed)}]")
+        body_lines.append("    files:")
+        for p in changed:
+            body_lines.append(f"      - {p}")
     else:
         body_lines.append("done_this_session: []")
 
@@ -2244,6 +2262,11 @@ def main(argv: Optional[list[str]] = None) -> int:
 
     s_latest = sub.add_parser("latest", help="the most recent handoff")
     s_latest.add_argument("--json", action="store_true")
+    s_latest.add_argument(
+        "--full", action="store_true",
+        help="include the full YAML 'content' in --json output "
+             "(default: metadata-only; resumers Read file_path next anyway)",
+    )
     s_latest.set_defaults(func=_cmd_latest)
 
     s_list = sub.add_parser("list", help="recent handoffs (metadata only)")

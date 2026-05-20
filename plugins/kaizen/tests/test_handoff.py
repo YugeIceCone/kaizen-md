@@ -295,12 +295,25 @@ class TestCli(SandboxBase):
         self.assertEqual(r.returncode, 0)
         saved = json.loads(r.stdout)["data"]
         self.assertEqual(saved["session_id"], "cli-sess")
+        # Default --json is metadata-only — file_path is the handle the
+        # caller Reads next; inlining the YAML body wastes ~170KB per call.
         r2 = self._run("latest", "--json")
         self.assertEqual(r2.returncode, 0)
         h = json.loads(r2.stdout)["data"]["handoff"]
         self.assertEqual(h["session_id"], "cli-sess")
         self.assertEqual(h["status"], "complete")
-        self.assertIn("cli test", h["content"])
+        self.assertNotIn("content", h)
+        self.assertEqual(h["file_path"], str(f))
+
+    def test_latest_full_includes_content(self):
+        f = self._write_yaml("full.yaml", "goal: full test\n")
+        self._run("save", "--session", "full-sess", "--file", str(f),
+                  "--status", "complete", "--json")
+        r = self._run("latest", "--json", "--full")
+        self.assertEqual(r.returncode, 0)
+        h = json.loads(r.stdout)["data"]["handoff"]
+        self.assertIn("content", h)
+        self.assertIn("full test", h["content"])
 
     def test_save_missing_file_exits_1(self):
         r = self._run("save", "--session", "s", "--file", "/nonexistent/x.yaml")
