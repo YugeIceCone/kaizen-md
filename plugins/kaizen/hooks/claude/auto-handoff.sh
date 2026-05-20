@@ -22,5 +22,5 @@ printf '%s' "$EVENT_JSON" | bash "$PLUGIN_ROOT/hooks/claude/_trace.sh" Stop-auto
 
 # Single python3 spawn — auto_handoff.py does threshold check,
 # dedupe, dxm event write, and JSON envelope emission.
-python3 "$PLUGIN_ROOT/skills/workflow/scripts/auto_handoff.py" check 2>/dev/null \
+python3 "$PLUGIN_ROOT/scripts/handoff/auto_handoff.py" check 2>/dev/null \
     || echo '{}'

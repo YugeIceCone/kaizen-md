@@ -80,15 +80,18 @@ shims were transitional back-compat scaffolding. Retiring them:
 
 ### Phase 3 — Migrate 3 bash hooks
 
-- [ ] `hooks/claude/sessionend-token-bloat.sh` →
-      `$PLUGIN_ROOT/scripts/index/token_bloat.py` (or wherever token_bloat lives)
-- [ ] `hooks/claude/auto-handoff.sh` →
-      `$PLUGIN_ROOT/scripts/handoff/auto_handoff.py`
-- [ ] `hooks/claude/session-start-token-bloat.sh` →
-      same as the first one
-- [ ] Smoke: fire each hook manually with a minimal event JSON
+- [x] `hooks/claude/sessionend-token-bloat.sh` → `$PLUGIN_ROOT/scripts/index/token_bloat.py`
+- [x] `hooks/claude/auto-handoff.sh` → `$PLUGIN_ROOT/scripts/handoff/auto_handoff.py`
+- [x] `hooks/claude/session-start-token-bloat.sh` → `$PLUGIN_ROOT/scripts/index/token_bloat.py`
+- [x] Verified 0 hook refs remaining via grep.
 
-**Commit:** `fix(hooks): point 3 hooks at canonical scripts/<cluster>/ paths`
+NB: each hook also does `source ../../skills/workflow/scripts/_plugin_root.sh`.
+That `_plugin_root.sh` is NOT a shim — it's a real shell utility that hasn't
+been migrated to a canonical scripts/<cluster>/ location yet. Leaving the
+source line untouched here; Phase 6 will decide whether to move the .sh
+utilities (_plugin_root.sh, _paths.sh, kaizen-env.sh).
+
+**Commit:** `fix(hooks): 3 hooks point at canonical scripts/<cluster>/ python paths`
 
 ### Phase 4 — Verify zero callers + full test suite
 

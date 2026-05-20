@@ -21,7 +21,7 @@ EVENT=$(cat 2>/dev/null || echo '{}')
 # Trace firing (iron-law: every-hook-script-traces-its-firing).
 printf '%s' "$EVENT" | bash "$PLUGIN_ROOT/hooks/claude/_trace.sh" SessionStart-token-bloat 2>/dev/null || true
 
-LINE=$(python3 "$PLUGIN_ROOT/skills/workflow/scripts/token_bloat.py" surface 2>/dev/null || true)
+LINE=$(python3 "$PLUGIN_ROOT/scripts/index/token_bloat.py" surface 2>/dev/null || true)
 
 if [ -z "$LINE" ]; then
     echo '{}'

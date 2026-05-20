@@ -21,7 +21,7 @@ EVENT=$(cat 2>/dev/null || echo '{}')
 printf '%s' "$EVENT" | bash "$PLUGIN_ROOT/hooks/claude/_trace.sh" SessionEnd-token-bloat 2>/dev/null || true
 
 # Background the scan — SessionEnd should not block. Output discarded.
-python3 "$PLUGIN_ROOT/skills/workflow/scripts/token_bloat.py" scan --cache \
+python3 "$PLUGIN_ROOT/scripts/index/token_bloat.py" scan --cache \
     >/dev/null 2>&1 &
 
 echo '{}'
