@@ -1081,6 +1081,44 @@
       "committed_at": null,
       "parked_reason": null,
       "probe_output": null
+    },
+    {
+      "id": "BK-057",
+      "section": "parked",
+      "title": "Audit: pull allowed-tools from Codex openai.yaml → add to Claude skill bodies (least-privilege enforcement)",
+      "ref": "agent-audit-2026-05-20",
+      "probe": "Survey all 29 skills/<X>/agents/openai.yaml files for allowed-tools declarations. Currently 3 of 5 sampled have explicit tool surfaces (ast-grep-rule [Bash,Write,Edit,Read], ast-grep-code [Bash], ast-grep-scan [Bash]). Claude SKILL.md bodies lack per-skill tool surface — relying on agent judgment + global allowed-tools. Adding declared tool surfaces would enforce least-privilege per iron-law principles.",
+      "verify": "Each skills/<X>/SKILL.md whose Codex openai.yaml has allowed-tools gets a matching declaration in its frontmatter (new convention: allowed-tools field) OR a paired agents/<X>.md Claude subagent definition. New iron-law check: skills with declared tool surfaces fail validation if they invoke tools outside the surface.",
+      "tags": [
+        "claude-codex",
+        "least-privilege",
+        "iron-laws-extension"
+      ],
+      "created": "2026-05-20",
+      "started_at": null,
+      "committed": null,
+      "committed_at": null,
+      "parked_reason": null,
+      "probe_output": null
+    },
+    {
+      "id": "BK-058",
+      "section": "parked",
+      "title": "Surface short_description from Codex openai.yaml in /kaizen:help cluster menu",
+      "ref": "agent-audit-2026-05-20",
+      "probe": "Codex openai.yaml has 1-line short_description ('Map code structure before changes') — more menu-friendly than Claude's LLM-routing description. /kaizen:help cluster rendering currently pulls the verbose SKILL.md description, making the menu noisy.",
+      "verify": "kaizen-help-gen render uses openai.yaml short_description (when present) as the menu label; falls back to truncated SKILL.md description otherwise. Sample: 'audit/quality' cluster menu shows ' — Hunt for verified bug candidates' (Codex-style) instead of full Claude prose.",
+      "tags": [
+        "ux",
+        "help-menu",
+        "codex-claude"
+      ],
+      "created": "2026-05-20",
+      "started_at": null,
+      "committed": null,
+      "committed_at": null,
+      "parked_reason": null,
+      "probe_output": null
     }
   ],
   "decisions": []
