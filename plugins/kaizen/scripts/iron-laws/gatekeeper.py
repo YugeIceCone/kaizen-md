@@ -243,6 +243,7 @@ def _gate_validator(scope: str, repo_root: Path) -> list[GateFinding]:
 def _gate_token_bloat(scope: str, repo_root: Path) -> list[GateFinding]:
     """Surface findings from kaizen-token-bloat when waste exceeds the
     notice threshold. Advisory only — never blocks the commit."""
+    script = _PLUGIN_ROOT / "scripts" / "index" / "token_bloat.py"
     if not script.is_file():
         return []
     try:
@@ -269,6 +270,7 @@ def _gate_token_bloat(scope: str, repo_root: Path) -> list[GateFinding]:
 
 def _gate_coverage(scope: str, repo_root: Path) -> list[GateFinding]:
     """Surface kaizen-coverage gaps — uncovered workflow scripts."""
+    script = _PLUGIN_ROOT / "scripts" / "quality" / "coverage.py"
     if not script.is_file():
         return []
     try:
@@ -297,6 +299,7 @@ def _gate_schema_coverage(scope: str, repo_root: Path) -> list[GateFinding]:
     """Surface kaizen-schema-coverage gaps — features that fail shape
     conformance (lens-manifest / decision-rubric / plain-config /
     rule-catalog)."""
+    script = _PLUGIN_ROOT / "scripts" / "quality" / "schema_coverage.py"
     if not script.is_file():
         return []
     try:
@@ -365,6 +368,7 @@ def _gate_frontmatter(scope: str, repo_root: Path) -> list[GateFinding]:
     Emits TWO distinct findings (see ``_classify_frontmatter_findings``) —
     name-mismatch as error (hard-gate), weak-routing as warn (soft-gate).
     """
+    script = _PLUGIN_ROOT / "scripts" / "quality" / "frontmatter.py"
     if not script.is_file():
         return []
     try:
@@ -383,6 +387,7 @@ def _gate_frontmatter(scope: str, repo_root: Path) -> list[GateFinding]:
 def _gate_name_quality(scope: str, repo_root: Path) -> list[GateFinding]:
     """Surface kaizen-name-quality bad/weak findings — files whose
     name doesn't match their docstring intent."""
+    script = _PLUGIN_ROOT / "scripts" / "quality" / "name_quality.py"
     if not script.is_file():
         return []
     try:
@@ -421,6 +426,7 @@ def _gate_slash_collision(scope: str, repo_root: Path) -> list[GateFinding]:
     collisions surfacing means a fresh slash collided with an existing
     one and the author should rename.
     """
+    script = _PLUGIN_ROOT / "scripts" / "quality" / "slash_collision.py"
     if not script.is_file():
         return []
     try:
@@ -455,6 +461,7 @@ def _gate_menu_lint(scope: str, repo_root: Path) -> list[GateFinding]:
     + respect the 4Q × 4-option contract. Errors (missing perm = runtime
     AskUserQuestion failure) surface as error-severity; option/question
     overflows surface as warn-severity (advisory)."""
+    script = _PLUGIN_ROOT / "scripts" / "quality" / "menu_lint.py"
     if not script.is_file():
         return []
     try:

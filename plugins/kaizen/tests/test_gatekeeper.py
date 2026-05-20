@@ -123,6 +123,26 @@ class TestGatekeeperAggregator(unittest.TestCase):
         out = self.gk._gate_etu("staged", _REPO_ROOT)
         self.assertIsInstance(out, list)
 
+    def test_quality_gates_do_not_crash_with_nameerror(self):
+        """Regression for BK-071 — the 7 sub-gates whose per-script paths
+        were swept during the Phase-5 layout migration (e9e7b5f) lost
+        their `script = _PLUGIN_ROOT / ...` lines and crashed with
+        `NameError: name 'script' is not defined`. Each gate must run
+        to completion and return a list."""
+        for name in (
+            "_gate_token_bloat",
+            "_gate_coverage",
+            "_gate_schema_coverage",
+            "_gate_frontmatter",
+            "_gate_name_quality",
+            "_gate_slash_collision",
+            "_gate_menu_lint",
+        ):
+            with self.subTest(gate=name):
+                fn = getattr(self.gk, name)
+                out = fn("staged", _REPO_ROOT)
+                self.assertIsInstance(out, list)
+
 class TestAutoLoadBudgetGate(unittest.TestCase):
     """The auto-load-budget gate warns when ~/.claude/.kaizen/auto-load.md
     exceeds KAIZEN_AUTO_LOAD_BUDGET (default 5120). Never blocks — auto-
