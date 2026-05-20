@@ -39,13 +39,12 @@ from fastmcp import FastMCP
 _HERE = Path(os.path.realpath(__file__)).parent
 if str(_HERE) not in sys.path:
     sys.path.insert(0, str(_HERE))
-# MIGRATION BRIDGE — _token_db still at skills/workflow/scripts/
-if str(_LEGACY) not in sys.path:
-    sys.path.insert(0, str(_LEGACY))
-
-from _token_db import TokenDB  # noqa: E402
+# _token_db now lives in scripts/index/ (post DOMAIN-shells sweep);
+# _bootstrap adds every scripts/<cluster>/ dir to sys.path.
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import _bootstrap  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
+
+from _token_db import TokenDB  # noqa: E402
 
 mcp = FastMCP("kaizen-tokens")
 

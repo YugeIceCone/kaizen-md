@@ -271,10 +271,11 @@ def available_mcp_servers() -> list[str]:
     Returns the bare server name (``workflow_mcp.py`` → ``workflow``).
     The trace's mcp__plugin_kaizen_<name>__ prefix is normalized to
     this bare form in ``never_used``."""
-    if not scripts.is_dir():
+    mcp_dir = plugin_root() / "scripts" / "mcp"
+    if not mcp_dir.is_dir():
         return []
     out = []
-    for p in sorted(scripts.glob("*_mcp.py")):
+    for p in sorted(mcp_dir.glob("*_mcp.py")):
         # workflow_mcp.py → workflow
         name = p.stem
         if name.endswith("_mcp"):
@@ -588,16 +589,15 @@ def smoke_mcp() -> dict:
         }
     import importlib
     import sys as _sys
-    if str(scripts) not in _sys.path:
-        _sys.path.insert(0, str(scripts))
-    # Post-DOMAIN-4: MCPs live at scripts/mcp/
+    # Post-DOMAIN-shells sweep: MCPs live at scripts/mcp/ (no fallback to
+    # the retired skills/workflow/scripts/ shim collection).
     mcp_dir = plugin_root() / "scripts" / "mcp"
     if mcp_dir.is_dir() and str(mcp_dir) not in _sys.path:
         _sys.path.insert(0, str(mcp_dir))
     passed = 0
     failed: list[dict] = []
     checked = 0
-    for p in sorted(mcp_dir.glob("*_mcp.py")) if mcp_dir.is_dir() else sorted(scripts.glob("*_mcp.py")):
+    for p in sorted(mcp_dir.glob("*_mcp.py")) if mcp_dir.is_dir() else []:
         checked += 1
         mod_name = p.stem
         try:

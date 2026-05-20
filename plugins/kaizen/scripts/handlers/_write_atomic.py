@@ -47,9 +47,10 @@ import os
 import sys
 from pathlib import Path
 
-import _atomic  # noqa: E402
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import _bootstrap  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
+
+import _atomic  # noqa: E402
 
 def _emit(payload: dict) -> int:
     print(json.dumps(payload))

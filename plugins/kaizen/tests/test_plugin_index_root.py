@@ -12,6 +12,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import _kaizen_paths  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
 import _paths  # noqa: E402
 
+# _paths.sh hasn't yet migrated out of skills/workflow/scripts/ (shell
+# utility, deferred to Phase 6 of the DOMAIN-shells refactor).
+SCRIPTS = Path(__file__).resolve().parent.parent / "skills" / "workflow" / "scripts"
+
 class TestPluginIndexRootPy(unittest.TestCase):
     def setUp(self):
         self._env = {k: os.environ.get(k) for k in

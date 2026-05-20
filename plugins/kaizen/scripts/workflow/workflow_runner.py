@@ -57,6 +57,9 @@ import sys
 from collections import deque
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import _bootstrap  # noqa: F401, E402 -- adds scripts/<cluster>/ to sys.path
+
 SCRIPT_DIR = Path(__file__).resolve().parent
 PLUGIN_ROOT = SCRIPT_DIR.parent.parent  # scripts/workflow → plugin root
 
