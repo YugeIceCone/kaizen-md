@@ -88,6 +88,47 @@ gate logs an advisory.
    `~/.claude/local-marketplaces/kaizen-md/`. Edit at the worktree
    path only.
 
+   **First action in every session**: run this to record + verify your
+   worktree path. Keep the output in context as your "home base":
+
+   ```bash
+   WORKTREE="$(pwd)"; echo "worktree=$WORKTREE"; \
+       git -C "$WORKTREE" rev-parse --show-toplevel; \
+       git -C "$WORKTREE" branch --show-current
+   ```
+
+   **Before EVERY git write command** (`git add`, `git commit`, `git mv`,
+   `git restore`, `git stash`), verify CWD is still your worktree:
+
+   ```bash
+   [ "$(pwd)" = "$WORKTREE" ] || { echo "ESCAPED $WORKTREE"; exit 1; }
+   ```
+
+   Or pass `-C "$WORKTREE"` explicitly to every git call. Either approach
+   is fine; both are safer than relying on cwd persistence.
+
+   **❌ BAD patterns — never do these**:
+   ```bash
+   cd /home/<user>/workspace/<repo>        # ← navigates to main checkout
+   cd $(git rev-parse --show-toplevel)     # ← same problem if cwd already escaped
+   cd ../../..                             # ← path-walk escape
+   git -C /home/<user>/workspace/<repo>    # ← explicit main-checkout target
+   ```
+
+   **✅ GOOD patterns**:
+   ```bash
+   git add file.py                         # ← cwd is the worktree, scope is implicit
+   git -C "$WORKTREE" add file.py          # ← explicit worktree scope
+   git -C "$WORKTREE" commit -m "..."
+   ```
+
+   The Group A failure on 2026-05-20 (kaizen-md DOMAIN-shells refactor):
+   an agent ran `cd /home/cherry86/workspace/kaizen-md && git commit` to
+   "fast-forward" — that path is the **main checkout on master**, not
+   the worktree. The commit landed on master, polluting the parent's
+   linear history. Recovery required surgical cherry-pick + manual
+   master rewind. **Don't be that agent.**
+
 2. **One commit per phase.** Conventional Commits subject. Mention
    test baseline shift in the body. Use the phased-work commit
    template from the dispatcher's brief.

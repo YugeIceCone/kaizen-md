@@ -90,6 +90,62 @@ _RM_RF_SAFE = re.compile(
 
 _NO_DELETIONS_BELIEF = Path.home() / ".claude" / "brain" / "Notes" / "pref-no-deletions.md"
 
+# Worktree-escape detector — fires when a subagent in a worktree
+# (PWD matches `.claude/worktrees/agent-<id>`) issues a `cd <absolute-path>`
+# or `git -C <absolute-path>` to a path outside its worktree. The 2026-05-20
+# Group A incident: an agent ran `cd <main-checkout> && git commit` to
+# "fast-forward" and the commit landed on master instead of its branch.
+_WORKTREE_MARKER = ".claude/worktrees/agent-"
+_CD_ABSOLUTE = re.compile(r"(?:^|[\s|;&])cd\s+(?:--\s+)?(/[^\s;&|]+)")
+_GIT_C_ABSOLUTE = re.compile(r"(?:^|[\s|;&])git\s+-C\s+(/[^\s;&|]+)")
+
+
+def _in_worktree() -> str | None:
+    """Return the worktree path if PWD is inside an agent worktree, else None."""
+    import os
+    cwd = os.getcwd()
+    idx = cwd.find(_WORKTREE_MARKER)
+    if idx < 0:
+        return None
+    # `.claude/worktrees/agent-<id>/...` — worktree root is the segment
+    # ending right after `agent-<id>` (one path segment past the marker).
+    tail = cwd[idx + len(_WORKTREE_MARKER):]
+    seg = tail.split("/", 1)[0]
+    return cwd[:idx + len(_WORKTREE_MARKER) + len(seg)]
+
+
+def worktree_escape_decision(command: str) -> tuple[str, str] | None:
+    """Return ('ask', reason) when a worktree subagent tries to escape.
+
+    Detects:
+      - `cd /absolute/path` where /absolute/path is NOT under the current
+        worktree (e.g. cd to the main checkout)
+      - `git -C /absolute/path` targeting outside the current worktree
+
+    No-op when PWD isn't inside `.claude/worktrees/agent-*` (the main
+    session or a non-worktree subagent is unaffected).
+    """
+    worktree = _in_worktree()
+    if not worktree:
+        return None
+    for m in _CD_ABSOLUTE.finditer(command):
+        target = m.group(1).rstrip("/")
+        if not (target == worktree or target.startswith(worktree + "/")):
+            return ("ask",
+                    f"`cd {target}` escapes your worktree at {worktree}. "
+                    f"This is the 2026-05-20 Group A failure mode — the "
+                    f"commit will land on the host branch, not yours. "
+                    f"Stay in the worktree: use `git -C \"{worktree}\" …` "
+                    f"or run commands from the worktree CWD.")
+    for m in _GIT_C_ABSOLUTE.finditer(command):
+        target = m.group(1).rstrip("/")
+        if not (target == worktree or target.startswith(worktree + "/")):
+            return ("ask",
+                    f"`git -C {target}` targets a path outside your "
+                    f"worktree at {worktree}. Refusing to operate cross-"
+                    f"worktree from a subagent context.")
+    return None
+
 # Strict mode — by DEFAULT the gate is advisory-only (no user prompts).
 # Strict mode is the explicit opt-in that re-enables the Yes/No prompt
 # for destructive ops + etu error findings. Two activation paths:
@@ -288,6 +344,19 @@ def decide(command: str) -> dict:
         return {}
     scan_target = _strip_noncommand(command)
     strict = _strict_mode()
+
+    escape = worktree_escape_decision(scan_target)
+    if escape:
+        verb, reason = escape
+        if not strict:
+            return _ask_to_advisory(reason)
+        return {
+            "hookSpecificOutput": {
+                "hookEventName": "PreToolUse",
+                "permissionDecision": verb,
+                "permissionDecisionReason": reason,
+            }
+        }
 
     destructive = destructive_decision(scan_target)
     if destructive:

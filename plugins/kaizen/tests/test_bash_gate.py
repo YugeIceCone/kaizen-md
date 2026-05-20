@@ -424,5 +424,52 @@ class TestLongFormNudge(unittest.TestCase):
         self.assertIn("kaizen audit", r["systemMessage"])
 
 
+class TestWorktreeEscape(unittest.TestCase):
+    """The 2026-05-20 hardening — a subagent in `.claude/worktrees/agent-<id>`
+    must not `cd` or `git -C` to a path outside its worktree."""
+
+    def setUp(self):
+        self._patch = mock.patch(
+            "os.getcwd",
+            return_value="/home/u/repo/.claude/worktrees/agent-xyz/sub")
+        self._patch.start()
+
+    def tearDown(self):
+        self._patch.stop()
+
+    def test_cd_to_main_checkout_flagged(self):
+        # The canonical Group A failure mode.
+        d = _bash_gate.worktree_escape_decision("cd /home/u/repo && git add x")
+        self.assertIsNotNone(d)
+        verb, reason = d
+        self.assertEqual(verb, "ask")
+        self.assertIn("escapes your worktree", reason)
+        self.assertIn("/home/u/repo/.claude/worktrees/agent-xyz", reason)
+
+    def test_cd_within_worktree_is_ok(self):
+        # Navigating within the worktree subtree must not trip.
+        d = _bash_gate.worktree_escape_decision(
+            "cd /home/u/repo/.claude/worktrees/agent-xyz/plugins/kaizen && ls")
+        self.assertIsNone(d)
+
+    def test_git_c_to_other_worktree_flagged(self):
+        d = _bash_gate.worktree_escape_decision(
+            "git -C /home/u/repo commit -am wip")
+        self.assertIsNotNone(d)
+        _, reason = d
+        self.assertIn("targets a path outside your worktree", reason)
+
+    def test_git_c_to_own_worktree_is_ok(self):
+        d = _bash_gate.worktree_escape_decision(
+            "git -C /home/u/repo/.claude/worktrees/agent-xyz add file.py")
+        self.assertIsNone(d)
+
+    def test_no_op_when_not_in_worktree(self):
+        # Outside a worktree context, the rule never fires.
+        with mock.patch("os.getcwd", return_value="/home/u/repo"):
+            d = _bash_gate.worktree_escape_decision("cd /tmp && ls")
+            self.assertIsNone(d)
+
+
 if __name__ == "__main__":
     unittest.main()
