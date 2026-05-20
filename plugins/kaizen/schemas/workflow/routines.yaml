@@ -264,6 +264,21 @@ routines:
       EARS requirements + Decision Records (adapted from GitHub
       awesome-copilot spec-driven-workflow-v1).
 
+  - name: planner
+    kind: schema
+    trigger_words: ["drive the chain", "end-to-end plan", "from idea to PR", "full pipeline", "plan and run", "orchestrate plan", "spec to code", "chain the skills"]
+    schema_path: schemas/planner/schema.yaml
+    stages: [brainstorm, create-plan, create-tasks, execute, verify]
+    end_state: "One blueprint.json at .kaizen/docs/plans/ + commits implementing it"
+    coding_skills: [kiss, yagni]
+    description: |
+      Dynamic 5-stage chain wrapping the superpowers-family skills.
+      Canonical entry is create-plan; brainstorm is optional prequel.
+      Adapts at runtime — entry point, branch (execute mode), and
+      skip rules all conditional on artifact state. Pairs with
+      kaizen:planner skill body (the prose surface) + blueprint.json
+      format. Lighter than spec-driven.
+
   - name: onion-tdd-strict
     kind: schema
     tier: built-in

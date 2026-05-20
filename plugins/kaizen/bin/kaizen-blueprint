@@ -1,7 +1,23 @@
 #!/usr/bin/env bash
-# Thin wrapper — dispatches to scripts/util/blueprint.py.
+# kaizen-blueprint — 1-roundtrip blueprint plan management CLI.
+#
+# Verbs: show | list | scan | state | validate | set-status |
+#        set-task-status | init | create (legacy one-shot generator)
+#
 # /kaizen:setup symlinks bin/ entries into ~/.local/bin/.
+
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PLUGIN_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-exec python3 "$PLUGIN_ROOT/scripts/util/blueprint.py" "$@"
+
+# Route `dispatch` to the subagent dispatch helper; `create` to the
+# legacy one-shot generator; everything else to the new CLI surface.
+if [ "${1:-}" = "dispatch" ]; then
+    shift
+    exec bash "$PLUGIN_ROOT/scripts/blueprint/dispatch.sh" "$@"
+fi
+if [ "${1:-}" = "create" ]; then
+    shift
+    exec python3 "$PLUGIN_ROOT/scripts/util/blueprint.py" create "$@"
+fi
+exec python3 "$PLUGIN_ROOT/scripts/blueprint/blueprint.py" "$@"

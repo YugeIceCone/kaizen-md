@@ -1,0 +1,243 @@
+# yaml-language-server: $schema=../../schemas/workflow.schema.json
+# Planner schema — drives the superpowers-family chain end-to-end.
+#
+# Five-stage DAG. Each stage delegates to an existing kaizen skill via
+# stage_skill_map in schemas/workflow/routines.yaml. Stage IDs match the
+# skill names so the workflow runner dispatches correctly.
+#
+# Chain: brainstorm → create-plan → create-tasks → execute → verify
+#
+# Skip rule: if an artifact already exists at its `generates` path, the
+# runner skips that stage (workflow runner default behavior). The chain
+# is causal: each stage reads its predecessor's output.
+
+name: planner
+version: 1
+description: |
+  Drive the superpowers-family chain end-to-end as one routine.
+  Canonical entry is create-plan; brainstorm is an optional prequel
+  for ill-formed ideas. Completion of create-plan is what triggers
+  the move forward (create-tasks → execute → verify).
+
+  Chain: [brainstorm?] → create-plan → create-tasks → execute → verify
+
+  Lighter than `workflow schema=spec-driven` (which is EARS-notation +
+  Decision Records, 6 ceremony phases). Heavier than calling each
+  superpowers skill in isolation.
+
+  Produces ONE blueprint.json at .kaizen/docs/plans/ as the durable
+  deliverable.
+
+artifacts:
+  - id: brainstorm
+    generates: .kaizen/docs/specs/<YYYY-MM-DD>-<topic>-design.md
+    template: null
+    requires: []
+    description: |
+      OPTIONAL stage 0 — explore intent → produce a spec via
+      kaizen:brainstorming. Use when the user's request is ill-formed
+      and needs design exploration before a plan can be drafted. Spec
+      lands at .kaizen/docs/specs/<YYYY-MM-DD>-<topic>-design.md.
+
+      When a clear request already exists, SKIP this stage and start
+      at create-plan. The user's "doesn't have to be brainstorming
+      first" rule.
+
+      Skill: kaizen:brainstorming
+      Output (if run): kind=spec item referenced from create-plan's
+      blueprint via links.parents.
+
+  - id: create-plan
+    generates: .kaizen/docs/plans/<YYYY-MM-DD>-<topic>.json
+    template: null
+    requires: []
+    description: |
+      CANONICAL entry stage — produce a phased plan blueprint via
+      kaizen:create-plan. Output is a blueprint.json (validated against
+      .kaizen/docs/templates/blueprint.schema.json) containing one
+      kind=plan root item.
+
+      No `requires` — this stage CAN run without brainstorm. If
+      brainstorm ran first, the plan references the spec via
+      links.parents.
+
+      ⚠ Preconditions (BOTH must hold before this stage starts):
+
+        1. QA pass — the agent has asked AskUserQuestion to disambiguate
+           scope, surface unstated constraints, confirm artifact
+           location, and align on the kind of plan needed. The QA
+           result lands as a one-paragraph summary the user sees
+           before triggering. NEVER skip QA; a plan built on vague
+           inputs accumulates rework.
+
+        2. User trigger — explicit user signal that they want the
+           plan created. Phrases that count: "create the plan",
+           "go ahead", "yes plan this", "draft the plan", "/kaizen:
+           planner go". An implicit "ok" after a status report is NOT
+           a trigger. The user must direct create-plan specifically.
+
+      Why both: without QA, the planner builds against assumptions.
+      Without an explicit trigger, the planner can run prematurely on
+      a passing remark. The dual-gate prevents both failure modes.
+
+      Completion of this stage is THE trigger to move forward to
+      create-tasks → execute. Until create-plan's blueprint exists,
+      no downstream stage runs.
+
+      Skill: kaizen:create-plan
+      Format: blueprint.json (preferred per decision 02 of the
+      unify-artifact-generation plan). Markdown sibling allowed for
+      long-form prose via content_ref.
+
+  - id: create-tasks
+    generates: .kaizen/docs/plans/<YYYY-MM-DD>-<topic>.json#items[].tasks
+    template: null
+    requires: [create-plan]
+    description: |
+      Stage 3 — plan phase → executable task briefs via
+      kaizen:create-tasks. Tasks land inline in the blueprint as
+      kind=task-list items with populated tasks[] (status, owner,
+      blocked_by, refs, tags). Each task is verifiable on its own.
+
+      Skill: kaizen:create-tasks
+      Output: in-place mutation of the blueprint.json from stage 2.
+
+  - id: execute
+    generates: <commits to master>
+    template: null
+    requires: [create-tasks]
+    description: |
+      Stage 4 — implement the tasks. Two execution modes, pick at
+      dispatch time:
+
+      Step 4.0 — CHUNKING (before execute).
+
+      DEFAULT (no subagents): `kaizen-blueprint chunk --list-id X`
+      returns chunks of 3 tasks each; parent walks them sequentially
+      with commit + verify between chunks. bucket=PARENT_DOES_IT
+      regardless of total task count.
+
+      OPT-IN (`--subagents` flag): apply the parallel-branches kit's
+      D2 chunking-floor rubric:
+
+        ≤3 in-flight  → PARENT_DOES_IT  (no dispatch; parent walks)
+        4-6           → ONE_SUBAGENT    (one Agent() call, worktree)
+        7-30          → GRID            (ceil(n/3) chunks, parallel)
+        31+           → POOL            (queue-picker; parallel-branches
+                                          kit runtime in clever-lama-mcp)
+
+      Step 4.1 — DISPATCH per bucket.
+
+      MODE A — sequential (default for PARENT_DOES_IT + ONE_SUBAGENT):
+      kaizen:execute-plan walks the blueprint's task DAG one task at a
+      time, updates in-place. Use when tasks share state or order
+      matters.
+
+      MODE B — parallel (default for GRID): kaizen:
+      subagent-driven-development dispatches one fresh subagent per
+      chunk (NOT per task) — each subagent processes its 2-3 tasks
+      sequentially within an isolated worktree. 2-stage review (spec
+      compliance, then code quality) after each subagent returns.
+
+      ⚠ Isolation contract (mandatory for MODE B):
+        - Every Agent() dispatch passes `isolation="worktree"`. The
+          subagent operates in .claude/worktrees/agent-<id>/, never
+          at the repo root.
+        - Subagent type is `kaizen-implementer` (its frontmatter
+          declares disallowedTools blocking destructive git ops:
+          push/reset/checkout/merge/rebase/clean/branch -D/remote,
+          plus rm/rmdir/curl/wget).
+        - Parent merges the subagent's branch after all chunks settle;
+          subagents never touch master.
+        - For belt-and-suspenders: enable strict gate before dispatch
+          via `touch ~/.claude/.kaizen/strict` (or KAIZEN_GATE_STRICT=1).
+          The session-level pretooluse-bash-gate hook then denies the
+          destructive patterns at the runtime layer too.
+
+      MODE C — pool (default for POOL — 31+ tasks): out of scope for
+      this schema. Use the parallel-branches kit runtime at
+      clever-lama-mcp/src/parallel_branches/ via `parallel_subagents`
+      MCP. The kit's queue-picker pattern dispenses tasks atomically
+      (`os.rename` claim — no race) to N concurrent subagents.
+
+      Routing rule (post-chunking):
+        chunk_tasks() output's `dispatch_hint.mode` field selects
+        MODE A / B / C. The blueprint's task-list item also stores
+        `dispatch.mode` directly — when set explicitly by the
+        author, it overrides the rubric's default.
+
+      ⚠ Preconditions (BOTH must hold before this stage starts —
+      same dual-gate as create-plan):
+
+        1. QA pass — the agent has asked AskUserQuestion to confirm:
+           which mode (A vs B), which tasks are in this batch
+           (all / first-N / specific IDs), any flags or env knobs,
+           and any pre-execution side-effects to be aware of (cron,
+           pushes, deletions). Surface a one-paragraph plan summary
+           the user sees before triggering.
+
+        2. User trigger — explicit user signal that they want
+           execution to begin. Phrases that count: "execute the plan",
+           "run the tasks", "go ahead", "implement these", "/kaizen:
+           planner execute". Status reports + "ok" do NOT count;
+           execution is destructive (commits, code modifications) so
+           the trigger must direct execution specifically.
+
+      Why both: without QA, mode selection is guessed and side-effects
+      surprise the user. Without an explicit trigger, the planner can
+      auto-execute on what was a discussion. Same failure-mode logic
+      as create-plan's dual-gate.
+
+      Skill: kaizen:execute-plan OR kaizen:subagent-driven-development
+
+  - id: verify
+    template: null
+    requires: [execute]
+    description: |
+      Stage 5 — final RED-GREEN gate before merge.
+      kaizen:verify-before-execution runs the iron-law verification on
+      every changed artifact. NEVER skipped — this is the gate every
+      executing-class skill calls.
+
+      Skill: kaizen:verify-before-execution
+      Output: GO/NO-GO decision. NO-GO routes back to the stage whose
+      artifact failed.
+
+apply:
+  gate: create-plan
+  # Completion of create-plan is THE trigger that moves the chain
+  # forward. Brainstorm is an optional prequel — when it runs, its
+  # spec informs create-plan; when it doesn't, the user's prompt IS
+  # the input. The gate sits at create-plan because that's the first
+  # stage whose output is mandatory for everything downstream.
+
+# Dynamic dispatch — encoded in the artifact descriptions above
+# (entry_when / skip_when / branch_when conditions). The workflow runner
+# walks artifacts in DAG order; this schema additionally documents that
+# the chain ADAPTS based on runtime state.
+#
+# Entry-point rule (first match wins, walked on every planner invocation):
+#   - if plan exists AND tasks[] populated AND no recent commits → enter at `execute`
+#   - if plan exists AND tasks[] empty → enter at `create-tasks`
+#   - if user prompt is exploratory ("could we", "what if") → enter at `brainstorm`
+#   - else → enter at `create-plan` (canonical default; runs QA + waits for trigger)
+#
+# Dual-gate at create-plan: stage REQUIRES (a) a QA pass via
+# AskUserQuestion (disambiguate scope / constraints / location /
+# plan-kind) AND (b) an EXPLICIT user trigger ("create the plan", "go
+# ahead", "draft the plan"). Status reports and "ok" replies don't
+# count. See artifact[create-plan].description for full preconditions.
+#
+# Branch rule (`execute` stage):
+#   - blueprint.dispatch.mode in ['parallel', 'waves'] → kaizen:subagent-driven-development
+#   - else → kaizen:execute-plan
+#
+# Skip rule (per stage):
+#   - brainstorm: skip when spec exists with status in [active, shipped]
+#   - create-plan: skip when plan blueprint exists with status in [active, shipped]
+#   - create-tasks: skip when blueprint has any kind=task-list with non-empty tasks[]
+#
+# Resume protocol (re-entry after handoff / context boundary):
+#   1. Read .kaizen/docs/plans/<latest>.json — find highest-status item
+#   2. Locate last task with status=in_progress or completed
+#   3. Resume at next pending task; if none, walk entry_point_rules

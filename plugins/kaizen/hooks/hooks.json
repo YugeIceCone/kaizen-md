@@ -295,6 +295,11 @@
             "type": "command",
             "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/claude/dxm-event.sh SubagentStop",
             "timeout": 2
+          },
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/claude/subagentstop-blueprint-finalize.sh",
+            "timeout": 2
           }
         ]
       }
