@@ -294,6 +294,82 @@ class TestCacheState(unittest.TestCase):
         self.assertEqual(entry["n_items"], 2)
 
 
+class TestYamlFormat(unittest.TestCase):
+    """YAML blueprints — read + write round-trip via the extension switch."""
+
+    def test_read_yaml_blueprint(self):
+        import yaml
+        with tempfile.TemporaryDirectory() as td:
+            p = Path(td) / "plan.yaml"
+            data = _fresh_plan([
+                {"id": "01", "kind": "plan", "title": "Y",
+                 "status": "draft", "links": {}},
+            ])
+            p.write_text(yaml.safe_dump(data))
+            plan = bp.read_plan(p)
+            self.assertEqual(plan["project"], "test")
+            self.assertEqual(plan["items"][0]["id"], "01")
+
+    def test_yaml_set_status_round_trips(self):
+        import yaml
+        with tempfile.TemporaryDirectory() as td:
+            p = Path(td) / "plan.yaml"
+            p.write_text(yaml.safe_dump(_fresh_plan([
+                {"id": "01", "kind": "plan", "title": "Y",
+                 "status": "draft", "links": {}},
+            ])))
+            bp.set_item_status(p, "01", "shipped")
+            # Re-read via YAML path
+            self.assertEqual(bp.read_item(p, id="01")["status"], "shipped")
+            # File still parses as YAML, not JSON
+            with self.assertRaises(json.JSONDecodeError):
+                json.loads(p.read_text())
+
+
+class TestResume(unittest.TestCase):
+    """resume() — pick next actionable task."""
+
+    def test_resume_returns_in_progress_first(self):
+        with tempfile.TemporaryDirectory() as td:
+            p = _write_plan(Path(td), _fresh_plan([
+                {"id": "07", "kind": "task-list", "title": "L",
+                 "status": "active", "links": {},
+                 "tasks": [
+                     {"id": "07.1", "subject": "A", "status": "completed"},
+                     {"id": "07.2", "subject": "B", "status": "in_progress"},
+                     {"id": "07.3", "subject": "C", "status": "pending"},
+                 ]},
+            ]))
+            r = bp.resume(p)
+            self.assertEqual(r["task"]["id"], "07.2")
+
+    def test_resume_skips_blocked_pending(self):
+        with tempfile.TemporaryDirectory() as td:
+            p = _write_plan(Path(td), _fresh_plan([
+                {"id": "07", "kind": "task-list", "title": "L",
+                 "status": "active", "links": {},
+                 "tasks": [
+                     {"id": "07.1", "subject": "A", "status": "pending",
+                      "blocked_by": ["07.2"]},
+                     {"id": "07.2", "subject": "B", "status": "pending"},
+                 ]},
+            ]))
+            r = bp.resume(p)
+            # 07.1 is blocked by 07.2; 07.2 is unblocked → resume picks 07.2
+            self.assertEqual(r["task"]["id"], "07.2")
+
+    def test_resume_returns_none_when_all_done(self):
+        with tempfile.TemporaryDirectory() as td:
+            p = _write_plan(Path(td), _fresh_plan([
+                {"id": "07", "kind": "task-list", "title": "L",
+                 "status": "shipped", "links": {},
+                 "tasks": [
+                     {"id": "07.1", "subject": "A", "status": "completed"},
+                 ]},
+            ]))
+            self.assertIsNone(bp.resume(p))
+
+
 class TestCli(unittest.TestCase):
     """End-to-end CLI smoke."""
 

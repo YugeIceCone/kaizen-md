@@ -86,8 +86,15 @@ def _stat(path: Path) -> tuple[float, int]:
 
 
 def _summarize_plan(plan_path: Path) -> dict:
-    """Compute the cache row for one plan. Reads + parses once."""
-    data = json.loads(plan_path.read_text(encoding="utf-8"))
+    """Compute the cache row for one plan. Reads + parses once.
+    Auto-detects YAML (.yaml / .yml) vs JSON by extension."""
+    text = plan_path.read_text(encoding="utf-8")
+    suffix = plan_path.suffix.lower()
+    if suffix in (".yaml", ".yml"):
+        import yaml
+        data = yaml.safe_load(text)
+    else:
+        data = json.loads(text)
     items = data.get("items", [])
     status_rollup: dict[str, int] = {}
     kind_rollup: dict[str, int] = {}

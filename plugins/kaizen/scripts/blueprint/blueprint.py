@@ -438,6 +438,33 @@ def cmd_add_task(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_resume(args: argparse.Namespace) -> int:
+    """resume [file] — pick the next actionable task."""
+    target = _resolve_file(args.file)
+    if not target:
+        print("no plan given and no active plan in cache", file=sys.stderr)
+        return 2
+    st.touch(target)
+    result = bp.resume(target)
+    if result is None:
+        print("(no actionable task — every task completed/skipped/blocked)")
+        return 0
+    if args.json:
+        json.dump(result, sys.stdout, indent=2)
+        print()
+        return 0
+    item, task = result["item"], result["task"]
+    print(f"item:   {item.get('id')} — {item.get('title', '')[:70]}")
+    print(f"task:   {task.get('id')} — {task.get('subject', '')[:70]}")
+    print(f"status: {task.get('status')}")
+    if task.get("blocked_by"):
+        print(f"deps:   {', '.join(task['blocked_by'])} (all clear)")
+    if task.get("refs"):
+        print(f"refs:   {', '.join(task['refs'][:3])}")
+    print(f"why:    {result['reason']}")
+    return 0
+
+
 def cmd_chunk(args: argparse.Namespace) -> int:
     """chunk [file] --list-id X [--subagents] — chunk a task-list.
 
@@ -613,6 +640,12 @@ def build_parser() -> argparse.ArgumentParser:
     atp.add_argument("--tags", default=None, help="comma-separated")
     atp.add_argument("--validate", action="store_true")
     atp.set_defaults(func=cmd_add_task)
+
+    rp = sub.add_parser("resume",
+                        help="pick the next actionable task")
+    rp.add_argument("file", nargs="?", default=None)
+    rp.add_argument("--json", action="store_true")
+    rp.set_defaults(func=cmd_resume)
 
     cp = sub.add_parser("chunk",
                         help="chunk a task-list (default: 3-task parent batches)")

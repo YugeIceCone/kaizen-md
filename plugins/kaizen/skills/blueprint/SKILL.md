@@ -1,6 +1,6 @@
 ---
 name: blueprint
-description: 1-roundtrip CLI over .kaizen/docs/<YYYY-MM-DD>-<topic>/plan.json. Read / mutate / validate / atomic-write per call. Memory-cached metadata at .kaizen/cache/blueprint-state.json (mtime+size invalidated). Verbs - show | list | scan | state | validate | set-status | set-task-status | add-item | add-task | chunk | dispatch | init | create. Smart positional - show <N> targets items[N] of active plan. Pairs - kaizen:planner / blueprint.schema.json. Triggers - "show plan item", "list plan items", "plan scan", "mark task done", "set plan status", "validate blueprint", "kaizen-blueprint", "1-roundtrip plan op".
+description: 1-roundtrip CLI over .kaizen/docs/<YYYY-MM-DD>-<topic>/plan.{json,yaml}. Read / mutate / validate / atomic-write per call. Format auto-detected by extension. Memory-cached metadata at .kaizen/cache/blueprint-state.json (mtime+size invalidated). Verbs - show | list | scan | state | validate | set-status | set-task-status | add-item | add-task | resume | chunk | dispatch | init | create. resume - picks next in_progress OR unblocked-pending task. Smart positional - show <N> targets items[N] of active plan. Pairs - kaizen:planner / blueprint.schema.json. Triggers - "show plan item", "list plan items", "plan scan", "mark task done", "set plan status", "validate blueprint", "resume plan", "next task", "kaizen-blueprint".
 metadata:
   version: "1.0"
   origin: kaizen-md 2026-05-20 (gap surfaced by the unify-artifact-generation plan; built to honor the 1-roundtrip contract in decision 28)

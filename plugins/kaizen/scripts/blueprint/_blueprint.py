@@ -47,11 +47,37 @@ sys.path.insert(0, str(_SCRIPTS_ROOT / "io"))
 import _atomic  # noqa: E402
 
 
+# ─── Format detection (.json vs .yaml) ──────────────────────────────────
+
+def _is_yaml(path: str | Path) -> bool:
+    """True iff path ends in .yaml or .yml (case-insensitive)."""
+    s = str(path).lower()
+    return s.endswith(".yaml") or s.endswith(".yml")
+
+
+def _write_plan(path: str | Path, data: dict) -> None:
+    """Atomic-write a blueprint, picking JSON or YAML by extension.
+    JSON is via _atomic.atomic_write_json (sort_keys=False). YAML is
+    via PyYAML safe_dump + _atomic.atomic_write (string)."""
+    if _is_yaml(path):
+        import yaml
+        body = yaml.safe_dump(data, sort_keys=False, allow_unicode=True,
+                              default_flow_style=False) + ""
+        _atomic.atomic_write(path, body)
+    else:
+        _atomic.atomic_write_json(path, data, sort_keys=False)
+
+
 # ─── Pure reads (1 roundtrip each) ──────────────────────────────────────
 
 def read_plan(path: str | Path) -> dict[str, Any]:
-    """Return the whole blueprint as a dict. One JSON parse."""
-    return json.loads(Path(path).read_text(encoding="utf-8"))
+    """Return the whole blueprint as a dict. Auto-detects format by
+    extension (.yaml / .yml → PyYAML safe_load; else json.loads)."""
+    text = Path(path).read_text(encoding="utf-8")
+    if _is_yaml(path):
+        import yaml
+        return yaml.safe_load(text)
+    return json.loads(text)
 
 
 def read_item(path: str | Path, *, index: int | None = None,
@@ -143,7 +169,7 @@ def set_item_status(path: str | Path, item_id: str, new_status: str,
     plan["items"][idx]["status"] = new_status
     if validate:
         _schema_validate(plan)
-    _atomic.atomic_write_json(path, plan, sort_keys=False)
+    _write_plan(path, plan)
     return {"old": old, "new": new_status}
 
 
@@ -159,7 +185,7 @@ def set_task_status(path: str | Path, task_id: str, new_status: str,
                 t["status"] = new_status
                 if validate:
                     _schema_validate(plan)
-                _atomic.atomic_write_json(path, plan, sort_keys=False)
+                _write_plan(path, plan)
                 return {"old": old, "new": new_status}
     raise KeyError(f"no task with id={task_id!r}")
 
@@ -177,7 +203,7 @@ def add_item(path: str | Path, new_item: dict,
     plan["items"].append(new_item)
     if validate:
         _schema_validate(plan)
-    _atomic.atomic_write_json(path, plan, sort_keys=False)
+    _write_plan(path, plan)
     return nid
 
 
@@ -202,7 +228,7 @@ def add_task(path: str | Path, list_id: str, new_task: dict,
     item["tasks"] = tasks
     if validate:
         _schema_validate(plan)
-    _atomic.atomic_write_json(path, plan, sort_keys=False)
+    _write_plan(path, plan)
     return tid
 
 
@@ -228,6 +254,45 @@ def _schema_validate(plan: dict) -> None:
     schema_path = _SCHEMA_PATH if _SCHEMA_PATH.is_file() else _SCHEMA_PATH_FALLBACK
     schema = json.loads(schema_path.read_text())
     jsonschema.validate(plan, schema)
+
+
+def resume(path: str | Path) -> dict | None:
+    """Pick the next actionable task. Returns the task + its parent
+    item, or None if nothing is actionable.
+
+    Order (first match wins):
+      1. Any task with status=in_progress (resume mid-task)
+      2. The first pending task whose blocked_by deps are all completed
+      3. None — nothing pending OR everything blocked
+
+    Returns: {item: <task-list item>, task: <task>, reason: str}
+    """
+    plan = read_plan(path)
+    items = plan.get("items", [])
+    all_tasks_by_id: dict[str, dict] = {}
+    for it in items:
+        for t in (it.get("tasks") or []):
+            all_tasks_by_id[t.get("id", "")] = t
+
+    # Pass 1: any in_progress
+    for it in items:
+        for t in (it.get("tasks") or []):
+            if t.get("status") == "in_progress":
+                return {"item": it, "task": t,
+                        "reason": "task in_progress — resume mid-flight"}
+    # Pass 2: first unblocked pending
+    for it in items:
+        for t in (it.get("tasks") or []):
+            if t.get("status") != "pending":
+                continue
+            blocked_by = t.get("blocked_by") or []
+            unmet = [b for b in blocked_by
+                     if all_tasks_by_id.get(b, {}).get("status")
+                     not in ("completed", "skipped")]
+            if not unmet:
+                return {"item": it, "task": t,
+                        "reason": "pending + all blocked_by deps clear"}
+    return None
 
 
 def dag_check(path: str | Path) -> list[str]:
@@ -369,4 +434,5 @@ __all__ = [
     "add_task",
     "dag_check",
     "chunk_tasks",
+    "resume",
 ]
