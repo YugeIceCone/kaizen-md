@@ -85,12 +85,14 @@ def plugin_src() -> Path:
     return market_dir() / "plugins" / "kaizen"
 
 def scripts_dir() -> Path:
-    """Legacy resolver — kept for the .py shim cluster that still
-    occupies skills/workflow/scripts/. Per-script callers below use
-    feature-specific paths directly (scripts/install/, scripts/util/,
-    scripts/indexers/, etc.) — that's the canonical layout post the
-    v1.40 consolidation."""
-    return plugin_src() / "skills" / "workflow" / "scripts"
+    """Resolver for the cluster that owns hygiene.py.
+
+    Post DOMAIN-shells sweep, hygiene.py lives at scripts/util/ (along
+    with the rest of the workflow utility modules). Per-script callers
+    below use feature-specific paths directly (scripts/install/,
+    scripts/util/, scripts/indexers/, etc.) — this resolver is kept as
+    a thin convenience for run_hygiene_fix() and similar."""
+    return plugin_src() / "scripts" / "util"
 
 # ─── State ───────────────────────────────────────────────────────────
 
