@@ -49,7 +49,9 @@ class SyntheticRootBase(unittest.TestCase):
     def setUp(self):
         self._tmp = tempfile.TemporaryDirectory()
         self.root = Path(self._tmp.name)
-        self.scripts = self.root / "skills/workflow/scripts"
+        # Post DOMAIN-shells sweep: production code lives under
+        # scripts/<cluster>/. Use a fake cluster for the synthetic root.
+        self.scripts = self.root / "scripts" / "util"
         self.tests = self.root / "tests"
         self.scripts.mkdir(parents=True)
         self.tests.mkdir(parents=True)

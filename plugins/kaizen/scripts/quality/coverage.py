@@ -54,13 +54,11 @@ def _default_root() -> Path:
     return Path(__file__).resolve().parents[2]  # was parents[3] (skills/workflow/scripts/ depth)
 
 def _list_source_scripts(root: Path) -> list[str]:
-    """Public script stems under skills/workflow/scripts/ AND scripts/
-    (post-DOMAIN migration — files split across both locations during
-    incremental BIG-REFACTOR). Recursive walk for nested domain subdirs."""
+    """Public script stems under scripts/<cluster>/ (post DOMAIN-shells
+    sweep — the skills/workflow/scripts/ legacy collection was retired).
+    Recursive walk for nested domain subdirs."""
     new_scripts = root / "scripts"
     candidates: list[Path] = []
-    if legacy.is_dir():
-        candidates += sorted(legacy.glob("*.py"))
     if new_scripts.is_dir():
         candidates += sorted(p for p in new_scripts.rglob("*.py")
                               if "__pycache__" not in p.parts)
